@@ -1,0 +1,55 @@
+@layer base {
+  // TomCaSerif Font
+  @font-face {
+    font-family: "TomCaSerif";
+    src: url("/fonts/TomCaSerif-Bold.otf") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: block;
+    size-adjust: 100%;
+  }
+
+  // Roobert Font
+  @font-face {
+    font-family: "Roobert";
+    src: url("/fonts/Roobert-Medium.otf") format("otf");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+    size-adjust: 100%;
+  }
+
+  //Roboto Font
+  @font-face {
+    font-family: "Roboto";
+    src: url("/fonts/Roboto-Regular.ttf") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+    size-adjust: 100%;
+  }
+  @font-face {
+    font-family: "Roboto";
+    src: url("/fonts/Roboto-Medium.ttf") format("woff2");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+    size-adjust: 100%;
+  }
+  @font-face {
+    font-family: "Roboto";
+    src: url("/fonts/Roboto-SemiBold.ttf") format("woff2");
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+    size-adjust: 100%;
+  }
+  @font-face {
+    font-family: "Roboto";
+    src: url("/fonts/Roboto-Bold.ttf") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+    size-adjust: 100%;
+  }
+}

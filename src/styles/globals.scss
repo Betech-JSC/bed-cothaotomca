@@ -1,0 +1,19 @@
+@use "tailwindcss";
+@use "./buttons.scss";
+@use "./cards.scss";
+@use "./fonts.scss";
+@use "./type.scss";
+@use "./input.scss";
+@use "./animations.scss";
+
+@config "../../tailwind.config.ts";
+@plugin "@tailwindcss/typography";
+@plugin "@tailwindcss/aspect-ratio";
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+html {
+  scroll-behavior: smooth;
+}

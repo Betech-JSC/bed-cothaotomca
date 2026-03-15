@@ -1,0 +1,23 @@
+.btn {
+  @apply relative min-w-40 xl:min-w-48 h-[44px] flex items-center justify-center duration-300 ease-in-out cursor-pointer rounded-full;
+  @apply text-[16px] leading-[150%] tracking-[0.04em] font-semibold font-serif;
+}
+
+.btn-primary {
+  @apply text-yellow bg-primary lg:hover:bg-secondary;
+}
+
+.btn-secondary {
+  @apply text-yellow bg-secondary lg:hover:bg-primary lg:hover:text-white;
+}
+
+.btn-white {
+  @apply text-primary bg-white lg:hover:bg-secondary lg:hover:text-yellow;
+}
+
+.btn-pagination {
+  @apply min-w-12 h-12 xl:min-w-[75px] xl:h-[75px] flex items-center justify-center border border-black/20 bg-black/10 text-black;
+  &:hover {
+    @apply bg-black/20;
+  }
+}

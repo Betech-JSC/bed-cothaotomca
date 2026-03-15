@@ -10,16 +10,22 @@ import Pricing from "@/components/Pricing";
 import Testimonials from "@/components/Testimonials";
 import Video from "@/components/Video";
 import { Metadata } from "next";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { getMessages, DEFAULT_LOCALE } from "@/i18n/i18n";
+
+const messages = getMessages(DEFAULT_LOCALE);
 
 export const metadata: Metadata = {
-  title: "Free Next.js Template for Startup and SaaS",
-  description: "This is Home for Startup Nextjs Template",
-  // other metadata
+  title: messages.homeTitle,
+  description: messages.homeDescription,
 };
 
 export default function Home() {
   return (
     <>
+      <div className="fixed bottom-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
       <ScrollUp />
       <Hero />
       <Features />

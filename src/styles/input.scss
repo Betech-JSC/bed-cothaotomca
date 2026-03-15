@@ -1,0 +1,47 @@
+.input-form {
+  @apply block w-full py-2.5 px-3.5 rounded-[8px] text-gray-500 border border-gray-300 bg-white focus:ring-0 outline-none focus:outline-none focus:duration-200 focus:border-gray-900 h-[44px];
+  &:focus {
+    @apply duration-200;
+  }
+}
+.select-form {
+  @apply block w-full py-2.5 px-3.5 rounded-[8px] text-gray-500 border border-gray-300 bg-white focus:ring-0 outline-none focus:outline-none focus:duration-200 focus:border-gray-900 h-[44px];
+  &:focus {
+    @apply duration-200;
+  }
+}
+::placeholder {
+  @apply text-gray-700;
+}
+.input-form:focus::placeholder {
+  @apply duration-300;
+}
+textarea:focus::placeholder {
+  @apply duration-300;
+}
+input[type="text"]:disabled {
+  background: #ececed;
+}
+input[type="number"]:disabled {
+  background: #ececed;
+}
+input[type="password"]:disabled {
+  background: #ececed;
+}
+input[type="email"]:disabled {
+  background: #ececed;
+}
+.input-form[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  @apply block w-full px-3 py-2 text-gray-700 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:outline-none;
+}
+select {
+  -webkit-appearance: none;
+  -webkit-border-radius: 0px;
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

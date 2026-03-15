@@ -1,0 +1,75 @@
+@media (min-width: 1024px) {
+  .slideleft {
+    transform: translateX(-100px);
+    filter: blur(12px);
+    transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform, filter;
+  }
+  .slideleft.is-visible {
+    transform: translateX(0);
+    filter: blur(0);
+  }
+  .slideright {
+    transform: translateX(100px);
+    filter: blur(12px);
+    transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform, filter;
+  }
+  .slideright.is-visible {
+    transform: translateX(0);
+    filter: blur(0);
+  }
+  .appear {
+    transform: translateY(100px);
+    transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform;
+  }
+  .appear.is-visible {
+    transform: translateY(0);
+  }
+  .opacity {
+    opacity: 0;
+    filter: blur(12px);
+    transition: opacity 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: opacity, filter;
+  }
+  .opacity.is-visible {
+    opacity: 1;
+    filter: blur(0);
+  }
+  .card-animate {
+    opacity: 1;
+    visibility: visible;
+    transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform: translateY(100px);
+    will-change: transform;
+  }
+  .card-animate.card-animated {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate {
+  opacity: 0;
+  visibility: hidden;
+}
+.animate.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+.slideup {
+  transform: translateY(100px);
+  transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+}
+.slideup.is-visible {
+  transform: translateY(0);
+}
+.slidedown {
+  transform: translateY(-100px);
+  transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+}
+.slidedown.is-visible {
+  transform: translateY(0);
+}
