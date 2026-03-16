@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function Demo() {
   return (
-    <main className="min-h-screen py-32 bg-yellow text-gray-900 title-3">
+    <main className="min-h-screen py-48 bg-yellow text-gray-900 title-3">
       <div className="container">
         {/* Components Section */}
         <section className="mb-16">
