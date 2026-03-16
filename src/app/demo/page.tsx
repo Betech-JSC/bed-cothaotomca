@@ -66,8 +66,27 @@ export default function Demo() {
             </div>
 
             <div>
-              <span className="body-1">Body 1</span> - 16px/120%/SVN-Gilroy
+              <span className="body-0">Body 0</span> - 20px/150%/Roboto
             </div>
+            <div>
+              <span className="body-1">Body 1</span> - 16px/150%/Roboto
+            </div>
+            <div>
+              <span className="body-2">Body 2</span> - 14px/140%/Roboto
+            </div>
+            <div>
+              <span className="body-3">Body 3</span> - 12px/150%/Roboto
+            </div>
+
+            <div>
+              <span className="label-1">Label 1</span> - 16px/150%/Roboto
+            </div>
+            <div>
+              <span className="label-2">Label 2</span> - 14px/140%/Roboto
+            </div>
+            <div>
+              <span className="label-3">Label 3</span> - 12px/150%/Roboto
+            </div>            
           </div>
         </section>
 
