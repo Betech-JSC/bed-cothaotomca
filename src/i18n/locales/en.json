@@ -1,6 +1,17 @@
 {
-  "homeTitle": "Free Next.js Template for Startup and SaaS",
-  "homeDescription": "This is Home for Startup Nextjs Template",
-  "language": "Language"
+  "home": {
+    "title": "Free Next.js Template for Startup and SaaS",
+    "description": "This is Home for Startup Nextjs Template",
+    "language": "Language"
+  },
+  "common": {
+    "about": "About",
+    "product": "Product",
+    "blog": "Blog",
+    "policy": "Policy",
+    "search": "Search",
+    "contact": "Contact",
+    "language": "Language"
+  }
 }
 

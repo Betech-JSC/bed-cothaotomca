@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import Logo from "../Logo";
 import LanguageSwitcher from "../LanguageSwitcher";
 import Search from "../Icons/Search";
@@ -13,26 +14,29 @@ type NavItem = {
   href?: string;
   isExternal?: boolean;
   children?: NavItem[];
+  i18nKey?: string;
 };
-
-export const mainNavLeft: NavItem[] = [
-  { label: "Về chúng tôi", href: "/about" },
-  {
-    label: "Sản phẩm",
-    href: "/product",
-  },
-  { label: "Chính sách", href: "/policy" },
-];
-
-export const mainNavRight: NavItem[] = [
-  { label: "Tin tức", href: "/blog" },
-  { label: "Liên hệ", href: "/contact" },
-];
 
 const STICKY_SCROLL_Y = 40;
 
 const Header = () => {
   const pathname = usePathname();
+  const t = useTranslations('common');
+  
+  // Extract locale from pathname (e.g., /vi/about -> vi)
+  const locale = pathname.split('/')[1] || 'vi';
+  
+  const mainNavLeft: NavItem[] = [
+    { label: t('about'), href: `/${locale}/about`, i18nKey: 'about' },
+    { label: t('product'), href: `/${locale}/product`, i18nKey: 'product' },
+    { label: t('policy'), href: `/${locale}/policy`, i18nKey: 'policy' },
+  ];
+
+  const mainNavRight: NavItem[] = [
+    { label: t('blog'), href: `/${locale}/blog`, i18nKey: 'blog' },
+    { label: t('contact'), href: `/${locale}/contact`, i18nKey: 'contact' },
+  ];
+
   const [isSticky, setIsSticky] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(
@@ -73,7 +77,7 @@ const Header = () => {
 
   return (
     <header
-      className={`bg-primary fixed top-0 z-[100] w-full duration-500 ease-in-out ${isSticky ? "lg:h-20 lg:py-1" : "lg:h-[104px] lg:py-3"
+      className={`bg-primary sticky top-0 z-[100] w-full duration-500 ease-in-out ${isSticky ? "lg:h-20 lg:py-1" : "lg:h-[104px] lg:py-3"
         }`}
       aria-label="Site header"
     >
@@ -85,7 +89,7 @@ const Header = () => {
           <ul className="flex gap-4">
             {mainNavLeft.map((itemNavLeft, indexNavLeft) => (
               <DesktopNavItem
-                key={itemNavLeft.label}
+                key={itemNavLeft.i18nKey}
                 item={itemNavLeft}
                 isActive={itemNavLeft.href === pathname}
                 isOpen={openDropdownIndex === indexNavLeft}
@@ -104,7 +108,7 @@ const Header = () => {
           <ul className="flex items-center gap-4">
             {mainNavRight.map((itemNavRight, indexNavRight) => (
               <DesktopNavItem
-                key={itemNavRight.label}
+                key={itemNavRight.i18nKey}
                 item={itemNavRight}
                 isActive={itemNavRight.href === pathname}
                 isOpen={openDropdownIndex === indexNavRight}
@@ -113,7 +117,7 @@ const Header = () => {
             ))}
 
             <Link
-              href="/search"
+              href={`/${locale}/search`}
               className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
             >
               <Search />
@@ -139,6 +143,7 @@ const Header = () => {
           pathname={pathname}
           onToggle={toggleMobile}
           onClose={() => setIsMobileOpen(false)}
+          locale={locale}
         />
       </div>
     </header>
@@ -167,7 +172,7 @@ const DesktopNavItem = ({
       ? { target: "_blank", rel: "noreferrer" }
       : {};
     return (
-      <li>
+      <li key={item.i18nKey || item.href}>
         <Link
           href={item.href ?? "#"}
           className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses
@@ -181,7 +186,7 @@ const DesktopNavItem = ({
   }
 
   return (
-    <li className="relative">
+    <li className="relative" key={item.i18nKey || item.href}>
       <button
         type="button"
         className={`${baseClasses} flex items-center gap-1 ${isOpen || isActive ? "text-primary" : inactiveClasses
@@ -209,7 +214,7 @@ const DesktopNavItem = ({
       </button>
       {item.children && item.children.length > 0 && (
         <div
-          className={`absolute top-full left-0 mt-3 w-56 rounded-2xl border border-neutral-100 bg-white/95 p-2 text-sm shadow-lg backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/95 ${isOpen
+          className={`absolute top-full left-0 mt-3 w-56 rounded-2xl border border-neutral-100 bg-white/95 p-2 text-sm shadow-lg backdrop-blur-md ${isOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
             } transition-opacity duration-150`}
@@ -217,9 +222,9 @@ const DesktopNavItem = ({
         >
           {item.children.map((child) => (
             <Link
-              key={child.label}
+              key={child.i18nKey || child.href}
               href={child.href ?? "#"}
-              className="hover:text-primary block rounded-xl px-3 py-2.5 text-left text-neutral-700 transition-colors hover:bg-neutral-50 dark:text-neutral-100 dark:hover:bg-neutral-800"
+              className="hover:text-primary block rounded-xl px-3 py-2.5 text-left text-neutral-700 transition-colors hover:bg-neutral-50"
               role="menuitem"
             >
               {child.label}
@@ -237,6 +242,7 @@ type MobileMenuProps = {
   pathname: string | null;
   onToggle: () => void;
   onClose: () => void;
+  locale: string;
 };
 
 const MobileMenu = ({
@@ -245,6 +251,7 @@ const MobileMenu = ({
   pathname,
   onToggle,
   onClose,
+  locale,
 }: MobileMenuProps) => {
   const [openSection, setOpenSection] = useState<number | null>(null);
 
@@ -258,7 +265,7 @@ const MobileMenu = ({
         <Logo width={100} height={60} className="h-20" />
         <div className="flex items-center gap-4">
           <Link
-            href="/search"
+            href={`/${locale}/search`}
             className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
           >
             <Search />
@@ -318,7 +325,7 @@ const MobileMenu = ({
                 ? { target: "_blank", rel: "noreferrer" }
                 : {};
               return (
-                <li key={item.label}>
+                <li key={item.i18nKey || item.href}>
                   <Link
                     href={item.href ?? "#"}
                     className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${isActive ? "text-secondary" : "text-yellow"
@@ -333,13 +340,13 @@ const MobileMenu = ({
             }
 
             return (
-              <li key={item.label}>
+              <li key={item.i18nKey || item.href}>
                 <button
                   type="button"
                   onClick={() =>
                     setOpenSection((prev) => (prev === index ? null : index))
                   }
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-neutral-800 hover:bg-neutral-50 dark:text-neutral-100 dark:hover:bg-neutral-900"
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-neutral-800 hover:bg-neutral-50"
                 >
                   <span>{item.label}</span>
                   <svg
@@ -365,9 +372,9 @@ const MobileMenu = ({
                   >
                     {item.children!.map((child) => (
                       <Link
-                        key={child.label}
+                        key={child.i18nKey || child.href}
                         href={child.href ?? "#"}
-                        className="block rounded-lg px-3 py-2 text-neutral-700 hover:bg-neutral-50 dark:text-neutral-200 dark:hover:bg-neutral-900"
+                        className="block rounded-lg px-3 py-2 text-neutral-700 hover:bg-neutral-50"
                         onClick={onClose}
                       >
                         {child.label}

@@ -1,21 +1,9 @@
-import type { Locale } from "./i18n";
+import Link from 'next/link';
+import { redirect as nextRedirect, usePathname, useRouter } from 'next/navigation';
 
-export const PATHS = {
-  home: "/",
-  blog: "/blog",
-  blogDetails: "/blog-details",
-  blogSidebar: "/blog-sidebar",
-  about: "/about",
-  contact: "/contact",
-  signin: "/signin",
-  signup: "/signup",
-} as const;
-
-export type RouteName = keyof typeof PATHS;
-
-export function getPath(name: RouteName, _locale: Locale): string {
-  // Hiện tại chưa prefix locale vào URL, chỉ return path gốc.
-  // Sau này nếu muốn dạng /vi/... /en/... chỉ cần đổi hàm này.
-  return PATHS[name];
-}
-
+export const { Link: I18nLink, redirect, usePathname: useI18nPathname, useRouter: useI18nRouter } = {
+  Link,
+  redirect: nextRedirect,
+  usePathname,
+  useRouter,
+};
