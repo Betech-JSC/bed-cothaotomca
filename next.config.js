@@ -9,6 +9,11 @@ const nextConfig = {
         hostname: "cdn.sanity.io",
         port: "",
       },
+      {
+        protocol: "https",
+        hostname: "api.builder.io",
+        port: "",
+      },
     ],
   },
 };

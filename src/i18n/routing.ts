@@ -18,6 +18,14 @@ export const routing = defineRouting({
       vi: '/gioi-thieu',
       en: '/about',
     },
+    '/blog/category/[category]': {
+      vi: '/tin-tuc/[category]',
+      en: '/blog/[category]',
+    },
+    '/blog/category/[category]/[slug]': {
+      vi: '/tin-tuc/[category]/[slug]',
+      en: '/blog/[category]/[slug]',
+    },
     '/blog': {
       vi: '/tin-tuc',
       en: '/blog',

@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/i18n/i18n-navigation";
 import React from "react";
 
 type BlogItem = {
@@ -8,6 +8,7 @@ type BlogItem = {
     alt?: string;
   };
   title: string;
+  slug: string;
   category: {
     title: string;
     slug: string;
@@ -24,7 +25,10 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
   return (
     <article className="group space-y-4 md:space-y-6">
       {/* Image */}
-      <Link href="#" className="block">
+      <Link
+        href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }}
+        className="block"
+      >
         <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[12px]">
           <Image
             src={item.image.url}
@@ -38,9 +42,11 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
 
       <div className="space-y-1">
         <div className="flex items-center space-x-3">
-          <span className="label-2 font-semibold text-[#941417]">
+          <div
+            className="label-2 font-semibold text-[#941417] hover:underline"
+          >
             {item.category.title}
-          </span>
+          </div>
           <span className="text-[#941417]">|</span>
           <span className="body-2 text-[#941417]">
             {new Date(item.created_at).toLocaleDateString("en-GB", {
@@ -51,7 +57,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
           </span>
         </div>
 
-        <Link href="#" className="block">
+        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block">
           <h3 className={`${isHot ? "title-1" : "title-2"} text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2`}>
             {item.title}
           </h3>

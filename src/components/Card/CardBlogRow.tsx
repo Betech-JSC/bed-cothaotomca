@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/i18n/i18n-navigation";
 import React from "react";
 
 type BlogItem = {
@@ -8,6 +8,7 @@ type BlogItem = {
     alt?: string;
   };
   title: string;
+  slug: string;
   category: {
     title: string;
     slug: string;
@@ -23,7 +24,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
   return (
     <article className="group flex items-center gap-2 md:gap-3">
       {/* Image */}
-      <Link href="#" className="block max-w-[140px] md:max-w-[175px] w-full flex-shrink-0">
+      <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block max-w-[140px] md:max-w-[175px] w-full flex-shrink-0">
         <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[8px]">
           <Image
             src={item.image.url}
@@ -50,7 +51,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
           </span>
         </div>
 
-        <Link href="#" className="block">
+        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block">
           <h3 className="title-2 text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 md:line-clamp-3">
             {item.title}
           </h3>

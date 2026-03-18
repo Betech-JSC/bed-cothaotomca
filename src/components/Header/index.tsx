@@ -20,17 +20,17 @@ const STICKY_SCROLL_Y = 40;
 
 const Header = () => {
   const pathname = usePathname();
-  const t = useTranslations('common');
+  const t = useTranslations();
   
   const mainNavLeft: NavItem[] = [
-    { label: t('about'), href: `/about`, i18nKey: 'about' },
-    { label: t('product'), href: `/product`, i18nKey: 'product' },
-    { label: t('policy'), href: `/policy`, i18nKey: 'policy' },
+    { label: t('common.about'), href: `/about`, i18nKey: 'about' },
+    { label: t('common.product'), href: `/product`, i18nKey: 'product' },
+    { label: t('common.policy'), href: `/policy`, i18nKey: 'policy' },
   ];
 
   const mainNavRight: NavItem[] = [
-    { label: t('blog'), href: `/blog`, i18nKey: 'blog' },
-    { label: t('contact'), href: `/contact`, i18nKey: 'contact' },
+    { label: t('common.blog'), href: `/blog`, i18nKey: 'blog' },
+    { label: t('common.contact'), href: `/contact`, i18nKey: 'contact' },
   ];
 
   const [isSticky, setIsSticky] = useState(false);

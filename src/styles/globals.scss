@@ -5,6 +5,7 @@
 @use "./type.scss";
 @use "./input.scss";
 @use "./animations.scss";
+@use "./prose.scss";
 
 @config "../../tailwind.config.ts";
 @plugin "@tailwindcss/typography";
@@ -18,7 +19,8 @@ html {
   scroll-behavior: smooth;
 }
 
-body, main {
+body,
+main {
   background-image: url('/images/bg-mask.png');
   background-position: center;
   background-repeat: repeat;

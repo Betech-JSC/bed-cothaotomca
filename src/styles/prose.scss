@@ -1,0 +1,26 @@
+.prose-blog {
+  h3 {
+    @apply font-display text-[22px] leading-[145%] tracking-[0.02em];
+  }
+
+  p,
+  ul {
+    @apply font-serif text-[16px] leading-[150%] text-gray-700;
+  }
+
+  ul {
+    @apply pl-4 list-disc;
+
+    li {
+      @apply pl-0 md:pl-1 my-0;
+
+      &::marker {
+        @apply text-[14px] text-black;
+      }
+    }
+  }
+
+  img {
+    @apply mx-auto w-full h-auto md:my-4 my-3 xl:my-6;
+  }
+}

@@ -4,7 +4,7 @@ import CardBlogRow from "@/components/Card/CardBlogRow";
 import { useTranslations } from "next-intl";
 
 export default function BlogIndexPage() {
-  const t = useTranslations("common");
+  const t = useTranslations();
   const banner = {
     image: {
       url: "/images/demo/banner-blog.jpg",
@@ -27,6 +27,7 @@ export default function BlogIndexPage() {
       },
       title:
         "Cách ăn Tôm ngâm tương chuẩn vị Hàn Quốc cùng rong biển và cơm nóng",
+      slug: "cach-an-tom-ngam-tuong-chuan-vi-han-quoc-cung-rong-bien-va-com-nong",
       category: {
         title: "Danh mục A",
         slug: "danh-muc-a",
@@ -39,6 +40,7 @@ export default function BlogIndexPage() {
         alt: "Healthy salad",
       },
       title: "5 món salad healthy giúp bạn giữ dáng và đẹp da mỗi ngày",
+      slug: "5-mon-salad-healthy-giup-ban-giu-dang-va-dep-da-moi-ngay",
       category: {
         title: "Ẩm thực",
         slug: "am-thuc",
@@ -51,6 +53,7 @@ export default function BlogIndexPage() {
         alt: "Vietnamese food",
       },
       title: "Top món ăn Việt Nam được khách du lịch yêu thích nhất",
+      slug: "top-mon-an-viet-nam-duoc-khach-du-lich-yeu-thich-nhat",
       category: {
         title: "Du lịch",
         slug: "du-lich",
@@ -63,6 +66,7 @@ export default function BlogIndexPage() {
         alt: "Dessert cake",
       },
       title: "Cách làm bánh ngọt đơn giản tại nhà cho người mới bắt đầu",
+      slug: "cach-lam-banh-ngot-don-gian-tai-nha-cho-nguoi-moi-bat-dau",
       category: {
         title: "Món ngon",
         slug: "mon-ngon",
@@ -78,7 +82,7 @@ export default function BlogIndexPage() {
         <div className="container space-y-12 md:space-y-16 xl:space-y-20">
           <div className="space-y-4 md:space-y-6 xl:space-y-8">
             <h1 className="display-2 text-priamry text-center">
-              Góc Bếp Cô Thảo
+              {t('blog.title')}
             </h1>
 
             <div className="w-full overflow-x-auto">
