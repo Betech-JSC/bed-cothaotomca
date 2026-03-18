@@ -1,5 +1,5 @@
+import { Link } from "@/i18n/i18n-navigation";
 import Image from "next/image";
-import Link from "next/link";
 
 type LogoProps = {
   /** Kích thước bình thường (ví dụ dùng ở header/footer) */

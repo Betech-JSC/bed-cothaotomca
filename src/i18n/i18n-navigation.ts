@@ -1,9 +1,3 @@
-import Link from 'next/link';
-import { redirect as nextRedirect, usePathname, useRouter } from 'next/navigation';
-
-export const { Link: I18nLink, redirect, usePathname: useI18nPathname, useRouter: useI18nRouter } = {
-  Link,
-  redirect: nextRedirect,
-  usePathname,
-  useRouter,
-};
+// Re-export navigation from routing
+export * from './routing';
+export { Link as I18nLink, usePathname as useI18nPathname, useRouter as useI18nRouter } from './routing';

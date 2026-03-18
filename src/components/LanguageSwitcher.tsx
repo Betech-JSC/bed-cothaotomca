@@ -1,37 +1,33 @@
 "use client";
 
-import { useI18n } from "../i18n/I18nProvider";
+import { usePathname, useRouter } from "@/i18n/i18n-navigation";
+import { useSearchParams } from "next/navigation";
+import { useLocale } from "next-intl";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export default function LanguageSwitcher() {
-  const { locale, setLocale } = useI18n();
+  const locale = useLocale();
   const router = useRouter();
-  const pathname = usePathname() ?? "";
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const isVietnamese = locale === "vi";
-  const nextLocale = isVietnamese ? "en" : "vi";
-
-  const targetPath = pathname.replace(/^\/(en|vi)(\/|$)/, `/${nextLocale}$2`) || `/${nextLocale}`;
-  const targetSearch = searchParams.toString() ? `?${searchParams.toString()}` : "";
+  const nextLocale = locale === "vi" ? "en" : "vi";
 
   const handleToggle = () => {
-    setLocale(nextLocale); // nêu giữ context nếu phần client khác dùng
-    window.localStorage.setItem("locale", nextLocale);
-    router.push(`${targetPath}${targetSearch}`);
+    const targetSearch = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    router.replace((pathname + targetSearch) as any, { locale: nextLocale });
   };
 
   return (
     <button
       type="button"
       onClick={handleToggle}
-      className="size-6 rounded-full relative block overflow-hidden cursor-pointer"
+      className="relative block size-6 cursor-pointer overflow-hidden rounded-full"
       aria-label={nextLocale === "en" ? "Switch to English" : "Chuyển sang tiếng Việt"}
     >
       <Image
-        src={nextLocale === "en" ? "/images/flag-us.jpg" : "/images/flag-vn.jpg"}
-        alt={nextLocale === "en" ? "Switch to English" : "Chuyển sang tiếng Việt"}
+        src={locale === "vi" ? "/images/flag-us.jpg" : "/images/flag-vn.jpg"}
+        alt={locale === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}
         fill
         className="h-full w-full object-cover"
       />

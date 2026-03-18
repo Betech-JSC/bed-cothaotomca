@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/i18n-navigation";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import Logo from "../Logo";
@@ -23,18 +22,15 @@ const Header = () => {
   const pathname = usePathname();
   const t = useTranslations('common');
   
-  // Extract locale from pathname (e.g., /vi/about -> vi)
-  const locale = pathname.split('/')[1] || 'vi';
-  
   const mainNavLeft: NavItem[] = [
-    { label: t('about'), href: `/${locale}/about`, i18nKey: 'about' },
-    { label: t('product'), href: `/${locale}/product`, i18nKey: 'product' },
-    { label: t('policy'), href: `/${locale}/policy`, i18nKey: 'policy' },
+    { label: t('about'), href: `/about`, i18nKey: 'about' },
+    { label: t('product'), href: `/product`, i18nKey: 'product' },
+    { label: t('policy'), href: `/policy`, i18nKey: 'policy' },
   ];
 
   const mainNavRight: NavItem[] = [
-    { label: t('blog'), href: `/${locale}/blog`, i18nKey: 'blog' },
-    { label: t('contact'), href: `/${locale}/contact`, i18nKey: 'contact' },
+    { label: t('blog'), href: `/blog`, i18nKey: 'blog' },
+    { label: t('contact'), href: `/contact`, i18nKey: 'contact' },
   ];
 
   const [isSticky, setIsSticky] = useState(false);
@@ -117,7 +113,7 @@ const Header = () => {
             ))}
 
             <Link
-              href={`/${locale}/search`}
+              href="/search"
               className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
             >
               <Search />
@@ -143,7 +139,6 @@ const Header = () => {
           pathname={pathname}
           onToggle={toggleMobile}
           onClose={() => setIsMobileOpen(false)}
-          locale={locale}
         />
       </div>
     </header>
@@ -242,7 +237,6 @@ type MobileMenuProps = {
   pathname: string | null;
   onToggle: () => void;
   onClose: () => void;
-  locale: string;
 };
 
 const MobileMenu = ({
@@ -251,7 +245,6 @@ const MobileMenu = ({
   pathname,
   onToggle,
   onClose,
-  locale,
 }: MobileMenuProps) => {
   const [openSection, setOpenSection] = useState<number | null>(null);
 
@@ -265,7 +258,7 @@ const MobileMenu = ({
         <Logo width={100} height={60} className="h-20" />
         <div className="flex items-center gap-4">
           <Link
-            href={`/${locale}/search`}
+            href="/search"
             className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
           >
             <Search />
