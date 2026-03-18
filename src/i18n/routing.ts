@@ -38,6 +38,14 @@ export const routing = defineRouting({
       vi: '/san-pham',
       en: '/product',
     },
+    '/product/[category]': {
+      vi: '/san-pham/[category]',
+      en: '/product/[category]',
+    },
+    '/product/[category]/[slug]': {
+      vi: '/san-pham/[category]/[slug]',
+      en: '/product/[category]/[slug]',
+    },
     '/policy': {
       vi: '/chinh-sach',
       en: '/policy',

@@ -14,6 +14,11 @@ const nextConfig = {
         hostname: "api.builder.io",
         port: "",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        port: "",
+      },
     ],
   },
 };

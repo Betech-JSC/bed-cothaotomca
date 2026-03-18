@@ -1,7 +1,7 @@
 export default async function ProductDetailsPage({
   params
 }: {
-  params: Promise<{ slug: string }>
+  params: Promise<{ locale: string; category: string; slug: string }>
 }) {
   const { slug } = await params
   return (

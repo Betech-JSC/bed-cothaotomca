@@ -1,10 +1,31 @@
-import { useTranslations } from 'next-intl'
+import Banner from '@/components/Banner'
+import ProductIndexPage from '@/components/Product/ProductIndexPage'
 
-export default function ProductIndexPage() {
-  const t = useTranslations('common')
+interface Props {
+  params: Promise<{
+    locale: string
+  }>
+  searchParams: Promise<{
+    ingredients?: string
+  }>
+}
+
+export default async function ProductPage({ params, searchParams }: Props) {
+  const { ingredients } = await searchParams
+
+  const selectedIngredients = ingredients ? ingredients.split(',').filter(Boolean) : []
+
+  const banner = {
+    image: { url: '/images/demo/banner-product.jpg', alt: 'banner product' },
+  }
+
   return (
-    <div className="container pt-20">
-      <h1 className="text-3xl font-bold">{t('product')}</h1>
-    </div>
+    <main>
+      <Banner banner={banner} />
+      <ProductIndexPage
+        category={null}
+        selectedIngredients={selectedIngredients}
+      />
+    </main>
   )
 }
