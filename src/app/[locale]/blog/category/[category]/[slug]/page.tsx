@@ -2,6 +2,7 @@ import Breadcrumb from "@/components/Common/Breadcrumb"
 import ShareFacebook from "@/components/Icons/ShareFacebook";
 import ShareInstagram from "@/components/Icons/ShareInstagram";
 import ShareThreads from "@/components/Icons/ShareThreads";
+import SocialShare from "@/components/SocialShare";
 import Image from "next/image";
 
 export default async function BlogDetailsPage({
@@ -47,8 +48,8 @@ export default async function BlogDetailsPage({
       <section className="min-h-screen w-full md:py-16 py-12 xl:py-20">
         <div className="container md:space-y-12 space-y-8 xl:space-y-16">
           <div className="flex flex-col items-center md:gap-6 gap-4 xl:gap-8 w-full max-w-[880px] mx-auto">
-            <div className="flex flex-col items-start gap-3 w-full">
-              <Breadcrumb breadcrumbs={breadcrumbs} />
+            <div className="flex flex-col gap-3 w-full">
+              <Breadcrumb breadcrumbs={breadcrumbs} classNameNav="md:mx-auto" />
               <h1 className="display-3 text-primary text-center">
                 Bản Giao Hưởng Vị Giác: Cách Thưởng Thức Tôm Ngâm Tương Chuẩn
                 Vị Hàn Quốc Tại Nhà
@@ -84,19 +85,8 @@ export default async function BlogDetailsPage({
 
           <div className="flex flex-col items-center gap-8 w-full max-w-[880px] mx-auto md:space-y-4 space-y-3 xl:space-y-6">
             <div className="prose prose-blog max-w-full" dangerouslySetInnerHTML={{ __html: contentDemo }}></div>
-            <div className="w-full border-t border-gray-300 pt-3 flex items-center gap-6">
-              <span className="label-1 text-gray-900 font-semibold"> Chia sẻ </span>
-              <div className="flex items-center gap-1.5">
-                <a href="#" target="_blank" rel="noopener noreferrer nofollow" className="size-10 rounded-[8px] flex items-center justify-center bg-gray-25 text-gray-900 lg:hover:text-yellow lg:hover:bg-primary duration-300 ease-in-out">
-                  <ShareFacebook />
-                </a>
-                <a href="#" target="_blank" rel="noopener noreferrer nofollow" className="size-10 rounded-[8px] flex items-center justify-center bg-gray-25 text-gray-900 lg:hover:text-yellow lg:hover:bg-primary duration-300 ease-in-out">
-                  <ShareInstagram />
-                </a>
-                <a href="#" target="_blank" rel="noopener noreferrer nofollow" className="size-10 rounded-[8px] flex items-center justify-center bg-gray-25 text-gray-900 lg:hover:text-yellow lg:hover:bg-primary duration-300 ease-in-out">
-                  <ShareThreads />
-                </a>
-              </div>
+            <div className="w-full border-t border-gray-300 pt-3">
+              <SocialShare />
             </div>
           </div>
         </div>

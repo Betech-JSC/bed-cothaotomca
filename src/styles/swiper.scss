@@ -1,0 +1,17 @@
+.swiper-related-product {
+  .swiper-pagination {
+    @apply mt-8 flex items-center justify-center gap-2;
+    position: static;
+    
+    &-bullet {
+      @apply w-2.5 h-2.5 rounded-full bg-gray-300 opacity-100 transition-all duration-300;
+      
+      &-active {
+        @apply w-8 bg-secondary;
+      }
+    }
+  }
+
+  /* We customize styling directly in the component for the buttons to keep it simple, 
+     but we can also use swiper related classes if needed. */
+}

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import React from "react";
+import { formatPrice } from "@/lib/format";
 
 interface CardProductProps {
   item: {
@@ -22,9 +23,7 @@ interface CardProductProps {
   isHot?: boolean;
 }
 
-function formatVND(price: number) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price)
-}
+
 
 const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   return (
@@ -54,11 +53,11 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
             {item.title}
           </h3>
         </Link>
-        <div className="body-1 text-gray-900 line-clamp-3 mt-1.5 mb-3">{item.description}</div>
+        <div className="body-1 text-gray-900 line-clamp-3 min-h-[72px] mt-1.5 mb-3">{item.description}</div>
         <div className="flex items-center justify-center gap-1.5">
           <span className="body-0 text-gray-900">chỉ từ</span>
           <span className="title-2 text-secondary">
-            {formatVND(item.price)} VNĐ
+            {formatPrice(item.price)}
           </span>
         </div>
       </div>

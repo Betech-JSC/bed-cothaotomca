@@ -8,15 +8,16 @@ interface BreadcrumbProps {
     readonly title: string;
     readonly url?: LinkHref;
   }[];
+  classNameNav?: string;
 }
 
-const Breadcrumb = ({ breadcrumbs }: BreadcrumbProps) => {
+const Breadcrumb = ({ breadcrumbs, classNameNav }: BreadcrumbProps) => {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="w-full body-2 flex items-center justify-center"
+      className={`body-2 md:w-max overflow-hidden w-full line-clamp-1 ${classNameNav}`}
     >
-      <div className="flex whitespace-nowrap line-clamp-1 justify-start items-center gap-0 max-w-full">
+      <div className="flex whitespace-nowrap line-clamp-1 items-center gap-0 max-w-full">
         {/* Trang chủ */}
         <span className="flex items-center">
           <Link href="/" className="text-gray-700 opacity-70 lg:hover:text-secondary duration-300 ease-in-out">

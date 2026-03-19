@@ -16,12 +16,12 @@ type NavItem = {
   i18nKey?: string;
 };
 
-const STICKY_SCROLL_Y = 40;
+const STICKY_SCROLL_Y = 10;
 
 const Header = () => {
   const pathname = usePathname();
   const t = useTranslations();
-  
+
   const mainNavLeft: NavItem[] = [
     { label: t('common.about'), href: `/about`, i18nKey: 'about' },
     { label: t('common.product'), href: `/product`, i18nKey: 'product' },
