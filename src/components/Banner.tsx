@@ -8,18 +8,14 @@ type BannerProps = {
       alt?: string;
     };
   };
-  height?: string | number;
+  classHeight?: string;
 };
 
-const Banner: React.FC<BannerProps> = ({ banner, height = 480 }) => {
-  const bannerHeight = typeof height === "number" ? `${height}px` : height;
+const Banner: React.FC<BannerProps> = ({ banner, classHeight = "h-[480px]" }) => {
 
   return (
     <div
-      className="relative w-full"
-      style={{
-        height: bannerHeight,
-      }}
+      className={`relative w-full ${classHeight}`}
     >
       <Image
         src={banner.image.url}

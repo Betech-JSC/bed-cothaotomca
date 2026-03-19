@@ -1,16 +1,18 @@
 "use client";
 
 import { Link, usePathname } from "@/i18n/i18n-navigation";
-import { useEffect, useState } from "react";
+import { ComponentProps, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import Logo from "../Logo";
 import LanguageSwitcher from "../LanguageSwitcher";
 import Search from "../Icons/Search";
 import Hotline from "../Icons/Hotline";
 
+type LinkHref = ComponentProps<typeof Link>["href"];
+
 type NavItem = {
   label: string;
-  href?: string;
+  href?: LinkHref;
   isExternal?: boolean;
   children?: NavItem[];
   i18nKey?: string;
@@ -167,9 +169,9 @@ const DesktopNavItem = ({
       ? { target: "_blank", rel: "noreferrer" }
       : {};
     return (
-      <li key={item.i18nKey || item.href}>
+      <li key={item.i18nKey}>
         <Link
-          href={item.href ?? "#"}
+          href={item.href ?? ("#" as any)}
           className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses
             }`}
           {...linkProps}
@@ -181,7 +183,7 @@ const DesktopNavItem = ({
   }
 
   return (
-    <li className="relative" key={item.i18nKey || item.href}>
+    <li className="relative">
       <button
         type="button"
         className={`${baseClasses} flex items-center gap-1 ${isOpen || isActive ? "text-primary" : inactiveClasses
@@ -215,10 +217,10 @@ const DesktopNavItem = ({
             } transition-opacity duration-150`}
           role="menu"
         >
-          {item.children.map((child) => (
+          {item.children.map((child, childIndex) => (
             <Link
-              key={child.i18nKey || child.href}
-              href={child.href ?? "#"}
+              key={child.i18nKey || childIndex}
+              href={child.href ?? ("#" as any)}
               className="hover:text-primary block rounded-xl px-3 py-2.5 text-left text-neutral-700 transition-colors hover:bg-neutral-50"
               role="menuitem"
             >
@@ -318,9 +320,9 @@ const MobileMenu = ({
                 ? { target: "_blank", rel: "noreferrer" }
                 : {};
               return (
-                <li key={item.i18nKey || item.href}>
+                <li key={item.i18nKey}>
                   <Link
-                    href={item.href ?? "#"}
+                    href={item.href ?? ("#" as any)}
                     className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${isActive ? "text-secondary" : "text-yellow"
                       }`}
                     {...linkProps}
@@ -333,7 +335,7 @@ const MobileMenu = ({
             }
 
             return (
-              <li key={item.i18nKey || item.href}>
+              <li key={item.i18nKey}>
                 <button
                   type="button"
                   onClick={() =>
@@ -363,10 +365,10 @@ const MobileMenu = ({
                     className={`ml-2 overflow-hidden pl-3 text-sm transition-all ${isOpen ? "max-h-64 pt-1" : "max-h-0"
                       }`}
                   >
-                    {item.children!.map((child) => (
+                    {item.children!.map((child, childIndex) => (
                       <Link
-                        key={child.i18nKey || child.href}
-                        href={child.href ?? "#"}
+                        key={child.i18nKey || childIndex}
+                        href={child.href ?? ("#" as any)}
                         className="block rounded-lg px-3 py-2 text-neutral-700 hover:bg-neutral-50"
                         onClick={onClose}
                       >

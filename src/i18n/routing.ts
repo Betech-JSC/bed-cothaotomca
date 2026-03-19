@@ -15,7 +15,7 @@ export const routing = defineRouting({
   pathnames: {
     '/': '/',
     '/about': {
-      vi: '/gioi-thieu',
+      vi: '/ve-chung-toi',
       en: '/about',
     },
     '/blog/category/[category]': {
