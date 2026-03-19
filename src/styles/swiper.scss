@@ -1,17 +1,13 @@
-.swiper-related-product {
+.swiper-hero {
   .swiper-pagination {
-    @apply mt-8 flex items-center justify-center gap-2;
-    position: static;
-    
+    @apply absolute bottom-0 !left-1/2 -translate-x-1/2 mt-0 py-4;
+
     &-bullet {
-      @apply w-2.5 h-2.5 rounded-full bg-gray-300 opacity-100 transition-all duration-300;
-      
+      @apply size-3 rounded-full bg-white opacity-50 transition-all duration-300;
+
       &-active {
-        @apply w-8 bg-secondary;
+        @apply w-16 opacity-100;
       }
     }
   }
-
-  /* We customize styling directly in the component for the buttons to keep it simple, 
-     but we can also use swiper related classes if needed. */
 }

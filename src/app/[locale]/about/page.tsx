@@ -3,7 +3,6 @@ import Banner from '@/components/Banner';
 import SectionSliderPost from '@/components/Common/SectionSliderPost';
 import Cart from '@/components/Icons/Cart';
 import { Link } from '@/i18n/i18n-navigation';
-import { url } from 'inspector';
 import { useTranslations } from 'next-intl'
 import Image from 'next/image';
 
