@@ -50,6 +50,10 @@ export const routing = defineRouting({
       vi: '/chinh-sach',
       en: '/policy',
     },
+    '/policy/[slug]': {
+      vi: '/chinh-sach/[slug]',
+      en: '/policy/[slug]',
+    },
     '/search': {
       vi: '/tim-kiem',
       en: '/search',

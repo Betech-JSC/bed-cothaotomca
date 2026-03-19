@@ -61,3 +61,39 @@
     }
   }
 }
+
+.prose-policy {
+  h3 {
+    @apply font-display text-primary text-[18px] leading-[145%] tracking-[0.02em] my-3;
+  }
+
+  p,
+  ul,
+  ol {
+    @apply font-serif text-[16px] leading-[150%] text-gray-900 my-2;
+  }
+
+  ul {
+    @apply pl-4 list-disc;
+
+    li {
+      @apply pl-0 md:pl-1 my-0;
+
+      &::marker {
+        @apply text-[14px] text-black;
+      }
+    }
+  }
+
+  ol {
+    @apply pl-4 list-decimal;
+
+    li {
+      @apply pl-0 md:pl-1 my-0;
+
+      &::marker {
+        @apply text-[14px] text-black;
+      }
+    }
+  }
+}
