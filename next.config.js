@@ -1,3 +1,5 @@
+const withNextIntl = require('next-intl/plugin')('./src/i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -7,8 +9,18 @@ const nextConfig = {
         hostname: "cdn.sanity.io",
         port: "",
       },
+      {
+        protocol: "https",
+        hostname: "api.builder.io",
+        port: "",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        port: "",
+      },
     ],
   },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

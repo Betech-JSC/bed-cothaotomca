@@ -1,6 +1,19 @@
 {
-  "homeTitle": "Template Next.js miễn phí cho Startup và SaaS",
-  "homeDescription": "Đây là trang chủ cho Startup Nextjs Template",
-  "language": "Ngôn ngữ"
+  "home": {
+    "title": "Chào mừng",
+    "description": "Đây là trang chủ",
+    "language": "Ngôn ngữ"
+  },
+  "common": {
+    "about": "Về chúng tôi",
+    "product": "Sản phẩm",
+    "blog": "Tin tức",
+    "policy": "Chính sách",
+    "search": "Tìm kiếm",
+    "contact": "Liên hệ",
+    "language": "Ngôn ngữ"
+  },
+  "blog": {
+    "title": "Góc Bếp Cô Thảo"
+  }
 }
-

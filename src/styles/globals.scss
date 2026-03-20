@@ -5,6 +5,8 @@
 @use "./type.scss";
 @use "./input.scss";
 @use "./animations.scss";
+@use "./prose.scss";
+@use "./swiper.scss";
 
 @config "../../tailwind.config.ts";
 @plugin "@tailwindcss/typography";
@@ -16,4 +18,17 @@ body {
 
 html {
   scroll-behavior: smooth;
+}
+
+body,
+main {
+  background-image: url('/images/bg-mask.png');
+  background-position: center;
+  background-repeat: repeat;
+  background-size: contain;
+}
+
+.bg-linear-chooseus {
+  background: linear-gradient(90deg, #000000 0%, rgba(0, 0, 0, 0) 100%);
+  opacity: 0.8;
 }

@@ -1,35 +1,36 @@
 "use client";
 
-import { useI18n } from "@/i18n/I18nProvider";
-import { LOCALES, type Locale } from "@/i18n/i18n";
+import { usePathname, useRouter } from "@/i18n/i18n-navigation";
+import { useSearchParams } from "next/navigation";
+import { useLocale } from "next-intl";
+import Image from "next/image";
 
 export default function LanguageSwitcher() {
-  const { locale, setLocale, t } = useI18n();
+  const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const handleChange = (next: Locale) => {
-    setLocale(next);
+  const nextLocale = locale === "vi" ? "en" : "vi";
+
+  const handleToggle = () => {
+    const targetSearch = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    router.replace((pathname + targetSearch) as any, { locale: nextLocale });
   };
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="text-gray-600 dark:text-gray-300">{t.language}:</span>
-      <div className="inline-flex rounded-full border border-gray-200 bg-white p-0.5 text-xs dark:border-gray-700 dark:bg-gray-900">
-        {LOCALES.map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => handleChange(item)}
-            className={`px-2 py-1 rounded-full transition ${
-              locale === item
-                ? "bg-primary text-white shadow-btn"
-                : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-            }`}
-          >
-            {item.toUpperCase()}
-          </button>
-        ))}
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={handleToggle}
+      className="relative block size-6 cursor-pointer overflow-hidden rounded-full"
+      aria-label={nextLocale === "en" ? "Switch to English" : "Chuyển sang tiếng Việt"}
+    >
+      <Image
+        src={locale === "vi" ? "/images/flag-us.jpg" : "/images/flag-vn.jpg"}
+        alt={locale === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}
+        fill
+        className="h-full w-full object-cover"
+      />
+    </button>
   );
 }
-
