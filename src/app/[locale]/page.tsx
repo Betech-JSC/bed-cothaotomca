@@ -253,8 +253,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         <p className="text-green-600 mt-3">Đang test chuyển ngôn ngữ</p>
       </div> */}
       <SectionHero items={sliderHero} />
-      <section className="py-[100px] relative overflow-hidden">
-        <div className="absolute top-6 left-0 max-w-[420px] w-full h-[130px]">
+      <section className="md:py-20 py-12 xl:py-[100px] relative overflow-hidden">
+        <div className="absolute top-6 left-0 max-w-[320px] xl:max-w-[420px] w-full h-[100px] xl:h-[130px]">
           <Image
             src="/images/home/image-fish.png"
             alt="image fish"
@@ -263,7 +263,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           />
         </div>
 
-        <div className="absolute -bottom-6 -right-16 max-w-[427px] w-full h-[350px]">
+        <div className="absolute -bottom-6 -right-16 max-w-[320px] xl:max-w-[427px] w-full h-[250px] xl:h-[350px]">
           <Image
             src="/images/home/image-crab.png"
             alt="image crab"
@@ -272,12 +272,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           />
         </div>
         <div className="container">
-          <div className="grid grid-cols-12 gap-8">
-            <div className="col-span-7">
+          <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
+            <div className="col-span-10 xl:col-span-7">
               <div className="headline-3 text-secondary">Hải sản ngâm tương, mẻ mới mỗi ngày</div>
-              <div className="relative mt-4 mb-12">
+              <div className="relative mt-4 mb-4 md:mb-8 xl:mb-12">
                 <h1 className="display-1 text-primary z-10 relative">Tươi nguyên bản, 100% không chất bảo quản.</h1>
-                <div className="absolute top-6 -right-24 size-[250px]">
+                <div className="absolute top-6 -right-20 xl:-right-24 size-[220px] xl:size-[250px]">
                   <Image
                     src="/images/home/image-certificate.png"
                     alt="image certificate"
@@ -294,7 +294,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <p>Chúng tôi không chạy theo số lượng, không kéo dài thời gian bảo quản.</p>
                 <p>Chỉ chọn làm mẻ mới mỗi ngày, bởi với Cô Thảo Tôm Cá, độ tươi là tiêu chuẩn bắt buộc, không phải lựa chọn.</p>
               </div>
-              <div className="mt-16">
+              <div className="md:mt-12 mt-8 xl:mt-16">
                 <Link href="/about" className="btn btn-primary max-w-[240px]">
                   Về chúng tôi
                 </Link>
@@ -314,15 +314,15 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             className="object-cover w-full h-full"
           />
         </div>
-        <div className="absolute top-[100px] left-0 w-full">
+        <div className="absolute md:top-12 top-5 xl:top-[100px] left-0 w-full">
           <div className="container">
-            <h2 className="display-1 text-center text-primary">
+            <h2 className="display-1 max-md:text-[24px] text-center text-primary">
               Giao trọn <span className="text-secondary">vị ngon</span> đến tận nhà!
             </h2>
           </div>
         </div>
       </section>
-      <section className="relative py-[100px] bg-primary">
+      <section className="relative py-12 md:py-20 xl:py-[100px] bg-primary">
         <div className="absolute inset-0">
           <Image
             src="/images/home/bg-category.png"
@@ -333,12 +333,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </div>
         <div className="relative">
           <div className="container">
-            <div className="grid grid-cols-2 gap-20">
-              <div className="space-y-16 flex flex-col justify-center">
-                <h2 className="display-3 text-yellow uppercase">Danh mục sản phẩm</h2>
+            <div className="grid md:grid-cols-2 gap-12 md:gap-16 xl:gap-20">
+              <div className="space-y-8 md:space-y-12 xl:space-y-16 flex flex-col justify-center">
+                <h2 className="display-3 text-yellow uppercase max-md:text-center max-md:w-[250px] max-md:mx-auto">Danh mục sản phẩm</h2>
                 <div className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
                   {categoriesDemo.map((itemCategory, indexCategory) => (
-                    <Link href={`/products/${itemCategory.slug}`} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
+                    <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
                       <span>{itemCategory.title}</span>
                       <span className="rotate-180"><Arrow /></span>
                     </Link>
@@ -359,10 +359,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </div>
       </section>
-      <section className="bg-secondary py-20">
+      <section className="bg-secondary md:py-16 py-12 xl:py-20">
         <div className="container">
-          <div className="grid grid-cols-2 gap-8">
-            <div className="aspect-w-8 aspect-h-5">
+          <div className="grid md:grid-cols-2 gap-4 md:gap-6 xl:gap-8">
+            <div className="relative aspect-[8/5]">
               <Image
                 src="/images/home/image-shipping.png"
                 alt="image shipping"
@@ -370,9 +370,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 className="object-cover w-full h-full"
               />
             </div>
-            <div className="space-y-8 pl-32">
+            <div className="space-y-6 md:space-y-4 xl:space-y-8 xl:pl-32">
               <h2 className="headline-1 text-yellow">Từ Bếp Đến Bàn Ăn <br /> Vẹn Nguyên Hương Vị</h2>
-              <div className="body-1 text-white space-y-4">
+              <div className="body-1 text-white space-y-2 md:space-y-3 xl:space-y-4">
                 <p>Chúng tôi là mô hình Delivery & Takeaway chuyên biệt. Đặt hàng ngay để thưởng thức tại nhà.</p>
                 <ol>
                   <li><span className="font-bold">1. Đặt món:</span> Tiếp nhận đơn hàng qua Fanpage/Hotline.</li>
@@ -380,8 +380,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                   <li><span className="font-bold">3. Giao hàng:</span> Giao siêu tốc trong nội thành. Bao bì đóng gói kỹ lưỡng, đảm bảo không đổ, không ám mùi.</li>
                 </ol>
               </div>
-              <div className="flex items-center gap-6">
-                <button className="btn btn-white flex items-center gap-2">
+              <div className="flex items-center md:gap-4 gap-6 xl:gap-6">
+                <button className="btn btn-white flex items-center gap-2 px-3.5">
                   <Phone />
                   <span>024.9999.7122</span>
                 </button>

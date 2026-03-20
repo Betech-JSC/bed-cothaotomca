@@ -2,10 +2,9 @@
 
 import React from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination } from 'swiper/modules';
+import { Navigation } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
-import 'swiper/css/pagination';
 import Arrow from '../Icons/Arrow';
 import CardBlog from '../Card/CardBlog';
 import { Link } from '@/i18n/i18n-navigation';
@@ -21,7 +20,7 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
         <h2 className="display-3 text-center text-primary">Góc Bếp Cô Thảo</h2>
         <div className="relative swiper-related-product">
           <Swiper
-            modules={[Navigation, Pagination]}
+            modules={[Navigation]}
             spaceBetween={24}
             slidesPerView={1}
             navigation={{
