@@ -2,9 +2,12 @@ import SectionSliderPost from '@/components/Common/SectionSliderPost';
 import SectionHero from '@/components/Hero/SectionHero';
 import SectionHotProduct from '@/components/Hero/SectionHotProduct';
 import SectionReason from '@/components/Hero/SectionReason';
+import Arrow from '@/components/Icons/Arrow';
+import Phone from '@/components/Icons/Phone';
 import { Link } from '@/i18n/i18n-navigation';
 import { getTranslations } from 'next-intl/server'
 import Image from 'next/image';
+
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -214,6 +217,32 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       created_at: '2024-03-11T00:00:00Z',
     },
   ];
+  const categoriesDemo = [
+    {
+      id: 1,
+      title: 'Hải sản ngâm tương',
+      slug: 'hai-san-ngam-tuong',
+      image: { url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop', alt: 'Hải sản ngâm tương' },
+    },
+    {
+      id: 2,
+      title: 'Hải sản ngâm mẻ',
+      slug: 'hai-san-ngam-me',
+      image: { url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop', alt: 'Hải sản ngâm mẻ' },
+    },
+    {
+      id: 3,
+      title: 'Hải sản ngâm mắm',
+      slug: 'hai-san-ngam-mam',
+      image: { url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop', alt: 'Hải sản ngâm mắm' },
+    },
+    {
+      id: 4,
+      title: 'Hải sản ngâm sả ớt',
+      slug: 'hai-san-ngam-sa-ot',
+      image: { url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop', alt: 'Hải sản ngâm sả ớt' },
+    },
+  ]
 
   return (
     <main>
@@ -276,6 +305,92 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       </section>
       <SectionReason items={sliders} />
       <SectionHotProduct products={productsDemo} />
+      <section className="relative">
+        <div className="aspect-w-2 aspect-h-1">
+          <Image
+            src="/images/home/bg-give.png"
+            alt="background give"
+            fill
+            className="object-cover w-full h-full"
+          />
+        </div>
+        <div className="absolute top-[100px] left-0 w-full">
+          <div className="container">
+            <h2 className="display-1 text-center text-primary">
+              Giao trọn <span className="text-secondary">vị ngon</span> đến tận nhà!
+            </h2>
+          </div>
+        </div>
+      </section>
+      <section className="relative py-[100px] bg-primary">
+        <div className="absolute inset-0">
+          <Image
+            src="/images/home/bg-category.png"
+            alt="background category"
+            fill
+            className="object-cover w-full h-full"
+          />
+        </div>
+        <div className="relative">
+          <div className="container">
+            <div className="grid grid-cols-2 gap-20">
+              <div className="space-y-16 flex flex-col justify-center">
+                <h2 className="display-3 text-yellow uppercase">Danh mục sản phẩm</h2>
+                <div className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
+                  {categoriesDemo.map((itemCategory, indexCategory) => (
+                    <Link href={`/products/${itemCategory.slug}`} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
+                      <span>{itemCategory.title}</span>
+                      <span className="rotate-180"><Arrow /></span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="relative overflow-hidden aspect-w-4 aspect-h-5 rounded-[12px]">
+                  <Image
+                    src="/images/demo/image-category.jpg"
+                    alt="image category"
+                    fill
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="bg-secondary py-20">
+        <div className="container">
+          <div className="grid grid-cols-2 gap-8">
+            <div className="aspect-w-8 aspect-h-5">
+              <Image
+                src="/images/home/image-shipping.png"
+                alt="image shipping"
+                fill
+                className="object-cover w-full h-full"
+              />
+            </div>
+            <div className="space-y-8 pl-32">
+              <h2 className="headline-1 text-yellow">Từ Bếp Đến Bàn Ăn <br /> Vẹn Nguyên Hương Vị</h2>
+              <div className="body-1 text-white space-y-4">
+                <p>Chúng tôi là mô hình Delivery & Takeaway chuyên biệt. Đặt hàng ngay để thưởng thức tại nhà.</p>
+                <ol>
+                  <li><span className="font-bold">1. Đặt món:</span> Tiếp nhận đơn hàng qua Fanpage/Hotline.</li>
+                  <li><span className="font-bold">2. Chuẩn bị:</span> Bếp lên đơn và đóng gói ngay lập tức để giữ độ lạnh.</li>
+                  <li><span className="font-bold">3. Giao hàng:</span> Giao siêu tốc trong nội thành. Bao bì đóng gói kỹ lưỡng, đảm bảo không đổ, không ám mùi.</li>
+                </ol>
+              </div>
+              <div className="flex items-center gap-6">
+                <button className="btn btn-white flex items-center gap-2">
+                  <Phone />
+                  <span>024.9999.7122</span>
+                </button>
+                <button className="btn btn-white">Liên hệ tư vấn</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
       <SectionSliderPost items={postsDemo} />
     </main>
   )
