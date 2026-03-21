@@ -15,7 +15,7 @@ interface SectionSliderPostProps {
 
 const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
   return (
-    <section className="md:py-16 py-12 xl:py-[100px]">
+    <section className="md:pt-16 pt-12 xl:pt-[100px] md:pb-[100px] pb-20 xl:pb-[160px]">
       <div className="container md:space-y-6 space-y-4 xl:space-y-8">
         <h2 className="display-3 text-center text-primary">Góc Bếp Cô Thảo</h2>
         <div className="relative swiper-related-product">

@@ -1,7 +1,7 @@
 "use client";
 
-import { Link, usePathname } from "@/i18n/i18n-navigation";
-import { ComponentProps, useEffect, useState } from "react";
+import { Link, usePathname, useRouter } from "@/i18n/i18n-navigation";
+import { ComponentProps, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Logo from "../Logo";
 import LanguageSwitcher from "../LanguageSwitcher";
@@ -40,6 +40,10 @@ const Header = () => {
   const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(
     null,
   );
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const onScroll = () => {
@@ -54,7 +58,16 @@ const Header = () => {
   useEffect(() => {
     setIsMobileOpen(false);
     setOpenDropdownIndex(null);
+    setIsSearchOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isSearchOpen]);
 
   useEffect(() => {
     if (isMobileOpen) {
@@ -71,6 +84,19 @@ const Header = () => {
   const toggleMobile = () => setIsMobileOpen((prev) => !prev);
   const toggleDropdown = (index: number) => {
     setOpenDropdownIndex((prev) => (prev === index ? null : index));
+  };
+  const toggleSearch = () => setIsSearchOpen((prev) => !prev);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push({
+        pathname: '/search',
+        query: { q: searchQuery.trim() }
+      } as any);
+      setIsSearchOpen(false);
+      setSearchQuery("");
+    }
   };
 
   return (
@@ -114,12 +140,13 @@ const Header = () => {
               />
             ))}
 
-            <Link
-              href="/search"
+            <button
+              onClick={toggleSearch}
               className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
+              aria-label="Search"
             >
               <Search />
-            </Link>
+            </button>
             <div className="flex size-6 items-center justify-center">
               <LanguageSwitcher />
             </div>
@@ -141,7 +168,33 @@ const Header = () => {
           pathname={pathname}
           onToggle={toggleMobile}
           onClose={() => setIsMobileOpen(false)}
+          onToggleSearch={toggleSearch}
         />
+      </div>
+      <div
+        className={`absolute left-0 top-full w-full bg-primary/95 shadow-xl transition-all duration-300 backdrop-blur-sm overflow-hidden border-t border-white/10 ${isSearchOpen ? "max-h-24 opacity-100 py-4" : "max-h-0 opacity-0 py-0 invisible"
+          }`}
+      >
+        <div className="container">
+          <form onSubmit={handleSearchSubmit} className="relative flex items-center max-w-3xl mx-auto">
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder={t('common.search_placeholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white text-gray-900 rounded-full py-2.5 px-6 placeholder:text-gray-900 focus:outline-none focus:border-secondary transition-all"
+            />
+            <div className="absolute right-1">
+              <button
+                type="submit"
+                className="btn-secondary !h-[40px] btn"
+              >
+                {t('common.search')}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </header>
   );
@@ -239,6 +292,7 @@ type MobileMenuProps = {
   pathname: string | null;
   onToggle: () => void;
   onClose: () => void;
+  onToggleSearch: () => void;
 };
 
 const MobileMenu = ({
@@ -247,6 +301,7 @@ const MobileMenu = ({
   pathname,
   onToggle,
   onClose,
+  onToggleSearch,
 }: MobileMenuProps) => {
   const [openSection, setOpenSection] = useState<number | null>(null);
 
@@ -259,12 +314,13 @@ const MobileMenu = ({
       <div className="flex w-full items-center justify-between py-1 relative">
         <Logo width={100} height={60} className="h-20" />
         <div className="flex items-center gap-4">
-          <Link
-            href="/search"
+          <button
+            onClick={onToggleSearch}
             className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
+            aria-label="Search"
           >
             <Search />
-          </Link>
+          </button>
           <div className="flex size-6 items-center justify-center">
             <LanguageSwitcher />
           </div>

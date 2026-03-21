@@ -10,6 +10,7 @@
     "blog": "Blog",
     "policy": "Policy",
     "search": "Search",
+    "search_placeholder": "Enter keywords...",
     "contact": "Contact",
     "language": "Language"
   },
