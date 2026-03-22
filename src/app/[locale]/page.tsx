@@ -5,36 +5,90 @@ import SectionReason from '@/components/Hero/SectionReason';
 import Arrow from '@/components/Icons/Arrow';
 import Phone from '@/components/Icons/Phone';
 import { Link } from '@/i18n/i18n-navigation';
-import { getTranslations } from 'next-intl/server'
+import { getTranslations } from 'next-intl/server';
 import Image from 'next/image';
+import { getApi } from '@/services/apiService';
+import { HeroBanner } from '@/services/heroBannerService';
+import { Product } from '@/services/productService';
+import { Category } from '@/services/categoryService';
+import { slugify } from '@/lib/format';
 
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const t = await getTranslations({ locale });
-  const sliderHero = [
-    {
+
+  const [heroBannersData, sliderBannersData, productsData, categoriesData] = await Promise.all([
+    getApi<HeroBanner>('banners', { params: { position: 'hero_home', lang: locale } }).catch(() => ({ data: [] })),
+    getApi<HeroBanner>('banners', { params: { position: 'slide_home', lang: locale } }).catch(() => ({ data: [] })),
+    getApi<Product>('products', { params: { lang: locale } }).catch(() => ({ data: [] })),
+    getApi<Category>('categories', { params: { lang: locale } }).catch(() => ({ data: [] }))
+  ]);
+
+  const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
+    if (!translations || translations.length === 0) return undefined;
+    return translations.find(t => t.locale === currentLocale) ||
+      translations.find(t => t.locale.startsWith(currentLocale));
+  };
+
+  const sliderHero = heroBannersData.data.map((item) => {
+    const translation = getTranslation(item.translations, locale) as any;
+    const title = translation?.title || item.title || "Cô Thảo Tôm Cá";
+    return {
       image: {
-        url: "/images/demo/image-hero.jpg",
-        alt: "image hero 1"
+        url: item.image || "/cover.jpg",
+        alt: translation?.title || item.image?.alt || title
       },
-      title: "Hải sản tươi sống ngâm sốt",
-    },
-    {
+      title: title,
+    };
+  });
+
+  const productsDisplay = productsData.data.map((item) => {
+    const translation = getTranslation(item.translations, locale) as any;
+    const name = translation?.name || item.name;
+    const categoryName = "Tất cả"; 
+    return {
+      id: item.id,
+      title: name,
+      slug: slugify(name),
+      price: parseFloat(item.price as string),
+      category: { title: categoryName, slug: slugify(categoryName) },
+      ingredients: item.ingredients?.map(ing => slugify(ing.name)) || [],
       image: {
-        url: "/images/demo/image-hero.jpg",
-        alt: "image hero 2"
+        url: item.image || "https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?w=800&h=600&fit=crop",
+        alt: name
       },
-      title: "Hải sản tươi sống ngâm sốt",
-    },
-    {
+      description: translation?.description || item.description,
+      created_at: '2024-03-15T00:00:00Z',
+    };
+  });
+
+  const categoriesDisplay = categoriesData.data.map((item) => {
+    const translation = getTranslation(item.translations, locale) as any;
+    const title = translation?.title || item.title;
+    return {
+      id: item.id,
+      title: title,
+      slug: slugify(title),
       image: {
-        url: "/images/demo/image-hero.jpg",
-        alt: "image hero 3"
+        url: item.image || 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop',
+        alt: title
       },
-      title: "Hải sản tươi sống ngâm sốt",
-    },
-  ];
+    };
+  });
+
+  const sliders = sliderBannersData.data.map((item) => {
+    const translation = getTranslation(item.translations, locale) as any;
+    return {
+      image: {
+        url: item.image || "/cover.jpg",
+        alt: translation?.title || item.title || ""
+      },
+      title: translation?.title || item.title || "",
+      description: translation?.description || item.description || "",
+    };
+  });
+
   const postsDemo = [
     {
       image: {
@@ -79,179 +133,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       created_at: "2024-06-12",
     },
   ];
-  const sliders = [
-    {
-      image: {
-        url: "/images/about/image-slider-1.jpg",
-        alt: "image slider 1"
-      },
-      title: "Mẻ mới mỗi ngày",
-      description: "Độ tươi là tiêu chuẩn bắt buộc, không phải sự lựa chọn. Chúng tôi cam kết 100% không sử dụng chất bảo quản, chỉ chọn lọc khắt khe và chế biến thủ công trong ngày để giữ trọn vẹn kết cấu sần sật và độ ngọt nguyên bản của hải sản."
-    },
-    {
-      image: {
-        url: "/images/about/image-slider-2.jpg",
-        alt: "image slider 2"
-      },
-      title: "Tầm nhìn",
-      description: `Tập trung vào sản phẩm ngâm ngập sốt với giá thành tương xứng với chất lượng. Trở thành thương hiệu "Top of mind" (dẫn đầu tâm trí) về món hải sản tươi sống ngâm sốt Delivery.`
-    },
-    {
-      image: {
-        url: "/images/about/image-slider-3.jpg",
-        alt: "image slider 3"
-      },
-      title: "Sứ mệnh",
-      description: "Tạo ra các sản phẩm ngâm ngập sốt tươi ngon với dịch vụ hoàn hảo, tạo ra giá trị thưởng thức an tâm trong từng bữa ăn của khách hàng."
-    },
-  ];
-  const productsDemo = [
-    {
-      id: 1,
-      title: 'Cá Hồi Ngâm Tương Hàn Quốc',
-      slug: 'ca-hoi-ngam-tuong-han-quoc',
-      price: 285000,
-      category: { title: 'Ngâm Tương Hàn Quốc', slug: 'ngam-tuong-han-quoc' },
-      ingredients: ['ca-hoi'],
-      image: { url: 'https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?w=800&h=600&fit=crop', alt: 'Cá Hồi Ngâm Tương' },
-      description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-      created_at: '2024-03-15T00:00:00Z',
-    },
-    {
-      id: 2,
-      title: 'Tôm Sú Ngâm Tương Ganjang',
-      slug: 'tom-su-ngam-tuong-ganjang',
-      price: 320000,
-      category: { title: 'Ngâm Tương Hàn Quốc', slug: 'ngam-tuong-han-quoc' },
-      ingredients: ['tom-su'],
-      image: { url: 'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?w=800&h=600&fit=crop', alt: 'Tôm Sú' },
-      description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-      created_at: '2024-03-16T00:00:00Z',
-    },
-    {
-      id: 3,
-      title: 'Cua Ngâm Tương Đặc Biệt',
-      slug: 'cua-ngam-tuong-dac-biet',
-      price: 450000,
-      category: { title: 'Ngâm Tương Hàn Quốc', slug: 'ngam-tuong-han-quoc' },
-      ingredients: ['cua-ghe'],
-      image: { url: 'https://images.unsplash.com/photo-1559742811-822873691df8?w=800&h=600&fit=crop', alt: 'Cua Ngâm Tương' },
-      description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-      created_at: '2024-03-10T00:00:00Z',
-    },
-    {
-      id: 4,
-      title: 'Cá Hồi Sốt Thái Xanh',
-      slug: 'ca-hoi-sot-thai-xanh',
-      price: 260000,
-      category: { title: 'Sốt Thái Tươi Mát', slug: 'sot-thai-tuoi-mat' },
-      ingredients: ['ca-hoi'],
-      image: { url: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&h=600&fit=crop', alt: 'Cá Hồi Sốt Thái' },
-      description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-      created_at: '2024-03-19T00:00:00Z',
-    },
-    {
-      id: 5,
-      title: 'Tôm Sú Sốt Thái Mango',
-      slug: 'tom-su-sot-thai-mango',
-      price: 295000,
-      category: { title: 'Sốt Thái Tươi Mát', slug: 'sot-thai-tuoi-mat' },
-      ingredients: ['tom-su'],
-      image: { url: 'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?w=800&h=600&fit=crop', alt: 'Tôm Sú Sốt Thái' },
-      description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-      created_at: '2024-03-18T00:00:00Z',
-    },
-    {
-      id: 6,
-      title: 'Bào Ngư Sốt Thái Cay',
-      slug: 'bao-ngu-sot-thai-cay',
-      price: 520000,
-      category: { title: 'Sốt Thái Tươi Mát', slug: 'sot-thai-tuoi-mat' },
-      ingredients: ['bao-ngu'],
-      image: { url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop', alt: 'Bào Ngư Sốt Thái' },
-      description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-      created_at: '2024-03-17T00:00:00Z',
-    },
-    {
-      id: 7,
-      title: 'Set Cơm Cá Hồi Nhật',
-      slug: 'set-com-ca-hoi-nhat',
-      price: 185000,
-      category: { title: 'Set Cơm Tiện Lợi', slug: 'set-com-tien-loi' },
-      ingredients: ['ca-hoi'],
-      image: { url: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&h=600&fit=crop', alt: 'Set Cơm' },
-      description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-      created_at: '2024-03-14T00:00:00Z',
-    },
-    {
-      id: 8,
-      title: 'Set Cơm Tôm Sú & Rau',
-      slug: 'set-com-tom-su-rau',
-      price: 165000,
-      category: { title: 'Set Cơm Tiện Lợi', slug: 'set-com-tien-loi' },
-      ingredients: ['tom-su'],
-      image: { url: 'https://images.unsplash.com/photo-1539755530862-00f623c00f52?w=800&h=600&fit=crop', alt: 'Set Cơm Tôm' },
-      description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-      created_at: '2024-03-13T00:00:00Z',
-    },
-    {
-      id: 9,
-      title: 'Set Cơm Hải Sản Hỗn Hợp',
-      slug: 'set-com-hai-san-hon-hop',
-      price: 210000,
-      category: { title: 'Set Cơm Tiện Lợi', slug: 'set-com-tien-loi' },
-      ingredients: ['cua-ghe', 'tom-su'],
-      image: { url: 'https://images.unsplash.com/photo-1555126634-323283e090fa?w=800&h=600&fit=crop', alt: 'Cơm Hải Sản' },
-      description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-      created_at: '2024-03-12T00:00:00Z',
-    },
-    {
-      id: 10,
-      title: 'Gỏi Bào Ngư Rong Biển',
-      slug: 'goi-bao-ngu-rong-bien',
-      price: 380000,
-      category: { title: 'Món Ăn Kèm', slug: 'mon-an-kem' },
-      ingredients: ['bao-ngu'],
-      image: { url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop', alt: 'Gỏi Bào Ngư' },
-      description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-      created_at: '2024-03-11T00:00:00Z',
-    },
-  ];
-  const categoriesDemo = [
-    {
-      id: 1,
-      title: 'Hải sản ngâm tương',
-      slug: 'hai-san-ngam-tuong',
-      image: { url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop', alt: 'Hải sản ngâm tương' },
-    },
-    {
-      id: 2,
-      title: 'Hải sản ngâm mẻ',
-      slug: 'hai-san-ngam-me',
-      image: { url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop', alt: 'Hải sản ngâm mẻ' },
-    },
-    {
-      id: 3,
-      title: 'Hải sản ngâm mắm',
-      slug: 'hai-san-ngam-mam',
-      image: { url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop', alt: 'Hải sản ngâm mắm' },
-    },
-    {
-      id: 4,
-      title: 'Hải sản ngâm sả ớt',
-      slug: 'hai-san-ngam-sa-ot',
-      image: { url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop', alt: 'Hải sản ngâm sả ớt' },
-    },
-  ]
 
   return (
     <main>
-      {/* <div className="flex flex-col items-center justify-center min-h-[50vh] pt-20 space-y-4">
-        <h1 className="text-4xl font-bold">{t('home.title')}</h1>
-        <p className="text-xl">{t('home.description')}</p>
-        <p className="text-sm text-gray-500">{t('home.language')}</p>
-        <p className="text-green-600 mt-3">Đang test chuyển ngôn ngữ</p>
-      </div> */}
       <SectionHero items={sliderHero} />
       <section className="md:py-20 py-12 xl:py-[100px] relative overflow-hidden">
         <div className="absolute top-6 left-0 max-w-[320px] xl:max-w-[420px] w-full h-[100px] xl:h-[130px]">
@@ -304,7 +188,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </div>
       </section>
       <SectionReason items={sliders} />
-      <SectionHotProduct products={productsDemo} />
+      <SectionHotProduct products={productsDisplay} />
       <section className="relative">
         <div className="aspect-w-2 aspect-h-1">
           <Image
@@ -337,7 +221,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               <div className="space-y-8 md:space-y-12 xl:space-y-16 flex flex-col justify-center">
                 <h2 className="display-3 text-yellow uppercase max-md:text-center max-md:w-[250px] max-md:mx-auto">Danh mục sản phẩm</h2>
                 <div className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
-                  {categoriesDemo.map((itemCategory, indexCategory) => (
+                  {categoriesDisplay.map((itemCategory, indexCategory) => (
                     <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
                       <span>{itemCategory.title}</span>
                       <span className="rotate-180"><Arrow /></span>

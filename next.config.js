@@ -19,6 +19,11 @@ const nextConfig = {
         hostname: "images.unsplash.com",
         port: "",
       },
+      {
+        protocol: "https",
+        hostname: "staging-cothaotomca.betech-digital.com",
+        port: "",
+      },
     ],
   },
 };

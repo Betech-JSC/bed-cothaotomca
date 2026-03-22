@@ -11,7 +11,8 @@ interface CardProductProps {
     price: number;
     category: {
       title: string;
-      slug: string;
+      id: string;
+      slug: string; // Added slug back
     };
     image: {
       url: string;
@@ -23,14 +24,12 @@ interface CardProductProps {
   isHot?: boolean;
 }
 
-
-
 const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   return (
     <div className="group rounded-[24px] relative overflow-hidden bg-white">
       {/* Image */}
       <Link
-        href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }}
+        href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
         className="block"
       >
         <div className="aspect-w-1 aspect-h-1 relative overflow-hidden">
@@ -46,7 +45,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
 
       <div className="py-6 px-4 text-center">
         <Link
-          href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }}
+          href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
           className="block"
         >
           <h3 className={`title-1 text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-1 min-h-[32px]`}>

@@ -20,3 +20,14 @@ export function formatDate(date: Date | string | number, locale: string = 'vi') 
 export function formatPrice(price: number) {
   return new Intl.NumberFormat('vi-VN').format(price).replace(/,/g, '.') + ' VNĐ';
 }
+
+export function slugify(str: string) {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}

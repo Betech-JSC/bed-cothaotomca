@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Link } from "@/i18n/i18n-navigation";
 import React from "react";
+import { formatDate } from "@/lib/format";
 
 type BlogItem = {
   image: {
@@ -43,11 +44,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
           </span>
           <span className="text-[#941417]">|</span>
           <span className="body-2 text-[#941417]">
-            {new Date(item.created_at).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "long",
-              year: "numeric",
-            })}
+            {formatDate(item.created_at)}
           </span>
         </div>
 

@@ -1,19 +1,36 @@
+import { getTranslations } from 'next-intl/server';
+import Image from 'next/image';
+import { getApi } from '@/services/apiService';
+import { HeroBanner } from '@/services/heroBannerService';
 import SectionChooseUs from '@/components/About/SectionChooseUs';
 import Banner from '@/components/Banner';
 import SectionSliderPost from '@/components/Common/SectionSliderPost';
 import Cart from '@/components/Icons/Cart';
 import { Link } from '@/i18n/i18n-navigation';
-import { useTranslations } from 'next-intl'
-import Image from 'next/image';
 
-export default function AboutPage() {
-  const t = useTranslations('common')
+export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'common' });
+  const [bannerData, slideData] = await Promise.all([
+    getApi<HeroBanner>('banners', { params: { position: 'banner_intro', lang: locale } }).catch(() => ({ data: [] })),
+    getApi<HeroBanner>('banners', { params: { position: 'slide_intro', lang: locale } }).catch(() => ({ data: [] }))
+  ]);
+
+  const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
+    if (!translations || translations.length === 0) return undefined;
+    return translations.find(t => t.locale === currentLocale) ||
+      translations.find(t => t.locale.startsWith(currentLocale));
+  };
+
+  const introBanner = bannerData.data[0];
   const banner = {
     image: {
-      url: "/images/demo/banner-about.jpg",
-      alt: "banner about",
+      url: introBanner?.image || "/images/demo/banner-about.jpg",
+      alt: introBanner?.title || "banner about",
     },
   };
+
+
   const values = [
     {
       image: {
@@ -48,32 +65,19 @@ export default function AboutPage() {
       description: "Tạo ra những bữa ăn ngon hoàn hảo không chỉ đến từ món chính, Cô Thảo tôm cá còn quan tâm đến một bữa ăn trọn vẹn và an tâm nhất cho khách hàng.",
     },
   ];
-  const sliders = [
-    {
+
+  const sliders = slideData.data.map((item) => {
+    const translation = getTranslation(item.translations, locale) as any;
+    return {
       image: {
-        url: "/images/about/image-slider-1.jpg",
-        alt: "image slider 1"
+        url: item.image || "/cover.jpg",
+        alt: translation?.title || item.title || ""
       },
-      title: "Mẻ mới mỗi ngày",
-      description: "Độ tươi là tiêu chuẩn bắt buộc, không phải sự lựa chọn. Chúng tôi cam kết 100% không sử dụng chất bảo quản, chỉ chọn lọc khắt khe và chế biến thủ công trong ngày để giữ trọn vẹn kết cấu sần sật và độ ngọt nguyên bản của hải sản."
-    },
-    {
-      image: {
-        url: "/images/about/image-slider-2.jpg",
-        alt: "image slider 2"
-      },
-      title: "Tầm nhìn",
-      description: `Tập trung vào sản phẩm ngâm ngập sốt với giá thành tương xứng với chất lượng. Trở thành thương hiệu "Top of mind" (dẫn đầu tâm trí) về món hải sản tươi sống ngâm sốt Delivery.`
-    },
-    {
-      image: {
-        url: "/images/about/image-slider-3.jpg",
-        alt: "image slider 3"
-      },
-      title: "Sứ mệnh",
-      description: "Tạo ra các sản phẩm ngâm ngập sốt tươi ngon với dịch vụ hoàn hảo, tạo ra giá trị thưởng thức an tâm trong từng bữa ăn của khách hàng."
-    },
-  ];
+      title: translation?.title || item.title || "",
+      description: translation?.description || item.description || "",
+    };
+  });
+
   const postsDemo = [
     {
       image: {

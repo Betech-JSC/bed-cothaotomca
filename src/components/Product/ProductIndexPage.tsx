@@ -1,160 +1,13 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useRouter, usePathname } from '@/i18n/routing'
-import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@/i18n/routing'
 import Breadcrumb from '../Common/Breadcrumb'
 import CardProduct from '../Card/CardProduct'
-
-// ——— Data ———
-const categories = [
-  { title: 'Ngâm Tương Hàn Quốc', slug: 'ngam-tuong-han-quoc' },
-  { title: 'Sốt Thái Tươi Mát', slug: 'sot-thai-tuoi-mat' },
-  { title: 'Set Cơm Tiện Lợi', slug: 'set-com-tien-loi' },
-  { title: 'Món Ăn Kèm', slug: 'mon-an-kem' },
-]
-
-const ingredientsList = [
-  { title: 'Cá Hồi', slug: 'ca-hoi' },
-  { title: 'Tôm Sú', slug: 'tom-su' },
-  { title: 'Cua/Ghẹ', slug: 'cua-ghe' },
-  { title: 'Bào Ngư', slug: 'bao-ngu' },
-]
-
-const products = [
-  {
-    id: 1,
-    title: 'Cá Hồi Ngâm Tương Hàn Quốc',
-    slug: 'ca-hoi-ngam-tuong-han-quoc',
-    price: 285000,
-    category: { title: 'Ngâm Tương Hàn Quốc', slug: 'ngam-tuong-han-quoc' },
-    ingredients: ['ca-hoi'],
-    image: { url: 'https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?w=800&h=600&fit=crop', alt: 'Cá Hồi Ngâm Tương' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-15T00:00:00Z',
-  },
-  {
-    id: 2,
-    title: 'Tôm Sú Ngâm Tương Ganjang',
-    slug: 'tom-su-ngam-tuong-ganjang',
-    price: 320000,
-    category: { title: 'Ngâm Tương Hàn Quốc', slug: 'ngam-tuong-han-quoc' },
-    ingredients: ['tom-su'],
-    image: { url: 'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?w=800&h=600&fit=crop', alt: 'Tôm Sú' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-16T00:00:00Z',
-  },
-  {
-    id: 3,
-    title: 'Cua Ngâm Tương Đặc Biệt',
-    slug: 'cua-ngam-tuong-dac-biet',
-    price: 450000,
-    category: { title: 'Ngâm Tương Hàn Quốc', slug: 'ngam-tuong-han-quoc' },
-    ingredients: ['cua-ghe'],
-    image: { url: 'https://images.unsplash.com/photo-1559742811-822873691df8?w=800&h=600&fit=crop', alt: 'Cua Ngâm Tương' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-10T00:00:00Z',
-  },
-  {
-    id: 4,
-    title: 'Cá Hồi Sốt Thái Xanh',
-    slug: 'ca-hoi-sot-thai-xanh',
-    price: 260000,
-    category: { title: 'Sốt Thái Tươi Mát', slug: 'sot-thai-tuoi-mat' },
-    ingredients: ['ca-hoi'],
-    image: { url: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&h=600&fit=crop', alt: 'Cá Hồi Sốt Thái' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-19T00:00:00Z',
-  },
-  {
-    id: 5,
-    title: 'Tôm Sú Sốt Thái Mango',
-    slug: 'tom-su-sot-thai-mango',
-    price: 295000,
-    category: { title: 'Sốt Thái Tươi Mát', slug: 'sot-thai-tuoi-mat' },
-    ingredients: ['tom-su'],
-    image: { url: 'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?w=800&h=600&fit=crop', alt: 'Tôm Sú Sốt Thái' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-18T00:00:00Z',
-  },
-  {
-    id: 6,
-    title: 'Bào Ngư Sốt Thái Cay',
-    slug: 'bao-ngu-sot-thai-cay',
-    price: 520000,
-    category: { title: 'Sốt Thái Tươi Mát', slug: 'sot-thai-tuoi-mat' },
-    ingredients: ['bao-ngu'],
-    image: { url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop', alt: 'Bào Ngư Sốt Thái' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-17T00:00:00Z',
-  },
-  {
-    id: 7,
-    title: 'Set Cơm Cá Hồi Nhật',
-    slug: 'set-com-ca-hoi-nhat',
-    price: 185000,
-    category: { title: 'Set Cơm Tiện Lợi', slug: 'set-com-tien-loi' },
-    ingredients: ['ca-hoi'],
-    image: { url: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&h=600&fit=crop', alt: 'Set Cơm' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-14T00:00:00Z',
-  },
-  {
-    id: 8,
-    title: 'Set Cơm Tôm Sú & Rau',
-    slug: 'set-com-tom-su-rau',
-    price: 165000,
-    category: { title: 'Set Cơm Tiện Lợi', slug: 'set-com-tien-loi' },
-    ingredients: ['tom-su'],
-    image: { url: 'https://images.unsplash.com/photo-1539755530862-00f623c00f52?w=800&h=600&fit=crop', alt: 'Set Cơm Tôm' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-13T00:00:00Z',
-  },
-  {
-    id: 9,
-    title: 'Set Cơm Hải Sản Hỗn Hợp',
-    slug: 'set-com-hai-san-hon-hop',
-    price: 210000,
-    category: { title: 'Set Cơm Tiện Lợi', slug: 'set-com-tien-loi' },
-    ingredients: ['cua-ghe', 'tom-su'],
-    image: { url: 'https://images.unsplash.com/photo-1555126634-323283e090fa?w=800&h=600&fit=crop', alt: 'Cơm Hải Sản' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-12T00:00:00Z',
-  },
-  {
-    id: 10,
-    title: 'Gỏi Bào Ngư Rong Biển',
-    slug: 'goi-bao-ngu-rong-bien',
-    price: 380000,
-    category: { title: 'Món Ăn Kèm', slug: 'mon-an-kem' },
-    ingredients: ['bao-ngu'],
-    image: { url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop', alt: 'Gỏi Bào Ngư' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-11T00:00:00Z',
-  },
-  {
-    id: 11,
-    title: 'Ghẹ Hấp Bia Ăn Kèm',
-    slug: 'ghe-hap-bia-an-kem',
-    price: 340000,
-    category: { title: 'Món Ăn Kèm', slug: 'mon-an-kem' },
-    ingredients: ['cua-ghe'],
-    image: { url: 'https://images.unsplash.com/photo-1559742811-822873691df8?w=800&h=600&fit=crop', alt: 'Ghẹ Hấp' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-09T00:00:00Z',
-  },
-  {
-    id: 12,
-    title: 'Combo Hải Sản Tứ Bảo',
-    slug: 'combo-hai-san-tu-bao',
-    price: 620000,
-    category: { title: 'Món Ăn Kèm', slug: 'mon-an-kem' },
-    ingredients: ['ca-hoi', 'tom-su', 'cua-ghe', 'bao-ngu'],
-    image: { url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=600&fit=crop', alt: 'Combo Hải Sản' },
-    description: 'Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source.',
-    created_at: '2024-03-08T00:00:00Z',
-  },
-];
+import { Product } from '@/services/productService'
+import { Category } from '@/services/categoryService'
+import { Ingredient } from '@/services/ingredientService'
+import { slugify } from '@/lib/format'
 
 // Custom Checkbox component
 function CustomCheckbox({
@@ -196,26 +49,96 @@ function CustomCheckbox({
 }
 
 interface ProductIndexPageProps {
-  category: string | null
-  selectedIngredients: string[]
+  category: string | null // Current slug in URL
+  selectedIngredients: string[] // Current slugs in URL
+  products: Product[]
+  categories: Category[]
+  ingredients: Ingredient[]
+  locale: string
 }
 
 export default function ProductIndexPage({
   category,
   selectedIngredients,
+  products,
+  categories,
+  ingredients,
+  locale,
 }: ProductIndexPageProps) {
   const router = useRouter()
 
-  const pushWithFilters = (newCategory: string | null, newIngredients: string[]) => {
+  const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
+    if (!translations || translations.length === 0) return undefined;
+    return translations.find(t => t.locale === currentLocale) || 
+           translations.find(t => t.locale.startsWith(currentLocale));
+  };
+
+  const categoriesDisplay = useMemo(() => categories.map(cat => {
+    const translation = getTranslation(cat.translations, locale) as any;
+    const title = translation?.title || cat.title || "";
+    return {
+      id: cat.id.toString(),
+      title,
+      slug: slugify(title)
+    }
+  }), [categories, locale]);
+
+  const ingredientsDisplay = useMemo(() => ingredients.map(ing => {
+    const translation = getTranslation(ing.translations, locale) as any;
+    const name = translation?.name || ing.name || "";
+    return {
+      id: ing.id.toString(),
+      title: name,
+      slug: slugify(name)
+    }
+  }), [ingredients, locale]);
+
+  // Map slugs to IDs for internal filtering
+  const categoryIdToFilter = useMemo(() => {
+    if (!category) return null;
+    return categoriesDisplay.find(c => c.slug === category)?.id || null;
+  }, [category, categoriesDisplay]);
+
+  const ingredientIdsToFilter = useMemo(() => {
+    return selectedIngredients
+      .map(slug => ingredientsDisplay.find(ing => ing.slug === slug)?.id)
+      .filter(Boolean) as string[];
+  }, [selectedIngredients, ingredientsDisplay]);
+
+  const productsDisplay = useMemo(() => products.map(p => {
+    const translation = getTranslation(p.translations, locale) as any;
+    const name = translation?.name || p.name;
+    const catTranslation = getTranslation(p.category?.translations, locale) as any;
+    const categoryName = catTranslation?.title || p.category?.title || "";
+    const categoryId = p.category?.id?.toString() || "";
+    const categorySlug = slugify(categoryName);
+    
+    return {
+      id: p.id,
+      title: name,
+      slug: slugify(name),
+      price: parseFloat(p.price as string) || 0,
+      category: { id: categoryId, title: categoryName, slug: categorySlug },
+      ingredientIds: p.ingredients?.map(ing => ing.id.toString()) || [],
+      image: {
+        url: p.image || "/cover.jpg",
+        alt: name
+      },
+      description: translation?.description || p.description || "",
+      created_at: p.created_at || '2024-03-15T00:00:00Z',
+    };
+  }), [products, locale]);
+
+  const pushWithFilters = (newCategorySlug: string | null, newIngredientSlugs: string[]) => {
     const query: Record<string, string> = {}
-    if (newIngredients.length > 0) {
-      query.ingredients = newIngredients.join(',')
+    if (newIngredientSlugs.length > 0) {
+      query.ingredients = newIngredientSlugs.join(',')
     }
 
-    if (newCategory) {
+    if (newCategorySlug) {
       router.push({
         pathname: '/product/[category]',
-        params: { category: newCategory },
+        params: { category: newCategorySlug },
         query: query
       })
     } else {
@@ -242,21 +165,19 @@ export default function ProductIndexPage({
   const clearIngredients = () => pushWithFilters(category, [])
   const clearAll = () => pushWithFilters(null, [])
 
-  const filteredProducts = useMemo(() => {
-    return products.filter(p => {
-      const catMatch = !category || p.category.slug === category
+  const filteredProductsSorted = useMemo(() => {
+    return productsDisplay.filter(p => {
+      const catMatch = !categoryIdToFilter || p.category.id === categoryIdToFilter
       const ingMatch =
-        selectedIngredients.length === 0 ||
-        selectedIngredients.every(ing => p.ingredients.includes(ing))
+        ingredientIdsToFilter.length === 0 ||
+        ingredientIdsToFilter.every(id => p.ingredientIds.includes(id))
       return catMatch && ingMatch
     })
-  }, [category, selectedIngredients])
-
-  const hasFilters = !!category || selectedIngredients.length > 0
+  }, [categoryIdToFilter, ingredientIdsToFilter, productsDisplay])
 
   const currentCategory = useMemo(() => {
-    return categories.find(cat => cat.slug === category)
-  }, [category])
+    return categoriesDisplay.find(cat => cat.slug === category)
+  }, [category, categoriesDisplay])
 
   const breadcrumbs = useMemo(() => {
     const base: { title: string; url?: any }[] = [
@@ -295,9 +216,9 @@ export default function ProductIndexPage({
                   )}
                 </div>
                 <div>
-                  {categories.map(cat => (
+                  {categoriesDisplay.map(cat => (
                     <button
-                      key={cat.slug}
+                      key={cat.id}
                       type="button"
                       onClick={() => handleCategoryClick(cat.slug)}
                       className={`
@@ -327,9 +248,9 @@ export default function ProductIndexPage({
                   )}
                 </div>
                 <div className="pb-2 space-y-2">
-                  {ingredientsList.map(ing => (
+                  {ingredientsDisplay.map(ing => (
                     <CustomCheckbox
-                      key={ing.slug}
+                      key={ing.id}
                       checked={selectedIngredients.includes(ing.slug)}
                       onChange={() => toggleIngredient(ing.slug)}
                       label={ing.title}
@@ -338,19 +259,9 @@ export default function ProductIndexPage({
                 </div>
               </div>
             </div>
-
-            {/* Clear all */}
-            {/* {hasFilters && (
-            <button
-              onClick={clearAll}
-              className="mt-3 w-full py-2 text-sm text-gray-500 hover:text-orange-500 border border-gray-200 hover:border-orange-300 rounded-xl transition-all duration-200 bg-white shadow-sm"
-            >
-              Xoá tất cả bộ lọc
-            </button>
-          )} */}
           </div>
           <div className="flex-1">
-            {filteredProducts.length === 0 ? (
+            {filteredProductsSorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl border border-dashed border-gray-200">
                 <div className="text-5xl mb-4">🔍</div>
                 <p className="text-gray-500 text-lg font-medium">Không tìm thấy sản phẩm phù hợp</p>
@@ -364,7 +275,7 @@ export default function ProductIndexPage({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-8">
-                {filteredProducts.map(product => (
+                {filteredProductsSorted.map(product => (
                   <CardProduct key={product.id} item={product} />
                 ))}
               </div>

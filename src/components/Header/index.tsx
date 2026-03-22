@@ -140,26 +140,32 @@ const Header = () => {
               />
             ))}
 
-            <button
-              onClick={toggleSearch}
-              className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
-              aria-label="Search"
-            >
-              <Search />
-            </button>
-            <div className="flex size-6 items-center justify-center">
-              <LanguageSwitcher />
-            </div>
-            <a
-              href="tel:0987654321"
-              className="border-yellow text-yellow lg:hover:border-secondary lg:hover:text-secondary flex items-center gap-1.5 rounded-full border px-3 py-1 duration-300 ease-in-out"
-            >
-              <Hotline />
-              <div>
-                <div className="body-4 font-semibold uppercase">Hotline</div>
-                <div className="label-1 font-semibold">0987 654 321</div>
+            <li>
+              <button
+                onClick={toggleSearch}
+                className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
+                aria-label="Search"
+              >
+                <Search />
+              </button>
+            </li>
+            <li>
+              <div className="flex size-6 items-center justify-center">
+                <LanguageSwitcher />
               </div>
-            </a>
+            </li>
+            <li>
+              <a
+                href="tel:0987654321"
+                className="border-yellow text-yellow lg:hover:border-secondary lg:hover:text-secondary flex items-center gap-1.5 rounded-full border px-3 py-1 duration-300 ease-in-out"
+              >
+                <Hotline />
+                <div>
+                  <div className="body-4 font-semibold uppercase">Hotline</div>
+                  <div className="label-1 font-semibold">0987 654 321</div>
+                </div>
+              </a>
+            </li>
           </ul>
         </nav>
         <MobileMenu

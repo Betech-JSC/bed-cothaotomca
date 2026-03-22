@@ -61,12 +61,10 @@ const Footer = () => {
           <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
             <div className="col-span-full lg:col-span-5 xl:col-span-6">
               <div className="max-md:mx-auto md:max-w-[360px] max-md:mt-10">
-                <Link href="/" className="inline-block">
-                  <Logo
-                    width={321}
-                    height={206}
-                  />
-                </Link>
+                <Logo
+                  width={321}
+                  height={206}
+                />
               </div>
             </div>
 
@@ -89,7 +87,7 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="text-right body-2 text-white">
+          <div className="text-right body-2 text-white" suppressHydrationWarning>
             © {new Date().getFullYear()} Cô Thảo Tôm Cá. All rights reserved.
           </div>
         </div>
