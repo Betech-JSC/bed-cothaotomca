@@ -5,11 +5,11 @@ import { useRouter } from '@/i18n/routing'
 import { useTranslations } from 'next-intl'
 import Breadcrumb from '../Common/Breadcrumb'
 import CardProduct from '../Card/CardProduct'
+import Chevron from '../Icons/Chevron'
 import { Product } from '@/services/productService'
 import { Category } from '@/services/categoryService'
 import { Ingredient } from '@/services/ingredientService'
 import { slugify } from '@/lib/format'
-import Search from '../Icons/Search'
 
 // Custom Checkbox component
 function CustomCheckbox({
@@ -57,6 +57,11 @@ interface ProductIndexPageProps {
   categories: Category[]
   ingredients: Ingredient[]
   locale: string
+  pagination: {
+    currentPage: number
+    lastPage: number
+    total: number
+  }
 }
 
 export default function ProductIndexPage({
@@ -66,6 +71,7 @@ export default function ProductIndexPage({
   categories,
   ingredients,
   locale,
+  pagination,
 }: ProductIndexPageProps) {
   const router = useRouter()
   const t = useTranslations()
@@ -96,18 +102,6 @@ export default function ProductIndexPage({
     }
   }), [ingredients, locale]);
 
-  // Map slugs to IDs for internal filtering
-  const categoryIdToFilter = useMemo(() => {
-    if (!category) return null;
-    return categoriesDisplay.find(c => c.slug === category)?.id || null;
-  }, [category, categoriesDisplay]);
-
-  const ingredientIdsToFilter = useMemo(() => {
-    return selectedIngredients
-      .map(slug => ingredientsDisplay.find(ing => ing.slug === slug)?.id)
-      .filter(Boolean) as string[];
-  }, [selectedIngredients, ingredientsDisplay]);
-
   const productsDisplay = useMemo(() => products.map(p => {
     const translation = getTranslation(p.translations, locale) as any;
     const name = translation?.name || p.name;
@@ -133,10 +127,13 @@ export default function ProductIndexPage({
     };
   }), [products, locale]);
 
-  const pushWithFilters = (newCategorySlug: string | null, newIngredientSlugs: string[]) => {
+  const pushWithFilters = (newCategorySlug: string | null, newIngredientSlugs: string[], newPage: number = 1) => {
     const query: Record<string, string> = {}
     if (newIngredientSlugs.length > 0) {
       query.ingredients = newIngredientSlugs.join(',')
+    }
+    if (newPage > 1) {
+      query.page = newPage.toString()
     }
 
     if (newCategorySlug) {
@@ -155,30 +152,23 @@ export default function ProductIndexPage({
 
   const handleCategoryClick = (slug: string) => {
     const nextCategory = category === slug ? null : slug
-    pushWithFilters(nextCategory, selectedIngredients)
+    pushWithFilters(nextCategory, selectedIngredients, 1)
   }
 
   const toggleIngredient = (slug: string) => {
     const nextIngredients = selectedIngredients.includes(slug)
       ? selectedIngredients.filter(s => s !== slug)
       : [...selectedIngredients, slug]
-    pushWithFilters(category, nextIngredients)
+    pushWithFilters(category, nextIngredients, 1)
   }
 
-  const clearCategory = () => pushWithFilters(null, selectedIngredients)
-  const clearIngredients = () => pushWithFilters(category, [])
-  const clearAll = () => pushWithFilters(null, [])
+  const handlePageChange = (page: number) => {
+    pushWithFilters(category, selectedIngredients, page)
+  }
 
-  const filteredProductsSorted = useMemo(() => {
-    return productsDisplay.filter(p => {
-      const catMatch = !categoryIdToFilter || p.category.id === categoryIdToFilter
-      const ingMatch =
-        ingredientIdsToFilter.length === 0 ||
-        ingredientIdsToFilter.every(id => p.ingredientIds.includes(id))
-      return catMatch && ingMatch
-    })
-  }, [categoryIdToFilter, ingredientIdsToFilter, productsDisplay])
-
+  const clearCategory = () => pushWithFilters(null, selectedIngredients, 1)
+  const clearIngredients = () => pushWithFilters(category, [], 1)
+  const clearAll = () => pushWithFilters(null, [], 1)
   const currentCategory = useMemo(() => {
     return categoriesDisplay.find(cat => cat.slug === category)
   }, [category, categoriesDisplay])
@@ -191,7 +181,24 @@ export default function ProductIndexPage({
       base.push({ title: currentCategory.title })
     }
     return base
-  }, [currentCategory])
+  }, [currentCategory, t])
+
+  const filteredProductsSorted = useMemo(() => {
+    return productsDisplay.filter(p => {
+      // Category match: if no category in URL, match all. 
+      // Otherwise, match the product's category slug with the URL slug.
+      const catMatch = !category || p.category.slug === category
+      
+      // Ingredient match: the product must have ALL selected ingredients.
+      const ingMatch =
+        selectedIngredients.length === 0 ||
+        selectedIngredients.every(slug => {
+          const ingId = ingredientsDisplay.find(ing => ing.slug === slug)?.id
+          return ingId && p.ingredientIds.includes(ingId)
+        })
+      return catMatch && ingMatch
+    })
+  }, [category, selectedIngredients, productsDisplay, ingredientsDisplay])
 
   return (
     <section className="py-[60px]">
@@ -264,7 +271,7 @@ export default function ProductIndexPage({
               </div>
             </div>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 space-y-12">
             {filteredProductsSorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl border border-dashed border-gray-200 space-y-8">
                 <div className="space-y-3">
@@ -283,6 +290,50 @@ export default function ProductIndexPage({
                 {filteredProductsSorted.map(product => (
                   <CardProduct key={product.id} item={product} />
                 ))}
+              </div>
+            )}
+
+            {pagination.lastPage > 1 && (
+              <div className="flex justify-center items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
+                  className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer group"
+                >
+                  <div className="rotate-90">
+                    <Chevron />
+                  </div>
+                </button>
+
+                <div className="flex gap-2">
+                  {Array.from({ length: pagination.lastPage }, (_, i) => i + 1).map((p) => {
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => handlePageChange(p)}
+                        className={`
+                          size-12 flex items-center justify-center rounded-full transition-all duration-300 title-2 cursor-pointer
+                          ${pagination.currentPage === p
+                            ? 'bg-secondary text-yellow'
+                            : 'bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow'
+                          }
+                        `}
+                      >
+                        {p}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.lastPage}
+                  className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer disabled:cursor-not-allowed group"
+                >
+                  <div className="-rotate-90">
+                    <Chevron />
+                  </div>
+                </button>
               </div>
             )}
           </div>

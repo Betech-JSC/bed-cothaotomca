@@ -194,7 +194,7 @@ const Header = () => {
             <div className="absolute right-1">
               <button
                 type="submit"
-                className="btn-secondary !h-[40px] btn"
+                className="btn-secondary !h-[40px] btn max-md:!min-w-[100px]"
               >
                 {t('common.search')}
               </button>

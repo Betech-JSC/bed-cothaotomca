@@ -17,6 +17,12 @@
     "only_from": "only from",
     "share": "Share"
   },
+  "search": {
+    "results_for": "Search results for",
+    "results_count": "products",
+    "enter_keyword": "Enter a keyword to search",
+    "try_different_keyword": "Try a different keyword to find more results"
+  },
   "button": {
     "about": "About us",
     "advise-contact": "Contact",
