@@ -123,6 +123,7 @@ export default function ProductIndexPage({
       price: parseFloat(p.price as string) || 0,
       category: { id: categoryId, title: categoryName, slug: categorySlug },
       ingredientIds: p.ingredients?.map(ing => ing.id.toString()) || [],
+      variants: p.variants,
       image: {
         url: p.image || "/cover.jpg",
         alt: name

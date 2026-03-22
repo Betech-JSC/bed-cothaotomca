@@ -29,6 +29,7 @@ export interface Product {
     translations: any[];
   };
   created_at: string;
+  variants?: any[];
 }
 
 export const getProducts = async (params: { page?: number; per_page?: number; lang?: string } = {}) => {

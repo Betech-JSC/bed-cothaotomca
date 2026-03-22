@@ -11,7 +11,7 @@ interface CardProductProps {
     id: number;
     title: string;
     slug: string;
-    price: number;
+    variants: any[];
     category: {
       title: string;
       id: string;
@@ -60,7 +60,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         <div className="flex items-center justify-center gap-1.5">
           <span className="body-0 text-gray-900">{t('common.only_from')}</span>
           <span className="title-2 text-secondary">
-            {formatPrice(item.price)}
+            {formatPrice(item.variants?.[0]?.price || 0)}
           </span>
         </div>
       </div>

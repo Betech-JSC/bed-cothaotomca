@@ -4,16 +4,18 @@ import ShareInstagram from "@/components/Icons/ShareInstagram";
 import ShareThreads from "@/components/Icons/ShareThreads";
 import SocialShare from "@/components/SocialShare";
 import Image from "next/image";
+import { getTranslations } from "next-intl/server";
 
 export default async function BlogDetailsPage({
   params
 }: {
-  params: Promise<{ category: string; slug: string }>
+  params: Promise<{ locale: string; category: string; slug: string }>
 }) {
-  const { category, slug } = await params
+  const { locale, category, slug } = await params
+  const t = await getTranslations({ locale })
   const breadcrumbs = [
     {
-      title: "Tin tức",
+      title: t('breadcrumb.blog'),
       url: { pathname: '/blog' },
     },
     {

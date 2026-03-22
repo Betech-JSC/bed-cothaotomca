@@ -1,14 +1,27 @@
 import Banner from "@/components/Banner";
 import CardBlog from "@/components/Card/CardBlog";
 import CardBlogRow from "@/components/Card/CardBlogRow";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
+import { getApi } from "@/services/apiService";
+import { HeroBanner } from "@/services/heroBannerService";
 
-export default function BlogIndexPage() {
-  const t = useTranslations();
+export default async function BlogIndexPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale });
+
+  const [bannerData] = await Promise.all([
+    getApi<HeroBanner>('banners', { params: { position: 'banner_news', lang: locale } }).catch(() => ({ data: [] })),
+  ]);
+
+  const bannerItem = bannerData.data[0];
   const banner = {
     image: {
-      url: "/images/demo/banner-blog.jpg",
-      alt: "banner blog",
+      url: bannerItem?.image || "/images/demo/banner-blog.jpg",
+      alt: bannerItem?.title || "banner blog",
     },
   };
 
