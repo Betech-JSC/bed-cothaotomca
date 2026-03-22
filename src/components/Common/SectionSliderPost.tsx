@@ -8,16 +8,18 @@ import 'swiper/css/navigation';
 import Arrow from '../Icons/Arrow';
 import CardBlog from '../Card/CardBlog';
 import { Link } from '@/i18n/i18n-navigation';
+import { useTranslations } from 'next-intl';
 
 interface SectionSliderPostProps {
   items: any[];
 }
 
 const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
+  const t = useTranslations();
   return (
     <section className="md:pt-16 pt-12 xl:pt-[100px] md:pb-[100px] pb-20 xl:pb-[160px]">
       <div className="container md:space-y-6 space-y-4 xl:space-y-8">
-        <h2 className="display-3 text-center text-primary">Góc Bếp Cô Thảo</h2>
+        <h2 className="display-3 text-center text-primary">{t('blog.title')}</h2>
         <div className="relative swiper-related-product">
           <Swiper
             modules={[Navigation]}
@@ -62,7 +64,7 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
             </button>
           </Swiper>
         </div>
-        <Link href="/blog" className="btn btn-primary max-w-[240px] w-full mx-auto">tìm hiểu thêm</Link>
+        <Link href="/blog" className="btn btn-primary max-w-[240px] w-full mx-auto">{t('button.learn-more')}</Link>
       </div>
     </section>
   );

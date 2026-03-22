@@ -1,9 +1,4 @@
 {
-  "home": {
-    "title": "Chào mừng",
-    "description": "Đây là trang chủ",
-    "language": "Ngôn ngữ"
-  },
   "common": {
     "about": "Về chúng tôi",
     "product": "Sản phẩm",
@@ -12,7 +7,120 @@
     "search": "Tìm kiếm",
     "search_placeholder": "Nhập từ khóa tìm kiếm...",
     "contact": "Liên hệ",
-    "language": "Ngôn ngữ"
+    "language": "Ngôn ngữ",
+    "category": "Danh mục",
+    "ingredient": "Nguyên liệu",
+    "clear": "Xoá",
+    "clear_all": "Xoá bộ lọc",
+    "no_products_found": "Không tìm thấy sản phẩm phù hợp",
+    "try_changing_filters": "Thử thay đổi bộ lọc để xem thêm kết quả",
+    "only_from": "chỉ từ",
+    "share": "Chia sẻ"
+  },
+  "button": {
+    "about": "Về chúng tôi",
+    "advise-contact": "Liên hệ tư vấn",
+    "buy-now": "Mua ngay",
+    "learn-more": "tìm hiểu thêm",
+    "explore-menu": "Khám Phá Thực Đơn Hôm Nay"
+  },
+  "product": {
+    "size": "Kích thước",
+    "buy_now": "Mua ngay",
+    "contact": "Liên hệ tư vấn",
+    "explore-more": "Khám Phá Thêm"
+  },
+  "breadcrumb": {
+    "home": "Trang chủ",
+    "product": "Sản phẩm",
+    "about": "Về chúng tôi",
+    "blog": "Tin tức",
+    "policy": "Chính sách",
+    "contact": "Liên hệ"
+  },
+  "home": {
+    "section-2": {
+      "subTitle": "Hải sản ngâm tương, mẻ mới mỗi ngày",
+      "title": "Tươi nguyên bản, 100% không chất bảo quản.",
+      "description": {
+        "text1": "Tại Cô Thảo Tôm Cá, chúng tôi chỉ làm hải sản khi nguyên liệu đạt độ tươi ngon tốt nhất.",
+        "text2": "Từ cá hồi, tôm, cua, ghẹ, bào ngư cho đến từng nguyên liệu nhỏ nhất trong bếp, tất cả đều được chọn lọc kỹ lưỡng và chế biến trong ngày, không sử dụng chất bảo quản.",
+        "text3": "Các món hải sản ngâm tương được làm để dùng liền, giữ trọn độ ngọt tự nhiên và kết cấu tươi mới của hải sản.",
+        "text4": "Điểm nhấn nằm ở nước tương độc quyền — được cân chỉnh vừa đủ đậm đà để tôn vị, nhưng đủ nhẹ để người ăn cảm nhận rõ từng thớ thịt, từng lớp béo ngọt.",
+        "text5": "Chúng tôi không chạy theo số lượng công nghiệp hay kéo dài thời gian bảo quản.",
+        "text6": "Chỉ chọn làm mẻ mới mỗi ngày, bởi với Cô Thảo Tôm Cá, độ tươi là tiêu chuẩn bắt buộc, không phải lựa chọn."
+      }
+    },
+    "section-4": {
+      "title": "Sản phẩm bán chạy"
+    },
+    "section-5": {
+      "title": {
+        "text1": "Giao trọn ",
+        "text2": "vị ngon",
+        "text3": "đến tận nhà!"
+      }
+    },
+    "section-6": {
+      "title": "Danh mục sản phẩm"
+    },
+    "section-7": {
+      "title": {
+        "text1": "Từ Bếp Đến Bàn Ăn",
+        "text2": "Vẹn Nguyên Hương Vị"
+      },
+      "description": {
+        "text1": "Chúng tôi là mô hình Delivery & Takeaway chuyên biệt. Đặt hàng ngay để thưởng thức tại nhà.",
+        "text2": {
+          "title": "1. Đặt món:",
+          "description": "Tiếp nhận đơn hàng qua Fanpage/Hotline."
+        },
+        "text3": {
+          "title": "2. Chuẩn bị:",
+          "description": "Bếp lên đơn và đóng gói ngay lập tức để giữ độ lạnh."
+        },
+        "text4": {
+          "title": "3. Giao hàng:",
+          "description": "Giao siêu tốc trong nội thành. Bao bì đóng gói kỹ lưỡng, đảm bảo không đổ, không ám mùi."
+        }
+      }
+    }
+  },
+  "about": {
+    "section-2": {
+      "title": "Khởi nguồn từ sự trân trọng nguyên liệu nguyên bản",
+      "subTitle": "Trở thành thương hiệu tiên phong và dẫn đầu thị trường về hải sản tươi sống ngâm ngập sốt",
+      "description": {
+        "text1": "Chúng tôi hiểu rằng, để có được một mẻ tôm, cua hay cá hồi ngâm tương chuẩn vị Hàn Quốc hay Thái Lan, gia vị thôi là chưa đủ. Linh hồn của món ăn phải bắt nguồn từ những nguyên liệu \"đang bơi\" – tươi mới và thuần khiết nhất.",
+        "text2": "Tại bếp Cô Thảo, chúng tôi không chạy theo số lượng công nghiệp hay kéo dài thời gian bảo quản. Thay vào đó, chúng tôi chọn cách làm thủ công, chỉ làm những mẻ mới mỗi ngày để giữ trọn vẹn kết cấu sần sật, giòn ngọt tự nhiên của hải sản loại 1."
+      }
+    },
+    "section-3": {
+      "title": "Ân Cần Trọn Vị Mỗi Ngày",
+      "value1": {
+        "title": "Chất Lượng Tinh Tuyển",
+        "description": "Chỉ sử dụng nguyên liệu hạng nhất để chế biến. Tuyệt đối 100% không sử dụng chất bảo quản."
+      },
+      "value2": {
+        "title": "Chuyên Nghiệp & An Toàn",
+        "description": "Các khâu chế biến đảm bảo an toàn thực phẩm, kĩ thuật ngâm được học bài bản, không gian bếp và dụng cụ luôn sạch sẽ, gọn gàng."
+      },
+      "value3": {
+        "title": "Chỉn Chu Trong Trải Nghiệm",
+        "description": "Chăm chút vào từng chi tiết nhỏ nhất, từ việc bấm càng cua sẵn, chuẩn bị bao tay, cho đến bao bì tinh tế, mang lại trải nghiệm thưởng thức có 'gu'."
+      },
+      "value4": {
+        "title": "Ân Cần & Tận Tâm",
+        "description": "Tạo ra những bữa ăn ngon hoàn hảo không chỉ đến từ món chính, Cô Thảo tôm cá còn quan tâm đến một bữa ăn trọn vẹn và an tâm nhất cho khách hàng."
+      }
+    },
+    "section-5": {
+      "title": {
+        "text1": "Bữa ăn ngon đã",
+        "text2": "sẵn sàng"
+      },
+      "description": "Cho dù bạn là nhân viên văn phòng đang tìm kiếm một bữa tối đậm đà, hay một gia đình cần món ngon đổi vị, Bếp Cô Thảo luôn mở cửa đón chào."
+    }
   },
   "blog": {
     "title": "Góc Bếp Cô Thảo"

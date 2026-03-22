@@ -2,12 +2,14 @@
 
 import { useMemo } from 'react'
 import { useRouter } from '@/i18n/routing'
+import { useTranslations } from 'next-intl'
 import Breadcrumb from '../Common/Breadcrumb'
 import CardProduct from '../Card/CardProduct'
 import { Product } from '@/services/productService'
 import { Category } from '@/services/categoryService'
 import { Ingredient } from '@/services/ingredientService'
 import { slugify } from '@/lib/format'
+import Search from '../Icons/Search'
 
 // Custom Checkbox component
 function CustomCheckbox({
@@ -66,11 +68,12 @@ export default function ProductIndexPage({
   locale,
 }: ProductIndexPageProps) {
   const router = useRouter()
+  const t = useTranslations()
 
   const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
     if (!translations || translations.length === 0) return undefined;
-    return translations.find(t => t.locale === currentLocale) || 
-           translations.find(t => t.locale.startsWith(currentLocale));
+    return translations.find(t => t.locale === currentLocale) ||
+      translations.find(t => t.locale.startsWith(currentLocale));
   };
 
   const categoriesDisplay = useMemo(() => categories.map(cat => {
@@ -112,7 +115,7 @@ export default function ProductIndexPage({
     const categoryName = catTranslation?.title || p.category?.title || "";
     const categoryId = p.category?.id?.toString() || "";
     const categorySlug = slugify(categoryName);
-    
+
     return {
       id: p.id,
       title: name,
@@ -181,7 +184,7 @@ export default function ProductIndexPage({
 
   const breadcrumbs = useMemo(() => {
     const base: { title: string; url?: any }[] = [
-      { title: 'Sản phẩm', url: '/product' }
+      { title: t('breadcrumb.product'), url: '/product' }
     ]
     if (currentCategory) {
       base.push({ title: currentCategory.title })
@@ -196,7 +199,7 @@ export default function ProductIndexPage({
         <div className="flex flex-col items-center gap-4">
           <Breadcrumb breadcrumbs={breadcrumbs} />
           <h1 className="display-3 text-center text-primary">
-            {currentCategory ? currentCategory.title : 'Sản phẩm'}
+            {currentCategory ? currentCategory.title : t('breadcrumb.product')}
           </h1>
         </div>
 
@@ -205,13 +208,13 @@ export default function ProductIndexPage({
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24 space-y-2">
               <div className="pt-4.5 space-y-3">
                 <div className="px-3 flex items-center justify-between">
-                  <span className="label-1 font-semibold text-gray-900">Danh mục</span>
+                  <span className="label-1 font-semibold text-gray-900">{t('common.category')}</span>
                   {category && (
                     <button
                       onClick={clearCategory}
                       className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
                     >
-                      Xoá
+                      {t('common.clear')}
                     </button>
                   )}
                 </div>
@@ -237,13 +240,13 @@ export default function ProductIndexPage({
 
               <div className="space-y-3">
                 <div className="px-3 pt-3 pb-1 flex items-center justify-between">
-                  <span className="label-1 font-semibold text-gray-900">Nguyên liệu</span>
+                  <span className="label-1 font-semibold text-gray-900">{t('common.ingredient')}</span>
                   {selectedIngredients.length > 0 && (
                     <button
                       onClick={clearIngredients}
                       className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
                     >
-                      Xoá ({selectedIngredients.length})
+                      {t('common.clear')} ({selectedIngredients.length})
                     </button>
                   )}
                 </div>
@@ -262,15 +265,16 @@ export default function ProductIndexPage({
           </div>
           <div className="flex-1">
             {filteredProductsSorted.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl border border-dashed border-gray-200">
-                <div className="text-5xl mb-4">🔍</div>
-                <p className="text-gray-500 text-lg font-medium">Không tìm thấy sản phẩm phù hợp</p>
-                <p className="text-gray-400 text-sm mt-1">Thử thay đổi bộ lọc để xem thêm kết quả</p>
+              <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl border border-dashed border-gray-200 space-y-8">
+                <div className="space-y-3">
+                  <h2 className="headline-1 text-primary">{t('common.no_products_found')}</h2>
+                  <p className="body-1 text-gray-900">{t('common.try_changing_filters')}</p>
+                </div>
                 <button
                   onClick={clearAll}
-                  className="mt-4 px-5 py-2 bg-orange-500 text-white text-sm rounded-xl hover:bg-orange-600 transition-colors shadow-sm"
+                  className="btn btn-primary"
                 >
-                  Xoá bộ lọc
+                  {t('common.clear_all')}
                 </button>
               </div>
             ) : (

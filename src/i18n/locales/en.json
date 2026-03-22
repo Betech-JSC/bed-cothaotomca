@@ -1,9 +1,4 @@
 {
-  "home": {
-    "title": "Free Next.js Template for Startup and SaaS",
-    "description": "This is Home for Startup Nextjs Template",
-    "language": "Language"
-  },
   "common": {
     "about": "About",
     "product": "Product",
@@ -12,7 +7,120 @@
     "search": "Search",
     "search_placeholder": "Enter keywords...",
     "contact": "Contact",
-    "language": "Language"
+    "language": "Language",
+    "category": "Category",
+    "ingredient": "Ingredients",
+    "clear": "Clear",
+    "clear_all": "Clear filters",
+    "no_products_found": "No products found",
+    "try_changing_filters": "Try changing filters to see more results",
+    "only_from": "only from",
+    "share": "Share"
+  },
+  "button": {
+    "about": "About us",
+    "advise-contact": "Contact",
+    "buy-now": "Buy now",
+    "learn-more": "learn more",
+    "explore-menu": "Explore Today's Menu"
+  },
+  "product": {
+    "size": "Size",
+    "buy_now": "Buy now",
+    "contact": "Contact",
+    "explore-more": "Explore More"
+  },
+  "breadcrumb": {
+    "home": "Home",
+    "product": "Product",
+    "about": "About us",
+    "blog": "Blog",
+    "policy": "Policy",
+    "contact": "Contact"
+  },
+  "home": {
+    "section-2": {
+      "subTitle": "Fresh Seafood marinated in soy sauce, new batch every day",
+      "title": "Fresh original, 100% no preservatives.",
+      "description": {
+        "text1": "At Co Thao Tom Ca, we only make seafood when the ingredients reach their best freshness.",
+        "text2": "From salmon, shrimp, crab, flower crab, abalone to the smallest ingredients in the kitchen, all are carefully selected and processed within the day, without using preservatives.",
+        "text3": "Soy marinated seafood dishes are made to be eaten immediately, preserving the natural sweetness and fresh texture of the seafood.",
+        "text4": "The highlight lies in our exclusive soy sauce — perfectly balanced to be rich enough to enhance the flavor, but light enough for diners to feel each fiber and creamy sweet layer.",
+        "text5": "We do not follow industrial quantities or extend preservation time.",
+        "text6": "Only choose to make a new batch every day, because with Co Thao Tom Ca, freshness is a mandatory standard, not an option."
+      }
+    },
+    "section-4": {
+      "title": "Hot Products"
+    },
+    "section-5": {
+      "title": {
+        "text1": "Delivering ",
+        "text2": "great taste",
+        "text3": " to your door!"
+      }
+    },
+    "section-6": {
+      "title": "Product Categories"
+    },
+    "section-7": {
+      "title": {
+        "text1": "From Kitchen to Table",
+        "text2": "Pure Flavors"
+      },
+      "description": {
+        "text1": "We are a specialized Delivery & Takeaway model. Order now to enjoy at home.",
+        "text2": {
+          "title": "1. Order:",
+          "description": "Accepting orders via Fanpage/Hotline."
+        },
+        "text3": {
+          "title": "2. Preparation:",
+          "description": "The kitchen prepares and packs immediately to maintain freshness."
+        },
+        "text4": {
+          "title": "3. Delivery:",
+          "description": "Super-fast delivery within the city. Carefully packed to ensure no spills or odors."
+        }
+      }
+    }
+  },
+  "about": {
+    "section-2": {
+      "title": "Origins from the Appreciation of Original Ingredients",
+      "subTitle": "Becoming a pioneer and market leader in fresh seafood marinated in rich sauce",
+      "description": {
+        "text1": "We understand that to have a batch of shrimp, crab, or salmon marinated in soy sauce with authentic Korean or Thai flavors, seasoning alone is not enough. The soul of the dish must originate from ingredients that are still \"swimming\" – the freshest and purest.",
+        "text2": "At Co Thao's kitchen, we do not chase industrial quantities or extend preservation time. Instead, we choose the artisanal way, only making new batches every day to preserve the full crunchy texture and natural sweetness of grade 1 seafood."
+      }
+    },
+    "section-3": {
+      "title": "Carefully Crafted Flavors Every Day",
+      "value1": {
+        "title": "Selected Quality",
+        "description": "Only use first-class ingredients for processing. Absolutely 100% no preservatives used."
+      },
+      "value2": {
+        "title": "Professional & Safe",
+        "description": "Processing stages ensure food safety, marination techniques are properly taught, and the kitchen space and tools are always clean and tidy."
+      },
+      "value3": {
+        "title": "Meticulous in Experience",
+        "description": "Attention to the smallest details, from pre-cracked crab claws and providing gloves to exquisite packaging, bringing a 'tasteful' dining experience."
+      },
+      "value4": {
+        "title": "Attentive & Dedicated",
+        "description": "Creating perfect delicious meals doesn't just come from the main dish; Co Thao shrimp and fish also care about the most complete and worry-free meal for customers."
+      }
+    },
+    "section-5": {
+      "title": {
+        "text1": "Delicious meals are",
+        "text2": "ready"
+      },
+      "description": "Whether you are an office worker looking for a rich dinner, or a family in need of a delicious change of pace, Co Thao's Kitchen is always open to welcome you."
+    }
   },
   "blog": {
     "title": "Co Thao’s Kitchen Corner"

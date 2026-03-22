@@ -1,5 +1,6 @@
 import { ComponentProps } from "react";
 import { Link } from "@/i18n/i18n-navigation";
+import { useTranslations } from "next-intl";
 
 type LinkHref = ComponentProps<typeof Link>["href"];
 
@@ -12,16 +13,16 @@ interface BreadcrumbProps {
 }
 
 const Breadcrumb = ({ breadcrumbs, classNameNav }: BreadcrumbProps) => {
+  const t = useTranslations();
   return (
     <nav
       aria-label="Breadcrumb"
       className={`body-2 md:w-max overflow-hidden w-full line-clamp-1 ${classNameNav}`}
     >
       <div className="flex whitespace-nowrap line-clamp-1 items-center gap-0 max-w-full">
-        {/* Trang chủ */}
         <span className="flex items-center">
           <Link href="/" className="text-gray-700 opacity-70 lg:hover:text-secondary duration-300 ease-in-out">
-            Trang chủ
+            {t("breadcrumb.home")}
           </Link>
           {breadcrumbs.length > 0 && <span className="mx-1 md:mx-2">/</span>}
         </span>

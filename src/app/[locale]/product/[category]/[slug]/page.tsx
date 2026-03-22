@@ -5,13 +5,15 @@ import BoxMessage from "@/components/Icons/BoxMessage";
 import SocialShare from "@/components/SocialShare";
 import ProductInfoAccordion from "@/components/Product/ProductInfoAccordion";
 import SliderProductRelated from "@/components/Product/SliderProductRelated";
+import { getTranslations } from "next-intl/server";
 
 export default async function ProductDetailsPage({
   params
 }: {
   params: Promise<{ locale: string; category: string; slug: string }>
 }) {
-  const { slug } = await params
+  const { locale, slug } = await params
+  const t = await getTranslations({ locale });
 
   const productDemo = {
     title: "Cá Hồi Ngâm Tương Hàn Quốc",
@@ -147,7 +149,7 @@ export default async function ProductDetailsPage({
 
   const breadcrumbs = [
     {
-      title: "Sản phẩm",
+      title: t('breadcrumb.product'),
       href: "/product",
     },
     {
@@ -187,7 +189,7 @@ export default async function ProductDetailsPage({
                   <div className="body-1 text-gray-900">{productDemo.description}</div>
 
                   <div className="flex items-center md:gap-4 gap-3 xl:gap-6">
-                    <div className="label-1 font-semibold text-gray-900">Size</div>
+                    <div className="label-1 font-semibold text-gray-900">{t('product.size')}</div>
                     <div className="flex items-center md:gap-4 gap-3 xl:gap-6">
                       {productDemo.sizes.map((size, index) => (
                         <div key={index} className="flex items-center justify-center button-1 size-12 bg-white rounded-full lg:hover:bg-primary lg:hover:text-yellow duration-300 ease-in-out cursor-pointer">
@@ -202,10 +204,10 @@ export default async function ProductDetailsPage({
                   <div className="grid grid-cols-2 gap-3">
                     <button className="btn btn-primary flex items-center justify-center gap-2">
                       <BoxMessage />
-                      <span>Mua ngay</span>
+                      <span>{t('product.buy_now')}</span>
                     </button>
                     <button className="btn btn-secondary">
-                      <span>Liên hệ tư vấn</span>
+                      <span>{t('product.contact')}</span>
                     </button>
                   </div>
 

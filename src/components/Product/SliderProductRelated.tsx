@@ -7,16 +7,18 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import CardProduct from '../Card/CardProduct';
 import Arrow from '../Icons/Arrow';
+import { useTranslations } from 'next-intl';
 
 interface SliderProductRelatedProps {
   products: any[];
 }
 
 const SliderProductRelated: React.FC<SliderProductRelatedProps> = ({ products }) => {
+  const t = useTranslations();
   return (
     <section className='bg-yellow md:py-[56px] py-12 xl:py-[60px]'>
       <div className="md:container max-md:pl-4 md:space-y-6 space-y-4 xl:space-y-8">
-        <h2 className="display-3 text-center text-primary">Khám Phá Thêm</h2>
+        <h2 className="display-3 text-center text-primary">{t('product.explore-more')}</h2>
         <div className="relative swiper-related-product">
           <Swiper
             modules={[Navigation]}

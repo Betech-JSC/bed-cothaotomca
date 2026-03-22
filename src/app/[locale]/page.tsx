@@ -46,7 +46,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const productsDisplay = productsData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
     const name = translation?.name || item.name;
-    const categoryName = "Tất cả"; 
+    const categoryName = "Tất cả";
     return {
       id: item.id,
       title: name,
@@ -158,9 +158,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         <div className="container">
           <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
             <div className="col-span-10 xl:col-span-7">
-              <div className="headline-3 text-secondary">Hải sản ngâm tương, mẻ mới mỗi ngày</div>
+              <div className="headline-3 text-secondary">{t('home.section-2.subTitle')}</div>
               <div className="relative mt-4 mb-4 md:mb-8 xl:mb-12">
-                <h1 className="display-1 text-primary z-10 relative">Tươi nguyên bản, 100% không chất bảo quản.</h1>
+                <h1 className="display-1 text-primary z-10 relative">{t('home.section-2.title')}</h1>
                 <div className="absolute top-6 -right-20 xl:-right-24 size-[220px] xl:size-[250px]">
                   <Image
                     src="/images/home/image-certificate.png"
@@ -171,16 +171,16 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 </div>
               </div>
               <div className="max-w-[660px] w-full space-y-3 body-1 text-gray-800">
-                <p>Tại Cô Thảo Tôm Cá, chúng tôi chỉ làm hải sản khi nguyên liệu đạt độ tươi ngon tốt nhất.</p>
-                <p>Từ cá hồi, tôm, cua, ghẹ, bào ngư cho đến từng nguyên liệu nhỏ nhất trong bếp, tất cả đều được chọn lọc kỹ lưỡng và chế biến trong ngày, không sử dụng chất bảo quản.</p>
-                <p>Các món hải sản ngâm tương được làm để dùng liền, giữ trọn độ ngọt tự nhiên và kết cấu tươi mới của hải sản.</p>
-                <p>Điểm nhấn nằm ở nước tương độc quyền — được cân chỉnh vừa đủ đậm đà để tôn vị, nhưng đủ nhẹ để người ăn cảm nhận rõ từng thớ thịt, từng lớp béo ngọt.</p>
-                <p>Chúng tôi không chạy theo số lượng, không kéo dài thời gian bảo quản.</p>
-                <p>Chỉ chọn làm mẻ mới mỗi ngày, bởi với Cô Thảo Tôm Cá, độ tươi là tiêu chuẩn bắt buộc, không phải lựa chọn.</p>
+                <p>{t('home.section-2.description.text1')}</p>
+                <p>{t('home.section-2.description.text2')}</p>
+                <p>{t('home.section-2.description.text3')}</p>
+                <p>{t('home.section-2.description.text4')}</p>
+                <p>{t('home.section-2.description.text5')}</p>
+                <p>{t('home.section-2.description.text6')}</p>
               </div>
               <div className="md:mt-12 mt-8 xl:mt-16">
                 <Link href="/about" className="btn btn-primary max-w-[240px]">
-                  Về chúng tôi
+                  {t('button.about')}
                 </Link>
               </div>
             </div>
@@ -201,7 +201,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         <div className="absolute md:top-12 top-5 xl:top-[100px] left-0 w-full">
           <div className="container">
             <h2 className="display-1 max-md:text-[24px] text-center text-primary">
-              Giao trọn <span className="text-secondary">vị ngon</span> đến tận nhà!
+              {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span>{t('home.section-5.title.text3')}
             </h2>
           </div>
         </div>
@@ -219,7 +219,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <div className="container">
             <div className="grid md:grid-cols-2 gap-12 md:gap-16 xl:gap-20">
               <div className="space-y-8 md:space-y-12 xl:space-y-16 flex flex-col justify-center">
-                <h2 className="display-3 text-yellow uppercase max-md:text-center max-md:w-[250px] max-md:mx-auto">Danh mục sản phẩm</h2>
+                <h2 className="display-3 text-yellow uppercase max-md:text-center max-md:w-[250px] max-md:mx-auto">{t('home.section-6.title')}</h2>
                 <div className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
                   {categoriesDisplay.map((itemCategory, indexCategory) => (
                     <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
@@ -255,13 +255,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               />
             </div>
             <div className="space-y-6 md:space-y-4 xl:space-y-8 xl:pl-32">
-              <h2 className="headline-1 text-yellow">Từ Bếp Đến Bàn Ăn <br /> Vẹn Nguyên Hương Vị</h2>
+              <h2 className="headline-1 text-yellow">{t('home.section-7.title.text1')} <br /> {t('home.section-7.title.text2')}</h2>
               <div className="body-1 text-white space-y-2 md:space-y-3 xl:space-y-4">
-                <p>Chúng tôi là mô hình Delivery & Takeaway chuyên biệt. Đặt hàng ngay để thưởng thức tại nhà.</p>
+                <p>{t('home.section-7.description.text1')}</p>
                 <ol>
-                  <li><span className="font-bold">1. Đặt món:</span> Tiếp nhận đơn hàng qua Fanpage/Hotline.</li>
-                  <li><span className="font-bold">2. Chuẩn bị:</span> Bếp lên đơn và đóng gói ngay lập tức để giữ độ lạnh.</li>
-                  <li><span className="font-bold">3. Giao hàng:</span> Giao siêu tốc trong nội thành. Bao bì đóng gói kỹ lưỡng, đảm bảo không đổ, không ám mùi.</li>
+                  <li><span className="font-bold">{t('home.section-7.description.text2.title')}</span> {t('home.section-7.description.text2.description')}</li>
+                  <li><span className="font-bold">{t('home.section-7.description.text3.title')}</span> {t('home.section-7.description.text3.description')}</li>
+                  <li><span className="font-bold">{t('home.section-7.description.text4.title')}</span> {t('home.section-7.description.text4.description')}</li>
                 </ol>
               </div>
               <div className="flex items-center md:gap-4 gap-6 xl:gap-6">
@@ -269,7 +269,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                   <Phone />
                   <span>024.9999.7122</span>
                 </button>
-                <button className="btn btn-white">Liên hệ tư vấn</button>
+                <button className="btn btn-white">{t('button.advise-contact')}</button>
               </div>
             </div>
           </div>

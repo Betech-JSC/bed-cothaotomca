@@ -10,7 +10,7 @@ import { Link } from '@/i18n/i18n-navigation';
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'common' });
+  const t = await getTranslations({ locale });
   const [bannerData, slideData] = await Promise.all([
     getApi<HeroBanner>('banners', { params: { position: 'banner_intro', lang: locale } }).catch(() => ({ data: [] })),
     getApi<HeroBanner>('banners', { params: { position: 'slide_intro', lang: locale } }).catch(() => ({ data: [] }))
@@ -37,32 +37,32 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         url: "/images/about/image-value-1.png",
         alt: "image value 1",
       },
-      title: "Chất Lượng Tinh Tuyển",
-      description: "Chỉ sử dụng nguyên liệu hạng nhất để chế biến. Tuyệt đối 100% không sử dụng chất bảo quản.",
+      title: t('about.section-3.value1.title'),
+      description: t('about.section-3.value1.description'),
     },
     {
       image: {
         url: "/images/about/image-value-2.png",
         alt: "image value 2",
       },
-      title: "Chuyên Nghiệp & An Toàn",
-      description: "Các khâu chế biến đảm bảo an toàn thực phẩm, kĩ thuật ngâm được học bài bản, không gian bếp và dụng cụ luôn sạch sẽ, gọn gàng.",
+      title: t('about.section-3.value2.title'),
+      description: t('about.section-3.value2.description'),
     },
     {
       image: {
         url: "/images/about/image-value-3.png",
         alt: "image value 3",
       },
-      title: "Chỉn Chu Trong Trải Nghiệm",
-      description: `Chăm chút vào từng chi tiết nhỏ nhất, từ việc bấm càng cua sẵn, chuẩn bị bao tay, cho đến bao bì tinh tế, mang lại trải nghiệm thưởng thức có "gu".`,
+      title: t('about.section-3.value3.title'),
+      description: t('about.section-3.value3.description'),
     },
     {
       image: {
         url: "/images/about/image-value-4.png",
         alt: "image value 4",
       },
-      title: "Ân Cần & Tận Tâm",
-      description: "Tạo ra những bữa ăn ngon hoàn hảo không chỉ đến từ món chính, Cô Thảo tôm cá còn quan tâm đến một bữa ăn trọn vẹn và an tâm nhất cho khách hàng.",
+      title: t('about.section-3.value4.title'),
+      description: t('about.section-3.value4.description'),
     },
   ];
 
@@ -138,15 +138,15 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                   className="object-cover w-full h-full"
                 />
               </div>
-              <h1 className="display-2 text-primary text-center">Khởi nguồn từ sự trân trọng nguyên liệu nguyên bản</h1>
+              <h1 className="display-2 text-primary text-center">{t('about.section-2.title')}</h1>
             </div>
             <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
               <div className="col-span-full lg:col-span-5 xl:col-span-4 flex items-center">
                 <div className="xl:max-w-[350px] w-full md:space-y-4 space-y-3 xl:space-y-6">
-                  <h3 className="title-2 text-primary">Trở thành thương hiệu tiên phong và dẫn đầu thị trường về hải sản tươi sống ngâm ngập sốt</h3>
+                  <h3 className="title-2 text-primary">{t('about.section-2.subTitle')}</h3>
                   <div className="body-1 text-gray-800 md:space-y-4 space-y-2">
-                    <p>Chúng tôi hiểu rằng, để có được một mẻ tôm, cua hay cá hồi ngâm tương chuẩn vị Hàn Quốc hay Thái Lan, gia vị thôi là chưa đủ. Linh hồn của món ăn phải bắt nguồn từ những nguyên liệu "đang bơi" – tươi mới và thuần khiết nhất.</p>
-                    <p>Tại bếp Cô Thảo, chúng tôi không chạy theo số lượng công nghiệp hay kéo dài thời gian bảo quản. Thay vào đó, chúng tôi chọn cách làm thủ công, chỉ làm những mẻ mới mỗi ngày để giữ trọn vẹn kết cấu sần sật, giòn ngọt tự nhiên của hải sản loại 1.</p>
+                    <p>{t('about.section-2.description.text1')}</p>
+                    <p>{t('about.section-2.description.text2')}</p>
                   </div>
                 </div>
               </div>
@@ -163,7 +163,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
             </div>
           </div>
           <div className="md:space-y-8 space-y-6 xl:space-y-12">
-            <h2 className="display-2 text-center text-primary">Ân Cần Trọn Vị Mỗi Ngày</h2>
+            <h2 className="display-2 text-center text-primary">{t('about.section-3.title')}</h2>
             <div className="grid md:grid-cols-2 xl:grid-cols-4 md:gap-6 gap-4 lg:gap-8">
               {values.map((itemValue, indexValue) => (
                 <div key={indexValue} className="md:space-y-4 space-y-3 xl:space-y-6">
@@ -197,11 +197,11 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         </div>
         <div className="container">
           <div className="md:space-y-4 space-y-3 xl:space-y-6 max-w-[602px] w-full mx-auto flex flex-col items-center justify-center text-center">
-            <h2 className="display-2 text-center text-primary">Bữa ăn ngon đã <span className="text-secondary">sẵn sàng</span></h2>
-            <div className="body-0 text-primary">Cho dù bạn là nhân viên văn phòng đang tìm kiếm một bữa tối đậm đà, hay một gia đình cần món ngon đổi vị, Bếp Cô Thảo luôn mở cửa đón chào.</div>
+            <h2 className="display-2 text-center text-primary">{t('about.section-5.title.text1')} <span className="text-secondary">{t('about.section-5.title.text2')}</span></h2>
+            <div className="body-0 text-primary">{t('about.section-5.description')}</div>
             <Link href="/product" className="btn btn-primary gap-2 w-max mx-auto px-[18px]">
               <Cart />
-              <span>Khám Phá Thực Đơn Hôm Nay</span>
+              <span>{t('button.explore-menu')}</span>
             </Link>
           </div>
         </div>

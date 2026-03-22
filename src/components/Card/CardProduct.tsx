@@ -1,7 +1,10 @@
+'use client'
+
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import React from "react";
 import { formatPrice } from "@/lib/format";
+import { useTranslations } from "next-intl";
 
 interface CardProductProps {
   item: {
@@ -25,6 +28,7 @@ interface CardProductProps {
 }
 
 const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
+  const t = useTranslations();
   return (
     <div className="group rounded-[24px] relative overflow-hidden bg-white">
       {/* Image */}
@@ -54,7 +58,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         </Link>
         <div className="body-1 text-gray-900 line-clamp-3 min-h-[72px] mt-1.5 mb-3">{item.description}</div>
         <div className="flex items-center justify-center gap-1.5">
-          <span className="body-0 text-gray-900">chỉ từ</span>
+          <span className="body-0 text-gray-900">{t('common.only_from')}</span>
           <span className="title-2 text-secondary">
             {formatPrice(item.price)}
           </span>

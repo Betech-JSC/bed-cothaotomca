@@ -8,12 +8,15 @@ import 'swiper/css/navigation';
 import CardProduct from '../Card/CardProduct';
 import Arrow from '../Icons/Arrow';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 
 interface SectionHotProductProps {
   products: any[];
 }
 
 const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
+  const t = useTranslations();
+
   return (
     <section className='relative md:py-[56px] py-12 xl:pt-[60px] xl:pb-[300px]'>
       <div className="absolute inset-0">
@@ -26,7 +29,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
       </div>
       <div className="relative">
         <div className="container space-y-8">
-          <h2 className="display-2 text-center text-primary uppercase">Sản phẩm bán chạy</h2>
+          <h2 className="display-2 text-center text-primary uppercase">{t('home.section-4.title')}</h2>
           <div className="relative swiper-hot-product">
             <Swiper
               modules={[Navigation]}
