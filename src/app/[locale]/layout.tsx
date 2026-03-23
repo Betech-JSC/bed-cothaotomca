@@ -5,6 +5,9 @@ import Footer from "@/components/Footer"
 import ScrollToTop from "@/components/ScrollToTop"
 import "../../styles/globals.scss"
 import { Providers } from "../providers"
+import { getGeneralSettings } from '@/services/generalSettingService'
+import { GeneralSettingsProvider } from '@/contexts/GeneralSettingsContext'
+
 
 
 export default async function LocaleLayout({
@@ -17,18 +20,22 @@ export default async function LocaleLayout({
   const { locale } = await params
   const messages = await getMessages()
 
+  const settings = await getGeneralSettings().catch(() => null);
+
   return (
     <html suppressHydrationWarning lang={locale}>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <Providers>
-            <div className="isolate">
-              <Header />
-              {children}
-              <Footer />
-              <ScrollToTop />
-            </div>
-          </Providers>
+          <GeneralSettingsProvider settings={settings}>
+            <Providers>
+              <div className="isolate">
+                <Header />
+                {children}
+                <Footer />
+                <ScrollToTop />
+              </div>
+            </Providers>
+          </GeneralSettingsProvider>
         </NextIntlClientProvider>
       </body>
     </html>

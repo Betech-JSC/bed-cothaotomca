@@ -28,7 +28,8 @@
     "advise-contact": "Contact",
     "buy-now": "Buy now",
     "learn-more": "learn more",
-    "explore-menu": "Explore Today's Menu"
+    "explore-menu": "Explore Today's Menu",
+    "submit-form": "Send Message"
   },
   "product": {
     "size": "Size",
@@ -133,5 +134,25 @@
   },
   "blog": {
     "title": "Co Thao’s Kitchen Corner"
+  },
+  "contact": {
+    "title": "Contact",
+    "description": "We listen with care and serve with dedication. Whether you need advice on our marinated seafood flavors or want to order premium fresh seafood, Co Thao Kitchen is always here to prepare the freshest batches of the day for you.",
+    "address": "Address",
+    "form": {
+      "title": "How can Co Thao Kitchen assist you?",
+      "name": {
+        "title": "Full Name",
+        "placeholder": "Enter your full name..."
+      },
+      "phone": {
+        "title": "Phone Number",
+        "placeholder": "Enter your phone number..."
+      },
+      "message": {
+        "title": "Message",
+        "placeholder": "Share more details about your needs with us..."
+      }
+    }
   }
 }

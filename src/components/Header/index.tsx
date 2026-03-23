@@ -7,6 +7,7 @@ import Logo from "../Logo";
 import LanguageSwitcher from "../LanguageSwitcher";
 import Search from "../Icons/Search";
 import Hotline from "../Icons/Hotline";
+import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 
 type LinkHref = ComponentProps<typeof Link>["href"];
 
@@ -23,6 +24,9 @@ const STICKY_SCROLL_Y = 10;
 const Header = () => {
   const pathname = usePathname();
   const t = useTranslations();
+  const settings = useGeneralSettings();
+  const hotline = settings?.hotline || "0987 654 321";
+  const hotlineClean = hotline.replace(/\s/g, "");
 
   const mainNavLeft: NavItem[] = [
     { label: t('common.about'), href: `/about`, i18nKey: 'about' },
@@ -110,7 +114,7 @@ const Header = () => {
           className="hidden items-center justify-between lg:flex"
           aria-label="Main"
         >
-          <ul className="flex gap-4">
+          <ul className="flex gap-4 min-w-[400px]">
             {mainNavLeft.map((itemNavLeft, indexNavLeft) => (
               <DesktopNavItem
                 key={itemNavLeft.i18nKey}
@@ -129,7 +133,7 @@ const Header = () => {
             stickyHeight={56}
             className="h-20"
           />
-          <ul className="flex items-center gap-4">
+          <ul className="flex items-center justify-end gap-4 min-w-[400px]">
             {mainNavRight.map((itemNavRight, indexNavRight) => (
               <DesktopNavItem
                 key={itemNavRight.i18nKey}
@@ -143,7 +147,7 @@ const Header = () => {
             <li>
               <button
                 onClick={toggleSearch}
-                className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
+                className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
                 aria-label="Search"
               >
                 <Search />
@@ -156,13 +160,13 @@ const Header = () => {
             </li>
             <li>
               <a
-                href="tel:0987654321"
+                href={`tel:${hotlineClean}`}
                 className="border-yellow text-yellow lg:hover:border-secondary lg:hover:text-secondary flex items-center gap-1.5 rounded-full border px-3 py-1 duration-300 ease-in-out"
               >
                 <Hotline />
                 <div>
                   <div className="body-4 font-semibold uppercase">Hotline</div>
-                  <div className="label-1 font-semibold">0987 654 321</div>
+                  <div className="label-1 font-semibold">{hotline}</div>
                 </div>
               </a>
             </li>
@@ -310,6 +314,9 @@ const MobileMenu = ({
   onToggleSearch,
 }: MobileMenuProps) => {
   const [openSection, setOpenSection] = useState<number | null>(null);
+  const settings = useGeneralSettings();
+  const hotline = settings?.hotline || "0987 654 321";
+  const hotlineClean = hotline.replace(/\s/g, "");
 
   useEffect(() => {
     if (!open) setOpenSection(null);
@@ -445,13 +452,13 @@ const MobileMenu = ({
         </ul>
 
         <a
-          href="tel:0987654321"
+          href={`tel:${hotlineClean}`}
           className="border-yellow text-yellow lg:hover:border-secondary lg:hover:text-secondary flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 duration-300 ease-in-out w-max"
         >
           <Hotline />
           <div>
             <div className="body-4 font-semibold uppercase">Hotline</div>
-            <div className="label-1 font-semibold">0987 654 321</div>
+            <div className="label-1 font-semibold">{hotline}</div>
           </div>
         </a>
       </div>

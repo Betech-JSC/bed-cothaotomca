@@ -28,7 +28,8 @@
     "advise-contact": "Liên hệ tư vấn",
     "buy-now": "Mua ngay",
     "learn-more": "tìm hiểu thêm",
-    "explore-menu": "Khám Phá Thực Đơn Hôm Nay"
+    "explore-menu": "Khám Phá Thực Đơn Hôm Nay",
+    "submit-form": "Gửi Lời Nhắn"
   },
   "product": {
     "size": "Kích thước",
@@ -133,5 +134,25 @@
   },
   "blog": {
     "title": "Góc Bếp Cô Thảo"
+  },
+  "contact": {
+    "title": "Liên hệ",
+    "description": "Lắng nghe bằng sự ân cần, phục vụ bằng sự tận tâm. Dù bạn cần tư vấn về khẩu vị món ngâm tương, hay muốn đặt một phần hải sản loại 1 tươi ngon , Bếp Cô Thảo luôn ở đây để chuẩn bị cho bạn những mẻ mới nhất trong ngày.",
+    "address": "Địa chỉ",
+    "form": {
+      "title": "Bếp Cô Thảo có thể giúp gì cho bạn?",
+      "name": {
+        "title": "Họ và tên",
+        "placeholder": "Nhập họ và tên..."
+      },
+      "phone": {
+        "title": "Số điện thoại",
+        "placeholder": "Nhập số điện thoại..."
+      },
+      "message": {
+        "title": "Lời nhắn gửi",
+        "placeholder": "Chia sẻ chi tiết hơn mong muốn của bạn với Bếp..."
+      }
+    }
   }
 }

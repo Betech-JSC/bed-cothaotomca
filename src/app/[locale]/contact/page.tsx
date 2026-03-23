@@ -5,22 +5,31 @@ import ShareThreads from '@/components/Icons/ShareThreads';
 import ShareTikTok from '@/components/Icons/ShareTikTok';
 import ShareYoutube from '@/components/Icons/ShareYoutube';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
+import { getGeneralSettings } from '@/services/generalSettingService';
 
-export default function ContactPage() {
-  const t = useTranslations()
+export default async function ContactPage() {
+  const t = await getTranslations()
   const banner = {
     image: {
       url: "/images/demo/banner-contact.jpg",
       alt: "banner contact",
     },
   };
+
+  const settings = await getGeneralSettings().catch(() => null);
+
+  const hotline = settings?.hotline;
+  const email = settings?.email;
+  const address = settings?.address;
+  const linkAddress = settings?.link_address;
+
   const socials = [
-    { icon: <ShareFacebook />, href: "#" },
-    { icon: <ShareInstagram />, href: "#" },
-    { icon: <ShareThreads />, href: "#" },
-    { icon: <ShareTikTok />, href: "#" },
-    { icon: <ShareYoutube />, href: "#" },
+    { icon: <ShareFacebook />, href: settings?.link_facebook },
+    { icon: <ShareInstagram />, href: settings?.link_instagram },
+    { icon: <ShareThreads />, href: settings?.link_threads },
+    { icon: <ShareTikTok />, href: settings?.link_tiktok },
+    { icon: <ShareYoutube />, href: settings?.link_youtube },
   ];
 
   return (
@@ -33,44 +42,46 @@ export default function ContactPage() {
 
             <div className="col-span-full lg:col-span-6 xl:col-span-7 md:space-y-6 space-y-4 xl:space-y-8">
               <div className="space-y-3">
-                <h1 className="display-3 text-primary">Liên Hệ</h1>
+                <h1 className="display-3 text-primary">{t('contact.title')}</h1>
                 <p className="body-1 text-gray-900 max-w-[700px]">
-                  Lắng nghe bằng sự ân cần, phục vụ bằng sự tận tâm. Dù bạn cần tư vấn về khẩu vị món ngâm tương, hay muốn đặt một phần hải sản loại 1 tươi ngon , Bếp Cô Thảo luôn ở đây để chuẩn bị cho bạn những mẻ mới nhất trong ngày.
+                  {t('contact.description')}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 md:gap-y-6 gap-y-4 xl:gap-y-8 md:gap-x-3 xl:gap-x-6">
                 <div className="space-y-2">
-                  <h3 className="title-3 text-gray-900">Địa chỉ</h3>
+                  <h3 className="title-3 text-gray-900">{t('contact.address')}</h3>
                   <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
-                    <a href="https://maps.app.goo.gl/sf95bmqfjr9ZFGap8" target="_blank" rel="noopener noreferrer nofollow">
-                      42/2 Trần Đình Xu, Cô Giang, Quận 1, Ho Chi Minh City, Vietnam
+                    <a href={linkAddress} target="_blank" rel="noopener noreferrer nofollow">
+                      {address}
                     </a>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <h3 className="title-3 text-gray-900">Hotline</h3>
                   <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
-                    <a href="tel:0987654321">0987 654 321</a>
+                    <a href={`tel:${hotline.replace(/\s/g, '')}`}>{hotline}</a>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <h3 className="title-3 text-gray-900">Email</h3>
                   <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
-                    <a href="mailto:cothaotomca@gmail.com">cothaotomca@gmail.com</a>
+                    <a href={`mailto:${email}`}>{email}</a>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <h3 className="title-3 text-gray-900">Social</h3>
                   <div className="flex items-center gap-3 md:gap-2 xl:gap-3">
                     {socials.map((item, idx) => (
-                      <a
-                        key={idx}
-                        href={item.href}
-                        className="size-10 rounded-[8px] flex items-center justify-center bg-white text-[#4C76C0] lg:hover:text-secondary lg:hover:bg-primary duration-300 ease-in-out shadow-sm"
-                      >
-                        {item.icon}
-                      </a>
+                      item.href && (
+                        <a
+                          key={idx}
+                          href={item.href}
+                          className="size-10 rounded-[8px] flex items-center justify-center bg-white text-[#4C76C0] lg:hover:text-secondary lg:hover:bg-primary duration-300 ease-in-out shadow-sm"
+                        >
+                          {item.icon}
+                        </a>
+                      )
                     ))}
                   </div>
                 </div>
@@ -88,33 +99,33 @@ export default function ContactPage() {
                   />
                 </div>
                 <div className="relative space-y-6">
-                  <h2 className="title-1 text-yellow">Bếp Cô Thảo có thể giúp gì cho bạn?</h2>
+                  <h2 className="title-1 text-yellow">{t('contact.form.title')}</h2>
 
                   <form className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="body-1 text-white block">Họ và tên</label>
+                        <label className="body-1 text-white block">{t('contact.form.name.title')}</label>
                         <input
                           type="text"
-                          placeholder="Nhập họ và tên..."
+                          placeholder={t('contact.form.name.placeholder')}
                           className="w-full bg-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-secondary transition-all"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="body-1 text-white block">Số điện thoại</label>
+                        <label className="body-1 text-white block">{t('contact.form.phone.title')}</label>
                         <input
                           type="tel"
-                          placeholder="Nhập số điện thoại..."
+                          placeholder={t('contact.form.phone.placeholder')}
                           className="w-full bg-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-secondary transition-all"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <label className="body-1 text-white block">Lời nhắn gửi</label>
+                      <label className="body-1 text-white block">{t('contact.form.message.title')}</label>
                       <textarea
                         rows={4}
-                        placeholder="Chia sẻ chi tiết hơn mong muốn của bạn với Bếp..."
+                        placeholder={t('contact.form.message.placeholder')}
                         className="w-full bg-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-secondary transition-all resize-none"
                       />
                     </div>
@@ -123,7 +134,7 @@ export default function ContactPage() {
                       type="submit"
                       className="btn btn-secondary !w-full"
                     >
-                      Gửi Lời Nhắn
+                      {t('button.submit-form')}
                     </button>
                   </form>
                 </div>

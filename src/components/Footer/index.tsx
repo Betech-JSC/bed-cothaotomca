@@ -3,6 +3,8 @@ import { Link, usePathname } from "@/i18n/i18n-navigation";
 import Image from "next/image";
 import Logo from "../Logo";
 import Hotline from "../Icons/Hotline";
+import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
+
 
 const Footer = () => {
   const showroooms = [
@@ -29,6 +31,9 @@ const Footer = () => {
   ]
 
   const pathname = usePathname();
+  const settings = useGeneralSettings();
+  const hotline = settings?.hotline || "0987 654 321";
+  const hotlineClean = hotline.replace(/\s/g, "");
   const isShowWave = pathname === "/" || pathname === "/about";
 
   return (
@@ -79,9 +84,9 @@ const Footer = () => {
                 ))}
               </div>
               <div className="grid grid-cols-2 md:gap-6 gap-4 xl:gap-8">
-                <a href="tel:0987 654 321" className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out">
+                <a href={`tel:${hotlineClean}`} className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out">
                   <Hotline />
-                  <span>0987 654 321</span>
+                  <span>{hotline}</span>
                 </a>
               </div>
             </div>
