@@ -30,7 +30,8 @@
     "buy-now": "Mua ngay",
     "learn-more": "tìm hiểu thêm",
     "explore-menu": "Khám Phá Thực Đơn Hôm Nay",
-    "submit-form": "Gửi Lời Nhắn"
+    "submit-form": "Gửi Lời Nhắn",
+    "order-now": "Đặt ngay"
   },
   "product": {
     "size": "Kích thước",
@@ -68,7 +69,7 @@
     "section-5": {
       "title": {
         "text1": "Giao trọn ",
-        "text2": "vị ngon",
+        "text2": "vị ngon ",
         "text3": "đến tận nhà!"
       }
     },

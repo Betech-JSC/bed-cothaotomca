@@ -9,6 +9,8 @@ import CardProduct from '../Card/CardProduct';
 import Arrow from '../Icons/Arrow';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/i18n-navigation';
+import Cart from '../Icons/Cart';
 
 interface SectionHotProductProps {
   products: any[];
@@ -81,6 +83,12 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
                 </div>
               </button>
             </Swiper>
+          </div>
+          <div className="flex justify-center">
+            <Link href="/contact" className="btn btn-primary gap-2">
+              <Cart />
+              <span>{t('button.order-now')}</span>
+            </Link>
           </div>
         </div>
       </div>

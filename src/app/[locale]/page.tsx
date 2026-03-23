@@ -243,11 +243,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 </ol>
               </div>
               <div className="flex items-center md:gap-4 gap-6 xl:gap-6">
-                <button className="btn btn-white flex items-center gap-2 px-3.5">
+                <a href="tel:02499997122" className="btn btn-white flex items-center gap-2 px-3.5">
                   <Phone />
                   <span>024.9999.7122</span>
-                </button>
-                <button className="btn btn-white">{t('button.advise-contact')}</button>
+                </a>
+                <a href="https://m.me/cothaotomca" target="_blank" rel="noopener noreferrer nofollow" className="btn btn-white">{t('button.advise-contact')}</a>
               </div>
             </div>
           </div>

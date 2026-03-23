@@ -147,7 +147,7 @@ const Header = () => {
             <li>
               <button
                 onClick={toggleSearch}
-                className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
+                className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer flex items-center justify-center"
                 aria-label="Search"
               >
                 <Search />
