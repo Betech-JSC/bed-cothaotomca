@@ -15,7 +15,8 @@
     "no_products_found": "Không tìm thấy sản phẩm phù hợp",
     "try_changing_filters": "Thử thay đổi bộ lọc để xem thêm kết quả",
     "only_from": "chỉ từ",
-    "share": "Chia sẻ"
+    "share": "Chia sẻ",
+    "all": "Tất cả"
   },
   "search": {
     "results_for": "Kết quả tìm kiếm ",
@@ -133,7 +134,8 @@
     }
   },
   "blog": {
-    "title": "Góc Bếp Cô Thảo"
+    "title": "Góc Bếp Cô Thảo",
+    "category": "Danh mục"
   },
   "contact": {
     "title": "Liên hệ",

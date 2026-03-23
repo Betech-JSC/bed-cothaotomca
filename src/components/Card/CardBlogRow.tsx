@@ -39,9 +39,12 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
 
       <div className="space-y-1">
         <div className="flex items-center space-x-1 md:space-x-3">
-          <span className="label-2 font-semibold text-[#941417]">
+          <Link
+            href={{ pathname: '/blog/category/[category]', params: { category: item.category.slug } }}
+            className="label-2 font-semibold text-[#941417] hover:underline"
+          >
             {item.category.title}
-          </span>
+          </Link>
           <span className="text-[#941417]">|</span>
           <span className="body-2 text-[#941417]">
             {formatDate(item.created_at)}

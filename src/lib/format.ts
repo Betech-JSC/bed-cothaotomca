@@ -21,8 +21,10 @@ export function formatPrice(price: number) {
   return new Intl.NumberFormat('vi-VN').format(price).replace(/,/g, '.') + ' VNĐ';
 }
 
-export function slugify(str: string) {
+export function slugify(str: string | undefined | null) {
+  if (!str) return '';
   return str
+    .toString()
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -30,4 +32,9 @@ export function slugify(str: string) {
     .replace(/[^\w\s-]/g, '')
     .replace(/[\s_-]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+export function getTranslation<T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined {
+  if (!translations || translations.length === 0) return undefined;
+  return translations.find(t => t.locale === currentLocale) ||
+    translations.find(t => t.locale.startsWith(currentLocale));
 }

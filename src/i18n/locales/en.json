@@ -15,7 +15,8 @@
     "no_products_found": "No products found",
     "try_changing_filters": "Try changing filters to see more results",
     "only_from": "only from",
-    "share": "Share"
+    "share": "Share",
+    "all": "All"
   },
   "search": {
     "results_for": "Search results for",
@@ -133,7 +134,8 @@
     }
   },
   "blog": {
-    "title": "Co Thao’s Kitchen Corner"
+    "title": "Co Thao’s Kitchen Corner",
+    "category": "Category"
   },
   "contact": {
     "title": "Contact",

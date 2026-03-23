@@ -7,13 +7,16 @@ import Banner from '@/components/Banner';
 import SectionSliderPost from '@/components/Common/SectionSliderPost';
 import Cart from '@/components/Icons/Cart';
 import { Link } from '@/i18n/i18n-navigation';
+import { getBlogs } from '@/services/blogService';
+import { slugify } from '@/lib/format';
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const t = await getTranslations({ locale });
-  const [bannerData, slideData] = await Promise.all([
+  const [bannerData, slideData, blogsData] = await Promise.all([
     getApi<HeroBanner>('banners', { params: { position: 'banner_intro', lang: locale } }).catch(() => ({ data: [] })),
-    getApi<HeroBanner>('banners', { params: { position: 'slide_intro', lang: locale } }).catch(() => ({ data: [] }))
+    getApi<HeroBanner>('banners', { params: { position: 'slide_intro', lang: locale } }).catch(() => ({ data: [] })),
+    getBlogs({ is_featured: true, per_page: 10, lang: locale }).catch(() => ({ data: [] }))
   ]);
 
   const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
@@ -78,50 +81,26 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
     };
   });
 
-  const postsDemo = [
-    {
+  const postsDisplay = blogsData.data.map((item) => {
+    const translation = getTranslation(item.translations, locale) as any;
+    const catTranslation = getTranslation(item.category?.translations, locale) as any;
+    const title = translation?.title || item.title;
+    const categoryName = catTranslation?.title || item.category?.title || t('blog.category');
+
+    return {
       image: {
-        url: "/images/demo/image-blog.jpg",
-        alt: "Shrimp Korean style",
+        url: item.thumbnail || "/cover.jpg",
+        alt: title,
       },
-      title:
-        "Cách ăn Tôm ngâm tương chuẩn vị Hàn Quốc cùng rong biển và cơm nóng",
-      slug: "cach-an-tom-ngam-tuong-chuan-vi-han-quoc-cung-rong-bien-va-com-nong",
+      title: title,
+      slug: item.slug,
       category: {
-        title: "Danh mục A",
-        slug: "danh-muc-a",
+        title: categoryName,
+        slug: item.category?.slug || slugify(categoryName),
       },
-      created_at: "2024-06-12",
-    },
-    {
-      image: {
-        url: "/images/demo/image-blog.jpg",
-        alt: "Shrimp Korean style",
-      },
-      title:
-        "Cách ăn Tôm ngâm tương chuẩn vị Hàn Quốc cùng rong biển và cơm nóng",
-      slug: "cach-an-tom-ngam-tuong-chuan-vi-han-quoc-cung-rong-bien-va-com-nong",
-      category: {
-        title: "Danh mục A",
-        slug: "danh-muc-a",
-      },
-      created_at: "2024-06-12",
-    },
-    {
-      image: {
-        url: "/images/demo/image-blog.jpg",
-        alt: "Shrimp Korean style",
-      },
-      title:
-        "Cách ăn Tôm ngâm tương chuẩn vị Hàn Quốc cùng rong biển và cơm nóng",
-      slug: "cach-an-tom-ngam-tuong-chuan-vi-han-quoc-cung-rong-bien-va-com-nong",
-      category: {
-        title: "Danh mục A",
-        slug: "danh-muc-a",
-      },
-      created_at: "2024-06-12",
-    },
-  ];
+      created_at: item.created_at,
+    };
+  });
 
   return (
     <main>
@@ -206,7 +185,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           </div>
         </div>
       </section>
-      <SectionSliderPost items={postsDemo} />
+      <SectionSliderPost items={postsDisplay} />
     </main>
   )
 }

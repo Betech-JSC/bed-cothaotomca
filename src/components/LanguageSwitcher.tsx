@@ -1,21 +1,17 @@
 "use client";
 
-import { usePathname, useRouter } from "@/i18n/i18n-navigation";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "@/i18n/i18n-navigation";
 import { useLocale } from "next-intl";
 import Image from "next/image";
 
 export default function LanguageSwitcher() {
   const locale = useLocale();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   const nextLocale = locale === "vi" ? "en" : "vi";
 
   const handleToggle = () => {
-    const targetSearch = searchParams.toString() ? `?${searchParams.toString()}` : "";
-    router.replace((pathname + targetSearch) as any, { locale: nextLocale });
+    router.replace("/", { locale: nextLocale });
   };
 
   return (
