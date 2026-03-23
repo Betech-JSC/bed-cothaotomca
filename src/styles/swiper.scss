@@ -11,3 +11,18 @@
     }
   }
 }
+
+.swiper-hot-product {
+  .swiper-slide {
+    @apply xl:scale-80 transition-all duration-300 ease-in-out;
+  }
+
+  .swiper-slide-active {
+    @apply scale-100;
+  }
+
+  .swiper-slide-prev,
+  .swiper-slide-next {
+    @apply xl:scale-90;
+  }
+}

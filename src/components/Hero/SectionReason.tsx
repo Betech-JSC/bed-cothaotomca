@@ -1,34 +1,111 @@
 'use client'
 
-import React from 'react';
+import React, { useState, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Swiper, SwiperSlide } from 'swiper/react';
+import { Autoplay } from 'swiper/modules';
+import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
 
 interface SectionReasonProps {
   items: any[];
 }
 
 const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
+  const t = useTranslations();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const swiperRef = useRef<SwiperType | null>(null);
+
+  const handleSlideChange = useCallback((swiper: SwiperType) => {
+    setActiveIndex(swiper.realIndex);
+  }, []);
+
+  const handlePaginationClick = useCallback((index: number) => {
+    if (swiperRef.current) {
+      swiperRef.current.slideToLoop(index);
+    }
+  }, []);
+
+  const formatNumber = (num: number) => {
+    return String(num + 1).padStart(2, '0');
+  };
+
   return (
     <section className="relative h-[600px] md:h-[550px] xl:h-[810px]">
+      {/* Title overlay */}
+      <div className="absolute inset-0 w-full pt-8 xl:pt-10 z-10 pointer-events-none">
+        <div className="container">
+          <h2 className="display-2 max-lg:text-[32px] text-white text-center">
+            {t('home.section-3.title')}
+          </h2>
+        </div>
+      </div>
+
+      {/* Custom Vertical Pagination */}
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col justify-end items-end gap-2 pr-8">
+        {items.map((_, index) => {
+          const isActive = index === activeIndex;
+          return (
+            <button
+              key={index}
+              onClick={() => handlePaginationClick(index)}
+              className="flex items-center gap-2 md:gap-3 cursor-pointer group"
+              aria-label={`Go to slide ${index + 1}`}
+            >
+              {/* Number */}
+              <span
+                className={`size-12 flex items-center justify-center transition-all duration-500 ease-out select-none rounded-full
+                  ${isActive
+                    ? "headline-3 text-white bg-secondary"
+                    : "title-3 text-white/50"
+                  }
+                `}
+              >
+                {formatNumber(index)}
+              </span>
+
+              {/* Line */}
+              <span
+                className={`
+                  block h-[2px] transition-all duration-500 ease-out bg-white/50
+                  ${isActive
+                    ? "w-[75px] xl:w-[100px]"
+                    : "w-[30px] xl:w-[32px]"
+                  }
+                `}
+              />
+
+              {/* Dot / Ring indicator */}
+              <div className="relative">
+                <div
+                  className={`
+                  size-5 border-[1.5px] rounded-full transition-all duration-500 ease-in-out
+                  ${isActive
+                      ? "border-white"
+                      : "border-transparent"
+                    }
+                `}
+                ></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-3 rounded-full bg-white"></div>
+              </div>
+
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Swiper */}
       <div className="relative swiper-choose-us h-full">
         <Swiper
-          modules={[]}
+          modules={[Autoplay]}
           spaceBetween={0}
           slidesPerView={1}
-          navigation={{
-            prevEl: '.swiper-btn-prev',
-            nextEl: '.swiper-btn-next',
-          }}
-          pagination={{
-            clickable: true,
-          }}
+          onSwiper={(swiper) => { swiperRef.current = swiper; }}
+          onSlideChange={handleSlideChange}
           className="!static h-full"
           autoplay={{
             delay: 3000,
-            disableOnInteraction: false,
+            disableOnInteraction: true,
           }}
           loop
         >
@@ -49,7 +126,7 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
           ))}
         </Swiper>
       </div>
-    </section >
+    </section>
   );
 };
 

@@ -70,7 +70,6 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
                 </SwiperSlide>
               ))}
 
-              {/* Custom Navigation Buttons */}
               <button className="swiper-btn-prev absolute left-0 xl:-left-12 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
                 <div>
                   <Arrow />
