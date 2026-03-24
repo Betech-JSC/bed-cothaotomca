@@ -1,6 +1,60 @@
 import Breadcrumb from "@/components/Common/Breadcrumb";
 import { Link } from "@/i18n/routing";
 import { getPolicies } from "@/services/policyService";
+import { Metadata } from "next";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string; slug: string }>
+}): Promise<Metadata> {
+  const { locale, slug } = await params;
+
+  const policiesResult = await getPolicies({ lang: locale }).catch(() => ({ data: [] }));
+  const policies = policiesResult.data;
+
+  const getTranslationLocal = (item: any, currentLocale: string) => {
+    if (!item?.translations) return item;
+    const translation = item.translations.find((t: any) => t.locale === currentLocale) ||
+      item.translations.find((t: any) => t.locale.startsWith(currentLocale)) ||
+      item.translations[0];
+    return { ...item, ...translation };
+  };
+
+  const processedPolicies = policies.map((p: any) => getTranslationLocal(p, locale));
+  const currentPolicy = processedPolicies.find((p: any) => p.slug === slug) || processedPolicies[0];
+
+  if (!currentPolicy) return {};
+
+  const seoTitle = currentPolicy.seo_title || currentPolicy.title || currentPolicy.name || '';
+  const seoDescription = currentPolicy.seo_description || '';
+  const seoKeywords = currentPolicy.seo_keywords || undefined;
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com';
+  const canonicalUrl = `${baseUrl}/${locale}/policy/${slug}`;
+
+  return {
+    title: seoTitle,
+    description: seoDescription,
+    keywords: seoKeywords,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        vi: `${baseUrl}/vi/policy/${slug}`,
+        en: `${baseUrl}/en/policy/${slug}`,
+      },
+    },
+    openGraph: {
+      title: seoTitle,
+      description: seoDescription,
+      url: canonicalUrl,
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
+  };
+}
 
 export default async function PolicyPage({
   params
