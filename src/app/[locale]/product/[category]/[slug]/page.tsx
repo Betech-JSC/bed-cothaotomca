@@ -8,6 +8,52 @@ import SliderProductRelated from "@/components/Product/SliderProductRelated";
 import { getTranslations } from "next-intl/server";
 import { getProductBySlug } from "@/services/productService";
 import { notFound } from "next/navigation";
+import { Metadata, ResolvingMetadata } from "next";
+import JsonLd from "@/components/SEO/JsonLd";
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ locale: string; category: string; slug: string }> },
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const { locale, category, slug } = await params;
+  const product = await getProductBySlug(slug, { revalidate: 3600 });
+  if (!product) return {};
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com';
+  const canonicalUrl = `${baseUrl}/${locale}/product/${category}/${slug}`;
+  const previousImages = (await parent).openGraph?.images || [];
+  const productImage = product.image || previousImages[0];
+
+  return {
+    title: product.name,
+    description: product.description?.substring(0, 160) || '',
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        vi: `${baseUrl}/vi/product/${category}/${slug}`,
+        en: `${baseUrl}/en/product/${category}/${slug}`,
+      },
+    },
+    openGraph: {
+      title: product.name,
+      description: product.description?.substring(0, 160) || '',
+      url: canonicalUrl,
+      images: [
+        {
+          url: (productImage as any)?.url || productImage,
+          width: 800,
+          height: 600,
+          alt: product.name,
+        },
+      ],
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
+  };
+}
+
 
 export default async function ProductDetailsPage({
   params
@@ -74,6 +120,11 @@ export default async function ProductDetailsPage({
 
   return (
     <main>
+      <JsonLd 
+        type="Product" 
+        data={product} 
+        url={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'}/${locale}/product/${productData.category.slug}/${slug}`} 
+      />
       <section className="md:py-[56px] py-12 xl:py-[60px]">
         <div className="container">
           <div className="grid grid-cols-12 gap-4 md:gap-6 xl:gap-8">
