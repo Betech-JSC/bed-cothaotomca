@@ -5,7 +5,71 @@ import { getTranslations } from "next-intl/server";
 import { getBlogDetail, getBlogs, Blog, BlogTranslation, BlogCategoryTranslation } from "@/services/blogService";
 import { getTranslation, formatDate } from "@/lib/format";
 import { notFound } from "next/navigation";
+import { Metadata } from "next";
 
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string; category: string; slug: string }>
+}): Promise<Metadata> {
+  const { locale, category, slug } = await params;
+
+  let blogResponse = await getBlogDetail(slug, { lang: locale }).catch(() => null);
+
+  if (!blogResponse?.data && locale === 'en') {
+    const listResponse = await getBlogs({ lang: 'en', per_page: 100 }).catch(() => null);
+    const matchedBlog = listResponse?.data?.find((b: any) => b.slug === slug);
+    if (matchedBlog) {
+      const viListResponse = await getBlogs({ lang: 'vi', per_page: 100 }).catch(() => null);
+      const viMatchedBlog = viListResponse?.data?.find((b: any) => b.id === matchedBlog.id);
+      if (viMatchedBlog) {
+        blogResponse = await getBlogDetail(viMatchedBlog.slug, { lang: locale }).catch(() => null);
+      }
+    }
+  }
+
+  const blog = (blogResponse?.data as any) as Blog;
+  if (!blog) return {};
+
+  const translation = getTranslation<BlogTranslation>(blog.translations, locale);
+
+  const seoTitle = (blog as any).seo_title || translation?.title || blog.title || '';
+  const seoDescription = (blog as any).seo_description || translation?.description || blog.description || '';
+  const seoKeywords = (blog as any).seo_keywords || undefined;
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com';
+  const canonicalUrl = `${baseUrl}/${locale}/blog/category/${category}/${slug}`;
+
+  return {
+    title: seoTitle,
+    description: seoDescription,
+    keywords: seoKeywords,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        vi: `${baseUrl}/vi/blog/category/${category}/${slug}`,
+        en: `${baseUrl}/en/blog/category/${category}/${slug}`,
+      },
+    },
+    openGraph: {
+      title: seoTitle,
+      description: seoDescription,
+      url: canonicalUrl,
+      images: blog.thumbnail ? [
+        {
+          url: blog.thumbnail,
+          width: 1200,
+          height: 630,
+          alt: seoTitle,
+        },
+      ] : [],
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
+  };
+}
 export default async function BlogDetailsPage({
   params
 }: {
