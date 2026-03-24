@@ -61,6 +61,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         alt: name
       },
       description: translation?.description || item.description,
+      variants: item.variants,
       created_at: '2024-03-15T00:00:00Z',
     };
   });
