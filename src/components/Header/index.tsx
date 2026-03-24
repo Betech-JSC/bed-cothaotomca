@@ -19,7 +19,10 @@ type NavItem = {
   i18nKey?: string;
 };
 
-const STICKY_SCROLL_Y = 100;
+// FIX: Dùng 2 ngưỡng (hysteresis) thay vì 1 ngưỡng duy nhất
+// để tránh feedback loop gây co giật
+const STICKY_ON = 110;
+const STICKY_OFF = 80;
 
 const Header = () => {
   const pathname = usePathname();
@@ -41,21 +44,24 @@ const Header = () => {
 
   const [isSticky, setIsSticky] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(
-    null,
-  );
+  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // FIX: Hysteresis scroll + passive listener
   useEffect(() => {
     const onScroll = () => {
-      setIsSticky(window.scrollY >= STICKY_SCROLL_Y);
+      setIsSticky((prev) => {
+        if (!prev && window.scrollY >= STICKY_ON) return true;
+        if (prev && window.scrollY <= STICKY_OFF) return false;
+        return prev;
+      });
     };
 
     onScroll();
-    window.addEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -105,7 +111,10 @@ const Header = () => {
 
   return (
     <header
-      className={`bg-primary sticky top-0 z-[100] w-full duration-500 ease-in-out ${isSticky ? "lg:h-20 lg:py-1" : "lg:h-[104px] lg:py-3"
+      className={`bg-primary sticky top-0 z-[100] w-full transition-[padding] duration-300 ease-in-out ${
+        // FIX: Chỉ thay đổi padding, KHÔNG thay đổi height
+        // Tránh layout shift làm nội dung bên dưới bị đẩy lên/xuống
+        isSticky ? "lg:py-1" : "lg:py-3"
         }`}
       aria-label="Site header"
     >
@@ -235,8 +244,7 @@ const DesktopNavItem = ({
       <li key={item.i18nKey}>
         <Link
           href={item.href ?? ("#" as any)}
-          className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses
-            }`}
+          className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}
           {...linkProps}
         >
           {item.label}
@@ -257,8 +265,7 @@ const DesktopNavItem = ({
       >
         <span>{item.label}</span>
         <svg
-          className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""
-            }`}
+          className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
           viewBox="0 0 20 20"
           aria-hidden="true"
         >
@@ -275,8 +282,8 @@ const DesktopNavItem = ({
       {item.children && item.children.length > 0 && (
         <div
           className={`absolute top-full left-0 mt-3 w-56 rounded-2xl border border-neutral-100 bg-white/95 p-2 text-sm shadow-lg backdrop-blur-md ${isOpen
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0"
+              ? "pointer-events-auto opacity-100"
+              : "pointer-events-none opacity-0"
             } transition-opacity duration-150`}
           role="menu"
         >

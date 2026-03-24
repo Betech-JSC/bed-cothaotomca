@@ -10,6 +10,7 @@ import { getProductBySlug } from "@/services/productService";
 import { notFound } from "next/navigation";
 import { Metadata, ResolvingMetadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
+import SliderProductImages from "@/components/Product/SliderProductImages";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ locale: string; category: string; slug: string }> },
@@ -120,28 +121,30 @@ export default async function ProductDetailsPage({
 
   return (
     <main>
-      <JsonLd 
-        type="Product" 
-        data={product} 
-        url={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'}/${locale}/product/${productData.category.slug}/${slug}`} 
+      <JsonLd
+        type="Product"
+        data={product}
+        url={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'}/${locale}/product/${productData.category.slug}/${slug}`}
       />
       <section className="md:py-[56px] py-12 xl:py-[60px]">
         <div className="container">
           <div className="grid grid-cols-12 gap-4 md:gap-6 xl:gap-8">
             <div className="col-span-full lg:col-span-6 xl:col-span-7 space-y-6 lg:pr-3 xl:pr-4">
-              {productData.images.map((image: any, index: number) => {
-                if (!image.url) return null;
-                return (
-                  <div key={index} className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
-                    <Image
-                      src={image.url}
-                      alt={image.alt || ""}
-                      fill
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
-                );
-              })}
+              <div className="md:block hidden">
+                {productData.images.map((image: any, index: number) => {
+                  return (
+                    <div key={index} className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
+                      <Image
+                        src={image.url}
+                        alt={image.alt || image.title || "image product"}
+                        fill
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <SliderProductImages items={productData.images} />
             </div>
             <div className="col-span-full lg:col-span-6 xl:col-span-5">
               <div className="space-y-3 flex flex-col items-start mb-6 md:mb-8 xl:mb-12">
