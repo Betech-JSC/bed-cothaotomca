@@ -2,18 +2,11 @@ import { Link } from "@/i18n/i18n-navigation";
 import Image from "next/image";
 
 type LogoProps = {
-  /** Kích thước bình thường (ví dụ dùng ở header/footer) */
   width?: number;
   height?: number;
-  /**
-   * Kích thước khi header sticky.
-   * Nếu không truyền, sẽ dùng width/height như bình thường.
-   */
   stickyWidth?: number;
   stickyHeight?: number;
-  /** Bật/tắt hiệu ứng resize theo sticky */
   isSticky?: boolean;
-  /** Thêm className để dễ canh layout từng nơi */
   className?: string;
 };
 

@@ -35,7 +35,7 @@ const Footer = () => {
         />
       </div>
       {isShowWave && (
-        <div className="absolute md:block hidden md:top-[-36px] lg:top-[-60px] xl:top-[-110px] left-0 z-[-1]">
+        <div className="absolute md:block hidden md:top-[-36px] lg:top-[-17%] left-0 z-[-1] lg:h-[20%] w-full">
           <img
             src="/images/footer/bg-wave.png"
             alt="background wave"
