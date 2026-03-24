@@ -64,7 +64,13 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
             </button>
           </Swiper>
         </div>
-        <Link href="/blog" className="btn btn-primary max-w-[240px] w-full mx-auto">{t('button.learn-more')}</Link>
+        <Link 
+          href="/blog" 
+          className="btn btn-primary max-w-[240px] w-full mx-auto"
+          aria-label={t('button.learn-more')}
+        >
+          {t('button.learn-more')}
+        </Link>
       </div>
     </section>
   );

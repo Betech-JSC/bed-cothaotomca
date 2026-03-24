@@ -29,6 +29,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
       <Link
         href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }}
         className="block"
+        aria-label={item.title}
       >
         <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[12px]">
           <Image

@@ -19,7 +19,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'
-  
+
   // Chuẩn SEO Google 150-160 ký tự
   const seoTitle = 'Cô Thảo Tôm Cá | Chuyên cung cấp Đặc Sản Tôm Cá, Hải Sản Tươi Ngon'
   const seoDescription = 'Cô Thảo Tôm Cá tự hào mang đến các sản phẩm thủy hải sản, tôm cá tươi sạch, chất lượng cao. Nguồn gốc rõ ràng, vệ sinh an toàn thực phẩm, giao hàng tận nơi.'
@@ -80,13 +80,13 @@ export default async function LocaleLayout({
   return (
     <html suppressHydrationWarning lang={locale}>
       <body>
-        <JsonLd 
-          type="Organization" 
+        <JsonLd
+          type="Organization"
           data={{
             siteName: 'Cô Thảo Tôm Cá',
             url: process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com',
             hotline: settings?.hotline || '',
-          }} 
+          }}
         />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <GeneralSettingsProvider settings={settings}>

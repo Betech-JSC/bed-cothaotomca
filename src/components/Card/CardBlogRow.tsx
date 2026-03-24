@@ -25,7 +25,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
   return (
     <article className="group flex items-center gap-2 md:gap-3">
       {/* Image */}
-      <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block max-w-[140px] md:max-w-[175px] w-full flex-shrink-0">
+      <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} aria-label={item.title} className="block max-w-[140px] md:max-w-[175px] w-full flex-shrink-0">
         <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[8px]">
           <Image
             src={item.image.url}
