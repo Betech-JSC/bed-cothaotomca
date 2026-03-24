@@ -32,13 +32,6 @@ export async function generateMetadata({
       default: seoTitle,
     },
     description: seoDescription,
-    alternates: {
-      canonical: `${baseUrl}/${locale}`,
-      languages: {
-        vi: `${baseUrl}/vi`,
-        en: `${baseUrl}/en`,
-      },
-    },
     openGraph: {
       title: seoTitle,
       description: seoDescription,
