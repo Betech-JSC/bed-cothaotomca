@@ -1,14 +1,19 @@
-export interface Translation {
+import { getApi } from './apiService';
+
+export interface CategoryTranslation {
   id: number;
-  locale: string;
   title: string;
-  category_id?: number;
+  locale: string;
+  category_id: number;
 }
 
 export interface Category {
   id: number;
   title: string;
-  slug?: string;
-  image?: string;
-  translations?: Translation[];
+  image: string;
+  translations: CategoryTranslation[];
 }
+
+export const getCategories = async () => {
+  return getApi<Category>('categories');
+};

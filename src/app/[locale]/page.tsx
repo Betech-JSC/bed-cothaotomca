@@ -52,15 +52,14 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     return {
       id: item.id,
       title: name,
-      slug: item.slug || slugify(name),
+      slug: slugify(name),
       price: parseFloat(item.price as string),
-      category: { title: categoryName, slug: item.category?.slug || slugify(categoryName) },
+      category: { title: categoryName, slug: slugify(categoryName) },
       ingredients: item.ingredients?.map(ing => slugify(ing.name)) || [],
       image: {
-        url: item.image || "/cover.jpg",
+        url: item.image || "https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?w=800&h=600&fit=crop",
         alt: name
       },
-
       description: translation?.description || item.description,
       created_at: '2024-03-15T00:00:00Z',
     };
@@ -72,7 +71,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     return {
       id: item.id,
       title: title,
-      slug: item.slug || slugify(title),
+      slug: slugify(title),
       image: {
         url: item.image || 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop',
         alt: title

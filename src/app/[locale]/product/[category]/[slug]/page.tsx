@@ -127,6 +127,9 @@ export default async function ProductDetailsPage({
         url={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'}/${locale}/product/${productData.category.slug}/${slug}`}
       />
       <section className="md:py-[56px] py-12 xl:py-[60px]">
+        <div className="mb-6">
+          <SliderProductImages items={productData.images} />
+        </div>
         <div className="container">
           <div className="grid grid-cols-12 gap-4 md:gap-6 xl:gap-8">
             <div className="col-span-full lg:col-span-6 xl:col-span-7 space-y-6 lg:pr-3 xl:pr-4">
@@ -144,7 +147,6 @@ export default async function ProductDetailsPage({
                   );
                 })}
               </div>
-              <SliderProductImages items={productData.images} />
             </div>
             <div className="col-span-full lg:col-span-6 xl:col-span-5">
               <div className="space-y-3 flex flex-col items-start mb-6 md:mb-8 xl:mb-12">
