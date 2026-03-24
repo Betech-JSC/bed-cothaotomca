@@ -19,10 +19,14 @@ type NavItem = {
   i18nKey?: string;
 };
 
-// FIX: Dùng 2 ngưỡng (hysteresis) thay vì 1 ngưỡng duy nhất
-// để tránh feedback loop gây co giật
 const STICKY_ON = 110;
 const STICKY_OFF = 80;
+
+const isNavActive = (href: string | undefined, pathname: string): boolean => {
+  if (!href) return false;
+  if (href === "/" || href === "") return pathname === "/" || pathname === "";
+  return pathname === href || pathname.startsWith(`${href}/`);
+};
 
 const Header = () => {
   const pathname = usePathname();
@@ -32,25 +36,48 @@ const Header = () => {
   const hotlineClean = hotline.replace(/\s/g, "");
 
   const mainNavLeft: NavItem[] = [
-    { label: t('common.about'), href: `/about`, i18nKey: 'about' },
-    { label: t('common.product'), href: `/product`, i18nKey: 'product' },
-    { label: t('common.policy'), href: `/policy`, i18nKey: 'policy' },
+    { label: t("common.about"), href: `/about`, i18nKey: "about" },
+    { label: t("common.product"), href: `/product`, i18nKey: "product" },
+    { label: t("common.policy"), href: `/policy`, i18nKey: "policy" },
   ];
 
   const mainNavRight: NavItem[] = [
-    { label: t('common.blog'), href: `/blog`, i18nKey: 'blog' },
-    { label: t('common.contact'), href: `/contact`, i18nKey: 'contact' },
+    { label: t("common.blog"), href: `/blog`, i18nKey: "blog" },
+    { label: t("common.contact"), href: `/contact`, i18nKey: "contact" },
   ];
+
+  const allNavItems = [...mainNavLeft, ...mainNavRight];
 
   const [isSticky, setIsSticky] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
+  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(
+    null,
+  );
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // FIX: Hysteresis scroll + passive listener
+  const [isNavigating, setIsNavigating] = useState(false);
+  const prevPathRef = useRef(pathname);
+  const progressTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    if (pathname !== prevPathRef.current) {
+      setIsNavigating(true);
+      prevPathRef.current = pathname;
+
+      if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
+
+      progressTimerRef.current = setTimeout(() => {
+        setIsNavigating(false);
+      }, 600);
+    }
+    return () => {
+      if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
+    };
+  }, [pathname]);
+
   useEffect(() => {
     const onScroll = () => {
       setIsSticky((prev) => {
@@ -101,8 +128,8 @@ const Header = () => {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push({
-        pathname: '/search',
-        query: { q: searchQuery.trim() }
+        pathname: "/search",
+        query: { q: searchQuery.trim() },
       } as any);
       setIsSearchOpen(false);
       setSearchQuery("");
@@ -111,24 +138,32 @@ const Header = () => {
 
   return (
     <header
-      className={`bg-primary sticky top-0 z-[100] w-full transition-[padding] duration-300 ease-in-out ${
-        // FIX: Chỉ thay đổi padding, KHÔNG thay đổi height
-        // Tránh layout shift làm nội dung bên dưới bị đẩy lên/xuống
-        isSticky ? "lg:py-1" : "lg:py-3"
+      className={`bg-primary sticky top-0 z-[100] w-full transition-[padding] duration-300 ease-in-out ${isSticky ? "lg:py-1" : "lg:py-3"
         }`}
       aria-label="Site header"
     >
+      {isNavigating && (
+        <span
+          className="pointer-events-none absolute bottom-0 left-0 h-[2px] bg-secondary animate-progress-bar z-[101]"
+          aria-hidden="true"
+        />
+      )}
+
       <div className="container">
         <nav
-          className="hidden items-center justify-between lg:flex"
+          className="relative hidden items-center justify-between lg:flex"
           aria-label="Main"
         >
+
           <ul className="flex gap-4 min-w-[400px]">
             {mainNavLeft.map((itemNavLeft, indexNavLeft) => (
               <DesktopNavItem
                 key={itemNavLeft.i18nKey}
                 item={itemNavLeft}
-                isActive={itemNavLeft.href === pathname}
+                isActive={isNavActive(
+                  itemNavLeft.href as string | undefined,
+                  pathname,
+                )}
                 isOpen={openDropdownIndex === indexNavLeft}
                 onToggle={() => toggleDropdown(indexNavLeft)}
               />
@@ -147,7 +182,10 @@ const Header = () => {
               <DesktopNavItem
                 key={itemNavRight.i18nKey}
                 item={itemNavRight}
-                isActive={itemNavRight.href === pathname}
+                isActive={isNavActive(
+                  itemNavRight.href as string | undefined,
+                  pathname,
+                )}
                 isOpen={openDropdownIndex === indexNavRight}
                 onToggle={() => toggleDropdown(indexNavRight)}
               />
@@ -183,7 +221,7 @@ const Header = () => {
         </nav>
         <MobileMenu
           open={isMobileOpen}
-          navItems={[...mainNavLeft, ...mainNavRight]}
+          navItems={allNavItems}
           pathname={pathname}
           onToggle={toggleMobile}
           onClose={() => setIsMobileOpen(false)}
@@ -191,15 +229,20 @@ const Header = () => {
         />
       </div>
       <div
-        className={`absolute left-0 top-full w-full bg-primary/95 shadow-xl transition-all duration-300 backdrop-blur-sm overflow-hidden border-t border-white/10 ${isSearchOpen ? "max-h-24 opacity-100 py-4" : "max-h-0 opacity-0 py-0 invisible"
+        className={`absolute left-0 top-full w-full bg-primary/95 shadow-xl transition-all duration-300 backdrop-blur-sm overflow-hidden border-t border-white/10 ${isSearchOpen
+          ? "max-h-24 opacity-100 py-4"
+          : "max-h-0 opacity-0 py-0 invisible"
           }`}
       >
         <div className="container">
-          <form onSubmit={handleSearchSubmit} className="relative flex items-center max-w-3xl mx-auto">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="relative flex items-center max-w-3xl mx-auto"
+          >
             <input
               ref={searchInputRef}
               type="text"
-              placeholder={t('common.search_placeholder')}
+              placeholder={t("common.search_placeholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white text-gray-900 rounded-full py-2.5 px-6 placeholder:text-gray-900 focus:outline-none focus:border-secondary transition-all"
@@ -209,7 +252,7 @@ const Header = () => {
                 type="submit"
                 className="btn-secondary !h-[40px] btn max-md:!min-w-[100px]"
               >
-                {t('common.search')}
+                {t("common.search")}
               </button>
             </div>
           </form>
@@ -282,8 +325,8 @@ const DesktopNavItem = ({
       {item.children && item.children.length > 0 && (
         <div
           className={`absolute top-full left-0 mt-3 w-56 rounded-2xl border border-neutral-100 bg-white/95 p-2 text-sm shadow-lg backdrop-blur-md ${isOpen
-              ? "pointer-events-auto opacity-100"
-              : "pointer-events-none opacity-0"
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0"
             } transition-opacity duration-150`}
           role="menu"
         >
@@ -351,7 +394,9 @@ const MobileMenu = ({
             aria-expanded={open}
             className="text-yellow duration-300 ease-in-out"
           >
-            <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
+            <span className="sr-only">
+              {open ? "Close menu" : "Open menu"}
+            </span>
             <div className="flex h-6 w-6 flex-col items-center justify-center gap-1">
               <span
                 className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${open ? "translate-y-1.5 rotate-45" : ""
@@ -370,7 +415,6 @@ const MobileMenu = ({
         </div>
       </div>
 
-      {/* Backdrop */}
       <div
         className={`fixed top-[88px] left-0 z-[100] w-full h-dvh bg-gray-900/50 transition-opacity ${open ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
@@ -378,7 +422,6 @@ const MobileMenu = ({
         aria-hidden="true"
       />
 
-      {/* Drawer */}
       <div
         className={`bg-primary fixed top-[88px] left-0 z-[100] h-dvh w-full max-w-full p-4 space-y-8 shadow-xl transition-transform md:max-w-sm ${open ? "translate-x-0" : "-translate-x-full"
           }`}
@@ -387,8 +430,12 @@ const MobileMenu = ({
       >
         <ul className="title-3 mt-4 flex flex-col gap-1">
           {navItems.map((item, index) => {
-            const isActive = item.href === pathname;
-            const hasChildren = !!item.children && item.children.length > 0;
+            const active = isNavActive(
+              item.href as string | undefined,
+              pathname ?? "",
+            );
+            const hasChildren =
+              !!item.children && item.children.length > 0;
             const isOpen = openSection === index;
 
             if (!hasChildren) {
@@ -399,7 +446,7 @@ const MobileMenu = ({
                 <li key={item.i18nKey}>
                   <Link
                     href={item.href ?? ("#" as any)}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${isActive ? "text-secondary" : "text-yellow"
+                    className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${active ? "text-secondary" : "text-yellow"
                       }`}
                     {...linkProps}
                     onClick={onClose}
@@ -415,7 +462,9 @@ const MobileMenu = ({
                 <button
                   type="button"
                   onClick={() =>
-                    setOpenSection((prev) => (prev === index ? null : index))
+                    setOpenSection((prev) =>
+                      prev === index ? null : index,
+                    )
                   }
                   className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-neutral-800 hover:bg-neutral-50"
                 >

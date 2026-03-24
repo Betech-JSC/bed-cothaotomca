@@ -47,6 +47,15 @@ const config = {
         },
       },
       backgroundImage: {},
+      keyframes: {
+        'progress-bar': {
+          '0%': { width: '0%' },
+          '100%': { width: '100%' },
+        },
+      },
+      animation: {
+        'progress-bar': 'progress-bar 500ms ease-out forwards',
+      },
       fontFamily: {
         display: ["TomCaSerif", "sans-serif"],
         sans: ["Roobert", "sans-serif"],
