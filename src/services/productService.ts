@@ -50,9 +50,11 @@ export const getProducts = async (params: { page?: number; per_page?: number; la
   return getApi<Product>('products', { params });
 };
 
-export const getProductBySlug = async (slug: string, options: { revalidate?: number } = {}): Promise<Product | null> => {
+export const getProductBySlug = async (slug: string, options: { revalidate?: number; lang?: string } = {}): Promise<Product | null> => {
   try {
-    const response = await getApi<Product>(`products/slug/${slug}`, options);
+    const { lang, ...restOptions } = options;
+    const params = lang ? { lang } : undefined;
+    const response = await getApi<Product>(`products/slug/${slug}`, { ...restOptions, params });
     // for detail API, sometimes the response might be the object directly or wrapped in data
     // based on getApi implementation, it returns the json response directly
     // but getApi assumes the response is ApiResponse<T> where data is T[]

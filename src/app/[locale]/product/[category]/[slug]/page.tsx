@@ -16,7 +16,7 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const { locale, category, slug } = await params;
-  const product = await getProductBySlug(slug, { revalidate: 3600 });
+  const product = await getProductBySlug(slug, { revalidate: 3600, lang: locale });
   if (!product) return {};
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com';
@@ -61,7 +61,7 @@ export default async function ProductDetailsPage({
   params: Promise<{ locale: string; category: string; slug: string }>
 }) {
   const { locale, slug } = await params
-  const product = await getProductBySlug(slug, { revalidate: 3600 });
+  const product = await getProductBySlug(slug, { revalidate: 3600, lang: locale });
 
   if (!product) {
     notFound();
