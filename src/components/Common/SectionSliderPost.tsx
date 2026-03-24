@@ -18,7 +18,7 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
   const t = useTranslations();
   return (
     <section className="md:pt-16 pt-12 xl:pt-[100px] md:pb-[100px] pb-20 xl:pb-[160px]">
-      <div className="container md:space-y-6 space-y-4 xl:space-y-8">
+      <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
         <h2 className="display-3 text-center text-primary">{t('blog.title')}</h2>
         <div className="relative swiper-related-product">
           <Swiper
@@ -32,15 +32,24 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
             pagination={{
               clickable: true,
             }}
+            loop
+            centeredSlides={true}
             breakpoints={{
+              320: {
+                slidesPerView: 1.2,
+                spaceBetween: 14,
+              },
               640: {
                 slidesPerView: 2,
+                spaceBetween: 24,
               },
               1024: {
                 slidesPerView: 3,
+                spaceBetween: 24,
               },
               1280: {
                 slidesPerView: 3,
+                spaceBetween: 24,
               },
             }}
             className="!static"
@@ -64,8 +73,8 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
             </button>
           </Swiper>
         </div>
-        <Link 
-          href="/blog" 
+        <Link
+          href="/blog"
           className="btn btn-primary max-w-[240px] w-full mx-auto"
           aria-label={t('button.learn-more')}
         >

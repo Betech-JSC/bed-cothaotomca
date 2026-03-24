@@ -30,7 +30,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
         />
       </div>
       <div className="relative">
-        <div className="container space-y-8">
+        <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
           <h2 className="display-2 text-center text-primary uppercase">{t('home.section-4.title')}</h2>
           <div className="relative swiper-hot-product">
             <Swiper
@@ -48,7 +48,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
               centeredSlides={true}
               breakpoints={{
                 320: {
-                  slidesPerView: 1.4,
+                  slidesPerView: 1.2,
                   spaceBetween: 14,
                 },
                 640: {

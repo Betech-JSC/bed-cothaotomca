@@ -1,4 +1,5 @@
 @layer components {
+
   .display-1,
   .display-2,
   .display-3,
@@ -26,21 +27,25 @@
   }
 
   .display-1 {
-    @apply text-[60px] leading-[120%] tracking-[0.02em];
+    @apply md:text-[56px] text-[48px] xl:text-[60px] leading-[120%] tracking-[0.02em];
   }
+
   .display-2 {
-    @apply text-[48px] leading-[120%] tracking-[0.03em];
+    @apply text-[36px] md:text-[48px] leading-[120%] tracking-[0.03em];
   }
+
   .display-3 {
-    @apply text-[36px] leading-[132%] tracking-[0.02em];
+    @apply text-[32px] md:text-[36px] leading-[132%] tracking-[0.02em];
   }
 
   .headline-1 {
     @apply text-[32px] leading-[120%] tracking-[0.02em];
   }
+
   .headline-2 {
     @apply text-[28px] leading-[120%] tracking-[0.02em];
   }
+
   .headline-3 {
     @apply text-[24px] leading-[125%] tracking-[0.02em];
   }
@@ -48,12 +53,15 @@
   .title-1 {
     @apply text-[22px] leading-[145%] tracking-[0.02em];
   }
+
   .title-2 {
     @apply text-[18px] leading-[145%] tracking-[0.02em];
   }
+
   .title-3 {
     @apply text-[16px] leading-[150%] tracking-[0.02em];
   }
+
   .title-4 {
     @apply text-[14px] leading-[140%] tracking-[0.02em];
   }
@@ -61,6 +69,7 @@
   .button-1 {
     @apply text-[16px] leading-[150%];
   }
+
   .button-2 {
     @apply text-[14px] leading-[140%];
   }
@@ -68,15 +77,19 @@
   .body-0 {
     @apply text-[20px] leading-[150%];
   }
+
   .body-1 {
     @apply text-[16px] leading-[150%];
   }
+
   .body-2 {
     @apply text-[14px] leading-[140%];
   }
+
   .body-3 {
     @apply text-[12px] leading-[150%];
   }
+
   .body-4 {
     @apply text-[10px] leading-[150%];
   }
@@ -84,9 +97,11 @@
   .label-1 {
     @apply text-[16px] leading-[150%] tracking-[0.04em];
   }
+
   .label-2 {
     @apply text-[14px] leading-[140%] tracking-[0.04em];
   }
+
   .label-3 {
     @apply text-[12px] leading-[150%] tracking-[0.04em];
   }
