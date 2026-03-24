@@ -31,6 +31,7 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
                   src={item.image.url}
                   alt={item.image.alt}
                   fill
+                  priority={index === 0}
                   className="object-cover w-full h-full"
                 />
               </div>
