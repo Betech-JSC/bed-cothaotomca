@@ -7,6 +7,7 @@ import ShareYoutube from '@/components/Icons/ShareYoutube';
 import Image from 'next/image';
 import { getTranslations } from 'next-intl/server'
 import { getGeneralSettings } from '@/services/generalSettingService';
+import ContactForm from '@/components/Contact/ContactForm';
 
 export default async function ContactPage() {
   const t = await getTranslations()
@@ -101,42 +102,7 @@ export default async function ContactPage() {
                 <div className="relative space-y-6">
                   <h2 className="title-1 text-yellow">{t('contact.form.title')}</h2>
 
-                  <form className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="body-1 text-white block">{t('contact.form.name.title')}</label>
-                        <input
-                          type="text"
-                          placeholder={t('contact.form.name.placeholder')}
-                          className="w-full bg-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-secondary transition-all"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="body-1 text-white block">{t('contact.form.phone.title')}</label>
-                        <input
-                          type="tel"
-                          placeholder={t('contact.form.phone.placeholder')}
-                          className="w-full bg-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-secondary transition-all"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="body-1 text-white block">{t('contact.form.message.title')}</label>
-                      <textarea
-                        rows={4}
-                        placeholder={t('contact.form.message.placeholder')}
-                        className="w-full bg-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-secondary transition-all resize-none"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="btn btn-secondary !w-full"
-                    >
-                      {t('button.submit-form')}
-                    </button>
-                  </form>
+                  <ContactForm />
                 </div>
               </div>
             </div>

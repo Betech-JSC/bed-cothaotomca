@@ -35,3 +35,28 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
 
   return response.json();
 }
+
+/**
+ * Generic API POST function
+ * @param key The endpoint key (e.g. 'contacts')
+ * @param body The request body object
+ */
+export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
+  const url = `${BASE_URL}/${key}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Failed to post API: ${key}`);
+  }
+
+  return response.json();
+}

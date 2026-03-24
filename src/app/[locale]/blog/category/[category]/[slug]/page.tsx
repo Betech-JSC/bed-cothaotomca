@@ -2,7 +2,7 @@ import Breadcrumb from "@/components/Common/Breadcrumb"
 import SocialShare from "@/components/SocialShare";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
-import { getBlogDetail, Blog, BlogTranslation, BlogCategoryTranslation } from "@/services/blogService";
+import { getBlogDetail, getBlogs, Blog, BlogTranslation, BlogCategoryTranslation } from "@/services/blogService";
 import { getTranslation, formatDate } from "@/lib/format";
 import { notFound } from "next/navigation";
 
@@ -14,7 +14,23 @@ export default async function BlogDetailsPage({
   const { locale, category, slug } = await params
   const t = await getTranslations({ locale })
 
-  const blogResponse = await getBlogDetail(slug, { lang: locale }).catch(() => null);
+  let blogResponse = await getBlogDetail(slug, { lang: locale }).catch(() => null);
+
+  // Fallback for English blogs where the slug might be localized in the list but the API only accepts the original (VI) slug for the detail view
+  if (!blogResponse?.data && locale === 'en') {
+    const listResponse = await getBlogs({ lang: 'en', per_page: 100 }).catch(() => null);
+    const matchedBlog = listResponse?.data?.find((b: any) => b.slug === slug);
+
+    if (matchedBlog) {
+      const viListResponse = await getBlogs({ lang: 'vi', per_page: 100 }).catch(() => null);
+      const viMatchedBlog = viListResponse?.data?.find((b: any) => b.id === matchedBlog.id);
+
+      if (viMatchedBlog) {
+        blogResponse = await getBlogDetail(viMatchedBlog.slug, { lang: locale }).catch(() => null);
+      }
+    }
+  }
+
   const blog = (blogResponse?.data as any) as Blog;
 
   if (!blog) {

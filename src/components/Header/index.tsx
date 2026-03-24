@@ -19,7 +19,7 @@ type NavItem = {
   i18nKey?: string;
 };
 
-const STICKY_SCROLL_Y = 10;
+const STICKY_SCROLL_Y = 100;
 
 const Header = () => {
   const pathname = usePathname();

@@ -8,9 +8,15 @@ import { useTranslations } from "next-intl";
 
 const SocialShare = () => {
   const t = useTranslations();
+  const [currentUrl, setCurrentUrl] = useState("");
+
+  useEffect(() => {
+    setCurrentUrl(window.location.href);
+  }, []);
+
   const shareLinks = {
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${window.location.href}`,
-    threads: `https://www.threads.net/intent/post?text=${window.location.href}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`,
+    threads: `https://www.threads.net/intent/post?text=${currentUrl}`,
     instagram: "https://www.instagram.com", // Instagram doesn't have a direct "share URL" intent like FB
   };
 

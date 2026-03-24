@@ -69,7 +69,7 @@
     "section-5": {
       "title": {
         "text1": "Delivering ",
-        "text2": "great taste",
+        "text2": "great taste ",
         "text3": " to your door!"
       }
     },
@@ -152,10 +152,25 @@
         "title": "Phone Number",
         "placeholder": "Enter your phone number..."
       },
+      "email": {
+        "title": "Email",
+        "placeholder": "Enter your email address..."
+      },
       "message": {
         "title": "Message",
         "placeholder": "Share more details about your needs with us..."
       }
+    }
+  },
+  "footer": {
+    "showroom": "Showroom",
+    "branch": "Branch"
+  },
+  "modal": {
+    "success": {
+      "title": "Sent Successfully!",
+      "message": "Thank you for contacting us. Co Thao Kitchen will get back to you soon.",
+      "button": "Close"
     }
   }
 }

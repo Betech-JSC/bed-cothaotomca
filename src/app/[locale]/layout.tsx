@@ -7,6 +7,8 @@ import "../../styles/globals.scss"
 import { Providers } from "../providers"
 import { getGeneralSettings } from '@/services/generalSettingService'
 import { GeneralSettingsProvider } from '@/contexts/GeneralSettingsContext'
+import { getBranches } from '@/services/branchService'
+import { BranchProvider } from '@/contexts/BranchContext'
 
 
 
@@ -21,20 +23,23 @@ export default async function LocaleLayout({
   const messages = await getMessages()
 
   const settings = await getGeneralSettings().catch(() => null);
+  const branches = await getBranches().catch(() => []);
 
   return (
     <html suppressHydrationWarning lang={locale}>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <GeneralSettingsProvider settings={settings}>
-            <Providers>
-              <div className="isolate">
-                <Header />
-                {children}
-                <Footer />
-                <ScrollToTop />
-              </div>
-            </Providers>
+            <BranchProvider branches={branches}>
+              <Providers>
+                <div className="isolate">
+                  <Header />
+                  {children}
+                  <Footer />
+                  <ScrollToTop />
+                </div>
+              </Providers>
+            </BranchProvider>
           </GeneralSettingsProvider>
         </NextIntlClientProvider>
       </body>

@@ -4,31 +4,13 @@ import Image from "next/image";
 import Logo from "../Logo";
 import Hotline from "../Icons/Hotline";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
+import { useBranches } from "@/contexts/BranchContext";
+import { useTranslations } from "next-intl";
 
 
 const Footer = () => {
-  const showroooms = [
-    {
-      title: "Chi nhánh 1",
-      address: "123 Hai Bà Trưng, Bến Nghé, Quận 1, Thành phố Hồ Chí Minh",
-      link: "",
-    },
-    {
-      title: "Chi nhánh 2",
-      address: "123 Hai Bà Trưng, Bến Nghé, Quận 1, Thành phố Hồ Chí Minh",
-      link: "",
-    },
-    {
-      title: "Chi nhánh 3",
-      address: "123 Hai Bà Trưng, Bến Nghé, Quận 1, Thành phố Hồ Chí Minh",
-      link: "",
-    },
-    {
-      title: "Chi nhánh 4",
-      address: "123 Hai Bà Trưng, Bến Nghé, Quận 1, Thành phố Hồ Chí Minh",
-      link: "",
-    }
-  ]
+  const t = useTranslations();
+  const branches = useBranches();
 
   const pathname = usePathname();
   const settings = useGeneralSettings();
@@ -74,12 +56,19 @@ const Footer = () => {
             </div>
 
             <div className="col-span-full lg:col-span-7 xl:col-span-6 text-gray-200 space-y-4 md:space-y-6 xl:space-y-8">
-              <div className="title-1 underline">Hệ thống cửa hàng</div>
+              <div className="title-1 underline">{t('footer.showroom')}</div>
               <div className="grid md:grid-cols-2 md:gap-6 gap-4 xl:gap-8">
-                {showroooms.map((itemShowroom, indexShowroom) => (
+                {branches.map((itemShowroom, indexShowroom) => (
                   <div key={indexShowroom} className="space-y-2">
-                    <div className="title-3">{itemShowroom.title}</div>
-                    <a href={itemShowroom.link} className="body-1 lg:hover:text-secondary transition-all duration-300 ease-in-out">{itemShowroom.address}</a>
+                    <div className="title-3">{t('footer.branch')} {indexShowroom + 1}</div>
+                    <a
+                      href={itemShowroom.address_link || "#"}
+                      target={itemShowroom.address_link ? "_blank" : undefined}
+                      rel={itemShowroom.address_link ? "noopener noreferrer" : undefined}
+                      className="body-1 lg:hover:text-secondary transition-all duration-300 ease-in-out"
+                    >
+                      {itemShowroom.address}
+                    </a>
                   </div>
                 ))}
               </div>

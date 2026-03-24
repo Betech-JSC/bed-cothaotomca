@@ -152,10 +152,25 @@
         "title": "Số điện thoại",
         "placeholder": "Nhập số điện thoại..."
       },
+      "email": {
+        "title": "Email",
+        "placeholder": "Nhập địa chỉ email..."
+      },
       "message": {
         "title": "Lời nhắn gửi",
         "placeholder": "Chia sẻ chi tiết hơn mong muốn của bạn với Bếp..."
       }
+    }
+  },
+  "footer": {
+    "showroom": "Hệ thống cửa hàng",
+    "branch": "Chi nhánh"
+  },
+  "modal": {
+    "success": {
+      "title": "Gửi thành công!",
+      "message": "Cảm ơn bạn đã liên hệ. Bếp Cô Thảo sẽ sớm phản hồi tin nhắn của bạn.",
+      "button": "Đóng"
     }
   }
 }
