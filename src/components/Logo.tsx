@@ -40,8 +40,7 @@ const Logo = ({
           src="/images/logo.png"
           alt="Be - Cô Thảo logo"
           fill
-          className="hidden object-contain dark:block"
-          sizes="(max-width: 768px) 112px, 128px"
+          className="object-contain block"
           priority
         />
       </div>
