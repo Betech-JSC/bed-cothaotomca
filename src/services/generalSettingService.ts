@@ -4,6 +4,9 @@ const BASE_URL = 'https://staging-cothaotomca.betech-digital.com/api/v1';
 
 export interface GeneralSettings {
   id: number;
+  logo: string | null;
+  logo_white: string | null;
+  favicon: string | null;
   hotline: string | null;
   email: string | null;
   link_facebook: string | null;
@@ -17,6 +20,10 @@ export interface GeneralSettings {
   describe: string | null;
   created_at: string;
   updated_at: string;
+  // Computed URLs returned by API
+  logo_url: string | null;
+  logo_white_url: string | null;
+  favicon_url: string | null;
 }
 
 export interface GeneralSettingsResponse {
