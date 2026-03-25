@@ -58,26 +58,6 @@ const Header = () => {
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const [isNavigating, setIsNavigating] = useState(false);
-  const prevPathRef = useRef(pathname);
-  const progressTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => {
-    if (pathname !== prevPathRef.current) {
-      setIsNavigating(true);
-      prevPathRef.current = pathname;
-
-      if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
-
-      progressTimerRef.current = setTimeout(() => {
-        setIsNavigating(false);
-      }, 600);
-    }
-    return () => {
-      if (progressTimerRef.current) clearTimeout(progressTimerRef.current);
-    };
-  }, [pathname]);
-
   useEffect(() => {
     const onScroll = () => {
       setIsSticky((prev) => {
@@ -142,13 +122,6 @@ const Header = () => {
         }`}
       aria-label="Site header"
     >
-      {isNavigating && (
-        <span
-          className="pointer-events-none absolute bottom-0 left-0 h-[2px] bg-secondary animate-progress-bar z-[101]"
-          aria-hidden="true"
-        />
-      )}
-
       <div className="container">
         <nav
           className="relative hidden items-center justify-between lg:flex"
