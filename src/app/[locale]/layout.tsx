@@ -12,6 +12,14 @@ import { getBranches } from '@/services/branchService'
 import { BranchProvider } from '@/contexts/BranchContext'
 import { Metadata } from 'next'
 import JsonLd from '@/components/SEO/JsonLd'
+import TrackingScripts from '@/components/SEO/TrackingScripts'
+import { getSeoSettings } from '@/services/seoSettingService'
+
+const FALLBACK_SEO = {
+  title: 'Cô Thảo Tôm Cá | Chuyên cung cấp Đặc Sản Tôm Cá, Hải Sản Tươi Ngon',
+  description: 'Cô Thảo Tôm Cá tự hào mang đến các sản phẩm thủy hải sản, tôm cá tươi sạch, chất lượng cao. Nguồn gốc rõ ràng, vệ sinh an toàn thực phẩm, giao hàng tận nơi.',
+  coverImage: '/cover.jpg',
+}
 
 export async function generateMetadata({
   params
@@ -21,10 +29,13 @@ export async function generateMetadata({
   const { locale } = await params
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'
 
-  // Chuẩn SEO Google 150-160 ký tự
-  const seoTitle = 'Cô Thảo Tôm Cá | Chuyên cung cấp Đặc Sản Tôm Cá, Hải Sản Tươi Ngon'
-  const seoDescription = 'Cô Thảo Tôm Cá tự hào mang đến các sản phẩm thủy hải sản, tôm cá tươi sạch, chất lượng cao. Nguồn gốc rõ ràng, vệ sinh an toàn thực phẩm, giao hàng tận nơi.'
-  const coverImage = '/cover.jpg'
+  // Lấy SEO từ API, fallback về giá trị mặc định nếu không có
+  const seo = await getSeoSettings().catch(() => null)
+
+  const seoTitle = seo?.seo_title || FALLBACK_SEO.title
+  const seoDescription = seo?.seo_description || FALLBACK_SEO.description
+  const coverImage = seo?.seo_og_image || FALLBACK_SEO.coverImage
+  const seoKeywords = seo?.seo_keywords || undefined
 
   return {
     metadataBase: new URL(baseUrl),
@@ -33,6 +44,7 @@ export async function generateMetadata({
       default: seoTitle,
     },
     description: seoDescription,
+    keywords: seoKeywords,
     openGraph: {
       title: seoTitle,
       description: seoDescription,
@@ -73,12 +85,16 @@ export default async function LocaleLayout({
 
   return (
     <html suppressHydrationWarning lang={locale}>
+      <head>
+        <TrackingScripts />
+      </head>
       <body>
         <JsonLd
           type="Organization"
           data={{
             siteName: 'Cô Thảo Tôm Cá',
             url: process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com',
+            logoUrl: settings?.logo_url || '',
             hotline: settings?.hotline || '',
           }}
         />
