@@ -202,7 +202,7 @@ export default function ProductIndexPage({
 
   return (
     <section className="py-[60px]">
-      <div className="container space-y-8">
+      <div className="container md:space-y-6 space-y-4 xl:space-y-8">
 
         <div className="flex flex-col items-center gap-4">
           <Breadcrumb breadcrumbs={breadcrumbs} />
@@ -211,8 +211,8 @@ export default function ProductIndexPage({
           </h1>
         </div>
 
-        <div className='flex items-start gap-8'>
-          <div className="max-w-[280px] w-full flex-shrink-0">
+        <div className='flex md:flex-row flex-col items-start md:gap-6 gap-4 xl:gap-8'>
+          <div className="md:max-w-[280px] w-full flex-shrink-0">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24 space-y-2">
               <div className="pt-4.5 space-y-3">
                 <div className="px-3 flex items-center justify-between">
