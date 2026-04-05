@@ -13,7 +13,7 @@ interface SectionHeroProps {
 
 const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
   return (
-    <section className="h-[450px] md:h-[550px] xl:h-[706px]">
+    <section className="h-[650px] md:h-[550px] xl:h-[706px]">
       <div className="relative swiper-hero h-full">
         <Swiper
           modules={[Pagination]}

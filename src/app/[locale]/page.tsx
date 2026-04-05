@@ -116,8 +116,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   return (
     <main>
       <SectionHero items={sliderHero} />
-      <section className="md:py-20 pt-16 pb-12 xl:py-[100px] relative overflow-hidden">
-        <div className="absolute top-6 left-0 max-w-[250px] md:max-w-[320px] xl:max-w-[420px] w-full h-[80px] md:h-[100px] xl:h-[130px]">
+      <section className="md:py-20 py-[50px] xl:py-[100px] relative overflow-hidden">
+        <div className="absolute top-6 left-0 max-w-[280px] md:max-w-[320px] xl:max-w-[420px] w-full h-[120px] md:h-[100px] xl:h-[130px]">
           <Image
             src="/images/home/image-fish.png"
             alt="image fish"
@@ -138,9 +138,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
             <div className="col-span-full md:col-span-10 xl:col-span-7">
               <div className="headline-3 text-secondary">{t('home.section-2.subTitle')}</div>
-              <div className="relative mt-4 mb-6 md:mb-8 xl:mb-12">
+              <div className="relative mt-4 mb-20 md:mb-8 xl:mb-12">
                 <h1 className="display-1 text-primary z-10 relative">{t('home.section-2.title')}</h1>
-                <div className="absolute md:block hidden top-20 md:top-6 right-0 md:-right-20 xl:-right-24 size-[120px] md:size-[220px] xl:size-[250px]">
+                <div className="absolute block top-16 md:top-6 -right-6 md:-right-20 xl:-right-24 size-[120px] md:size-[220px] xl:size-[250px]">
                   <Image
                     src="/images/home/image-certificate.png"
                     alt="image certificate"
@@ -157,7 +157,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <p>{t('home.section-2.description.text5')}</p>
                 <p>{t('home.section-2.description.text6')}</p>
               </div>
-              <div className="md:mt-12 mt-8 xl:mt-16">
+              <div className="md:mt-12 mt-6 xl:mt-16">
                 <Link href="/about" className="btn btn-primary max-w-[240px]">
                   {t('button.about')}
                 </Link>
