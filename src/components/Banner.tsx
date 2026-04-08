@@ -11,7 +11,7 @@ type BannerProps = {
   classHeight?: string;
 };
 
-const Banner: React.FC<BannerProps> = ({ banner, classHeight = "h-[480px]" }) => {
+const Banner: React.FC<BannerProps> = ({ banner, classHeight = "h-[162px] md:h-[480px]" }) => {
 
   return (
     <div

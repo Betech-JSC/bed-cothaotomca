@@ -67,9 +67,10 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
               {/* Line */}
               <span
                 className={`
-                  hidden md:block h-[2px] transition-all duration-500 ease-out bg-white/50
+                  block h-[2px] transition-all duration-500 ease-out bg-white/50
+                  ${index === items.length - 1 ? 'hidden md:block' : 'block'}
                   ${isActive
-                    ? "w-[75px] xl:w-[100px]"
+                    ? "w-[30px] md:w-[75px] xl:w-[100px]"
                     : "w-[30px] xl:w-[32px]"
                   }
                 `}

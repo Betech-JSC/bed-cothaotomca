@@ -169,36 +169,50 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <SectionReason items={sliders} />
       <SectionHotProduct products={productsDisplay} />
       <section className="relative">
-        <div className="aspect-w-2 aspect-h-1">
+        <div className="md:aspect-w-2 md:aspect-h-1 aspect-w-9 aspect-h-10">
           <Image
             src="/images/home/bg-give.png"
             alt="background give"
             fill
-            className="object-cover w-full h-full"
+            className="object-cover w-full h-full md:block hidden"
+          />
+          <Image
+            src="/images/home/bg-give-mobile.png"
+            alt="background give mobile"
+            fill
+            className="object-cover w-full h-full md:hidden"
           />
         </div>
+        <div className="absolute bottom-0 left-0 w-full bg-linear-mobile h-[100px]"></div>
+
         <div className="absolute md:top-12 top-5 xl:top-[100px] left-0 w-full">
           <div className="container">
-            <h2 className="display-1 max-md:text-[24px] text-center text-primary">
+            <h2 className="display-1 max-md:text-[36px] text-center text-primary">
               {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span>{t('home.section-5.title.text3')}
             </h2>
           </div>
         </div>
       </section>
-      <section className="relative py-12 md:py-20 xl:py-[100px] bg-primary">
+      <section className="relative pt-16 pb-12 md:py-20 xl:py-[100px] bg-primary">
         <div className="absolute inset-0">
           <Image
             src="/images/home/bg-category.png"
             alt="background category"
             fill
-            className="object-cover w-full h-full"
+            className="object-cover w-full h-full md:block hidden"
+          />
+          <Image
+            src="/images/home/bg-category-mobile.png"
+            alt="background category mobile"
+            fill
+            className="object-cover w-full h-full md:hidden"
           />
         </div>
         <div className="relative">
           <div className="container">
-            <div className="grid md:grid-cols-2 gap-12 md:gap-16 xl:gap-20">
-              <div className="space-y-8 md:space-y-12 xl:space-y-16 flex flex-col justify-center">
-                <h2 className="display-3 text-yellow uppercase max-md:text-center max-md:w-[250px] max-md:mx-auto">{t('home.section-6.title')}</h2>
+            <div className="grid md:grid-cols-2 gap-6 md:gap-16 xl:gap-20">
+              <div className="space-y-6 md:space-y-12 xl:space-y-16 flex flex-col justify-center">
+                <h2 className="display-3 max-md:text-[28px] text-yellow uppercase max-md:text-center max-md:w-full max-md:mx-auto">{t('home.section-6.title')}</h2>
                 <div className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
                   {categoriesDisplay.map((itemCategory, indexCategory) => (
                     <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
@@ -243,12 +257,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                   <li><span className="font-bold">{t('home.section-7.description.text4.title')}</span> {t('home.section-7.description.text4.description')}</li>
                 </ol>
               </div>
-              <div className="flex items-center md:gap-4 gap-6 xl:gap-6">
+              <div className="grid grid-cols-2 md:flex items-center md:gap-4 gap-6 xl:gap-6">
                 <a href="tel:02499997122" className="btn btn-white flex items-center gap-2 px-3.5">
                   <Phone />
                   <span>024.9999.7122</span>
                 </a>
-                <a href="https://m.me/cothaotomca" target="_blank" rel="noopener noreferrer nofollow" className="btn btn-white">{t('button.advise-contact')}</a>
+                <a href="https://m.me/cothaotomca" target="_blank" rel="noopener noreferrer nofollow" className="btn btn-white !max-w-full">{t('button.advise-contact')}</a>
               </div>
             </div>
           </div>

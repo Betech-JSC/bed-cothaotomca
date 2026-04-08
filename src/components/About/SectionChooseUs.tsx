@@ -12,7 +12,7 @@ interface SectionChooseUsProps {
 
 const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
   return (
-    <section className="relative h-[600px] md:h-[550px] xl:h-[810px]">
+    <section className="relative h-[660px] md:h-[550px] xl:h-[810px]">
       <div className="relative swiper-choose-us h-full">
         <Swiper
           modules={[]}
@@ -40,7 +40,7 @@ const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
                 className="object-cover w-full h-full"
               />
               <div className="bg-linear-chooseus max-w-[840px] w-full h-full absolute top-0 left-0 flex items-center">
-                <div className="md:p-6 p-4 lg:p-10 xl:p-16 md:space-y-4 space-y-3 xl:space-y-6 max-w-[520px] xl:max-w-[560px] w-full">
+                <div className="md:p-6 py-4 px-8 lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] xl:max-w-[560px] w-full">
                   <h3 className="display-2 max-md:text-[32px] text-yellow">{item.title}</h3>
                   <p className="body-1 text-white">{item.description}</p>
                 </div>
