@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from '@/i18n/routing'
 import { useTranslations } from 'next-intl'
 import Breadcrumb from '../Common/Breadcrumb'
@@ -75,6 +75,7 @@ export default function ProductIndexPage({
 }: ProductIndexPageProps) {
   const router = useRouter()
   const t = useTranslations()
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
     if (!translations || translations.length === 0) return undefined;
@@ -128,6 +129,7 @@ export default function ProductIndexPage({
   }), [products, locale]);
 
   const pushWithFilters = (newCategorySlug: string | null, newIngredientSlugs: string[], newPage: number = 1) => {
+    setIsFilterOpen(false)
     const query: Record<string, string> = {}
     if (newIngredientSlugs.length > 0) {
       query.ingredients = newIngredientSlugs.join(',')
@@ -188,7 +190,7 @@ export default function ProductIndexPage({
       // Category match: if no category in URL, match all. 
       // Otherwise, match the product's category slug with the URL slug.
       const catMatch = !category || p.category.slug === category
-      
+
       // Ingredient match: the product must have ALL selected ingredients.
       const ingMatch =
         selectedIngredients.length === 0 ||
@@ -203,74 +205,110 @@ export default function ProductIndexPage({
   return (
     <section className="py-[60px]">
       <div className="container md:space-y-6 space-y-4 xl:space-y-8">
-
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-3 md:gap-4">
           <Breadcrumb breadcrumbs={breadcrumbs} />
-          <h1 className="display-3 text-center text-primary">
-            {currentCategory ? currentCategory.title : t('breadcrumb.product')}
-          </h1>
+          <div className="flex items-center max-lg:justify-between max-lg:w-full">
+            <h1 className="display-3 text-center text-primary">
+              {currentCategory ? currentCategory.title : t('breadcrumb.product')}
+            </h1>
+            <button
+              onClick={() => setIsFilterOpen(true)}
+              className="lg:hidden flex items-center gap-2 rounded-[12px] bg-white py-1.5 px-3 label-1 text-gray-900 font-semibold"
+            >
+              <span>{t('common.category')}</span>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3.38589 5.66687C2.62955 4.82155 2.25138 4.39889 2.23712 4.03968C2.22473 3.72764 2.35882 3.42772 2.59963 3.22889C2.87684 3 3.44399 3 4.57828 3H19.4212C20.5555 3 21.1227 3 21.3999 3.22889C21.6407 3.42772 21.7748 3.72764 21.7624 4.03968C21.7481 4.39889 21.3699 4.82155 20.6136 5.66687L14.9074 12.0444C14.7566 12.2129 14.6812 12.2972 14.6275 12.3931C14.5798 12.4781 14.5448 12.5697 14.5236 12.6648C14.4997 12.7721 14.4997 12.8852 14.4997 13.1113V18.4584C14.4997 18.6539 14.4997 18.7517 14.4682 18.8363C14.4403 18.911 14.395 18.9779 14.336 19.0315C14.2692 19.0922 14.1784 19.1285 13.9969 19.2012L10.5969 20.5612C10.2293 20.7082 10.0455 20.7817 9.89802 20.751C9.76901 20.7242 9.6558 20.6476 9.583 20.5377C9.49975 20.4122 9.49975 20.2142 9.49975 19.8184V13.1113C9.49975 12.8852 9.49975 12.7721 9.47587 12.6648C9.45469 12.5697 9.41971 12.4781 9.37204 12.3931C9.31828 12.2972 9.2429 12.2129 9.09213 12.0444L3.38589 5.66687Z" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className='flex md:flex-row flex-col items-start md:gap-6 gap-4 xl:gap-8'>
-          <div className="md:max-w-[280px] w-full flex-shrink-0">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24 space-y-2">
-              <div className="pt-4.5 space-y-3">
-                <div className="px-3 flex items-center justify-between">
-                  <span className="label-1 font-semibold text-gray-900">{t('common.category')}</span>
-                  {category && (
-                    <button
-                      onClick={clearCategory}
-                      className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
-                    >
-                      {t('common.clear')}
-                    </button>
-                  )}
+          <>
+            {isFilterOpen && (
+              <div
+                className="fixed inset-0 z-[100] bg-black/50 lg:hidden"
+                onClick={() => setIsFilterOpen(false)}
+              />
+            )}
+            <div className={`
+              md:max-w-[280px] w-full flex-shrink-0 lg:block duration-300 ease-in-out
+              ${isFilterOpen ? 'fixed top-0 right-0 bottom-0 z-[110] w-[85%] max-w-[360px] bg-gray-50 flex flex-col shadow-xl translate-x-0' : 'max-md:translate-x-full hidden lg:block'}
+            `}>
+              {/* Mobile Header */}
+              {isFilterOpen && (
+                <div className="lg:hidden flex justify-between items-center p-4 bg-white border-b border-gray-100">
+                  <span className="title-2 text-primary">{t('common.category')}</span>
+                  <button onClick={() => setIsFilterOpen(false)} className="text-gray-900 hover:text-primary transition-colors">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                      <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
                 </div>
-                <div>
-                  {categoriesDisplay.map(cat => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => handleCategoryClick(cat.slug)}
-                      className={`
+              )}
+
+              <div className={`
+                bg-white space-y-2
+                ${isFilterOpen ? 'flex-1 overflow-y-auto p-4' : 'rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24'}
+              `}>
+                <div className="pt-4.5 space-y-3">
+                  <div className="px-3 flex items-center justify-between">
+                    <span className="label-1 font-semibold text-gray-900">{t('common.category')}</span>
+                    {category && (
+                      <button
+                        onClick={clearCategory}
+                        className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
+                      >
+                        {t('common.clear')}
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    {categoriesDisplay.map(cat => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => handleCategoryClick(cat.slug)}
+                        className={`
                         w-full text-left p-3 title-3 cursor-pointer duration-300 ease-in-out
                         ${category === cat.slug
-                          ? 'bg-secondary/5 text-secondary'
-                          : 'text-gray-800 lg:hover:text-secondary'
-                        }
+                            ? 'bg-secondary/5 text-secondary'
+                            : 'text-gray-800 lg:hover:text-secondary'
+                          }
                       `}
-                    >
-                      {cat.title}
-                    </button>
-                  ))}
+                      >
+                        {cat.title}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-3">
-                <div className="px-3 pt-3 pb-1 flex items-center justify-between">
-                  <span className="label-1 font-semibold text-gray-900">{t('common.ingredient')}</span>
-                  {selectedIngredients.length > 0 && (
-                    <button
-                      onClick={clearIngredients}
-                      className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
-                    >
-                      {t('common.clear')} ({selectedIngredients.length})
-                    </button>
-                  )}
-                </div>
-                <div className="pb-2 space-y-2">
-                  {ingredientsDisplay.map(ing => (
-                    <CustomCheckbox
-                      key={ing.id}
-                      checked={selectedIngredients.includes(ing.slug)}
-                      onChange={() => toggleIngredient(ing.slug)}
-                      label={ing.title}
-                    />
-                  ))}
+                <div className="space-y-3">
+                  <div className="px-3 pt-3 pb-1 flex items-center justify-between">
+                    <span className="label-1 font-semibold text-gray-900">{t('common.ingredient')}</span>
+                    {selectedIngredients.length > 0 && (
+                      <button
+                        onClick={clearIngredients}
+                        className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
+                      >
+                        {t('common.clear')} ({selectedIngredients.length})
+                      </button>
+                    )}
+                  </div>
+                  <div className="pb-2 space-y-2">
+                    {ingredientsDisplay.map(ing => (
+                      <CustomCheckbox
+                        key={ing.id}
+                        checked={selectedIngredients.includes(ing.slug)}
+                        onChange={() => toggleIngredient(ing.slug)}
+                        label={ing.title}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </>
           <div className="flex-1 space-y-12">
             {filteredProductsSorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl border border-dashed border-gray-200 space-y-8">

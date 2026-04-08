@@ -113,9 +113,9 @@ export default function BlogListPage({
   return (
     <main>
       <Banner banner={banner} />
-      <section className="py-12 md:py-14 xl:py-16">
+      <section className="py-8 md:py-14 xl:py-16">
         <div className="container space-y-12 md:space-y-16 xl:space-y-20">
-          <div className="space-y-4 md:space-y-6 xl:space-y-8">
+          <div className="space-y-4 md:space-y-8 xl:space-y-8">
             <h1 className="display-2 text-primary text-center">
               {t('blog.title')}
             </h1>
@@ -149,7 +149,7 @@ export default function BlogListPage({
             )}
           </div>
 
-          <div className="space-y-8 md:space-y-12">
+          <div className="space-y-10 md:space-y-12">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 md:gap-x-4 gap-x-3 xl:gap-x-6 md:gap-y-8 gap-y-5 xl:gap-y-10">
               {allBlogsDisplay.map((item, index) => (
                 <CardBlog key={index} item={item} />
