@@ -20,13 +20,13 @@
   @apply p-8 border-b border-white/10 relative first:border-t first:border-white/10;
 
   span {
-    clip-path: polygon(0 50%, 100% 50%, 100% 50%, 0 50%);
+    clipPath: polygon(0 50%, 100% 50%, 100% 50%, 0 50%);
     transform-origin: center;
     transition: all cubic-bezier(0.1, 0.5, 0.5, 1) 0.4s;
   }
 
   &:hover>span {
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+    clipPath: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
   }
 }
 

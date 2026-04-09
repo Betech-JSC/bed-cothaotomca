@@ -32,7 +32,7 @@ const Header = () => {
   const pathname = usePathname();
   const t = useTranslations();
   const settings = useGeneralSettings();
-  const hotline = settings?.hotline || "0987 654 321";
+  const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
   const hotlineClean = hotline.replace(/\s/g, "");
 
   const mainNavLeft: NavItem[] = [
@@ -338,7 +338,7 @@ const MobileMenu = ({
 }: MobileMenuProps) => {
   const [openSection, setOpenSection] = useState<number | null>(null);
   const settings = useGeneralSettings();
-  const hotline = settings?.hotline || "0987 654 321";
+  const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
   const hotlineClean = hotline.replace(/\s/g, "");
 
   useEffect(() => {

@@ -3,7 +3,6 @@ import { getMessages } from 'next-intl/server'
 import Header from "@/components/Header"
 import NavigationProgress from "@/components/NavigationProgress"
 import Footer from "@/components/Footer"
-import ScrollToTop from "@/components/ScrollToTop"
 import "../../styles/globals.scss"
 import { Providers } from "../providers"
 import { getGeneralSettings } from '@/services/generalSettingService'
@@ -12,6 +11,7 @@ import { getBranches } from '@/services/branchService'
 import { BranchProvider } from '@/contexts/BranchContext'
 import { Metadata } from 'next'
 import JsonLd from '@/components/SEO/JsonLd'
+import FixedSocial from '@/components/FixedSocial'
 
 export async function generateMetadata({
   params
@@ -79,7 +79,7 @@ export default async function LocaleLayout({
           data={{
             siteName: 'Cô Thảo Tôm Cá',
             url: process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com',
-            hotline: settings?.hotline || '',
+            hotline: settings?.hotline?.replace(/\s/g, '') || '',
           }}
         />
         <NextIntlClientProvider locale={locale} messages={messages}>
@@ -91,7 +91,7 @@ export default async function LocaleLayout({
                   <Header />
                   {children}
                   <Footer />
-                  <ScrollToTop />
+                  <FixedSocial />
                 </div>
               </Providers>
             </BranchProvider>

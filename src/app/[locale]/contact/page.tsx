@@ -3,7 +3,7 @@ import ShareFacebook from '@/components/Icons/ShareFacebook';
 import ShareInstagram from '@/components/Icons/ShareInstagram';
 import ShareThreads from '@/components/Icons/ShareThreads';
 import ShareTikTok from '@/components/Icons/ShareTikTok';
-import ShareYoutube from '@/components/Icons/ShareYoutube';
+import ShareZalo from '@/components/Icons/ShareZalo';
 import Image from 'next/image';
 import { getTranslations } from 'next-intl/server'
 import { getGeneralSettings } from '@/services/generalSettingService';
@@ -21,7 +21,7 @@ export default async function ContactPage() {
 
   const settings = await getGeneralSettings().catch(() => null);
 
-  const hotline = settings?.hotline;
+  const hotline = settings?.hotline?.replace(/\s/g, '');
   const email = settings?.email;
   const address = settings?.address;
   const linkAddress = settings?.link_address;
@@ -31,7 +31,7 @@ export default async function ContactPage() {
     { icon: <ShareInstagram />, href: settings?.link_instagram },
     { icon: <ShareThreads />, href: settings?.link_threads },
     { icon: <ShareTikTok />, href: settings?.link_tiktok },
-    { icon: <ShareYoutube />, href: settings?.link_youtube },
+    { icon: <ShareZalo />, href: settings?.link_zalo },
   ];
 
   return (

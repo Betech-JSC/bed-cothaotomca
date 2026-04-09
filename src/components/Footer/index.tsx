@@ -15,7 +15,7 @@ const Footer = () => {
 
   const pathname = usePathname();
   const settings = useGeneralSettings();
-  const hotline = settings?.hotline || "0987 654 321";
+  const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
   const hotlineClean = hotline.replace(/\s/g, "");
   const isShowWave = pathname === "/" || pathname === "/about";
 
