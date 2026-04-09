@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import AnimateOnScroll from "@/components/Animated/animated-appear";
 
 export default function Demo() {
   return (
@@ -184,6 +185,46 @@ export default function Demo() {
               </button>
             </div>
           </div>
+        </section>
+
+        {/* Animations Section */}
+        <section className="mb-16">
+          <h2 className="display-4 font-bold text-primary mb-8">Animations</h2>
+          {/* Create some empty space to allow testing scroll */}
+          <div className="h-[50vh] flex items-center justify-center border border-dashed border-primary/20 rounded-lg mb-16">
+            <span className="text-primary title-1 opacity-50">⬇ Cuộn xuống để xem hiệu ứng AnimateOnScroll ⬇</span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            <AnimateOnScroll animate="slideup" delay={0}>
+              <div className="p-8 rounded-lg bg-primary text-white text-center title-2">slideup</div>
+            </AnimateOnScroll>
+            
+            <AnimateOnScroll animate="slidedown" delay={150}>
+              <div className="p-8 rounded-lg bg-secondary text-white text-center title-2">slidedown</div>
+            </AnimateOnScroll>
+
+            <AnimateOnScroll animate="slideleft" delay={300}>
+              <div className="p-8 rounded-lg bg-yellow text-gray-900 text-center title-2">slideleft</div>
+            </AnimateOnScroll>
+
+            <AnimateOnScroll animate="slideright" delay={450}>
+              <div className="p-8 rounded-lg bg-brown text-white text-center title-2">slideright</div>
+            </AnimateOnScroll>
+
+            <AnimateOnScroll animate="appear" delay={600}>
+              <div className="p-8 rounded-lg bg-black text-white text-center title-2">appear</div>
+            </AnimateOnScroll>
+
+            <AnimateOnScroll animate="opacity" delay={750}>
+              <div className="p-8 rounded-lg bg-gray-500 text-white text-center title-2">opacity</div>
+            </AnimateOnScroll>
+
+            <AnimateOnScroll animate="card-animate" delay={900}>
+              <div className="p-8 rounded-lg bg-white text-gray-900 text-center title-2 border">card-animate</div>
+            </AnimateOnScroll>
+          </div>
+          <div className="mt-8 text-center text-gray-500"><p className="body-1">Tải lại trang và cuộn xuống từ từ để xem hiệu ứng</p></div>
         </section>
       </div>
     </main>

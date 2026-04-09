@@ -6,6 +6,7 @@ import Hotline from "../Icons/Hotline";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useBranches } from "@/contexts/BranchContext";
 import { useTranslations } from "next-intl";
+import Chat from "../Icons/Chat";
 
 
 const Footer = () => {
@@ -46,37 +47,64 @@ const Footer = () => {
       <div className="relative z-20">
         <div className="container md:space-y-16 space-y-12 xl:space-y-20">
           <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
-            <div className="col-span-full lg:col-span-5 xl:col-span-6">
-              <div className="max-md:mx-auto md:max-w-[360px] max-md:mt-10">
+            <div className="col-span-full lg:col-span-5 xl:col-span-6 flex items-center">
+              <div className="max-md:mx-auto lg:max-w-[445px] max-md:mt-10">
                 <Logo
-                  width={321}
-                  height={206}
+                  width={445}
+                  height={285}
+                  className="md:block hidden"
+                />
+                <Logo
+                  width={300}
+                  height={192}
+                  className="md:hidden"
                 />
               </div>
             </div>
-
             <div className="col-span-full lg:col-span-7 xl:col-span-6 text-gray-200 space-y-4 md:space-y-6 xl:space-y-8">
               <div className="title-1 underline">{t('footer.showroom')}</div>
-              <div className="grid md:grid-cols-2 md:gap-6 gap-4 xl:gap-8">
+              <div className="grid md:grid-cols-2 md:gap-4 gap-y-6 xl:gap-6">
                 {branches.map((itemShowroom, indexShowroom) => (
-                  <div key={indexShowroom} className="space-y-2">
-                    <div className="title-3">{t('footer.branch')} {indexShowroom + 1}</div>
-                    <a
-                      href={itemShowroom.address_link || "#"}
-                      target={itemShowroom.address_link ? "_blank" : undefined}
-                      rel={itemShowroom.address_link ? "noopener noreferrer" : undefined}
-                      className="body-1 lg:hover:text-secondary transition-all duration-300 ease-in-out"
-                    >
-                      {itemShowroom.address}
-                    </a>
-                  </div>
+                  <a
+                    href={itemShowroom.address_link || "#"}
+                    target={itemShowroom.address_link ? "_blank" : undefined}
+                    rel={itemShowroom.address_link ? "noopener noreferrer" : undefined} key={indexShowroom} className="relative rounded-[12px] overflow-hidden space-y-2 group">
+                    <div className="aspect-w-3 aspect-h-2">
+                      <Image
+                        src={itemShowroom.image || '/cover.jpg'}
+                        alt="background cover"
+                        fill
+                        className="object-cover w-full h-full lg:group-hover:scale-105 duration-300 ease-in-out"
+                      />
+                    </div>
+                    <div className="absolute bottom-0 left-0 bg-linear-branch text-gray-200 space-y-1 p-2">
+                      <div className="title-4">{t('footer.branch')} {indexShowroom + 1}</div>
+                      <div className="body-2 lg:group-hover:text-secondary transition-all duration-300 ease-in-out">
+                        {itemShowroom.address}
+                      </div>
+                    </div>
+                  </a>
                 ))}
               </div>
-              <div className="grid grid-cols-2 md:gap-6 gap-4 xl:gap-8">
-                <a href={`tel:${hotlineClean}`} className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out">
-                  <Hotline />
-                  <span>{hotline}</span>
-                </a>
+              <div className="space-y-3">
+                <div className="flex md:flex-row flex-col md:gap-6 gap-3">
+                  <a href={`tel:${hotlineClean}`} className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out">
+                    <Hotline />
+                    <span>{hotline}</span>
+                  </a>
+                  <a href={settings?.link_facebook || '#'} target="_blank" rel="noopener noreferrer nofollow" className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out">
+                    <Chat />
+                    <span>{t('button.message-now')}</span>
+                  </a>
+                </div>
+                <div className="relative max-w-[130px] w-full h-[50px]">
+                  <Image
+                    src="/images/image-vertification.png"
+                    alt="image vertification"
+                    fill
+                    className="object-cover w-full h-full"
+                  />
+                </div>
               </div>
             </div>
           </div>

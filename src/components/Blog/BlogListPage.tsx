@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { slugify } from "@/lib/format";
 import Chevron from "@/components/Icons/Chevron";
+import AnimateOnScroll from '../Animated/animated-appear';
 
 interface BlogListPageProps {
   locale: string;
@@ -116,11 +117,13 @@ export default function BlogListPage({
       <section className="py-8 md:py-14 xl:py-16">
         <div className="container space-y-12 md:space-y-16 xl:space-y-20">
           <div className="space-y-4 md:space-y-8 xl:space-y-8">
-            <h1 className="display-2 text-primary text-center">
-              {t('blog.title')}
-            </h1>
+            <AnimateOnScroll animate="slideup" delay={0}>
+              <h1 className="display-2 text-primary text-center">
+                {t('blog.title')}
+              </h1>
+            </AnimateOnScroll>
 
-            <div className="w-full overflow-x-auto">
+            <AnimateOnScroll animate="slideup" delay={0} className="w-full overflow-x-auto">
               <div className="flex items-center justify-center gap-4 flex-nowrap w-max mx-auto py-2">
                 {categoriesDisplay.map((category) => (
                   <button
@@ -133,10 +136,10 @@ export default function BlogListPage({
                   </button>
                 ))}
               </div>
-            </div>
+            </AnimateOnScroll>
 
             {featuredBlogsDisplay.length > 0 && (
-              <div className="flex flex-col items-start gap-6 md:gap-6 lg:flex-row xl:gap-8">
+              <AnimateOnScroll animate="slideup" delay={300} className="flex flex-col items-start gap-6 md:gap-6 lg:flex-row xl:gap-8">
                 <div className="w-full lg:max-w-[500px] xl:max-w-[725px]">
                   <CardBlog isHot item={featuredBlogsDisplay[0]} />
                 </div>
@@ -145,14 +148,16 @@ export default function BlogListPage({
                     <CardBlogRow key={index} item={item} />
                   ))}
                 </div>
-              </div>
+              </AnimateOnScroll>
             )}
           </div>
 
           <div className="space-y-10 md:space-y-12">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 md:gap-x-4 gap-x-3 xl:gap-x-6 md:gap-y-8 gap-y-5 xl:gap-y-10">
               {allBlogsDisplay.map((item, index) => (
-                <CardBlog key={index} item={item} />
+                <AnimateOnScroll animate="slideup" key={index} delay={300 + (index * 10)}>
+                  <CardBlog item={item} />
+                </AnimateOnScroll>
               ))}
             </div>
 

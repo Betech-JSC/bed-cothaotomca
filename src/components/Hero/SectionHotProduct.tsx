@@ -11,6 +11,7 @@ import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/i18n-navigation';
 import Cart from '../Icons/Cart';
+import AnimateOnScroll from '../Animated/animated-appear';
 
 interface SectionHotProductProps {
   products: any[];
@@ -31,12 +32,14 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
       </div>
       <div className="relative">
         <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
-          <h2 className="display-2 max-md:text-[28px] text-center text-primary uppercase">{t('home.section-4.title')}</h2>
+          <AnimateOnScroll animate="slideup" delay={300}>
+            <h2 className="display-2 max-md:text-[28px] text-center text-primary uppercase">{t('home.section-4.title')}</h2>
+          </AnimateOnScroll>
           <div className="relative swiper-hot-product">
             <Swiper
               modules={[Navigation]}
               spaceBetween={24}
-              slidesPerView={1}
+              slidesPerView={3}
               loop
               navigation={{
                 prevEl: '.swiper-btn-prev',
@@ -66,9 +69,11 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
               }}
               className="!static"
             >
-              {products.map((product) => (
+              {products.map((product, index) => (
                 <SwiperSlide key={product.id}>
-                  <CardProduct item={product} />
+                  <AnimateOnScroll animate="slideup" delay={index * 100}>
+                    <CardProduct item={product} />
+                  </AnimateOnScroll>
                 </SwiperSlide>
               ))}
 

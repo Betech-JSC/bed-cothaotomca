@@ -13,7 +13,7 @@ import { Product } from '@/services/productService';
 import { Category } from '@/services/categoryService';
 import { slugify } from '@/lib/format';
 import { getBlogs, Blog } from '@/services/blogService';
-
+import AnimateOnScroll from "@/components/Animated/animated-appear";
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -118,28 +118,34 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <SectionHero items={sliderHero} />
       <section className="md:py-20 py-[50px] xl:py-[100px] relative overflow-hidden">
         <div className="absolute top-6 left-0 max-w-[280px] md:max-w-[320px] xl:max-w-[420px] w-full h-[120px] md:h-[100px] xl:h-[130px]">
-          <Image
-            src="/images/home/image-fish.png"
-            alt="image fish"
-            fill
-            className="object-cover w-full h-full"
-          />
+          <AnimateOnScroll animate="slideleft" delay={0} className="w-full h-full">
+            <Image
+              src="/images/home/image-fish.png"
+              alt="image fish"
+              fill
+              className="object-cover w-full h-full"
+            />
+          </AnimateOnScroll>
         </div>
 
         <div className="absolute -bottom-6 -right-16 max-w-[180px] md:max-w-[320px] xl:max-w-[427px] w-full h-[150px] md:h-[260px] xl:h-[350px]">
-          <Image
-            src="/images/home/image-crab.png"
-            alt="image crab"
-            fill
-            className="object-cover w-full h-full"
-          />
+          <AnimateOnScroll animate="slideright" delay={0} className="w-full h-full">
+            <Image
+              src="/images/home/image-crab.png"
+              alt="image crab"
+              fill
+              className="object-cover w-full h-full"
+            />
+          </AnimateOnScroll>
         </div>
         <div className="container">
           <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
             <div className="col-span-full md:col-span-10 xl:col-span-8">
-              <div className="headline-3 text-secondary">{t('home.section-2.subTitle')}</div>
+              <AnimateOnScroll animate="slideup" delay={0} className="headline-3 text-secondary">{t('home.section-2.subTitle')}</AnimateOnScroll>
               <div className="relative mt-4 mb-20 md:mb-8 xl:mb-12">
-                <h1 className="display-1 text-primary z-10 relative">{t('home.section-2.title')}</h1>
+                <AnimateOnScroll animate="slideup" delay={0} className='z-10 relative'>
+                  <h1 className="display-1 text-primary">{t('home.section-2.title')}</h1>
+                </AnimateOnScroll>
                 <div className="absolute block top-16 md:top-6 -right-6 md:-right-20 xl:-right-20 size-[120px] md:size-[220px] xl:size-[250px]">
                   <Image
                     src="/images/home/image-certificate.png"
@@ -149,14 +155,14 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                   />
                 </div>
               </div>
-              <div className="max-w-[660px] w-full space-y-3 body-1 text-gray-800">
+              <AnimateOnScroll animate="slideup" delay={300} className="max-w-[660px] w-full space-y-3 body-1 text-gray-800">
                 <p>{t('home.section-2.description.text1')}</p>
                 <p>{t('home.section-2.description.text2')}</p>
                 <p>{t('home.section-2.description.text3')}</p>
                 <p>{t('home.section-2.description.text4')}</p>
                 <p>{t('home.section-2.description.text5')}</p>
                 <p>{t('home.section-2.description.text6')}</p>
-              </div>
+              </AnimateOnScroll>
               <div className="md:mt-12 mt-6 xl:mt-16">
                 <Link href="/about" className="btn btn-primary max-w-[240px]">
                   {t('button.about')}
@@ -187,9 +193,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
         <div className="absolute md:top-12 top-5 xl:top-[100px] left-0 w-full">
           <div className="container">
-            <h2 className="display-1 max-md:text-[36px] text-center text-primary">
-              {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span>{t('home.section-5.title.text3')}
-            </h2>
+            <AnimateOnScroll animate="slideup">
+              <h2 className="display-1 max-md:text-[36px] text-center text-primary">
+                {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span>{t('home.section-5.title.text3')}
+              </h2>
+            </AnimateOnScroll>
           </div>
         </div>
       </section>
@@ -212,15 +220,17 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <div className="container">
             <div className="grid md:grid-cols-2 gap-6 md:gap-16 xl:gap-20">
               <div className="space-y-6 md:space-y-12 xl:space-y-16 flex flex-col justify-center">
-                <h2 className="display-3 max-md:text-[28px] text-yellow uppercase max-md:text-center max-md:w-full max-md:mx-auto">{t('home.section-6.title')}</h2>
-                <div className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
+                <AnimateOnScroll animate="slideup">
+                  <h2 className="display-3 max-md:text-[28px] text-yellow uppercase max-md:text-center max-md:w-full max-md:mx-auto">{t('home.section-6.title')}</h2>
+                </AnimateOnScroll>
+                <AnimateOnScroll animate="slideup" delay={300} className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
                   {categoriesDisplay.map((itemCategory, indexCategory) => (
                     <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
                       <span>{itemCategory.title}</span>
                       <span className="rotate-180"><Arrow /></span>
                     </Link>
                   ))}
-                </div>
+                </AnimateOnScroll>
               </div>
               <div>
                 <div className="relative overflow-hidden aspect-w-4 aspect-h-5 rounded-[12px]">
@@ -239,15 +249,15 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <section className="bg-secondary md:py-16 py-12 xl:py-20">
         <div className="container">
           <div className="grid md:grid-cols-2 gap-4 md:gap-6 xl:gap-8">
-            <div className="relative aspect-[8/5]">
+            <AnimateOnScroll animate='slideleft' delay={300} className="relative aspect-[8/5]">
               <Image
                 src="/images/home/image-shipping.png"
                 alt="image shipping"
                 fill
                 className="object-cover w-full h-full"
               />
-            </div>
-            <div className="space-y-6 md:space-y-4 xl:space-y-8 xl:pl-32">
+            </AnimateOnScroll>
+            <AnimateOnScroll animate='slideright' delay={300} className="space-y-6 md:space-y-4 xl:space-y-8 xl:pl-32">
               <h2 className="headline-1 text-yellow">{t('home.section-7.title.text1')} <br /> {t('home.section-7.title.text2')}</h2>
               <div className="body-1 text-white space-y-2 md:space-y-3 xl:space-y-4">
                 <p>{t('home.section-7.description.text1')}</p>
@@ -264,11 +274,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 </a>
                 <a href="https://m.me/cothaotomca" target="_blank" rel="noopener noreferrer nofollow" className="btn btn-white !max-w-full">{t('button.advise-contact')}</a>
               </div>
-            </div>
+            </AnimateOnScroll>
           </div>
         </div>
       </section>
       <SectionSliderPost items={postsDisplay} />
-    </main>
+    </main >
   )
 }

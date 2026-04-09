@@ -9,6 +9,7 @@ import Cart from '@/components/Icons/Cart';
 import { Link } from '@/i18n/i18n-navigation';
 import { getBlogs } from '@/services/blogService';
 import { slugify } from '@/lib/format';
+import AnimateOnScroll from '@/components/Animated/animated-appear';
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -109,43 +110,49 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         <div className="container space-y-10 md:space-y-16 xl:space-y-[120px]">
           <div className="space-y-[60px] md:space-y-16 xl:space-y-20">
             <div className="relative max-w-full md:max-w-[692px] w-full mx-auto pt-16 md:pt-[121px]">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 max-w-[320px] md:max-w-[594px] w-full h-[100px] md:h-[192px]">
+              <AnimateOnScroll animate="opacity" delay={0} className="absolute top-0 left-1/2 -translate-x-1/2 max-w-[320px] md:max-w-[594px] w-full h-[100px] md:h-[192px]">
                 <Image
                   src="/images/about/image-fish.png"
                   alt="image fish"
                   fill
                   className="object-cover w-full h-full"
                 />
-              </div>
-              <h1 className="display-2 text-primary text-center">{t('about.section-2.title')}</h1>
+              </AnimateOnScroll>
+              <AnimateOnScroll animate="slideup" delay={0}>
+                <h1 className="display-2 text-primary text-center">{t('about.section-2.title')}</h1>
+              </AnimateOnScroll>
             </div>
             <div className="grid grid-cols-12 md:gap-6 gap-y-[30px] xl:gap-8">
               <div className="col-span-full lg:col-span-5 xl:col-span-4 flex items-center">
                 <div className="xl:max-w-[350px] w-full md:space-y-4 space-y-6 xl:space-y-6">
-                  <h3 className="title-2 text-primary">{t('about.section-2.subTitle')}</h3>
-                  <div className="body-1 text-gray-800 md:space-y-4 space-y-3">
+                  <AnimateOnScroll animate="slideup" delay={0}>
+                    <h3 className="title-2 text-primary">{t('about.section-2.subTitle')}</h3>
+                  </AnimateOnScroll>
+                  <AnimateOnScroll animate="slideup" delay={300} className="body-1 text-gray-800 md:space-y-4 space-y-3">
                     <p>{t('about.section-2.description.text1')}</p>
                     <p>{t('about.section-2.description.text2')}</p>
-                  </div>
+                  </AnimateOnScroll>
                 </div>
               </div>
               <div className="col-span-full lg:col-span-7 xl:col-span-8 lg:pr-0 lg:pl-8 xl:pl-16">
-                <div className="relative rounded-[24px] aspect-w-8 aspect-h-7 md:aspect-w-6 md:aspect-h-5 overflow-hidden">
+                <AnimateOnScroll animate="card-animate" delay={300} className="relative rounded-[24px] aspect-w-8 aspect-h-7 md:aspect-w-6 md:aspect-h-5 overflow-hidden">
                   <Image
                     src="/images/about/image-about.jpg"
                     alt="image about"
                     fill
                     className="object-cover w-full h-full"
                   />
-                </div>
+                </AnimateOnScroll>
               </div>
             </div>
           </div>
           <div className="md:space-y-8 space-y-12 xl:space-y-12">
-            <h2 className="display-2 text-center text-primary">{t('about.section-3.title')}</h2>
+            <AnimateOnScroll animate="slideup" delay={0}>
+              <h2 className="display-2 text-center text-primary">{t('about.section-3.title')}</h2>
+            </AnimateOnScroll>
             <div className="grid grid-cols-2 xl:grid-cols-4 md:gap-6 gap-8 lg:gap-8">
               {values.map((itemValue, indexValue) => (
-                <div key={indexValue} className="md:space-y-4 space-y-3 xl:space-y-6">
+                <AnimateOnScroll key={indexValue} animate="slideup" delay={indexValue * 200} className="md:space-y-4 space-y-3 xl:space-y-6">
                   <div className="relative w-auto h-[160px] mx-auto">
                     <Image
                       src={itemValue.image.url}
@@ -158,7 +165,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                     <h3 className="title-2 text-primary">{itemValue.title}</h3>
                     <p className="body-1 text-gray-900">{itemValue.description}</p>
                   </div>
-                </div>
+                </AnimateOnScroll>
               ))}
             </div>
           </div>
@@ -182,14 +189,14 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         </div>
         <div className="relative max-md:-mt-20">
           <div className="container">
-            <div className="md:space-y-4 space-y-6 xl:space-y-6 max-w-[602px] w-full mx-auto flex flex-col items-center justify-center text-center">
+            <AnimateOnScroll animate="slideup" delay={0} className="md:space-y-4 space-y-6 xl:space-y-6 max-w-[602px] w-full mx-auto flex flex-col items-center justify-center text-center">
               <h2 className="display-2 text-center text-primary max-md:max-w-[250px]">{t('about.section-5.title.text1')} <span className="text-secondary">{t('about.section-5.title.text2')}</span></h2>
               <div className="body-0 max-md:text-[16px] text-primary">{t('about.section-5.description')}</div>
               <Link href="/product" className="btn btn-primary gap-2 w-max mx-auto px-[18px]">
                 <Cart />
                 <span>{t('button.explore-menu')}</span>
               </Link>
-            </div>
+            </AnimateOnScroll>
           </div>
         </div>
       </section>

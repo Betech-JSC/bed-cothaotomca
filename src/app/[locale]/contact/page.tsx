@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { getTranslations } from 'next-intl/server'
 import { getGeneralSettings } from '@/services/generalSettingService';
 import ContactForm from '@/components/Contact/ContactForm';
+import AnimateOnScroll from '@/components/Animated/animated-appear';
 
 export default async function ContactPage() {
   const t = await getTranslations()
@@ -43,34 +44,36 @@ export default async function ContactPage() {
 
             <div className="col-span-full lg:col-span-6 xl:col-span-7 md:space-y-6 space-y-8 xl:space-y-8">
               <div className="space-y-3">
-                <h1 className="display-3 text-primary">{t('contact.title')}</h1>
-                <p className="body-1 text-gray-900 max-w-[700px]">
+                <AnimateOnScroll animate="slideup" delay={0}>
+                  <h1 className="display-3 text-primary">{t('contact.title')}</h1>
+                </AnimateOnScroll>
+                <AnimateOnScroll animate="slideup" delay={300} className="body-1 text-gray-900 max-w-[700px]">
                   {t('contact.description')}
-                </p>
+                </AnimateOnScroll>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 md:gap-y-6 gap-y-3 xl:gap-y-8 md:gap-x-3 xl:gap-x-6">
-                <div className="space-y-2">
+                <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
                   <h3 className="title-3 text-gray-900">{t('contact.address')}</h3>
                   <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
                     <a href={linkAddress} target="_blank" rel="noopener noreferrer nofollow">
                       {address}
                     </a>
                   </div>
-                </div>
-                <div className="space-y-2">
+                </AnimateOnScroll>
+                <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
                   <h3 className="title-3 text-gray-900">Hotline</h3>
                   <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
                     <a href={`tel:${hotline.replace(/\s/g, '')}`}>{hotline}</a>
                   </div>
-                </div>
-                <div className="space-y-2">
+                </AnimateOnScroll>
+                <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
                   <h3 className="title-3 text-gray-900">Email</h3>
                   <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
                     <a href={`mailto:${email}`}>{email}</a>
                   </div>
-                </div>
-                <div className="space-y-2">
+                </AnimateOnScroll>
+                <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
                   <h3 className="title-3 text-gray-900">Social</h3>
                   <div className="flex items-center gap-3 md:gap-2 xl:gap-3">
                     {socials.map((item, idx) => (
@@ -85,12 +88,12 @@ export default async function ContactPage() {
                       )
                     ))}
                   </div>
-                </div>
+                </AnimateOnScroll>
               </div>
             </div>
 
             <div className="col-span-full lg:col-span-6 xl:col-span-5">
-              <div className="relative md:p-6 px-4 py-6 xl:p-12 rounded-[24px] overflow-hidden">
+              <AnimateOnScroll animate="slideup" delay={300} className="relative md:p-6 px-4 py-6 xl:p-12 rounded-[24px] overflow-hidden">
                 <div className="absolute inset-0">
                   <Image
                     src="/images/contact/bg-form-contact.jpg"
@@ -103,7 +106,7 @@ export default async function ContactPage() {
                   <h2 className="title-1 max-md:text-[18px] text-yellow">{t('contact.form.title')}</h2>
                   <ContactForm />
                 </div>
-              </div>
+              </AnimateOnScroll>
             </div>
           </div>
 

@@ -9,6 +9,7 @@ import Arrow from '../Icons/Arrow';
 import CardBlog from '../Card/CardBlog';
 import { Link } from '@/i18n/i18n-navigation';
 import { useTranslations } from 'next-intl';
+import AnimateOnScroll from '../Animated/animated-appear';
 
 interface SectionSliderPostProps {
   items: any[];
@@ -19,7 +20,9 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
   return (
     <section className="md:pt-16 pt-12 xl:pt-[100px] md:pb-[100px] pb-20 xl:pb-[160px]">
       <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
-        <h2 className="display-3 text-center text-primary">{t('blog.title')}</h2>
+        <AnimateOnScroll animate="slideup" delay={0}>
+          <h2 className="display-3 text-center text-primary">{t('blog.title')}</h2>
+        </AnimateOnScroll>
         <div className="relative swiper-related-product">
           <Swiper
             modules={[Navigation]}

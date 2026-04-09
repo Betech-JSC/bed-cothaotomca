@@ -6,6 +6,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
+import AnimateOnScroll from '../Animated/animated-appear';
 
 interface SectionReasonProps {
   items: any[];
@@ -35,9 +36,11 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
       {/* Title overlay */}
       <div className="absolute inset-0 w-full pt-[38px] xl:pt-10 z-10 pointer-events-none">
         <div className="container">
-          <h2 className="display-2 max-lg:text-[22px] text-white text-center">
-            {t('home.section-3.title')}
-          </h2>
+          <AnimateOnScroll animate="slideup" delay={300}>
+            <h2 className="display-2 max-lg:text-[22px] text-white text-center">
+              {t('home.section-3.title')}
+            </h2>
+          </AnimateOnScroll>
         </div>
       </div>
 
