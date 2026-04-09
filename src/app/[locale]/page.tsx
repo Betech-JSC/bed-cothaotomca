@@ -136,11 +136,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </div>
         <div className="container">
           <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
-            <div className="col-span-full md:col-span-10 xl:col-span-7">
+            <div className="col-span-full md:col-span-10 xl:col-span-8">
               <div className="headline-3 text-secondary">{t('home.section-2.subTitle')}</div>
               <div className="relative mt-4 mb-20 md:mb-8 xl:mb-12">
                 <h1 className="display-1 text-primary z-10 relative">{t('home.section-2.title')}</h1>
-                <div className="absolute block top-16 md:top-6 -right-6 md:-right-20 xl:-right-24 size-[120px] md:size-[220px] xl:size-[250px]">
+                <div className="absolute block top-16 md:top-6 -right-6 md:-right-20 xl:-right-20 size-[120px] md:size-[220px] xl:size-[250px]">
                   <Image
                     src="/images/home/image-certificate.png"
                     alt="image certificate"
