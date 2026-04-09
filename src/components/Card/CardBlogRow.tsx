@@ -23,30 +23,44 @@ type CardBlogProps = {
 
 const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
   return (
-    <article className="group flex items-center gap-2 md:gap-3">
+    <article className="group flex md:flex-row flex-col md:items-center gap-6 md:gap-3">
       {/* Image */}
-      <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} aria-label={item.title} className="block max-w-[140px] md:max-w-[175px] w-full flex-shrink-0">
-        <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[8px]">
-          <Image
-            src={item.image.url}
-            alt={item.image.alt || item.title}
-            priority={false}
-            fill
-            className="h-full w-full object-cover duration-300 ease-in-out lg:group-hover:scale-105"
-          />
+      <div className="relative block max-w-full md:max-w-[175px] w-full md:flex-shrink-0">
+        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} aria-label={item.title}>
+          <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[12px] md:rounded-[8px]">
+            <Image
+              src={item.image.url}
+              alt={item.image.alt || item.title}
+              priority={false}
+              fill
+              className="h-full w-full object-cover duration-300 ease-in-out lg:group-hover:scale-105"
+            />
+          </div>
+        </Link>
+        <div className="absolute bottom-2 left-2 w-max">
+          <div className="flex md:hidden items-center space-x-2 bg-secondary text-yellow rounded-full py-1.5 px-3 w-max">
+            <Link
+              href={{ pathname: '/blog/category/[category]', params: { category: item.category.slug } }}
+              className="label-2 font-semibold lg:hover:underline"
+            >
+              {item.category.title}
+            </Link>
+            <span className="body-2">
+              {formatDate(item.created_at)}
+            </span>
+          </div>
         </div>
-      </Link>
+      </div>
 
-      <div className="space-y-1">
-        <div className="flex items-center space-x-1 md:space-x-3">
+      <div className="md:space-y-2">
+        <div className="hidden md:flex items-center space-x-2 bg-secondary text-yellow rounded-full py-1.5 px-3 w-max">
           <Link
             href={{ pathname: '/blog/category/[category]', params: { category: item.category.slug } }}
-            className="label-2 font-semibold text-[#941417] hover:underline"
+            className="label-2 font-semibold lg:hover:underline"
           >
             {item.category.title}
           </Link>
-          <span className="text-[#941417]">|</span>
-          <span className="body-2 text-[#941417]">
+          <span className="body-2">
             {formatDate(item.created_at)}
           </span>
         </div>

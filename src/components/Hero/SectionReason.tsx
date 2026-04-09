@@ -31,18 +31,18 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
   };
 
   return (
-    <section className="relative h-[600px] md:h-[550px] xl:h-[810px]">
+    <section className="relative h-[660px] md:h-[550px] xl:h-[810px]">
       {/* Title overlay */}
-      <div className="absolute inset-0 w-full pt-8 xl:pt-10 z-10 pointer-events-none">
+      <div className="absolute inset-0 w-full pt-[38px] xl:pt-10 z-10 pointer-events-none">
         <div className="container">
-          <h2 className="display-2 max-lg:text-[32px] text-white text-center">
+          <h2 className="display-2 max-lg:text-[22px] text-white text-center">
             {t('home.section-3.title')}
           </h2>
         </div>
       </div>
 
       {/* Custom Vertical Pagination */}
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col justify-end items-end gap-2 pr-8">
+      <div className="absolute max-md:left-1/2 max-md:-translate-x-1/2 max-md:bottom-4 md:right-0 md:top-1/2 md:-translate-y-1/2 z-20 flex flex-row md:flex-col justify-center md:justify-end items-center md:items-end gap-2 md:pr-8">
         {items.map((_, index) => {
           const isActive = index === activeIndex;
           return (
@@ -54,7 +54,7 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
             >
               {/* Number */}
               <span
-                className={`size-12 flex items-center justify-center transition-all duration-500 ease-out select-none rounded-full
+                className={`size-10 md:size-12 flex items-center justify-center transition-all duration-500 ease-out select-none rounded-full
                   ${isActive
                     ? "headline-3 text-white bg-secondary"
                     : "title-3 text-white/50"
@@ -68,15 +68,16 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
               <span
                 className={`
                   block h-[2px] transition-all duration-500 ease-out bg-white/50
+                  ${index === items.length - 1 ? 'hidden md:block' : 'block'}
                   ${isActive
-                    ? "w-[75px] xl:w-[100px]"
+                    ? "w-[30px] md:w-[75px] xl:w-[100px]"
                     : "w-[30px] xl:w-[32px]"
                   }
                 `}
               />
 
               {/* Dot / Ring indicator */}
-              <div className="relative">
+              <div className="relative hidden md:block">
                 <div
                   className={`
                   size-5 border-[1.5px] rounded-full transition-all duration-500 ease-in-out
@@ -117,8 +118,8 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
                 className="object-cover w-full h-full"
               />
               <div className="bg-linear-chooseus max-w-[840px] w-full h-full absolute top-0 left-0 flex items-center">
-                <div className="md:p-6 p-4 lg:p-10 xl:p-16 md:space-y-4 space-y-3 xl:space-y-6 max-w-[520px] xl:max-w-[560px] w-full">
-                  <h3 className="display-2 max-md:text-[32px] text-yellow">{item.title}</h3>
+                <div className="md:p-6 py-4 px-8 lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] xl:max-w-[560px] w-full">
+                  <h3 className="display-2 max-md:text-[28px] text-yellow">{item.title}</h3>
                   <p className="body-1 text-white">{item.description}</p>
                 </div>
               </div>

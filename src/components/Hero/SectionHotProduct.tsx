@@ -20,7 +20,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
   const t = useTranslations();
 
   return (
-    <section className='relative md:py-[56px] py-12 xl:pt-[60px] xl:pb-[300px]'>
+    <section className='relative md:py-[56px] py-[60px] xl:pt-[60px] xl:pb-[300px]'>
       <div className="absolute inset-0">
         <Image
           src="/images/home/bg-hot-product.png"
@@ -31,7 +31,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
       </div>
       <div className="relative">
         <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
-          <h2 className="display-2 text-center text-primary uppercase">{t('home.section-4.title')}</h2>
+          <h2 className="display-2 max-md:text-[28px] text-center text-primary uppercase">{t('home.section-4.title')}</h2>
           <div className="relative swiper-hot-product">
             <Swiper
               modules={[Navigation]}
@@ -48,8 +48,8 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
               centeredSlides={true}
               breakpoints={{
                 320: {
-                  slidesPerView: 1.2,
-                  spaceBetween: 14,
+                  slidesPerView: 1.3,
+                  spaceBetween: 8,
                 },
                 640: {
                   slidesPerView: 2,

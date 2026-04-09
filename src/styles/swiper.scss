@@ -14,7 +14,7 @@
 
 .swiper-hot-product {
   .swiper-slide {
-    @apply xl:scale-80 transition-all duration-300 ease-in-out;
+    @apply scale-80 transition-all duration-300 ease-in-out;
   }
 
   .swiper-slide-active {
@@ -23,6 +23,6 @@
 
   .swiper-slide-prev,
   .swiper-slide-next {
-    @apply xl:scale-90;
+    @apply scale-90;
   }
 }

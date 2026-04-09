@@ -61,12 +61,12 @@ export default async function BlogDetailsPage({
 
   return (
     <main>
-      <section className="min-h-screen w-full md:py-16 py-12 xl:py-20">
+      <section className="min-h-screen w-full md:py-16 py-10 xl:py-20">
         <div className="container md:space-y-12 space-y-8 xl:space-y-16">
-          <div className="flex flex-col items-center md:gap-6 gap-4 xl:gap-8 w-full max-w-[880px] mx-auto">
+          <div className="flex flex-col items-center md:gap-6 gap-6 xl:gap-8 w-full max-w-[880px] mx-auto">
             <div className="flex flex-col gap-3 w-full">
               <Breadcrumb breadcrumbs={breadcrumbs} classNameNav="md:mx-auto" />
-              <h1 className="display-3 text-primary text-center">
+              <h1 className="display-3 max-md:text-[28px] text-primary text-center">
                 {blogTitle}
               </h1>
 
@@ -97,7 +97,7 @@ export default async function BlogDetailsPage({
             />
           </div>
 
-          <div className="flex flex-col items-center gap-8 w-full max-w-[880px] mx-auto md:space-y-4 space-y-3 xl:space-y-6">
+          <div className="flex flex-col items-center w-full max-w-[880px] mx-auto md:space-y-4 space-y-6 xl:space-y-6">
             <div className="prose prose-blog max-w-full w-full" dangerouslySetInnerHTML={{ __html: blogContent }}></div>
             <div className="w-full border-t border-gray-300 pt-3">
               <SocialShare />
