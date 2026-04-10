@@ -230,7 +230,7 @@ export default function ProductIndexPage({
         </div>
 
         <div className='flex md:flex-row flex-col items-start md:gap-6 gap-4 xl:gap-8'>
-          <AnimateOnScroll animate="slideup" delay={300}>
+          <>
             {isFilterOpen && (
               <div
                 className="fixed inset-0 z-[100] bg-black/50 lg:hidden"
@@ -314,7 +314,7 @@ export default function ProductIndexPage({
                 </div>
               </div>
             </div>
-          </AnimateOnScroll>
+          </>
           <div className="flex-1 space-y-12">
             {filteredProductsSorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl border border-dashed border-gray-200 space-y-8">
