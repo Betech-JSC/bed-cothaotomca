@@ -142,7 +142,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
             <div className="col-span-full md:col-span-10 xl:col-span-8">
               <AnimateOnScroll animate="slideup" delay={0} className="headline-3 text-secondary">{t('home.section-2.subTitle')}</AnimateOnScroll>
-              <div className="relative mt-4 mb-20 md:mb-8 xl:mb-12">
+              <div className="relative mt-4 mb-[94px] md:mb-8 xl:mb-12">
                 <AnimateOnScroll animate="slideup" delay={0} className='z-10 relative'>
                   <h1 className="display-1 text-primary">{t('home.section-2.title')}</h1>
                 </AnimateOnScroll>
@@ -174,7 +174,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       </section>
       <SectionReason items={sliders} />
       <SectionHotProduct products={productsDisplay} />
-      <section className="relative">
+      <section className="relative max-md:pb-10">
         <div className="md:aspect-w-2 md:aspect-h-1 aspect-w-9 aspect-h-10">
           <Image
             src="/images/home/bg-give.png"
@@ -189,9 +189,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             className="object-cover w-full h-full md:hidden"
           />
         </div>
-        <div className="absolute bottom-0 left-0 w-full bg-linear-mobile h-[100px]"></div>
-
-        <div className="absolute md:top-12 top-5 xl:top-[100px] left-0 w-full">
+        <div className="absolute md:top-12 top-[100px] xl:top-[100px] left-0 w-full">
           <div className="container">
             <AnimateOnScroll animate="slideup">
               <h2 className="display-1 max-md:text-[36px] text-center text-primary">
@@ -201,8 +199,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </div>
       </section>
-      <section className="relative pt-16 pb-12 md:py-20 xl:py-[100px] bg-primary">
-        <div className="absolute inset-0">
+      <section className="relative pt-8 pb-12 md:py-20 xl:py-[100px] md:bg-primary">
+        <div className="absolute top-[-200px] left-0 w-full bg-linear-mobile h-full md:hidden"></div>
+        <div className="absolute inset-0 z-[1] max-md:mt-4">
           <Image
             src="/images/home/bg-category.png"
             alt="background category"
@@ -216,7 +215,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             className="object-cover w-full h-full md:hidden"
           />
         </div>
-        <div className="relative">
+        <div className="relative z-10">
           <div className="container">
             <div className="grid md:grid-cols-2 gap-6 md:gap-16 xl:gap-20">
               <div className="space-y-6 md:space-y-12 xl:space-y-16 flex flex-col justify-center">

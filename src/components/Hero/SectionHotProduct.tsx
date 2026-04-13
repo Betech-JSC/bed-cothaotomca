@@ -90,7 +90,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
             </Swiper>
           </div>
           <div className="flex justify-center">
-            <Link href="/contact" className="btn btn-primary gap-2">
+            <Link href="/contact" className="btn btn-primary gap-2 max-md:!px-[72px]">
               <Cart />
               <span>{t('button.order-now')}</span>
             </Link>

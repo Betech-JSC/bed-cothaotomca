@@ -20,23 +20,23 @@ const Footer = () => {
   const isShowWave = pathname === "/" || pathname === "/about";
 
   return (
-    <footer className="relative z-10 bg-white pt-16 md:pt-20 xl:pt-40 pb-6">
+    <footer className="relative z-10 bg-white pt-16 md:pt-8 xl:pt-16 pb-6">
       <div className="absolute inset-0">
         <Image
           src="/images/footer/bg-footer.png"
           alt="background footer"
           fill
-          className="object-cover w-full h-full md:block hidden"
+          className="object-cover w-full h-full lg:block hidden"
         />
         <Image
-          src="/images/footer/bg-footer-mobile.png"
+          src="/images/footer/bg-footer-mobile-1.png"
           alt="background footer"
           fill
-          className="object-fill w-full h-full md:hidden"
+          className="object-cover w-full h-full lg:hidden"
         />
       </div>
       {isShowWave && (
-        <div className="absolute md:block hidden md:top-[-36px] lg:top-[-17%] left-0 z-[-1] lg:h-[20%] w-full">
+        <div className="absolute lg:block hidden md:top-[-36px] lg:top-[-17%] left-0 z-[-1] lg:h-[20%] w-full">
           <img
             src="/images/footer/bg-wave.png"
             alt="background wave"
@@ -46,22 +46,22 @@ const Footer = () => {
       )}
       <div className="relative z-20">
         <div className="container md:space-y-16 space-y-12 xl:space-y-20">
-          <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
+          <div className="grid grid-cols-12 md:gap-6 gap-y-16 xl:gap-8">
             <div className="col-span-full lg:col-span-5 xl:col-span-6 flex items-center">
-              <div className="max-md:mx-auto lg:max-w-[445px] max-md:mt-10">
+              <div className="max-lg:mx-auto lg:max-w-[445px]">
                 <Logo
                   width={445}
                   height={285}
-                  className="md:block hidden"
+                  className="xl:block hidden"
                 />
                 <Logo
-                  width={300}
-                  height={192}
-                  className="md:hidden"
+                  width={239}
+                  height={152}
+                  className="xl:hidden"
                 />
               </div>
             </div>
-            <div className="col-span-full lg:col-span-7 xl:col-span-6 text-gray-200 space-y-4 md:space-y-6 xl:space-y-8">
+            <div className="col-span-full lg:col-span-7 xl:col-span-6 text-gray-200 space-y-6 md:space-y-6 xl:space-y-8">
               <div className="title-1 underline">{t('footer.showroom')}</div>
               <div className="grid md:grid-cols-2 md:gap-4 gap-y-6 xl:gap-6">
                 {branches.map((itemShowroom, indexShowroom) => (
@@ -109,7 +109,7 @@ const Footer = () => {
             </div>
           </div>
 
-          <div className="text-right body-2 text-white" suppressHydrationWarning>
+          <div className="text-center md:text-right body-2 text-white/70" suppressHydrationWarning>
             © {new Date().getFullYear()} Cô Thảo Tôm Cá. All rights reserved.
           </div>
         </div>

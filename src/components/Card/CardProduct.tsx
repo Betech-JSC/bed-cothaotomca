@@ -52,7 +52,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
           href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
           className="block"
         >
-          <h3 className={`title-1 text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-1 min-h-[32px]`}>
+          <h3 className={`title-1 max-md:text-[16px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-1 min-h-[32px]`}>
             {item.title}
           </h3>
         </Link>
