@@ -15,18 +15,33 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleToggle}
-      className="relative block size-6 cursor-pointer overflow-hidden rounded-full"
-      aria-label={nextLocale === "en" ? "Switch to English" : "Chuyển sang tiếng Việt"}
-    >
-      <Image
-        src={locale === "vi" ? "/images/flag-us.jpg" : "/images/flag-vn.jpg"}
-        alt={locale === "vi" ? "Switch to English" : "Chuyển sang tiếng Việt"}
-        fill
-        className="h-full w-full object-cover"
-      />
-    </button>
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`relative size-6 cursor-pointer overflow-hidden rounded-full border ${locale === "vi" ? "border-white" : "border-transparent"}`}
+        aria-label="Chuyển sang tiếng Việt"
+      >
+        <Image
+          src="/images/flag-vn.jpg"
+          alt="Chuyển sang tiếng Việt"
+          fill
+          className="h-full w-full object-cover"
+        />
+      </button>
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={`relative size-6 cursor-pointer overflow-hidden rounded-full border ${locale === "en" ? "border-white" : "border-transparent"}`}
+        aria-label="Switch to English"
+      >
+        <Image
+          src="/images/flag-us.jpg"
+          alt="Switch to English"
+          fill
+          className="h-full w-full object-cover"
+        />
+      </button>
+    </div>
   );
 }

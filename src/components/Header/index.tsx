@@ -174,9 +174,7 @@ const Header = () => {
               </button>
             </li>
             <li>
-              <div className="flex size-6 items-center justify-center">
-                <LanguageSwitcher />
-              </div>
+              <LanguageSwitcher />
             </li>
             <li>
               <a
@@ -357,9 +355,7 @@ const MobileMenu = ({
           >
             <Search />
           </button>
-          <div className="flex size-6 items-center justify-center">
-            <LanguageSwitcher />
-          </div>
+          <LanguageSwitcher />
           <button
             type="button"
             onClick={onToggle}
