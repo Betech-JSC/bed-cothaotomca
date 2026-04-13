@@ -16,8 +16,8 @@ interface SliderProductRelatedProps {
 const SliderProductRelated: React.FC<SliderProductRelatedProps> = ({ products }) => {
   const t = useTranslations();
   return (
-    <section className='bg-yellow md:py-[56px] py-12 xl:py-[60px]'>
-      <div className="md:container max-md:pl-4 md:space-y-6 space-y-4 xl:space-y-8">
+    <section className='bg-transparent md:bg-yellow md:py-[56px] py-[30px] xl:py-[60px]'>
+      <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
         <h2 className="display-3 text-center text-primary">{t('product.explore-more')}</h2>
         <div className="relative swiper-related-product">
           <Swiper
@@ -36,18 +36,22 @@ const SliderProductRelated: React.FC<SliderProductRelatedProps> = ({ products })
               320: {
                 slidesPerView: 1.4,
                 spaceBetween: 14,
+                centeredSlides: true,
               },
               640: {
                 slidesPerView: 2,
                 spaceBetween: 16,
+                centeredSlides: false,
               },
               1024: {
                 slidesPerView: 3,
                 spaceBetween: 16,
+                centeredSlides: false,
               },
               1280: {
                 slidesPerView: 4,
                 spaceBetween: 24,
+                centeredSlides: false,
               },
             }}
             className="!static"

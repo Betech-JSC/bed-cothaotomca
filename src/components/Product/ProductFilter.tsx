@@ -17,7 +17,7 @@ function CustomCheckbox({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex items-center gap-2 w-full px-3 py-2 group transition-colors duration-200 cursor-pointer"
+      className="flex items-center gap-2 w-full md:px-3 py-2 group transition-colors duration-200 cursor-pointer"
     >
       <span
         className={`
@@ -71,23 +71,21 @@ export default function ProductFilter({
   return (
     <>
       <div
-        className={`fixed inset-0 z-[100] bg-black/50 lg:hidden transition-opacity duration-300 ease-in-out ${
-          isFilterOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        className={`fixed inset-0 z-[100] bg-black/50 lg:hidden transition-opacity duration-300 ease-in-out ${isFilterOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
         onClick={() => setIsFilterOpen(false)}
       />
       <div className={`
         md:max-w-[280px] w-full flex-shrink-0 lg:block transition-transform duration-300 ease-in-out
-        ${isFilterOpen 
-          ? 'fixed top-0 right-0 bottom-0 z-[110] w-[85%] max-w-[360px] bg-gray-50 flex flex-col shadow-xl transform translate-x-0' 
+        ${isFilterOpen
+          ? 'fixed top-0 right-0 bottom-0 z-[110] w-[85%] max-w-[360px] bg-gray-50 flex flex-col shadow-xl transform translate-x-0'
           : 'max-md:fixed max-md:top-0 max-md:right-0 max-md:bottom-0 max-md:z-[110] max-md:w-[85%] max-md:max-w-[360px] max-md:bg-gray-50 max-md:flex max-md:flex-col max-md:shadow-xl transform translate-x-full lg:translate-x-0 lg:block lg:static lg:w-full lg:bg-transparent lg:shadow-none'
         }
       `}>
         {/* Mobile Header */}
-        <div className={`lg:hidden flex justify-between items-center p-4 bg-white border-b border-gray-100 transition-opacity duration-300 ease-in-out ${
-          isFilterOpen ? 'opacity-100' : 'opacity-0'
-        }`}>
-          <span className="title-2 text-primary">{t('common.category')}</span>
+        <div className={`lg:hidden flex justify-between items-center py-4 px-5 bg-white border-b border-gray-100 transition-opacity duration-300 ease-in-out ${isFilterOpen ? 'opacity-100' : 'opacity-0'
+          }`}>
+          <span className="title-2 text-primary">{t('common.filter')}</span>
           <button onClick={() => setIsFilterOpen(false)} className="text-gray-900 hover:text-primary transition-colors">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -100,10 +98,10 @@ export default function ProductFilter({
           {/* Mobile content without animation */}
           <div className={`
             bg-white space-y-2
-            ${isFilterOpen ? 'flex-1 overflow-y-auto p-4' : 'rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24'}
+            ${isFilterOpen ? 'flex-1 overflow-y-auto py-4 px-5' : 'rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24'}
           `}>
             <div className="pt-4.5 space-y-3">
-              <div className="px-3 flex items-center justify-between">
+              <div className="flex items-center justify-between">
                 <span className="label-1 font-semibold text-gray-900">{t('common.category')}</span>
                 {category && (
                   <button
@@ -121,7 +119,7 @@ export default function ProductFilter({
                     type="button"
                     onClick={() => handleCategoryClick(cat.slug)}
                     className={`
-                    w-full text-left p-3 title-3 cursor-pointer duration-300 ease-in-out
+                    w-full text-left py-3 title-3 cursor-pointer duration-300 ease-in-out
                     ${category === cat.slug
                         ? 'bg-secondary/5 text-secondary'
                         : 'text-gray-800 lg:hover:text-secondary'
@@ -135,7 +133,7 @@ export default function ProductFilter({
             </div>
 
             <div className="space-y-3">
-              <div className="px-3 pt-3 pb-1 flex items-center justify-between">
+              <div className="py-3 pb-1 flex items-center justify-between">
                 <span className="label-1 font-semibold text-gray-900">{t('common.ingredient')}</span>
                 {selectedIngredients.length > 0 && (
                   <button
@@ -186,7 +184,7 @@ export default function ProductFilter({
                       type="button"
                       onClick={() => handleCategoryClick(cat.slug)}
                       className={`
-                      w-full text-left p-3 title-3 cursor-pointer duration-300 ease-in-out
+                      w-full text-left py-3 title-3 cursor-pointer duration-300 ease-in-out
                       ${category === cat.slug
                           ? 'bg-secondary/5 text-secondary'
                           : 'text-gray-800 lg:hover:text-secondary'

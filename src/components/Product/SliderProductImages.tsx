@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
+import { Pagination } from 'swiper/modules';
 import 'swiper/css';
+import 'swiper/css/pagination';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 
@@ -13,17 +15,19 @@ interface SliderProductImagesProps {
 const SliderProductImages: React.FC<SliderProductImagesProps> = ({ items }) => {
   const t = useTranslations();
   return (
-    <div className="relative swiper-related-product">
+    <div className="relative swiper-product">
       <Swiper
-        modules={[]}
+        modules={[Pagination]}
         spaceBetween={24}
         slidesPerView={1}
         loop
-        centeredSlides
+        pagination={{
+          clickable: true,
+        }}
         breakpoints={{
           320: {
-            slidesPerView: 1.2,
-            spaceBetween: 12,
+            slidesPerView: 1,
+            spaceBetween: 16,
           },
           640: {
             slidesPerView: 2,

@@ -16,7 +16,8 @@
     "try_changing_filters": "Try changing filters to see more results",
     "only_from": "only from",
     "share": "Share",
-    "all": "All"
+    "all": "All",
+    "filter": "Filter"
   },
   "search": {
     "results_for": "Search results for",

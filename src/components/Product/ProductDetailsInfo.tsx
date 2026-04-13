@@ -6,11 +6,13 @@ import BoxMessage from "@/components/Icons/BoxMessage";
 import SocialShare from "@/components/SocialShare";
 import ProductInfoAccordion from "@/components/Product/ProductInfoAccordion";
 import { useTranslations } from "next-intl";
+import SliderProductImages from "@/components/Product/SliderProductImages";
 
 interface ProductDetailsInfoProps {
   productData: {
     title: string;
     description: string;
+    images: any[];
     sizes: { title: string; price: number }[];
     infos: { title: string; content: string }[];
   };
@@ -24,9 +26,14 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
 
   return (
     <div className="relative top-0 md:space-y-8 space-y-6 xl:space-y-12">
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <div className="space-y-3 flex flex-col items-start">
-          <h1 className="headline-1 text-primary">{productData.title}</h1>
+          <h1 className="headline-1 max-md:text-[24px] text-primary">{productData.title}</h1>
+          {productData.images.length > 0 && (
+            <div className="mb-6 md:hidden w-full">
+              <SliderProductImages items={productData.images} />
+            </div>
+          )}
         </div>
 
         <div className="body-1 text-gray-900" dangerouslySetInnerHTML={{ __html: productData.description }} />
