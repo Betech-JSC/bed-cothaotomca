@@ -21,9 +21,14 @@ export async function generateMetadata(
   const previousImages = (await parent).openGraph?.images || [];
   const productImage = product.image || previousImages[0];
 
+  const seoTitle = (product as any).seo_title || product.name;
+  const seoDescription = (product as any).seo_description || product.description?.substring(0, 160) || '';
+  const seoKeywords = (product as any).seo_keywords || undefined;
+
   return {
-    title: product.name,
-    description: product.description?.substring(0, 160) || '',
+    title: seoTitle,
+    description: seoDescription,
+    keywords: seoKeywords,
     alternates: {
       canonical: canonicalUrl,
       languages: {
@@ -32,8 +37,8 @@ export async function generateMetadata(
       },
     },
     openGraph: {
-      title: product.name,
-      description: product.description?.substring(0, 160) || '',
+      title: seoTitle,
+      description: seoDescription,
       url: canonicalUrl,
       images: [
         {
