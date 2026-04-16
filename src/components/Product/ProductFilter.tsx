@@ -17,7 +17,7 @@ function CustomCheckbox({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex items-center gap-2 w-full md:px-3 py-2 group transition-colors duration-200 cursor-pointer"
+      className="flex items-center gap-2 w-full lg:px-3 py-2 group transition-colors duration-200 cursor-pointer"
     >
       <span
         className={`
@@ -76,10 +76,10 @@ export default function ProductFilter({
         onClick={() => setIsFilterOpen(false)}
       />
       <div className={`
-        md:max-w-[280px] w-full flex-shrink-0 lg:block transition-transform duration-300 ease-in-out
+        lg:max-w-[280px] w-full flex-shrink-0 lg:block transition-transform duration-300 ease-in-out
         ${isFilterOpen
           ? 'fixed top-0 right-0 bottom-0 z-[110] w-[85%] max-w-[360px] bg-gray-50 flex flex-col shadow-xl transform translate-x-0'
-          : 'max-md:fixed max-md:top-0 max-md:right-0 max-md:bottom-0 max-md:z-[110] max-md:w-[85%] max-md:max-w-[360px] max-md:bg-gray-50 max-md:flex max-md:flex-col max-md:shadow-xl transform translate-x-full lg:translate-x-0 lg:block lg:static lg:w-full lg:bg-transparent lg:shadow-none'
+          : 'max-lg:fixed max-lg:top-0 max-lg:right-0 max-lg:bottom-0 max-lg:z-[110] max-lg:w-[85%] max-lg:max-w-[360px] max-lg:bg-gray-50 max-lg:flex max-lg:flex-col max-lg:shadow-xl transform translate-x-full lg:translate-x-0 lg:block lg:static lg:w-full lg:bg-transparent lg:shadow-none'
         }
       `}>
         {/* Mobile Header */}
@@ -93,137 +93,81 @@ export default function ProductFilter({
           </button>
         </div>
 
-        {/* Desktop: AnimateOnScroll wrapper, Mobile: Direct content */}
+        {/* Filter Content */}
         <div className="lg:hidden">
-          {/* Mobile content without animation */}
-          <div className={`
-            bg-white space-y-2
-            ${isFilterOpen ? 'flex-1 overflow-y-auto py-4 px-5' : 'rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24'}
-          `}>
-            <div className="pt-4.5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="label-1 font-semibold text-gray-900">{t('common.category')}</span>
-                {category && (
-                  <button
-                    onClick={clearCategory}
-                    className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
-                  >
-                    {t('common.clear')}
-                  </button>
-                )}
-              </div>
-              <div>
-                {categoriesDisplay.map(cat => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => handleCategoryClick(cat.slug)}
-                    className={`
-                    w-full text-left py-3 title-3 cursor-pointer duration-300 ease-in-out
-                    ${category === cat.slug
-                        ? 'bg-secondary/5 text-secondary'
-                        : 'text-gray-800 lg:hover:text-secondary'
-                      }
-                  `}
-                  >
-                    {cat.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="py-3 pb-1 flex items-center justify-between">
-                <span className="label-1 font-semibold text-gray-900">{t('common.ingredient')}</span>
-                {selectedIngredients.length > 0 && (
-                  <button
-                    onClick={clearIngredients}
-                    className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
-                  >
-                    {t('common.clear')} ({selectedIngredients.length})
-                  </button>
-                )}
-              </div>
-              <div className="pb-2 space-y-2">
-                {ingredientsDisplay.map(ing => (
-                  <CustomCheckbox
-                    key={ing.id}
-                    checked={selectedIngredients.includes(ing.slug)}
-                    onChange={() => toggleIngredient(ing.slug)}
-                    label={ing.title}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
+          <FilterContent />
         </div>
-
-        {/* Desktop content with AnimateOnScroll */}
         <div className="hidden lg:block">
           <AnimateOnScroll animate="slideup" delay={200}>
-            <div className={`
-              bg-white space-y-2
-              ${isFilterOpen ? 'flex-1 overflow-y-auto p-4' : 'rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24'}
-            `}>
-              <div className="pt-4.5 space-y-3">
-                <div className="px-3 flex items-center justify-between">
-                  <span className="label-1 font-semibold text-gray-900">{t('common.category')}</span>
-                  {category && (
-                    <button
-                      onClick={clearCategory}
-                      className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
-                    >
-                      {t('common.clear')}
-                    </button>
-                  )}
-                </div>
-                <div>
-                  {categoriesDisplay.map(cat => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => handleCategoryClick(cat.slug)}
-                      className={`
-                      w-full text-left py-3 title-3 cursor-pointer duration-300 ease-in-out
-                      ${category === cat.slug
-                          ? 'bg-secondary/5 text-secondary'
-                          : 'text-gray-800 lg:hover:text-secondary'
-                        }
-                    `}
-                    >
-                      {cat.title}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="px-3 pt-3 pb-1 flex items-center justify-between">
-                  <span className="label-1 font-semibold text-gray-900">{t('common.ingredient')}</span>
-                  {selectedIngredients.length > 0 && (
-                    <button
-                      onClick={clearIngredients}
-                      className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
-                    >
-                      {t('common.clear')} ({selectedIngredients.length})
-                    </button>
-                  )}
-                </div>
-                <div className="pb-2 space-y-2">
-                  {ingredientsDisplay.map(ing => (
-                    <CustomCheckbox
-                      key={ing.id}
-                      checked={selectedIngredients.includes(ing.slug)}
-                      onChange={() => toggleIngredient(ing.slug)}
-                      label={ing.title}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
+            <FilterContent />
           </AnimateOnScroll>
         </div>
       </div>
     </>
   )
+
+  function FilterContent() {
+    return (
+      <div className={`
+        bg-white space-y-2 py-4 px-5 lg:p-0
+        ${isFilterOpen ? 'flex-1 overflow-y-auto' : 'rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24'}
+      `}>
+        <div className="pt-4.5 space-y-3">
+          <div className="lg:px-3 flex items-center justify-between">
+            <span className="label-1 font-semibold text-gray-900">{t('common.category')}</span>
+            {category && (
+              <button
+                onClick={clearCategory}
+                className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
+              >
+                {t('common.clear')}
+              </button>
+            )}
+          </div>
+          <div>
+            {categoriesDisplay.map(cat => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => handleCategoryClick(cat.slug)}
+                className={`
+                w-full text-left py-3 lg:px-3 title-3 cursor-pointer duration-300 ease-in-out
+                ${category === cat.slug
+                    ? 'bg-secondary/5 text-secondary'
+                    : 'text-gray-800 lg:hover:text-secondary'
+                  }
+              `}
+              >
+                {cat.title}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="lg:px-3 py-3 pb-1 flex items-center justify-between">
+            <span className="label-1 font-semibold text-gray-900">{t('common.ingredient')}</span>
+            {selectedIngredients.length > 0 && (
+              <button
+                onClick={clearIngredients}
+                className="label-3 font-semibold text-primary lg:hover:text-secondary duration-300 ease-in-out cursor-pointer"
+              >
+                {t('common.clear')} ({selectedIngredients.length})
+              </button>
+            )}
+          </div>
+          <div className="lg:px-0 pb-2 space-y-2">
+            {ingredientsDisplay.map(ing => (
+              <CustomCheckbox
+                key={ing.id}
+                checked={selectedIngredients.includes(ing.slug)}
+                onChange={() => toggleIngredient(ing.slug)}
+                label={ing.title}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 }

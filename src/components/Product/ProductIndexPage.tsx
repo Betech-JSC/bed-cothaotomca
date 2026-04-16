@@ -191,19 +191,19 @@ export default function ProductIndexPage({
           </div>
         </div>
 
-        <div className='flex md:flex-row flex-col items-start md:gap-6 gap-4 xl:gap-8'>
-            <ProductFilter
-              isFilterOpen={isFilterOpen}
-              setIsFilterOpen={setIsFilterOpen}
-              category={category}
-              selectedIngredients={selectedIngredients}
-              categoriesDisplay={categoriesDisplay}
-              ingredientsDisplay={ingredientsDisplay}
-              handleCategoryClick={handleCategoryClick}
-              toggleIngredient={toggleIngredient}
-              clearCategory={clearCategory}
-              clearIngredients={clearIngredients}
-            />
+        <div className='flex lg:flex-row flex-col items-start md:gap-6 gap-4 xl:gap-8'>
+          <ProductFilter
+            isFilterOpen={isFilterOpen}
+            setIsFilterOpen={setIsFilterOpen}
+            category={category}
+            selectedIngredients={selectedIngredients}
+            categoriesDisplay={categoriesDisplay}
+            ingredientsDisplay={ingredientsDisplay}
+            handleCategoryClick={handleCategoryClick}
+            toggleIngredient={toggleIngredient}
+            clearCategory={clearCategory}
+            clearIngredients={clearIngredients}
+          />
           <div className="flex-1 space-y-12">
             {filteredProductsSorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl border border-dashed border-gray-200 space-y-8">
