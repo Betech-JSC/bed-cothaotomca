@@ -31,7 +31,7 @@ footer {
 
 .bg-linear-chooseus {
   background: linear-gradient(90deg, #000000 0%, rgba(0, 0, 0, 0) 100%);
-  opacity: 0.8;
+  @apply md:opacity-80;
 }
 
 .bg-linear-mobile {

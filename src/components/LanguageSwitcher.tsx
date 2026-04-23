@@ -19,7 +19,7 @@ export default function LanguageSwitcher() {
       <button
         type="button"
         onClick={handleToggle}
-        className={`relative size-6 cursor-pointer overflow-hidden rounded-full border ${locale === "vi" ? "border-white" : "border-transparent"}`}
+        className={`relative size-6 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "vi" ? "border-white" : "border-transparent"}`}
         aria-label="Chuyển sang tiếng Việt"
       >
         <Image
@@ -32,7 +32,7 @@ export default function LanguageSwitcher() {
       <button
         type="button"
         onClick={handleToggle}
-        className={`relative size-6 cursor-pointer overflow-hidden rounded-full border ${locale === "en" ? "border-white" : "border-transparent"}`}
+        className={`relative size-6 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "en" ? "border-white" : "border-transparent"}`}
         aria-label="Switch to English"
       >
         <Image

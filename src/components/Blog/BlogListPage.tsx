@@ -115,7 +115,7 @@ export default function BlogListPage({
     <main>
       <Banner banner={banner} />
       <section className="py-8 md:py-14 xl:py-16">
-        <div className="container space-y-12 md:space-y-16 xl:space-y-20">
+        <div className="container space-y-8 md:space-y-16 xl:space-y-20">
           <div className="space-y-4 md:space-y-8 xl:space-y-8">
             <AnimateOnScroll animate="slideup" delay={0}>
               <h1 className="display-2 text-primary text-center">
@@ -139,11 +139,11 @@ export default function BlogListPage({
             </AnimateOnScroll>
 
             {featuredBlogsDisplay.length > 0 && (
-              <AnimateOnScroll animate="slideup" delay={300} className="flex flex-col items-start gap-6 md:gap-6 lg:flex-row xl:gap-8">
+              <AnimateOnScroll animate="slideup" delay={300} className="flex flex-col items-start gap-8 md:gap-6 lg:flex-row xl:gap-8">
                 <div className="w-full lg:max-w-[500px] xl:max-w-[725px]">
                   <CardBlog isHot item={featuredBlogsDisplay[0]} />
                 </div>
-                <div className="flex-1 space-y-4 md:space-y-4 xl:space-y-8 w-full">
+                <div className="flex-1 space-y-8 md:space-y-4 xl:space-y-8 w-full">
                   {featuredBlogsDisplay.slice(1, 5).map((item, index) => (
                     <CardBlogRow key={index} item={item} />
                   ))}
@@ -152,8 +152,8 @@ export default function BlogListPage({
             )}
           </div>
 
-          <div className="space-y-10 md:space-y-12">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 md:gap-x-4 gap-x-3 xl:gap-x-6 md:gap-y-8 gap-y-5 xl:gap-y-10">
+          <div className="space-y-8 md:space-y-12">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 md:gap-x-4 gap-x-3 xl:gap-x-6 md:gap-y-8 gap-y-8 xl:gap-y-10">
               {allBlogsDisplay.map((item, index) => (
                 <AnimateOnScroll animate="slideup" key={index} delay={300 + (index * 10)}>
                   <CardBlog item={item} />

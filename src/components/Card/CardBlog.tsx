@@ -24,7 +24,7 @@ type CardBlogProps = {
 
 const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
   return (
-    <article className="group space-y-6 md:space-y-4 md:space-y-6">
+    <article className="group space-y-3 md:space-y-4 lg:space-y-6">
       {/* Image */}
       <div className="relative">
         <Link
@@ -43,13 +43,14 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
           </div>
         </Link>
         <div className="absolute bottom-2 left-2 w-max">
-          <div className="flex items-center space-x-2 bg-secondary text-yellow rounded-full py-1.5 px-3">
+          <div className="flex items-center space-x-1 bg-secondary text-yellow rounded-full py-1.5 px-3">
             <Link
               href={{ pathname: '/blog/category/[category]', params: { category: item.category.slug } }}
               className="label-2 font-semibold lg:hover:underline"
             >
               {item.category.title}
             </Link>
+            <span className="opacity-80">|</span>
             <span className="body-2">
               {formatDate(item.created_at)}
             </span>

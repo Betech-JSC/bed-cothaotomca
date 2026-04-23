@@ -120,10 +120,11 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
                 alt={item.image.alt}
                 className="object-cover w-full h-full"
               />
-              <div className="bg-linear-chooseus max-w-[840px] w-full h-full absolute top-0 left-0 flex items-center">
-                <div className="md:p-6 py-4 px-8 lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] xl:max-w-[560px] w-full">
-                  <h3 className="display-2 max-md:text-[28px] text-yellow">{item.title}</h3>
-                  <p className="body-1 text-white">{item.description}</p>
+              <div className="absolute inset-0 w-full h-full bg-linear-chooseus"></div>
+              <div className="max-w-[840px] w-full h-[25rem] md:h-full absolute top-0 left-0 flex items-center">
+                <div className="md:p-6 p-6 lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] xl:max-w-[560px] w-full max-md:bg-yellow mx-8">
+                  <h3 className="display-2 max-md:text-[36px] md:text-yellow text-primary">{item.title}</h3>
+                  <p className="body-1 md:text-white text-primary">{item.description}</p>
                 </div>
               </div>
             </SwiperSlide>

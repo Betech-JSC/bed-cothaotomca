@@ -146,11 +146,11 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
               </div>
             </div>
           </div>
-          <div className="md:space-y-8 space-y-12 xl:space-y-12">
+          <div className="md:space-y-8 space-y-4 xl:space-y-12">
             <AnimateOnScroll animate="slideup" delay={0}>
               <h2 className="display-2 text-center text-primary">{t('about.section-3.title')}</h2>
             </AnimateOnScroll>
-            <div className="grid grid-cols-2 xl:grid-cols-4 md:gap-6 gap-8 lg:gap-8">
+            <div className="grid grid-cols-2 xl:grid-cols-4 md:gap-6 gap-4 lg:gap-8">
               {values.map((itemValue, indexValue) => (
                 <AnimateOnScroll key={indexValue} animate="slideup" delay={indexValue * 200} className="md:space-y-4 space-y-3 xl:space-y-6">
                   <div className="relative w-auto h-[160px] mx-auto">
@@ -181,13 +181,13 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
             className="object-contain w-full h-full hidden md:block"
           />
           <Image
-            src="/images/about/bg-explore-mobile.png"
+            src="/images/about/bg-explore-mb.png"
             alt="background explore mobile"
             fill
             className="object-cover w-full h-full md:hidden"
           />
         </div>
-        <div className="relative max-md:-mt-20">
+        <div className="relative max-md:-mt-32">
           <div className="container">
             <AnimateOnScroll animate="slideup" delay={0} className="md:space-y-4 space-y-6 xl:space-y-6 max-w-[602px] w-full mx-auto flex flex-col items-center justify-center text-center">
               <h2 className="display-2 text-center text-primary max-md:max-w-[250px]">{t('about.section-5.title.text1')} <span className="text-secondary">{t('about.section-5.title.text2')}</span></h2>

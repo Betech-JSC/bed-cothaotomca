@@ -63,6 +63,10 @@
 }
 
 .prose-policy {
+  * {
+    @apply font-serif;
+  }
+
   h3 {
     @apply font-display text-primary text-[18px] leading-[145%] tracking-[0.02em] my-3;
   }

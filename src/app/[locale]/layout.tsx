@@ -1,7 +1,6 @@
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
 import Header from "@/components/Header"
-import NavigationProgress from "@/components/NavigationProgress"
 import Footer from "@/components/Footer"
 import "../../styles/globals.scss"
 import { Providers } from "../providers"
@@ -87,7 +86,6 @@ export default async function LocaleLayout({
             <BranchProvider branches={branches}>
               <Providers>
                 <div className="isolate">
-                  <NavigationProgress />
                   <Header />
                   {children}
                   <Footer />

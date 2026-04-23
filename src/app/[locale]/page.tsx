@@ -209,7 +209,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             className="object-cover w-full h-full md:block hidden"
           />
           <Image
-            src="/images/home/bg-category-mobile.png"
+            src="/images/home/bg-category-mobile-2.png"
             alt="background category mobile"
             fill
             className="object-cover w-full h-full md:hidden"

@@ -21,7 +21,7 @@ function CustomCheckbox({
     >
       <span
         className={`
-          relative flex-shrink-0 w-6 h-6 rounded-full border-2 transition-all duration-200
+          relative flex-shrink-0 w-6 h-6 rounded-md border-2 transition-all duration-200
           ${checked
             ? 'bg-primary border-primary'
             : 'bg-white border-gray-500 lg:group-hover:border-primary'
@@ -114,7 +114,7 @@ export default function ProductFilter({
       `}>
         <div className="pt-4.5 space-y-3">
           <div className="lg:px-3 flex items-center justify-between">
-            <span className="label-1 font-semibold text-gray-900">{t('common.category')}</span>
+            <span className="label-1 !font-display uppercase font-semibold text-gray-900">{t('common.category')}</span>
             {category && (
               <button
                 onClick={clearCategory}
@@ -146,7 +146,7 @@ export default function ProductFilter({
 
         <div className="space-y-3">
           <div className="lg:px-3 py-3 pb-1 flex items-center justify-between">
-            <span className="label-1 font-semibold text-gray-900">{t('common.ingredient')}</span>
+            <span className="label-1 !font-display uppercase font-semibold text-gray-900">{t('common.ingredient')}</span>
             {selectedIngredients.length > 0 && (
               <button
                 onClick={clearIngredients}
