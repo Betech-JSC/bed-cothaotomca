@@ -34,6 +34,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
       {/* Image */}
       <Link
         href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
+        scroll={false}
         className="block"
       >
         <div className="aspect-w-1 aspect-h-1 relative overflow-hidden">
@@ -50,6 +51,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
       <div className="py-6 px-4 text-center">
         <Link
           href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
+          scroll={false}
           className="block"
         >
           <h3 className={`title-1 max-md:text-[16px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-1 min-h-[32px]`}>
