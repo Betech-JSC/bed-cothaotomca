@@ -33,19 +33,22 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
           loop={items.length > 1}
           className="!static h-full"
         >
-          {items.map((item, index) => (
-            <SwiperSlide key={index} className="h-full">
-              <div className="relative h-full">
-                <Image
-                  src={item.image.url}
-                  alt={item.image.alt}
-                  fill
-                  priority={index === 0}
-                  className="object-cover w-full h-full"
-                />
-              </div>
-            </SwiperSlide>
-          ))}
+          {items.map((item, index) => {
+            const imageSrc = item.image?.url || '/cover.jpg';
+            return (
+              <SwiperSlide key={index} className="h-full">
+                <div className="relative h-full">
+                  <Image
+                    src={imageSrc}
+                    alt={item.image?.alt || 'Hero image'}
+                    fill
+                    priority={index === 0}
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+              </SwiperSlide>
+            );
+          })}
         </Swiper>
 
         {/* Navigation Buttons */}

@@ -22,6 +22,8 @@ type CardBlogProps = {
 };
 
 const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
+  const imageSrc = item.image?.url || '/cover.jpg';
+  
   return (
     <article className="group flex md:flex-row flex-col md:items-center gap-3 md:gap-3">
       {/* Image */}
@@ -29,8 +31,8 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
         <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} aria-label={item.title}>
           <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[12px] md:rounded-[8px]">
             <Image
-              src={item.image.url}
-              alt={item.image.alt || item.title}
+              src={imageSrc}
+              alt={item.image?.alt || item.title}
               priority={false}
               fill
               className="h-full w-full object-cover duration-300 ease-in-out lg:group-hover:scale-105"

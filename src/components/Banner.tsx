@@ -12,14 +12,15 @@ type BannerProps = {
 };
 
 const Banner: React.FC<BannerProps> = ({ banner, classHeight = "h-[162px] md:h-[480px]" }) => {
+  const imageSrc = banner.image?.url || '/cover.jpg';
 
   return (
     <div
       className={`relative w-full ${classHeight}`}
     >
       <Image
-        src={banner.image.url}
-        alt={banner.image.alt || "banner"}
+        src={imageSrc}
+        alt={banner.image?.alt || "banner"}
         fill
         priority
         className="h-full w-full object-cover"

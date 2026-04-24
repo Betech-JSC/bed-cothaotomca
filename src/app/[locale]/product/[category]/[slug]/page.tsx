@@ -103,6 +103,7 @@ export default async function ProductDetailsPage({
       title: productData.title,
     },
   ];
+  console.log('Data product:', productData.images)
 
   const relatedProducts = product.related_products?.map((p: any) => ({
     id: p.id,
@@ -127,18 +128,29 @@ export default async function ProductDetailsPage({
           <div className="grid grid-cols-12 gap-4 md:gap-6 xl:gap-8">
             <div className="col-span-full lg:col-span-6 xl:col-span-7 lg:pr-3 xl:pr-4">
               <div className="md:block hidden space-y-6">
-                {productData.images.map((image: any, index: number) => {
-                  return (
-                    <div key={index} className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
-                      <Image
-                        src={image.url}
-                        alt={image.alt || image.title || "image product"}
-                        fill
-                        className="object-cover w-full h-full"
-                      />
-                    </div>
-                  );
-                })}
+                {productData.images && productData.images.length > 0 ? <div className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
+                  <Image
+                    src={productData.image?.url || '/cover.jpg'}
+                    alt={productData.title || "image product"}
+                    fill
+                    className="object-cover w-full h-full"
+                  />
+                </div> : <>
+                  {productData.images.map((image: any, index: number) => {
+                    return (
+                      <div key={index} className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
+                        <Image
+                          src={image.url}
+                          alt={image.alt || image.title || "image product"}
+                          fill
+                          className="object-cover w-full h-full"
+                        />
+                      </div>
+                    );
+                  })}
+                </>}
+
+
               </div>
             </div>
             <div className="col-span-full lg:col-span-6 xl:col-span-5">

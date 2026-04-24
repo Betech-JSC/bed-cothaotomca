@@ -36,18 +36,21 @@ const SliderProductImages: React.FC<SliderProductImagesProps> = ({ items }) => {
         }}
         className="!static"
       >
-        {items.map((item) => (
-          <SwiperSlide key={item.id}>
-            <div className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
-              <Image
-                src={item.url}
-                alt={item.alt || item.title || "image product"}
-                fill
-                className="object-cover w-full h-full"
-              />
-            </div>
-          </SwiperSlide>
-        ))}
+        {items.map((item) => {
+          const imageSrc = item.url || '/cover.jpg';
+          return (
+            <SwiperSlide key={item.id}>
+              <div className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
+                <Image
+                  src={imageSrc}
+                  alt={item.alt || item.title || "image product"}
+                  fill
+                  className="object-cover w-full h-full"
+                />
+              </div>
+            </SwiperSlide>
+          );
+        })}
       </Swiper>
     </div>
   );

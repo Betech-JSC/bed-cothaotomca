@@ -29,6 +29,8 @@ interface CardProductProps {
 
 const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const t = useTranslations();
+  const imageSrc = item.image?.url || '/cover.jpg';
+  
   return (
     <div className="group rounded-[24px] relative overflow-hidden bg-white">
       {/* Image */}
@@ -39,8 +41,8 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
       >
         <div className="aspect-w-1 aspect-h-1 relative overflow-hidden">
           <Image
-            src={item.image.url}
-            alt={item.image.alt || item.title}
+            src={imageSrc}
+            alt={item.image?.alt || item.title}
             priority={false}
             fill
             className="h-full w-full object-cover duration-500 ease-in-out lg:group-hover:scale-110"
