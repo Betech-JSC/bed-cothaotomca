@@ -52,14 +52,12 @@
   "home": {
     "section-2": {
       "subTitle": "Fresh Seafood marinated in soy sauce, new batch every day",
-      "title": "Fresh original, 100% no preservatives.",
+      "title": "Authentic Freshness, 100% Preservative-Free",
       "description": {
-        "text1": "At Co Thao Tom Ca, we only make seafood when the ingredients reach their best freshness.",
-        "text2": "From salmon, shrimp, crab, flower crab, abalone to the smallest ingredients in the kitchen, all are carefully selected and processed within the day, without using preservatives.",
-        "text3": "Soy marinated seafood dishes are made to be eaten immediately, preserving the natural sweetness and fresh texture of the seafood.",
-        "text4": "The highlight lies in our exclusive soy sauce — perfectly balanced to be rich enough to enhance the flavor, but light enough for diners to feel each fiber and creamy sweet layer.",
-        "text5": "We do not follow industrial quantities or extend preservation time.",
-        "text6": "Only choose to make a new batch every day, because with Co Thao Tom Ca, freshness is a mandatory standard, not an option."
+        "text1": "At Cô Thảo Tôm Cá, we only work with premium seafood, ensuring every ingredient meets the highest standard of freshness.",
+        "text2": "In our kitchen, all ingredients are sourced from the finest suppliers. From Norwegian salmon, Cà Mau crab, Phan Thiết blue crab, and fresh farm-raised shrimp, to Korean abalone, free-range eggs, and even the smallest components — everything is carefully selected, prepared fresh daily, and never treated with preservatives.",
+        "text3": "Our signature soy sauce is crafted based on an authentic Korean recipe, thoughtfully adjusted to suit Vietnamese taste — it is deeply flavorful while maintaining a refreshing lightness, completely oil-free, allowing the natural sweetness of every cut to stand out.",
+        "text4": "\"Fresh batch, every day\" is not just a phrase, but a core standard at Cô Thảo Tôm Cá — freshness is not a choice, it is a requirement."
       }
     },
     "section-3": {
@@ -84,48 +82,37 @@
         "text2": "Pure Flavors"
       },
       "description": {
-        "text1": "We are a specialized Delivery & Takeaway model. Order now to enjoy at home.",
-        "text2": {
-          "title": "1. Order:",
-          "description": "Accepting orders via Fanpage/Hotline."
-        },
-        "text3": {
-          "title": "2. Preparation:",
-          "description": "The kitchen prepares and packs immediately to maintain freshness."
-        },
-        "text4": {
-          "title": "3. Delivery:",
-          "description": "Super-fast delivery within the city. Carefully packed to ensure no spills or odors."
-        }
+        "text1": "With a network of four outlets dedicated to delivery, Cô Thảo Tôm Cá ensures optimal speed and quality in every order. We place great care in our packaging process, designed to preserve each dish from the effects of temperature and transit time — delivering a complete, premium experience to every meal."
       }
     }
   },
   "about": {
     "section-2": {
-      "title": "Origins from the Appreciation of Original Ingredients",
+      "title": "Rooted in respect for pure ingredients",
       "subTitle": "Becoming a pioneer and market leader in fresh seafood marinated in rich sauce",
       "description": {
-        "text1": "We understand that to have a batch of shrimp, crab, or salmon marinated in soy sauce with authentic Korean or Thai flavors, seasoning alone is not enough. The soul of the dish must originate from ingredients that are still \"swimming\" – the freshest and purest.",
-        "text2": "At Co Thao's kitchen, we do not chase industrial quantities or extend preservation time. Instead, we choose the artisanal way, only making new batches every day to preserve the full crunchy texture and natural sweetness of grade 1 seafood."
+        "text1": "It all began with a deep appreciation for salmon — one of the most nutritionally rich and refined ingredients in culinary culture.",
+        "text2": "From this perspective, we gradually explored the world of Korean-style soy-marinated seafood — where each ingredient is not merely a component, but the foundation of the dish itself. We came to realize that a truly authentic marinade is not defined by seasoning alone, but by the freshness, purity, and intrinsic quality of every ingredient.",
+        "text3": "Cô Thảo Tôm Cá was built upon this belief. We do not pursue mass production or extended preservation. Instead, we embrace a handcrafted approach, preparing only limited fresh batches each day to preserve the natural firmness and delicate sweetness of premium-grade seafood — just as it is meant to be."
       }
     },
     "section-3": {
-      "title": "Carefully Crafted Flavors Every Day",
+      "title": "Savory Perfection in Every Bite",
       "value1": {
-        "title": "Selected Quality",
-        "description": "Only use first-class ingredients for processing. Absolutely 100% no preservatives used."
+        "title": "Premium-Grade Ingredients",
+        "description": "We use only top-tier ingredients in every preparation. Absolutely no preservatives — preserving the pure, natural flavor while ensuring a wholesome and health-conscious experience."
       },
       "value2": {
         "title": "Professional & Safe",
-        "description": "Processing stages ensure food safety, marination techniques are properly taught, and the kitchen space and tools are always clean and tidy."
+        "description": "Every step of the preparation is carried out by hand, under the care of a professionally trained team, strictly following food safety standards. Our kitchen environment and tools are maintained to be hygienic, sterile, and meticulously organized at all times."
       },
       "value3": {
-        "title": "Meticulous in Experience",
-        "description": "Attention to the smallest details, from pre-cracked crab claws and providing gloves to exquisite packaging, bringing a 'tasteful' dining experience."
+        "title": "Freshness, True to Taste",
+        "description": "Seafood is kept at its freshest — plump, firm, and naturally sweet. Paired with our signature soy marinade, it delivers a refined and well-balanced dining experience."
       },
       "value4": {
         "title": "Attentive & Dedicated",
-        "description": "Creating perfect delicious meals doesn't just come from the main dish; Co Thao shrimp and fish also care about the most complete and worry-free meal for customers."
+        "description": "A complete meal goes beyond just great food. At Cô Thảo Tôm Cá, we put genuine care into every touchpoint, delivering not only quality dishes but also a thoughtful and reassuring dining experience."
       }
     },
     "section-5": {
@@ -142,7 +129,7 @@
   },
   "contact": {
     "title": "Contact",
-    "description": "We listen with care and serve with dedication. Whether you need advice on our marinated seafood flavors or want to order premium fresh seafood, Co Thao Kitchen is always here to prepare the freshest batches of the day for you.",
+    "description": "Co Thao Tom Ca Kitchen is always ready to answer any of your questions. With our utmost care and enthusiasm, if you need flavor recommendations or help picking the perfect dish for today, don't hesitate to reach out to us right away!",
     "address": "Address",
     "form": {
       "title": "How can Co Thao Kitchen assist you?",

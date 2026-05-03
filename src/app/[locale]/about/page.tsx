@@ -131,6 +131,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                   <AnimateOnScroll animate="slideup" delay={300} className="body-1 text-gray-800 md:space-y-4 space-y-3">
                     <p>{t('about.section-2.description.text1')}</p>
                     <p>{t('about.section-2.description.text2')}</p>
+                    <p>{t('about.section-2.description.text3')}</p>
                   </AnimateOnScroll>
                 </div>
               </div>

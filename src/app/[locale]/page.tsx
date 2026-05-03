@@ -160,8 +160,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <p>{t('home.section-2.description.text2')}</p>
                 <p>{t('home.section-2.description.text3')}</p>
                 <p>{t('home.section-2.description.text4')}</p>
-                <p>{t('home.section-2.description.text5')}</p>
-                <p>{t('home.section-2.description.text6')}</p>
               </AnimateOnScroll>
               <div className="md:mt-12 mt-6 xl:mt-16">
                 <Link href="/about" className="btn btn-primary max-w-[240px]">
@@ -260,11 +258,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               <h2 className="headline-1 text-yellow">{t('home.section-7.title.text1')} <br /> {t('home.section-7.title.text2')}</h2>
               <div className="body-1 text-white space-y-2 md:space-y-3 xl:space-y-4">
                 <p>{t('home.section-7.description.text1')}</p>
-                <ol>
+                {/* <ol>
                   <li><span className="font-bold">{t('home.section-7.description.text2.title')}</span> {t('home.section-7.description.text2.description')}</li>
                   <li><span className="font-bold">{t('home.section-7.description.text3.title')}</span> {t('home.section-7.description.text3.description')}</li>
                   <li><span className="font-bold">{t('home.section-7.description.text4.title')}</span> {t('home.section-7.description.text4.description')}</li>
-                </ol>
+                </ol> */}
               </div>
               <div className="grid grid-cols-2 md:flex items-center md:gap-4 gap-6 xl:gap-6">
                 <a href="tel:02499997122" className="btn btn-white flex items-center gap-2 px-3.5">
