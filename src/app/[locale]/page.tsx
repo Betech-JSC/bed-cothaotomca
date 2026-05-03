@@ -23,7 +23,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     getApi<HeroBanner>('banners', { params: { position: 'hero_home', lang: locale } }).catch(() => ({ data: [] })),
     getApi<HeroBanner>('banners', { params: { position: 'slide_home', lang: locale } }).catch(() => ({ data: [] })),
     getApi<Product>('products', { params: { lang: locale } }).catch(() => ({ data: [] })),
-    getApi<Category>('categories', { params: { lang: locale } }).catch(() => ({ data: [] })),
+    getApi<Category>('categories', { params: { lang: locale, is_featured: true } }).catch(() => ({ data: [] })),
     getBlogs({ is_featured: true, per_page: 10, lang: locale }).catch(() => ({ data: [] }))
   ]);
 
