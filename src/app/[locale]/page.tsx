@@ -162,7 +162,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <p>{t('home.section-2.description.text4')}</p>
               </AnimateOnScroll>
               <div className="md:mt-12 mt-6 xl:mt-16">
-                <Link href="/about" className="btn btn-primary max-w-[240px]">
+                <Link href="/about" className="btn btn-primary max-w-[240px]" scroll={false}>
                   {t('button.about')}
                 </Link>
               </div>
@@ -222,7 +222,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 </AnimateOnScroll>
                 <AnimateOnScroll animate="slideup" delay={300} className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
                   {categoriesDisplay.map((itemCategory, indexCategory) => (
-                    <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
+                    <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out" scroll={false}>
                       <span>{itemCategory.title}</span>
                       <span className="rotate-180"><Arrow /></span>
                     </Link>

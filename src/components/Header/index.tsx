@@ -259,6 +259,7 @@ const DesktopNavItem = ({
         <Link
           href={item.href ?? ("#" as any)}
           className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}
+          scroll={false}
           {...linkProps}
         >
           {item.label}
@@ -307,6 +308,7 @@ const DesktopNavItem = ({
               href={child.href ?? ("#" as any)}
               className="hover:text-primary block rounded-xl px-3 py-2.5 text-left text-neutral-700 transition-colors hover:bg-neutral-50"
               role="menuitem"
+              scroll={false}
             >
               {child.label}
             </Link>
@@ -419,6 +421,7 @@ const MobileMenu = ({
                       }`}
                     {...linkProps}
                     onClick={onClose}
+                    scroll={false}
                   >
                     {item.label}
                   </Link>
@@ -465,6 +468,7 @@ const MobileMenu = ({
                         href={child.href ?? ("#" as any)}
                         className="block rounded-lg px-3 py-2 text-neutral-700 hover:bg-neutral-50"
                         onClick={onClose}
+                        scroll={false}
                       >
                         {child.label}
                       </Link>

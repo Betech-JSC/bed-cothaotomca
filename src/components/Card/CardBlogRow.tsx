@@ -28,7 +28,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
     <article className="group flex md:flex-row flex-col md:items-center gap-3 md:gap-3">
       {/* Image */}
       <div className="relative block max-w-full md:max-w-[175px] w-full md:flex-shrink-0">
-        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} aria-label={item.title}>
+        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} aria-label={item.title} scroll={false}>
           <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[12px] md:rounded-[8px]">
             <Image
               src={imageSrc}
@@ -44,6 +44,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
             <Link
               href={{ pathname: '/blog/category/[category]', params: { category: item.category.slug } }}
               className="label-2 font-semibold lg:hover:underline"
+              scroll={false}
             >
               {item.category.title}
             </Link>
@@ -60,6 +61,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
           <Link
             href={{ pathname: '/blog/category/[category]', params: { category: item.category.slug } }}
             className="label-2 font-semibold lg:hover:underline"
+            scroll={false}
           >
             {item.category.title}
           </Link>
@@ -69,7 +71,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
           </span>
         </div>
 
-        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block">
+        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block" scroll={false}>
           <h3 className="title-2 text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 md:line-clamp-3">
             {item.title}
           </h3>

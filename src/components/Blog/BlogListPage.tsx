@@ -97,17 +97,17 @@ export default function BlogListPage({
     const query = Object.fromEntries(params.entries());
 
     if (currentCategorySlug) {
-      router.push({ pathname: '/blog/category/[category]', params: { category: currentCategorySlug }, query });
+      router.push({ pathname: '/blog/category/[category]', params: { category: currentCategorySlug }, query }, { scroll: false });
     } else {
-      router.push({ pathname: '/blog', query });
+      router.push({ pathname: '/blog', query }, { scroll: false });
     }
   };
 
   const handleCategoryChange = (slug?: string) => {
     if (!slug) {
-      router.push({ pathname: '/blog' });
+      router.push({ pathname: '/blog' }, { scroll: false });
     } else {
-      router.push({ pathname: '/blog/category/[category]', params: { category: slug } });
+      router.push({ pathname: '/blog/category/[category]', params: { category: slug } }, { scroll: false });
     }
   };
 

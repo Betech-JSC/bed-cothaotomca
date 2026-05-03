@@ -56,6 +56,7 @@ export default async function PolicyPage({
                           ? "bg-primary text-yellow shadow-lg"
                           : "text-gray-900 lg:hover:text-[#142A68] lg:hover:bg-gray-50"
                           } title-3`}
+                        scroll={false}
                       >
                         {policy.title || policy.name}
                       </Link>
