@@ -12,7 +12,7 @@ export interface ApiResponse<T> {
  * @param key The endpoint key (e.g. 'hero-banners', 'products')
  * @param options Additional fetch options including searchParams
  */
-export async function getApi<T>(key: ApiKey, options: { params?: Record<string, string | number>, revalidate?: number } = {}): Promise<ApiResponse<T>> {
+export async function getApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiResponse<T>> {
   const { params, revalidate = 3600 } = options;
   
   let url = `${BASE_URL}/${key}`;
