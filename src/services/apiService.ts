@@ -1,4 +1,4 @@
-const BASE_URL = 'https://staging-cothaotomca.betech-digital.com/api/v1';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export type ApiKey = 'hero-banners' | 'products' | 'categories' | 'banners' | string;
 

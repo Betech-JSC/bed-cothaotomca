@@ -1,13 +1,15 @@
 "use client";
 
 import { Link, usePathname, useRouter } from "@/i18n/i18n-navigation";
-import { ComponentProps, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { ComponentProps, useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import Logo from "../Logo";
 import LanguageSwitcher from "../LanguageSwitcher";
 import Search from "../Icons/Search";
 import Hotline from "../Icons/Hotline";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
+import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
+import SearchSuggestions from "./SearchSuggestions";
 
 type LinkHref = ComponentProps<typeof Link>["href"];
 
@@ -31,6 +33,7 @@ const isNavActive = (href: string | undefined, pathname: string): boolean => {
 const Header = () => {
   const pathname = usePathname();
   const t = useTranslations();
+  const locale = useLocale();
   const settings = useGeneralSettings();
   const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
   const hotlineClean = hotline.replace(/\s/g, "");
@@ -55,8 +58,13 @@ const Header = () => {
   );
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(true);
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Search suggestions hook
+  const { suggestions, isLoading, clearSuggestions } = useSearchSuggestions(searchQuery, locale);
 
   useEffect(() => {
     const onScroll = () => {
@@ -76,7 +84,23 @@ const Header = () => {
     setIsMobileOpen(false);
     setOpenDropdownIndex(null);
     setIsSearchOpen(false);
+    setShowSuggestions(false);
+    clearSuggestions();
   }, [pathname]);
+
+  // Close suggestions on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (isSearchOpen) {
@@ -113,8 +137,17 @@ const Header = () => {
       } as any);
       setIsSearchOpen(false);
       setSearchQuery("");
+      setShowSuggestions(false);
+      clearSuggestions();
     }
   };
+
+  const handleSuggestionSelect = useCallback(() => {
+    setIsSearchOpen(false);
+    setSearchQuery("");
+    setShowSuggestions(false);
+    clearSuggestions();
+  }, [clearSuggestions]);
 
   return (
     <header
@@ -200,33 +233,46 @@ const Header = () => {
         />
       </div>
       <div
-        className={`absolute left-0 top-full w-full bg-primary/95 shadow-xl transition-all duration-300 backdrop-blur-sm overflow-hidden border-t border-white/10 ${isSearchOpen
-          ? "max-h-24 opacity-100 py-4"
-          : "max-h-0 opacity-0 py-0 invisible"
+        className={`absolute left-0 top-full w-full bg-primary/95 shadow-xl transition-all duration-300 backdrop-blur-sm border-t border-white/10 ${isSearchOpen
+          ? "max-h-[500px] opacity-100 py-4"
+          : "max-h-0 opacity-0 py-0 invisible overflow-hidden"
           }`}
       >
         <div className="container">
-          <form
-            onSubmit={handleSearchSubmit}
-            className="relative flex items-center max-w-3xl mx-auto"
-          >
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder={t("common.search_placeholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white text-gray-900 rounded-full py-2.5 px-6 placeholder:text-gray-900 focus:outline-none focus:border-secondary transition-all"
+          <div ref={searchContainerRef} className="relative max-w-3xl mx-auto">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="relative flex items-center"
+            >
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder={t("common.search_placeholder")}
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                className="w-full bg-white text-gray-900 rounded-full py-2.5 px-6 placeholder:text-gray-900 focus:outline-none focus:border-secondary transition-all"
+              />
+              <div className="absolute right-0.5">
+                <button
+                  type="submit"
+                  className="btn-secondary !h-[40px] btn max-md:!min-w-[100px]"
+                >
+                  {t("common.search")}
+                </button>
+              </div>
+            </form>
+            <SearchSuggestions
+              suggestions={suggestions}
+              isLoading={isLoading}
+              searchQuery={searchQuery}
+              onSelect={handleSuggestionSelect}
+              visible={showSuggestions && isSearchOpen}
             />
-            <div className="absolute right-0.5">
-              <button
-                type="submit"
-                className="btn-secondary !h-[40px] btn max-md:!min-w-[100px]"
-              >
-                {t("common.search")}
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
     </header>
