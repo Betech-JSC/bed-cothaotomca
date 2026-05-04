@@ -27,8 +27,11 @@ export interface GeneralSettingsResponse {
  * Fetch general settings (single object, not array)
  * This API returns { data: {...} } instead of { data: [...] }
  */
-export async function getGeneralSettings(): Promise<GeneralSettings> {
-  const url = `${BASE_URL}/general-settings`;
+export async function getGeneralSettings(lang?: string): Promise<GeneralSettings> {
+  let url = `${BASE_URL}/general-settings`;
+  if (lang) {
+    url += `?lang=${lang}`;
+  }
 
   const response = await fetch(url, {
     next: { revalidate: 3600 }

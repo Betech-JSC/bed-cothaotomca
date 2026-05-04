@@ -67,8 +67,8 @@ export default async function LocaleLayout({
   const { locale } = await params
   const messages = await getMessages()
 
-  const settings = await getGeneralSettings().catch(() => null);
-  const branches = await getBranches().catch(() => []);
+  const settings = await getGeneralSettings(locale).catch(() => null);
+  const branches = await getBranches(locale).catch(() => []);
 
   return (
     <html suppressHydrationWarning lang={locale}>

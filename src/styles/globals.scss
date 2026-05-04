@@ -16,8 +16,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-html {
-}
+html {}
 
 body,
 main,
@@ -28,9 +27,15 @@ footer {
   background-size: contain;
 }
 
+@screen md {
+  .bg-linear-chooseus {
+    background: linear-gradient(90deg, #000000 0%, rgba(0, 0, 0, 0) 100%);
+    @apply md:opacity-80;
+  }
+}
+
 .bg-linear-chooseus {
-  background: linear-gradient(90deg, #000000 0%, rgba(0, 0, 0, 0) 100%);
-  @apply md:opacity-80;
+  background: linear-gradient(0deg, #000000 -20%, rgba(0, 0, 0, 0) 100%);
 }
 
 .bg-linear-mobile {

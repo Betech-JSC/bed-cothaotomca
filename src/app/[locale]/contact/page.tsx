@@ -9,8 +9,14 @@ import { getTranslations } from 'next-intl/server'
 import { getGeneralSettings } from '@/services/generalSettingService';
 import ContactForm from '@/components/Contact/ContactForm';
 import AnimateOnScroll from '@/components/Animated/animated-appear';
+import { getBranches } from '@/services/branchService';
 
-export default async function ContactPage() {
+export default async function ContactPage({
+  params
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
   const t = await getTranslations()
   const banner = {
     image: {
@@ -19,12 +25,14 @@ export default async function ContactPage() {
     },
   };
 
-  const settings = await getGeneralSettings().catch(() => null);
+  const settings = await getGeneralSettings(locale).catch(() => null);
+  const branches = await getBranches(locale).catch(() => []);
+  const mainBranch = branches.find((item) => item.is_main);
 
-  const hotline = settings?.hotline?.replace(/\s/g, '');
+  const hotline = settings?.hotline?.replace(/\s/g, '') || '';
   const email = settings?.email;
-  const address = settings?.address;
-  const linkAddress = settings?.link_address;
+  const address = mainBranch ? mainBranch.address : settings?.address;
+  const linkAddress = mainBranch ? (mainBranch.address_link || '#') : (settings?.link_address || '#');
 
   const socials = [
     { icon: <ShareFacebook />, href: settings?.link_facebook },
