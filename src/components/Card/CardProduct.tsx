@@ -30,7 +30,7 @@ interface CardProductProps {
 const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const t = useTranslations();
   const imageSrc = item.image?.url || '/cover.jpg';
-  
+
   return (
     <div className="group rounded-[24px] relative overflow-hidden bg-white">
       {/* Image */}
@@ -50,13 +50,13 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         </div>
       </Link>
 
-      <div className="py-6 px-4 text-center">
+      <div className="py-3 md:py-6 px-2 md:px-4 text-center">
         <Link
           href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
           scroll={false}
           className="block"
         >
-          <h3 className={`title-1 max-md:text-[16px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-1 min-h-[32px]`}>
+          <h3 className={`title-1 max-md:text-[16px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-1 min-h-[24px] md:min-h-[32px]`}>
             {item.title}
           </h3>
         </Link>

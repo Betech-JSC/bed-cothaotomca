@@ -77,7 +77,7 @@ const Footer = () => {
                         className="object-cover w-full h-full lg:group-hover:scale-105 duration-300 ease-in-out"
                       />
                     </div>
-                    <div className="absolute bottom-0 left-0 bg-linear-branch text-gray-200 space-y-1 p-2">
+                    <div className="absolute bottom-0 left-0 bg-linear-branch text-gray-200 space-y-1 p-2 w-full">
                       <div className="title-4">{t('footer.branch')} {indexShowroom + 1}</div>
                       <div className="body-2 lg:group-hover:text-secondary transition-all duration-300 ease-in-out">
                         {itemShowroom.address}

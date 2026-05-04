@@ -218,7 +218,7 @@ const Header = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white text-gray-900 rounded-full py-2.5 px-6 placeholder:text-gray-900 focus:outline-none focus:border-secondary transition-all"
             />
-            <div className="absolute right-1">
+            <div className="absolute right-0.5">
               <button
                 type="submit"
                 className="btn-secondary !h-[40px] btn max-md:!min-w-[100px]"
