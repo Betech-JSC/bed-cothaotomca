@@ -11,7 +11,7 @@ export default function LanguageSwitcher() {
   const nextLocale = locale === "vi" ? "en" : "vi";
 
   const handleToggle = () => {
-    router.replace("/", { locale: nextLocale, scroll: false });
+    router.replace("/", { locale: nextLocale });
   };
 
   return (

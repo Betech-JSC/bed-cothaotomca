@@ -48,16 +48,16 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const productsDisplay = productsData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
     const name = translation?.name || item.name;
-    
+
     // Get category from categories array (new structure) or category object (old structure)
-    const productCategory = item.categories && item.categories.length > 0 
-      ? item.categories[0] 
+    const productCategory = item.categories && item.categories.length > 0
+      ? item.categories[0]
       : item.category;
-    
+
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || productCategory?.title || "Tất cả";
-    const categorySlug = productCategory?.slug || slugify(categoryName);
-    
+    const categorySlug = slugify(categoryName);
+
     return {
       id: item.id,
       title: name,
@@ -116,7 +116,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       slug: item.slug,
       category: {
         title: categoryName,
-        slug: item.category?.slug || slugify(categoryName),
+        slug: slugify(categoryName),
       },
       created_at: item.created_at,
     };
@@ -171,7 +171,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <p>{t('home.section-2.description.text4')}</p>
               </AnimateOnScroll>
               <div className="md:mt-12 mt-6 xl:mt-16">
-                <Link href="/about" className="btn btn-primary max-w-[240px]" scroll={false}>
+                <Link href="/about" className="btn btn-primary max-w-[240px]">
                   {t('button.about')}
                 </Link>
               </div>
@@ -231,7 +231,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 </AnimateOnScroll>
                 <AnimateOnScroll animate="slideup" delay={300} className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
                   {categoriesDisplay.map((itemCategory, indexCategory) => (
-                    <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out" scroll={false}>
+                    <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
                       <span>{itemCategory.title}</span>
                       <span className="rotate-180"><Arrow /></span>
                     </Link>

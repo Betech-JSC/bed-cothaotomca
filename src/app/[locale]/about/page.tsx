@@ -97,7 +97,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       slug: item.slug,
       category: {
         title: categoryName,
-        slug: item.category?.slug || slugify(categoryName),
+        slug: slugify(categoryName),
       },
       created_at: item.created_at,
     };
@@ -193,7 +193,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
             <AnimateOnScroll animate="slideup" delay={0} className="md:space-y-4 space-y-6 xl:space-y-6 max-w-[602px] w-full mx-auto flex flex-col items-center justify-center text-center">
               <h2 className="display-2 text-center text-primary max-md:max-w-[250px]">{t('about.section-5.title.text1')} <span className="text-secondary">{t('about.section-5.title.text2')}</span></h2>
               <div className="body-0 max-md:text-[16px] text-primary">{t('about.section-5.description')}</div>
-              <Link href="/product" className="btn btn-primary gap-2 w-max mx-auto px-[18px]" scroll={false}>
+              <Link href="/product" className="btn btn-primary gap-2 w-max mx-auto px-[18px]">
                 <Cart />
                 <span>{t('button.explore-menu')}</span>
               </Link>

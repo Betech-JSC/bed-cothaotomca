@@ -33,7 +33,6 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
           href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }}
           className="block"
           aria-label={item.title}
-          scroll={false}
         >
           <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[12px]">
             <Image
@@ -50,7 +49,6 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
             <Link
               href={{ pathname: '/blog/category/[category]', params: { category: item.category.slug } }}
               className="label-2 font-semibold lg:hover:underline"
-              scroll={false}
             >
               {item.category.title}
             </Link>
@@ -63,7 +61,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
       </div>
 
       <div>
-        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block" scroll={false}>
+        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block">
           <h3 className={`${isHot ? "title-1 max-md:text-[18px]" : "title-2"} text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2`}>
             {item.title}
           </h3>

@@ -21,7 +21,7 @@ const Breadcrumb = ({ breadcrumbs, classNameNav }: BreadcrumbProps) => {
     >
       <div className="flex whitespace-nowrap line-clamp-1 items-center gap-0 max-w-full">
         <span className="flex items-center">
-          <Link href="/" className="text-gray-700 opacity-70 lg:hover:text-secondary duration-300 ease-in-out" scroll={false}>
+          <Link href="/" className="text-gray-700 opacity-70 lg:hover:text-secondary duration-300 ease-in-out">
             {t("breadcrumb.home")}
           </Link>
           {breadcrumbs.length > 0 && <span className="mx-1 md:mx-2">/</span>}
@@ -35,7 +35,7 @@ const Breadcrumb = ({ breadcrumbs, classNameNav }: BreadcrumbProps) => {
               {isLast || !item.url ? (
                 <span className="text-black line-clamp-1">{item.title}</span>
               ) : (
-                <Link href={item.url} className="text-gray-700 opacity-70 lg:hover:text-secondary duration-300 ease-in-out" scroll={false}>
+                <Link href={item.url} className="text-gray-700 opacity-70 lg:hover:text-secondary duration-300 ease-in-out">
                   {item.title}
                 </Link>
               )}

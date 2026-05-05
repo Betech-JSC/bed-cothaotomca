@@ -36,7 +36,6 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
       {/* Image */}
       <Link
         href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
-        scroll={false}
         className="block"
       >
         <div className="aspect-w-1 aspect-h-1 relative overflow-hidden">
@@ -53,7 +52,6 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
       <div className="py-3 md:py-6 px-2 md:px-4 text-center">
         <Link
           href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
-          scroll={false}
           className="block"
         >
           <h3 className={`title-1 max-md:text-[16px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-1 min-h-[24px] md:min-h-[32px]`}>
@@ -62,7 +60,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         </Link>
         <div className="body-1 text-gray-900 line-clamp-3 min-h-[72px] mt-1.5 mb-3">{item.description}</div>
         <div className="flex items-center justify-center gap-1.5">
-          <span className="body-0 text-gray-900">{t('common.only_from')}</span>
+          {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
           <span className="title-2 text-secondary">
             {formatPrice(item.variants?.[0]?.price || 0)}
           </span>

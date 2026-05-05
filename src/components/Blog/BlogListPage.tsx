@@ -63,7 +63,7 @@ export default function BlogListPage({
       slug: blog.slug,
       category: {
         title: categoryName,
-        slug: blog.category?.slug || slugify(categoryName),
+        slug: slugify(categoryName),
       },
       image: {
         url: blog.thumbnail,
@@ -82,7 +82,7 @@ export default function BlogListPage({
       return {
         id: cat.id,
         name: translation?.title || cat.title || "Danh mục",
-        slug: cat.slug || slugify(translation?.title || cat.title || "danh-muc"),
+        slug: slugify(translation?.title || cat.title || "danh-muc"),
       };
     });
   }, [categories, locale]);
@@ -97,17 +97,17 @@ export default function BlogListPage({
     const query = Object.fromEntries(params.entries());
 
     if (currentCategorySlug) {
-      router.push({ pathname: '/blog/category/[category]', params: { category: currentCategorySlug }, query }, { scroll: false });
+      router.push({ pathname: '/blog/category/[category]', params: { category: currentCategorySlug }, query });
     } else {
-      router.push({ pathname: '/blog', query }, { scroll: false });
+      router.push({ pathname: '/blog', query });
     }
   };
 
   const handleCategoryChange = (slug?: string) => {
     if (!slug) {
-      router.push({ pathname: '/blog' }, { scroll: false });
+      router.push({ pathname: '/blog' });
     } else {
-      router.push({ pathname: '/blog/category/[category]', params: { category: slug } }, { scroll: false });
+      router.push({ pathname: '/blog/category/[category]', params: { category: slug } });
     }
   };
 

@@ -122,12 +122,12 @@ export default function ProductIndexPage({
         pathname: '/product/[category]',
         params: { category: newCategorySlug },
         query: query
-      }, { scroll: false })
+      })
     } else {
       router.push({
         pathname: '/product',
         query: query
-      }, { scroll: false })
+      })
     }
   }
 

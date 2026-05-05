@@ -80,7 +80,6 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
           href="/blog"
           className="btn btn-primary max-w-[240px] w-full mx-auto"
           aria-label={t('button.learn-more')}
-          scroll={false}
         >
           {t('button.learn-more')}
         </Link>
