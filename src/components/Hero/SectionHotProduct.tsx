@@ -71,7 +71,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
             >
               {products.map((product, index) => (
                 <SwiperSlide key={product.id}>
-                  <AnimateOnScroll animate="slideup" delay={index * 100}>
+                  <AnimateOnScroll animate="slideup" delay={300}>
                     <CardProduct item={product} />
                   </AnimateOnScroll>
                 </SwiperSlide>
