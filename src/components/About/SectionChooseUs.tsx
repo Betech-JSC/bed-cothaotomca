@@ -108,7 +108,7 @@ const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
                 alt={item.image.alt}
                 className="object-cover w-full h-full"
               />
-              <div className="bg-linear-chooseus max-w-[840px] w-full h-full absolute top-0 left-0 flex items-center">
+              <div className="bg-linear-chooseus w-full h-full absolute top-0 left-0 flex items-center">
                 <div className="md:p-6 py-4 px-8 lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] xl:max-w-[560px] w-full">
                   <h3 className="display-2 max-md:text-[28px] text-yellow">{item.title}</h3>
                   <p className="body-1 text-white">{item.description}</p>
