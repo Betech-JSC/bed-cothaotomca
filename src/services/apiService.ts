@@ -7,8 +7,13 @@ export interface ApiResponse<T> {
   [key: string]: any; // For paginated responses like products
 }
 
+export interface ApiSingleResponse<T> {
+  data: T;
+  [key: string]: any;
+}
+
 /**
- * Generic API fetch function
+ * Generic API fetch function for collections
  * @param key The endpoint key (e.g. 'hero-banners', 'products')
  * @param options Additional fetch options including searchParams
  */
@@ -25,15 +30,56 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
     url += `?${searchParams.toString()}`;
   }
 
-  const response = await fetch(url, {
-    next: { revalidate }
-  });
+  try {
+    const response = await fetch(url, {
+      next: { revalidate }
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch API: ${key}`);
+    if (!response.ok) {
+      console.error(`API Error: ${key} - Status: ${response.status}`);
+      throw new Error(`Failed to fetch API: ${key}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error(`Failed to fetch API: ${key}`, error);
+    throw error;
+  }
+}
+
+/**
+ * Generic API fetch function for single items
+ * @param key The endpoint key (e.g. 'products/slug/abc')
+ * @param options Additional fetch options including searchParams
+ */
+export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiSingleResponse<T>> {
+  const { params, revalidate = 60 } = options;
+  
+  let url = `${BASE_URL}/${key}`;
+  
+  if (params) {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      searchParams.append(k, v.toString());
+    });
+    url += `?${searchParams.toString()}`;
   }
 
-  return response.json();
+  try {
+    const response = await fetch(url, {
+      next: { revalidate }
+    });
+
+    if (!response.ok) {
+      console.error(`API Error: ${key} - Status: ${response.status}`);
+      throw new Error(`Failed to fetch API: ${key}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error(`Failed to fetch API: ${key}`, error);
+    throw error;
+  }
 }
 
 /**

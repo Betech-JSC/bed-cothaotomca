@@ -69,10 +69,25 @@ export default function ProductIndexPage({
   const productsDisplay = useMemo(() => products.map(p => {
     const translation = getTranslation(p.translations, locale) as any;
     const name = translation?.name || p.name;
-    const catTranslation = getTranslation(p.category?.translations, locale) as any;
-    const categoryName = catTranslation?.title || p.category?.title || "";
-    const categoryId = p.category?.id?.toString() || "";
+    
+    // Get category from categories array (new structure) or category object (old structure)
+    const productCategory = p.categories && p.categories.length > 0 
+      ? p.categories[0] 
+      : p.category;
+    
+    const catTranslation = getTranslation(productCategory?.translations, locale) as any;
+    const categoryName = catTranslation?.title || productCategory?.title || "";
+    const categoryId = productCategory?.id?.toString() || "";
     const categorySlug = slugify(categoryName);
+    
+    // Store all category slugs for filtering (support multi-category)
+    const allCategorySlugs = p.categories && p.categories.length > 0
+      ? p.categories.map(cat => {
+          const trans = getTranslation(cat.translations, locale) as any;
+          const title = trans?.title || cat.title || "";
+          return slugify(title);
+        })
+      : [categorySlug];
 
     return {
       id: p.id,
@@ -80,6 +95,7 @@ export default function ProductIndexPage({
       slug: slugify(name),
       price: parseFloat(p.price as string) || 0,
       category: { id: categoryId, title: categoryName, slug: categorySlug },
+      allCategorySlugs, // Add this for multi-category filtering
       ingredientIds: p.ingredients?.map(ing => ing.id.toString()) || [],
       variants: p.variants,
       image: {
@@ -151,8 +167,8 @@ export default function ProductIndexPage({
   const filteredProductsSorted = useMemo(() => {
     return productsDisplay.filter(p => {
       // Category match: if no category in URL, match all. 
-      // Otherwise, match the product's category slug with the URL slug.
-      const catMatch = !category || p.category.slug === category
+      // Otherwise, check if ANY of the product's categories matches the URL slug.
+      const catMatch = !category || p.allCategorySlugs.includes(category)
 
       // Ingredient match: the product must have ALL selected ingredients.
       const ingMatch =

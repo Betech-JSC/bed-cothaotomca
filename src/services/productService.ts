@@ -1,4 +1,4 @@
-import { getApi } from './apiService';
+import { getApi, getSingleApi } from './apiService';
 
 export interface Translation {
   id: number;
@@ -33,6 +33,7 @@ export interface Product {
     id: number;
     title: string;
     slug?: string;
+    translations?: any[];
   }[];
   created_at: string;
   variants?: any[];
@@ -59,12 +60,8 @@ export const getProductBySlug = async (slug: string, options: { revalidate?: num
   try {
     const { lang, ...restOptions } = options;
     const params = lang ? { lang } : undefined;
-    const response = await getApi<Product>(`products/slug/${slug}`, { ...restOptions, params });
-    // for detail API, sometimes the response might be the object directly or wrapped in data
-    // based on getApi implementation, it returns the json response directly
-    // but getApi assumes the response is ApiResponse<T> where data is T[]
-    // let's adjust for single object response
-    return (response as any).data || response;
+    const response = await getSingleApi<Product>(`products/slug/${slug}`, { ...restOptions, params });
+    return response.data;
   } catch (error) {
     console.error(`Error fetching product with slug ${slug}:`, error);
     return null;

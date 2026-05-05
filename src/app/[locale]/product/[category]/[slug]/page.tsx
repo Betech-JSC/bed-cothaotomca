@@ -57,8 +57,11 @@ export default async function ProductDetailsPage({
 }: {
   params: Promise<{ locale: string; category: string; slug: string }>
 }) {
-  const { locale, slug } = await params
+  const { locale, category, slug } = await params
+  console.log('Product Detail Page - Category:', category, 'Slug:', slug, 'Locale:', locale);
+  
   const product = await getProductBySlug(slug, { revalidate: 3600, lang: locale });
+  console.log('Product fetched:', product ? 'Found' : 'Not found');
 
   if (!product) {
     notFound();
@@ -80,8 +83,8 @@ export default async function ProductDetailsPage({
       ? product.variants.map((v: any) => ({ title: v.size, price: v.price }))
       : [{ title: "Standard", price: parseInt(product.price) }],
     category: {
-      title: product.category?.title || "Sản phẩm",
-      slug: product.category?.slug || ""
+      title: (product.categories && product.categories.length > 0 ? product.categories[0]?.title : product.category?.title) || "Sản phẩm",
+      slug: (product.categories && product.categories.length > 0 ? product.categories[0]?.slug : product.category?.slug) || ""
     },
     infos: product.sections?.map((section: any) => ({
       title: section.title,
@@ -105,16 +108,19 @@ export default async function ProductDetailsPage({
   ];
   console.log('Data product:', productData.images)
 
-  const relatedProducts = product.related_products?.map((p: any) => ({
-    id: p.id,
-    title: p.name,
-    slug: p.slug,
-    price: parseInt(p.price),
-    category: { title: p.category?.title, slug: p.category?.slug },
-    image: { url: p.image },
-    description: p.description,
-    created_at: p.created_at
-  })) || [];
+  const relatedProducts = product.related_products?.map((p: any) => {
+    const relatedCategory = p.categories && p.categories.length > 0 ? p.categories[0] : p.category;
+    return {
+      id: p.id,
+      title: p.name,
+      slug: p.slug,
+      price: parseInt(p.price),
+      category: { title: relatedCategory?.title || "Sản phẩm", slug: relatedCategory?.slug || "" },
+      image: { url: p.image },
+      description: p.description,
+      created_at: p.created_at
+    };
+  }) || [];
 
   return (
     <main>

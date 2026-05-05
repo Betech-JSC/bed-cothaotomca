@@ -48,16 +48,25 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const productsDisplay = productsData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
     const name = translation?.name || item.name;
-    const categoryName = "Tất cả";
+    
+    // Get category from categories array (new structure) or category object (old structure)
+    const productCategory = item.categories && item.categories.length > 0 
+      ? item.categories[0] 
+      : item.category;
+    
+    const catTranslation = getTranslation(productCategory?.translations, locale) as any;
+    const categoryName = catTranslation?.title || productCategory?.title || "Tất cả";
+    const categorySlug = productCategory?.slug || slugify(categoryName);
+    
     return {
       id: item.id,
       title: name,
       slug: slugify(name),
       price: parseFloat(item.price as string),
-      category: { title: categoryName, slug: slugify(categoryName) },
+      category: { title: categoryName, slug: categorySlug },
       ingredients: item.ingredients?.map(ing => slugify(ing.name)) || [],
       image: {
-        url: item.image || "https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?w=800&h=600&fit=crop",
+        url: item.image || "/cover.jpg",
         alt: name
       },
       description: translation?.description || item.description,
