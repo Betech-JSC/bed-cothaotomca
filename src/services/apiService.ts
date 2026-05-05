@@ -13,7 +13,7 @@ export interface ApiResponse<T> {
  * @param options Additional fetch options including searchParams
  */
 export async function getApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiResponse<T>> {
-  const { params, revalidate = 3600 } = options;
+  const { params, revalidate = 60 } = options;
   
   let url = `${BASE_URL}/${key}`;
   

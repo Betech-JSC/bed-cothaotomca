@@ -29,6 +29,11 @@ export interface Product {
     slug?: string;
     translations: any[];
   };
+  categories?: {
+    id: number;
+    title: string;
+    slug?: string;
+  }[];
   created_at: string;
   variants?: any[];
   gallery?: string[];
