@@ -5,16 +5,10 @@ import { getTranslations } from "next-intl/server";
 import { getBlogDetail, getBlogs, Blog, BlogTranslation, BlogCategoryTranslation } from "@/services/blogService";
 import { getTranslation, formatDate } from "@/lib/format";
 import { notFound } from "next/navigation";
+import { Metadata } from "next";
 
-export default async function BlogDetailsPage({
-  params
-}: {
-  params: Promise<{ locale: string; category: string; slug: string }>
-}) {
-  const { locale, category, slug } = await params
-  const t = await getTranslations({ locale })
-
-  let blogResponse = await getBlogDetail(slug, { lang: locale }).catch(() => null);
+async function fetchBlog(slug: string, locale: string) {
+  let blogResponse = await getBlogDetail(slug, { lang: locale }, 0).catch(() => null);
 
   // Fallback for English blogs where the slug might be localized in the list but the API only accepts the original (VI) slug for the detail view
   if (!blogResponse?.data && locale === 'en') {
@@ -31,7 +25,58 @@ export default async function BlogDetailsPage({
     }
   }
 
-  const blog = (blogResponse?.data as any) as Blog;
+  return (blogResponse?.data as any) as Blog;
+}
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string; category: string; slug: string }>
+}): Promise<Metadata> {
+  const { locale, slug } = await params
+  const blog = await fetchBlog(slug, locale);
+  console.log('blog metadata:', blog);
+
+  if (!blog) return {};
+
+  const translation = getTranslation<BlogTranslation>(blog.translations, locale);
+  const blogTitle = translation?.title || blog.title || "";
+  const blogDescription = translation?.description || blog.description || "";
+
+  const seoTitle = translation?.seo_title || blogTitle;
+  const seoDescription = translation?.seo_description || blogDescription;
+  const seoKeywords = translation?.seo_keywords || "";
+
+  return {
+    title: seoTitle,
+    description: seoDescription,
+    keywords: seoKeywords,
+    openGraph: {
+      title: seoTitle,
+      description: seoDescription,
+      images: [blog.thumbnail || "/cover.jpg"],
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: seoTitle,
+      description: seoDescription,
+      images: [blog.thumbnail || "/cover.jpg"],
+    }
+  }
+}
+
+
+export default async function BlogDetailsPage({
+  params
+}: {
+  params: Promise<{ locale: string; category: string; slug: string }>
+}) {
+  const { locale, category, slug } = await params
+  const t = await getTranslations({ locale })
+
+  const blog = await fetchBlog(slug, locale);
+  console.log('blog content:', blog);
 
   if (!blog) {
     notFound();

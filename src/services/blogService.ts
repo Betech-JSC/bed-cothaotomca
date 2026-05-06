@@ -20,6 +20,9 @@ export interface BlogTranslation {
   title: string;
   description: string;
   content: string;
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string;
 }
 
 export interface Blog {
@@ -33,6 +36,12 @@ export interface Blog {
   category: BlogCategory;
   created_at: string;
   translations: BlogTranslation[];
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
 }
 
 export const getBlogCategories = async (params: { lang?: string } = {}) => {
@@ -51,6 +60,6 @@ export const getBlogs = async (params: { page?: number; per_page?: number; lang?
 
   return getApi<Blog>('blogs', { params: apiParams });
 };
-export const getBlogDetail = async (slug: string, params: { lang?: string } = {}) => {
-  return getApi<Blog>(`blogs/${slug}`, { params });
+export const getBlogDetail = async (slug: string, params: { lang?: string } = {}, revalidate?: number) => {
+  return getApi<Blog>(`blogs/${slug}`, { params, revalidate });
 };
