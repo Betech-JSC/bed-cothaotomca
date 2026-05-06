@@ -35,7 +35,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug } = await params
   const blog = await fetchBlog(slug, locale);
-  console.log('blog metadata:', blog);
+  console.log('[SEO DEBUG]', JSON.stringify({ slug, locale, blog }, null, 2));
 
   if (!blog) return {};
 
@@ -76,7 +76,6 @@ export default async function BlogDetailsPage({
   const t = await getTranslations({ locale })
 
   const blog = await fetchBlog(slug, locale);
-  console.log('blog content:', blog);
 
   if (!blog) {
     notFound();
