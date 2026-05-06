@@ -43,7 +43,7 @@ export async function generateMetadata(
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com';
   const canonicalUrl = `${baseUrl}/${locale}/product/${category}/${slug}`;
   const previousImages = (await parent).openGraph?.images || [];
-  const productImage = product.image || (previousImages.length > 0 ? previousImages[0].url : "/cover.jpg");
+  const productImage = product.image || (previousImages.length > 0 ? (typeof previousImages[0] === 'string' ? previousImages[0] : (previousImages[0] as any).url) : "/cover.jpg");
 
   const metadata = {
     title: seoTitle,
