@@ -19,9 +19,9 @@ export interface ApiSingleResponse<T> {
  */
 export async function getApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiResponse<T>> {
   const { params, revalidate = 60 } = options;
-  
+
   let url = `${BASE_URL}/${key}`;
-  
+
   if (params) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
@@ -36,13 +36,11 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
     });
 
     if (!response.ok) {
-      console.error(`API Error: ${key} - Status: ${response.status}`);
       throw new Error(`Failed to fetch API: ${key}`);
     }
 
     return response.json();
   } catch (error) {
-    console.error(`Failed to fetch API: ${key}`, error);
     throw error;
   }
 }
@@ -54,9 +52,9 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
  */
 export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiSingleResponse<T>> {
   const { params, revalidate = 60 } = options;
-  
+
   let url = `${BASE_URL}/${key}`;
-  
+
   if (params) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
@@ -71,13 +69,11 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
     });
 
     if (!response.ok) {
-      console.error(`API Error: ${key} - Status: ${response.status}`);
       throw new Error(`Failed to fetch API: ${key}`);
     }
 
     return response.json();
   } catch (error) {
-    console.error(`Failed to fetch API: ${key}`, error);
     throw error;
   }
 }
