@@ -35,19 +35,19 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug } = await params
   const blog = await fetchBlog(slug, locale);
-  console.log('[SEO DEBUG]', JSON.stringify({ slug, locale, blog }, null, 2));
-
-  if (!blog) return {};
+  if (!blog) {
+    return {};
+  }
 
   const translation = getTranslation<BlogTranslation>(blog.translations, locale);
   const blogTitle = translation?.title || blog.title || "";
   const blogDescription = translation?.description || blog.description || "";
 
-  const seoTitle = translation?.seo_title || blogTitle;
-  const seoDescription = translation?.seo_description || blogDescription;
-  const seoKeywords = translation?.seo_keywords || "";
+  const seoTitle = translation?.seo_title || blog.seo_title || blog.meta_title || blogTitle;
+  const seoDescription = translation?.seo_description || blog.seo_description || blog.meta_description || blogDescription;
+  const seoKeywords = translation?.seo_keywords || blog.seo_keywords || blog.meta_keywords || "";
 
-  return {
+  const metadata = {
     title: seoTitle,
     description: seoDescription,
     keywords: seoKeywords,
@@ -55,15 +55,17 @@ export async function generateMetadata({
       title: seoTitle,
       description: seoDescription,
       images: [blog.thumbnail || "/cover.jpg"],
-      type: 'article',
+      type: 'article' as const,
     },
     twitter: {
-      card: 'summary_large_image',
+      card: 'summary_large_image' as const,
       title: seoTitle,
       description: seoDescription,
       images: [blog.thumbnail || "/cover.jpg"],
     }
-  }
+  };
+
+  return metadata;
 }
 
 

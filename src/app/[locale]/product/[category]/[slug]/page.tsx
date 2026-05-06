@@ -3,10 +3,12 @@ import Image from "next/image";
 import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
 import SliderProductRelated from "@/components/Product/SliderProductRelated";
 import { getTranslations } from "next-intl/server";
-import { getProductBySlug } from "@/services/productService";
+import { getProductBySlug, Translation } from "@/services/productService";
 import { notFound } from "next/navigation";
 import { Metadata, ResolvingMetadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
+
+import { getTranslation } from "@/lib/format";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ locale: string; category: string; slug: string }> },
@@ -14,16 +16,39 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { locale, category, slug } = await params;
   const product = await getProductBySlug(slug, { revalidate: 3600, lang: locale });
+  
+  console.log('--- RAW PRODUCT DATA (METADATA) ---');
+  console.log(JSON.stringify(product, null, 2));
+  console.log('----------------------------------');
+
   if (!product) return {};
+
+  const translation = getTranslation<Translation>(product.translations, locale);
+  const productName = translation?.name || product.name || "";
+  const productDescription = translation?.description || product.description || "";
+
+  // Ưu tiên lấy SEO từ bản dịch, nếu không có thì lấy SEO ở cấp root, cuối cùng mới fallback về name/description mặc định
+  const seoTitle = translation?.seo_title || product.seo_title || product.meta_title || productName;
+  const seoDescription = translation?.seo_description || product.seo_description || product.meta_description || productDescription;
+  const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
+
+  console.log('[PRODUCT SEO DEBUG] Processed values:', {
+    locale,
+    productName,
+    seoTitle,
+    seoDescription,
+    hasTranslation: !!translation
+  });
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com';
   const canonicalUrl = `${baseUrl}/${locale}/product/${category}/${slug}`;
   const previousImages = (await parent).openGraph?.images || [];
-  const productImage = product.image || previousImages[0];
+  const productImage = product.image || (previousImages.length > 0 ? previousImages[0].url : "/cover.jpg");
 
-  return {
-    title: product.name,
-    description: product.description?.substring(0, 160) || '',
+  const metadata = {
+    title: seoTitle,
+    description: seoDescription,
+    keywords: seoKeywords,
     alternates: {
       canonical: canonicalUrl,
       languages: {
@@ -32,23 +57,29 @@ export async function generateMetadata(
       },
     },
     openGraph: {
-      title: product.name,
-      description: product.description?.substring(0, 160) || '',
+      title: seoTitle,
+      description: seoDescription,
       url: canonicalUrl,
       images: [
         {
           url: (productImage as any)?.url || productImage,
           width: 800,
           height: 600,
-          alt: product.name,
+          alt: productName,
         },
       ],
-      type: 'article',
+      type: 'article' as const,
     },
     twitter: {
-      card: 'summary_large_image',
+      card: 'summary_large_image' as const,
+      title: seoTitle,
+      description: seoDescription,
+      images: [(productImage as any)?.url || productImage],
     },
   };
+
+  console.log('[PRODUCT SEO DEBUG] FINAL METADATA OBJECT:', JSON.stringify(metadata, null, 2));
+  return metadata;
 }
 
 

@@ -6,6 +6,12 @@ export interface Translation {
   name: string;
   description: string;
   product_id: number;
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
 }
 
 export interface Ingredient {
@@ -50,6 +56,12 @@ export interface Product {
     content: string;
   }[];
   related_products?: Product[];
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
 }
 
 export const getProducts = async (params: { page?: number; per_page?: number; lang?: string } = {}) => {
