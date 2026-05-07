@@ -3,7 +3,7 @@ import Image from "next/image";
 import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
 import SliderProductRelated from "@/components/Product/SliderProductRelated";
 import { getTranslations } from "next-intl/server";
-import { getProductBySlug, Translation } from "@/services/productService";
+import { Translation } from "@/services/productService";
 import { notFound } from "next/navigation";
 import { Metadata, ResolvingMetadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
@@ -15,7 +15,8 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const { locale, category, slug } = await params;
-  const product = await getProductBySlug(slug, { revalidate: 3600, lang: locale });
+  const { getProductBySlugWithFallback } = await import('@/services/productService');
+  const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
   
   console.log('--- RAW PRODUCT DATA (METADATA) ---');
   console.log(JSON.stringify(product, null, 2));
@@ -91,8 +92,9 @@ export default async function ProductDetailsPage({
   const { locale, category, slug } = await params
   console.log('Product Detail Page - Category:', category, 'Slug:', slug, 'Locale:', locale);
   
-  const product = await getProductBySlug(slug, { revalidate: 3600, lang: locale });
-  console.log('Product fetched:', product ? 'Found' : 'Not found');
+  const { getProductBySlugWithFallback } = await import('@/services/productService');
+  const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
+  console.log('Product fetched:', product ? `Found (id: ${product.id})` : 'Not found');
 
   if (!product) {
     notFound();
@@ -144,7 +146,7 @@ export default async function ProductDetailsPage({
     return {
       id: p.id,
       title: p.name,
-      slug: p.slug,
+      slug: p.slug ? p.slug.replace(/-\d+$/, '') : p.slug,
       price: parseInt(p.price),
       category: { title: relatedCategory?.title || "Sản phẩm", slug: relatedCategory?.slug || "" },
       image: { url: p.image },

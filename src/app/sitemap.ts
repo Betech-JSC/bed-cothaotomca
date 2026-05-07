@@ -35,15 +35,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const productRoutes = productsData.flatMap((product) => {
     const categorySlug = product.category?.slug || 'danh-muc';
+    const normalizedSlug = product.slug ? product.slug.replace(/-\d+$/, '') : product.slug;
     return locales.map((locale) => ({
-      url: `${baseUrl}/${locale}/product/${categorySlug}/${product.slug}`,
+      url: `${baseUrl}/${locale}/product/${categorySlug}/${normalizedSlug}`,
       lastModified: product.created_at ? new Date(product.created_at) : new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.7,
       alternates: {
         languages: {
-          vi: `${baseUrl}/vi/product/${categorySlug}/${product.slug}`,
-          en: `${baseUrl}/en/product/${categorySlug}/${product.slug}`,
+          vi: `${baseUrl}/vi/product/${categorySlug}/${normalizedSlug}`,
+          en: `${baseUrl}/en/product/${categorySlug}/${normalizedSlug}`,
         },
       },
     }));
