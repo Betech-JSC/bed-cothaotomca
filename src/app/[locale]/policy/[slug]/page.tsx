@@ -2,6 +2,7 @@ import Breadcrumb from "@/components/Common/Breadcrumb";
 import { Link } from "@/i18n/routing";
 import { getPolicies } from "@/services/policyService";
 import { Metadata } from "next";
+import JsonLd from "@/components/SEO/JsonLd";
 
 export async function generateMetadata({
   params
@@ -89,6 +90,11 @@ export default async function PolicyPage({
 
   return (
     <main className="md:py-16 py-12 xl:pt-20 xl:pb-[112px]">
+      <JsonLd
+        type="WebPage"
+        data={currentPolicy}
+        url={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'}/${locale}/policy/${slug}`}
+      />
       <div className="container space-y-3">
         <Breadcrumb breadcrumbs={breadcrumbs} />
 

@@ -6,6 +6,7 @@ import { getBlogDetail, getBlogs, Blog, BlogTranslation, BlogCategoryTranslation
 import { getTranslation, formatDate } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import JsonLd from "@/components/SEO/JsonLd";
 
 async function fetchBlog(slug: string, locale: string) {
   let blogResponse = await getBlogDetail(slug, { lang: locale }, 0).catch(() => null);
@@ -107,6 +108,11 @@ export default async function BlogDetailsPage({
 
   return (
     <main>
+      <JsonLd
+        type="Article"
+        data={blog}
+        url={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'}/${locale}/blog/category/${category}/${slug}`}
+      />
       <section className="min-h-screen w-full md:py-16 py-10 xl:py-20">
         <div className="container md:space-y-12 space-y-8 xl:space-y-16">
           <div className="flex flex-col items-center md:gap-6 gap-6 xl:gap-8 w-full max-w-[880px] mx-auto">
