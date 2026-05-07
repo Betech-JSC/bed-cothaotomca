@@ -1,6 +1,57 @@
 import Breadcrumb from "@/components/Common/Breadcrumb";
 import { Link } from "@/i18n/routing";
 import { getPolicies } from "@/services/policyService";
+import { Metadata } from "next";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string; slug: string }>
+}): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const policiesResult = await getPolicies({ lang: locale }).catch(() => null);
+  const policies = policiesResult?.data || [];
+
+  const getTranslationData = (item: any, currentLocale: string) => {
+    if (!item?.translations) return item;
+    const translation = item.translations.find((t: any) => t.locale === currentLocale) ||
+      item.translations.find((t: any) => t.locale.startsWith(currentLocale)) ||
+      item.translations[0];
+    return { ...item, ...translation };
+  };
+
+  const processedPolicies = policies.map(p => getTranslationData(p, locale));
+  const currentPolicy = processedPolicies.find((p) => p.slug === slug) || processedPolicies[0];
+
+  if (!currentPolicy) {
+    return {};
+  }
+
+  const title = currentPolicy.title || currentPolicy.name || "";
+  const description = currentPolicy.seo_description || currentPolicy.meta_description || "";
+
+  const seoTitle = currentPolicy.seo_title || currentPolicy.meta_title || title;
+  const seoDescription = currentPolicy.seo_description || currentPolicy.meta_description || description;
+  const seoKeywords = currentPolicy.seo_keywords || currentPolicy.meta_keywords || "";
+
+  return {
+    title: seoTitle,
+    description: seoDescription,
+    keywords: seoKeywords,
+    openGraph: {
+      title: seoTitle,
+      description: seoDescription,
+      images: [currentPolicy.image || "/cover.jpg"],
+      type: 'article' as const,
+    },
+    twitter: {
+      card: 'summary_large_image' as const,
+      title: seoTitle,
+      description: seoDescription,
+      images: [currentPolicy.image || "/cover.jpg"],
+    }
+  };
+}
 
 export default async function PolicyPage({
   params
