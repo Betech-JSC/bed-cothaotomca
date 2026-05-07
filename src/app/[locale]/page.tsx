@@ -41,6 +41,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         url: item.image || "/cover.jpg",
         alt: translation?.title || item.image?.alt || title
       },
+      image_mobile: {
+        url: item.image_mobile || item.image || "/cover.jpg",
+        alt: translation?.title || item.image_mobile?.alt || title
+      },
       title: title,
     };
   });
@@ -95,6 +99,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       image: {
         url: item.image || "/cover.jpg",
         alt: translation?.title || item.title || ""
+      },
+      image_mobile: {
+        url: item.image_mobile || item.image || "/cover.jpg",
+        alt: translation?.title || item.image_mobile?.alt || translation?.title || item.title || ""
       },
       title: translation?.title || item.title || "",
       description: translation?.description || item.description || "",

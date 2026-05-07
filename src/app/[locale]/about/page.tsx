@@ -32,6 +32,10 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       url: introBanner?.image || "/images/demo/banner-about.jpg",
       alt: introBanner?.title || "banner about",
     },
+    image_mobile: {
+      url: introBanner?.image_mobile || introBanner?.image  || "/images/demo/banner-about.jpg",
+      alt: introBanner?.title || "banner about",
+    },
   };
 
 
@@ -76,6 +80,10 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       image: {
         url: item.image || "/cover.jpg",
         alt: translation?.title || item.title || ""
+      },
+      image_mobile: {
+        url: item.image_mobile || item.image || "/cover.jpg",
+        alt: translation?.title || item.image_mobile?.alt|| item.title || ""
       },
       title: translation?.title || item.title || "",
       description: translation?.description || item.description || "",

@@ -29,6 +29,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     getApi<HeroBanner>('banners', { params: { position: 'banner_product', lang: locale } }).catch(() => ({ data: [] }))
   ]);
 
+  console.log('Fetched banners:', bannerResp);
+
   const categories = categoriesResp.data;
   const ingredients = ingredientsResp.data;
 

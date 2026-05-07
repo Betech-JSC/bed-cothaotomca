@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
-import 'swiper/css';
 
 interface SectionChooseUsProps {
   items: any[];
@@ -104,9 +103,14 @@ const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
           {items.map((item, index) => (
             <SwiperSlide key={index} className="h-full w-full relative">
               <img
-                src={item.image.url}
+                src={item.image_mobile.url || item.image.url || "/cover.jpg"}
+                alt={item.image_mobile.alt}
+                className="object-cover w-full h-full lg:hidden"
+              />
+              <img
+                src={item.image.url || "/cover.jpg"}
                 alt={item.image.alt}
-                className="object-cover w-full h-full"
+                className="object-cover w-full h-full hidden lg:block"
               />
               <div className="bg-linear-chooseus w-full h-full absolute top-0 left-0 flex items-center">
                 <div className="md:p-6 py-4 px-8 lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] xl:max-w-[560px] w-full">

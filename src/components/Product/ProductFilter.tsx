@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useEffect } from 'react'
 import AnimateOnScroll from '../Animated/animated-appear'
 
 // Custom Checkbox component
@@ -68,6 +69,18 @@ export default function ProductFilter({
 }: ProductFilterProps) {
   const t = useTranslations()
 
+  useEffect(() => {
+    if (isFilterOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isFilterOpen])
+
   return (
     <>
       <div
@@ -110,7 +123,7 @@ export default function ProductFilter({
     return (
       <div className={`
         bg-white space-y-2 py-4 px-5 lg:p-0
-        ${isFilterOpen ? 'flex-1 overflow-y-auto' : 'rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24'}
+        ${isFilterOpen ? 'flex-1 overflow-y-auto h-screen pb-20' : 'rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24'}
       `}>
         <div className="pt-4.5 space-y-3">
           <div className="lg:px-3 flex items-center justify-between">

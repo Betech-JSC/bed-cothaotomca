@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
-import 'swiper/css';
 import AnimateOnScroll from '../Animated/animated-appear';
 
 interface SectionReasonProps {
@@ -116,9 +115,14 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
           {items.map((item, index) => (
             <SwiperSlide key={index} className="h-full w-full relative">
               <img
-                src={item.image.url}
-                alt={item.image.alt}
-                className="object-cover w-full h-full"
+                src={item.image_mobile?.url}
+                alt={item.image_mobile?.alt}
+                className="object-cover w-full h-full lg:hidden"
+              />
+              <img
+                src={item.image?.url}
+                alt={item.image?.alt}
+                className="object-cover w-full h-full hidden lg:block"
               />
               <div className="absolute inset-0 w-full h-full bg-linear-chooseus"></div>
               <div className="max-w-[840px] w-full md:h-full absolute top-20 md:top-0 left-0 flex items-center">
