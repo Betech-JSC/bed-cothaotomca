@@ -18,6 +18,9 @@
     "share": "Share",
     "all": "All",
     "filter": "Filter"
+    ,
+    "view_more": "View more",
+    "collapse": "Show less"
   },
   "search": {
     "results_for": "Search results for",

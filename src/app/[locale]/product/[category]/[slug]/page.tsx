@@ -18,10 +18,6 @@ export async function generateMetadata(
   const { getProductBySlugWithFallback } = await import('@/services/productService');
   const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
   
-  console.log('--- RAW PRODUCT DATA (METADATA) ---');
-  console.log(JSON.stringify(product, null, 2));
-  console.log('----------------------------------');
-
   if (!product) return {};
 
   const translation = getTranslation<Translation>(product.translations, locale);
@@ -32,14 +28,6 @@ export async function generateMetadata(
   const seoTitle = translation?.seo_title || product.seo_title || product.meta_title || productName;
   const seoDescription = translation?.seo_description || product.seo_description || product.meta_description || productDescription;
   const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
-
-  console.log('[PRODUCT SEO DEBUG] Processed values:', {
-    locale,
-    productName,
-    seoTitle,
-    seoDescription,
-    hasTranslation: !!translation
-  });
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com';
   const canonicalUrl = `${baseUrl}/${locale}/product/${category}/${slug}`;
@@ -79,7 +67,6 @@ export async function generateMetadata(
     },
   };
 
-  console.log('[PRODUCT SEO DEBUG] FINAL METADATA OBJECT:', JSON.stringify(metadata, null, 2));
   return metadata;
 }
 
@@ -90,11 +77,9 @@ export default async function ProductDetailsPage({
   params: Promise<{ locale: string; category: string; slug: string }>
 }) {
   const { locale, category, slug } = await params
-  console.log('Product Detail Page - Category:', category, 'Slug:', slug, 'Locale:', locale);
   
   const { getProductBySlugWithFallback } = await import('@/services/productService');
   const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
-  console.log('Product fetched:', product ? `Found (id: ${product.id})` : 'Not found');
 
   if (!product) {
     notFound();
@@ -139,7 +124,6 @@ export default async function ProductDetailsPage({
       title: productData.title,
     },
   ];
-  console.log('Data product:', productData.images)
 
   const relatedProducts = product.related_products?.map((p: any) => {
     const relatedCategory = p.categories && p.categories.length > 0 ? p.categories[0] : p.category;
@@ -166,7 +150,7 @@ export default async function ProductDetailsPage({
         <div className="container">
           <div className="grid grid-cols-12 gap-4 md:gap-6 xl:gap-8">
             <div className="col-span-full lg:col-span-6 xl:col-span-7 lg:pr-3 xl:pr-4">
-              <div className="md:block hidden space-y-6">
+              <div className="md:block hidden space-y-6 md:sticky md:top-28">
                 {productData.images && productData.images.length > 0 ? <div className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
                   <Image
                     src={productData.image?.url || '/cover.jpg'}
@@ -188,8 +172,6 @@ export default async function ProductDetailsPage({
                     );
                   })}
                 </>}
-
-
               </div>
             </div>
             <div className="col-span-full lg:col-span-6 xl:col-span-5">
