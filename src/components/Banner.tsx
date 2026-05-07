@@ -7,7 +7,7 @@ type BannerProps = {
       url: string;
       alt?: string;
     };
-    image_mobile: {
+    image_mobile?: {
       url: string;
       alt?: string;
     };

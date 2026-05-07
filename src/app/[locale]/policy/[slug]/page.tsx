@@ -91,7 +91,7 @@ export default async function PolicyPage({
   return (
     <main className="md:py-16 py-12 xl:pt-20 xl:pb-[112px]">
       <JsonLd
-        type="WebPage"
+        type="Article"
         data={currentPolicy}
         url={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'}/${locale}/policy/${slug}`}
       />

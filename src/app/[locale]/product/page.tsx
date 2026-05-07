@@ -60,6 +60,10 @@ export default async function ProductPage({ params, searchParams }: Props) {
       url: bannerItem?.image || '/images/demo/banner-product.jpg',
       alt: bannerItem?.title || 'banner product'
     },
+    image_mobile: {
+      url: bannerItem?.image_mobile || bannerItem?.image || '/images/demo/banner-product.jpg',
+      alt: bannerItem?.title || 'banner product'
+    }
   }
 
   return (

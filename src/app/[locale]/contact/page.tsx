@@ -23,6 +23,10 @@ export default async function ContactPage({
       url: "/images/demo/banner-contact.jpg",
       alt: "banner contact",
     },
+    image_mobile: {
+      url: "/images/demo/banner-contact.jpg",
+      alt: "banner contact",
+    },
   };
 
   const settings = await getGeneralSettings(locale).catch(() => null);

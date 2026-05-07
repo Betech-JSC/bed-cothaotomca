@@ -51,7 +51,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   if (categorySlug && !categoryId) {
     return (
       <main>
-        <Banner banner={{ image: { url: bannerResp.data[0]?.image || '/images/demo/banner-product.jpg', alt: 'banner product' } }} />
+        <Banner banner={{
+          image: { url: bannerResp.data[0]?.image || '/images/demo/banner-product.jpg', alt: 'banner product' },
+          image_mobile: { url: bannerResp.data[0]?.image_mobile || bannerResp.data[0]?.image || '/images/demo/banner-product.jpg', alt: 'banner product' }
+        }} />
         <ProductIndexPage
           category={categorySlug}
           selectedIngredients={[]}
@@ -97,6 +100,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       url: bannerItem?.image || '/images/demo/banner-product.jpg',
       alt: bannerItem?.title || 'banner product'
     },
+    image_mobile: {
+      url: bannerItem?.image_mobile || bannerItem?.image || '/images/demo/banner-product.jpg',
+      alt: bannerItem?.title || 'banner product'
+    }
   }
 
   return (
