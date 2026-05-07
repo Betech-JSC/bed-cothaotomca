@@ -42,7 +42,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
           <div className="label-1 font-semibold text-gray-900 flex-shrink-0 md:mt-3">{t('product.size')}</div>
           <div className="flex-1 w-full">
             {productData.sizes.length > 1 && (
-              <div className="flex items-center flex-wrap md:gap-4 gap-3 xl:gap-6">
+              <div className="flex items-center flex-wrap md:gap-4 gap-3 xl:gap-3">
                 {productData.sizes.map((size, index) => (
                   <div
                     key={index}
