@@ -3,7 +3,7 @@ import { getProducts } from '@/services/productService';
 import { getBlogs } from '@/services/blogService';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com';
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
   const locales = ['vi', 'en'];
 
   // Static routes

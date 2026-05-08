@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { getSeoSettings } from '@/services/seoService';
 
 export default async function robots(): Promise<MetadataRoute.Robots | string> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com';
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
 
   let seo = null;
   try {
