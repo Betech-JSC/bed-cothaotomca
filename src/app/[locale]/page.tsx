@@ -6,6 +6,8 @@ import Arrow from '@/components/Icons/Arrow';
 import Phone from '@/components/Icons/Phone';
 import { Link } from '@/i18n/i18n-navigation';
 import { getTranslations } from 'next-intl/server';
+import { notFound } from 'next/navigation';
+import { locales as supportedLocales } from '@/i18n/config';
 import Image from 'next/image';
 import { getApi } from '@/services/apiService';
 import { HeroBanner } from '@/services/heroBannerService';
@@ -17,6 +19,11 @@ import AnimateOnScroll from "@/components/Animated/animated-appear";
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+
+  // If the locale is not supported, render the app's not-found (404)
+  if (!supportedLocales.includes(locale as any)) {
+    notFound();
+  }
   const t = await getTranslations({ locale });
 
   const [heroBannersData, sliderBannersData, productsData, categoriesData, blogsData] = await Promise.all([

@@ -166,4 +166,12 @@
       "button": "Close"
     }
   }
+  ,
+  "errors": {
+    "404": {
+      "title": "404",
+      "description": "This page could not be found.",
+      "go_home": "Go to homepage"
+    }
+  }
 }

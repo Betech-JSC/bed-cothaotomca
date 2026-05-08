@@ -166,4 +166,12 @@
       "button": "Đóng"
     }
   }
+  ,
+  "errors": {
+    "404": {
+      "title": "404",
+      "description": "Không tìm thấy trang này.",
+      "go_home": "Về trang chủ"
+    }
+  }
 }
