@@ -11,6 +11,7 @@ import { Metadata } from 'next'
 import JsonLd from '@/components/SEO/JsonLd'
 import FixedSocial from '@/components/FixedSocial'
 import { getSeoSettings } from '@/services/seoService'
+import Script from 'next/script'
 
 export async function generateMetadata({
   params
@@ -91,6 +92,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
     const { getSeoSettings } = await import('@/services/seoService')
     seo = await getSeoSettings(locale).catch(() => null)
   } catch (e) {
+    console.error('Error fetching SEO settings:', e)
     seo = null
   }
 
@@ -105,6 +107,48 @@ export default async function LocaleLayout({ children, params }: { children: Rea
                 <noscript>
                   <iframe src={`https://www.googletagmanager.com/ns.html?id=${seo.google_tag_manager_id}`} height="0" width="0" style={{ display: 'none', visibility: 'hidden' }} />
                 </noscript>
+              )}
+
+              {/* Scripts from SEO Settings */}
+              {seo && (
+                <>
+                  {/* Google Analytics (gtag.js) */}
+                  {(seo.google_analytics_id || seo.googleAnalyticsId) && (
+                    <>
+                      <Script
+                        src={`https://www.googletagmanager.com/gtag/js?id=${seo.google_analytics_id || seo.googleAnalyticsId}`}
+                        strategy="afterInteractive"
+                      />
+                      <Script id="google-analytics" strategy="afterInteractive">
+                        {`
+                          window.dataLayer = window.dataLayer || [];
+                          function gtag(){dataLayer.push(arguments);}
+                          gtag('js', new Date());
+                          gtag('config', '${seo.google_analytics_id || seo.googleAnalyticsId}');
+                        `}
+                      </Script>
+                    </>
+                  )}
+
+                  {/* Google Tag Manager (head part) */}
+                  {(seo.google_tag_manager_id || seo.googleTagManagerId) && (
+                    <Script id="gtm-script" strategy="afterInteractive">
+                      {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${seo.google_tag_manager_id || seo.googleTagManagerId}');`}
+                    </Script>
+                  )}
+
+                  {/* Facebook Pixel */}
+                  {(seo.facebook_pixel_id || seo.facebookPixelId) && (
+                    <Script id="fb-pixel" strategy="afterInteractive">
+                      {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod? n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window, document,'script','https://connect.facebook.net/en_US/fbevents.js'); fbq('init', '${seo.facebook_pixel_id || seo.facebookPixelId}'); fbq('track', 'PageView');`}
+                    </Script>
+                  )}
+
+                  {/* Raw head scripts from CMS */}
+                  {(seo.head_scripts || seo.headScripts) && (
+                    <div dangerouslySetInnerHTML={{ __html: seo.head_scripts || seo.headScripts }} />
+                  )}
+                </>
               )}
 
               <Header />
