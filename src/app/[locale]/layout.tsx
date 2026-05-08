@@ -92,7 +92,6 @@ export default async function LocaleLayout({ children, params }: { children: Rea
     const { getSeoSettings } = await import('@/services/seoService')
     seo = await getSeoSettings(locale).catch(() => null)
   } catch (e) {
-    console.error('Error fetching SEO settings:', e)
     seo = null
   }
 

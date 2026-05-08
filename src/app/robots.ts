@@ -11,10 +11,13 @@ export default async function robots(): Promise<MetadataRoute.Robots | string> {
     seo = null;
   }
 
-  // If the API provides a raw robots.txt, return it directly
-  if (seo?.robots_txt) {
-    return seo.robots_txt as string;
-  }
+  // If the API provides a raw robots.txt, we should ideally parse it or use a Route Handler.
+  // Returning a raw string from robots.ts is not supported and causes:
+  // TypeError: Cannot read properties of undefined (reading 'userAgent')
+  // because Next.js expects a MetadataRoute.Robots object.
+  // if (seo?.robots_txt) {
+  //   return seo.robots_txt as string;
+  // }
 
   const sitemapEnabled = seo?.sitemap_enabled !== undefined ? !!seo.sitemap_enabled : true;
 
