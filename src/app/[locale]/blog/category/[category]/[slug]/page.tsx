@@ -111,7 +111,7 @@ export default async function BlogDetailsPage({
       <JsonLd
         type="Article"
         data={blog}
-        url={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'}/${locale}/blog/category/${category}/${slug}`}
+        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '')}/${locale}/blog/category/${category}/${slug}`}
       />
       <section className="min-h-screen w-full md:py-16 py-10 xl:py-20">
         <div className="container md:space-y-12 space-y-8 xl:space-y-16">

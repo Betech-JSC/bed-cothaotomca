@@ -93,7 +93,7 @@ export default async function PolicyPage({
       <JsonLd
         type="Article"
         data={currentPolicy}
-        url={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'}/${locale}/policy/${slug}`}
+        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '')}/${locale}/policy/${slug}`}
       />
       <div className="container space-y-3">
         <Breadcrumb breadcrumbs={breadcrumbs} />

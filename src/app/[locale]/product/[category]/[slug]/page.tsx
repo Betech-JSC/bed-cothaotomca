@@ -29,7 +29,7 @@ export async function generateMetadata(
   const seoDescription = translation?.seo_description || product.seo_description || product.meta_description || productDescription;
   const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com';
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
   const canonicalUrl = `${baseUrl}/${locale}/product/${category}/${slug}`;
   const previousImages = (await parent).openGraph?.images || [];
   const productImage = product.image || (previousImages.length > 0 ? (typeof previousImages[0] === 'string' ? previousImages[0] : (previousImages[0] as any).url) : "/cover.jpg");
@@ -144,7 +144,7 @@ export default async function ProductDetailsPage({
       <JsonLd
         type="Product"
         data={product}
-        url={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com'}/${locale}/product/${productData.category.slug}/${slug}`}
+        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '')}/${locale}/product/${productData.category.slug}/${slug}`}
       />
       <section className="md:py-[56px] pt-4 pb-12 xl:py-[60px]">
         <div className="container">
