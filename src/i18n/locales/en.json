@@ -41,6 +41,7 @@
   },
   "product": {
     "size": "Size",
+    "standard": "Standard",
     "buy_now": "Buy now",
     "contact": "Contact",
     "explore-more": "Explore More"

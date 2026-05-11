@@ -98,8 +98,11 @@ export default async function ProductDetailsPage({
       ? product.images.map((img: any, idx: number) => ({ url: img.image, alt: `${product.name} ${idx + 1}` }))
       : [{ url: product.image, alt: product.name }],
     sizes: product.variants && product.variants.length > 0
-      ? product.variants.map((v: any) => ({ title: v.size, price: v.price }))
-      : [{ title: "Standard", price: parseInt(product.price) }],
+      ? product.variants.map((v: any) => ({
+        title: locale === "vi" ? v.size : (v.size_en || v.size),
+        price: v.price,
+      }))
+      : [{ title: t("product.standard"), price: parseInt(product.price) }],
     category: {
       title: (product.categories && product.categories.length > 0 ? product.categories[0]?.title : product.category?.title) || "Sản phẩm",
       slug: (product.categories && product.categories.length > 0 ? product.categories[0]?.slug : product.category?.slug) || ""

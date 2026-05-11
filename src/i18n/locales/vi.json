@@ -41,6 +41,7 @@
   },
   "product": {
     "size": "Kích thước",
+    "standard": "Tiêu chuẩn",
     "buy_now": "Mua ngay",
     "contact": "Liên hệ tư vấn",
     "explore-more": "Khám Phá Thêm"
