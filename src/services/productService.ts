@@ -1,4 +1,5 @@
 import { getApi, getSingleApi } from './apiService';
+import { slugify, getTranslation } from '@/lib/format';
 
 export interface Translation {
   id: number;
@@ -99,7 +100,19 @@ export const getProductBySlugWithFallback = async (slug: string, options: { reva
     const esc = (s: string) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
     const regex = new RegExp(`^${esc(slug)}(?:-\\d+)?$`);
 
-    const match = products.find(p => regex.test(p.slug));
+    const match = products.find(p => {
+      // 1. Check primary slug
+      if (regex.test(p.slug)) return true;
+
+      // 2. Check localized slug (slugify(translated name))
+      if (lang) {
+        const translation = getTranslation(p.translations, lang);
+        const translatedName = (translation as any)?.name || p.name;
+        if (slugify(translatedName) === slug) return true;
+      }
+      return false;
+    });
+
     if (match) {
       console.warn(`Fallback match for slug ${slug} -> ${match.slug}`);
       return match;

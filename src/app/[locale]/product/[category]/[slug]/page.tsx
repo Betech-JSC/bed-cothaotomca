@@ -8,7 +8,7 @@ import { notFound } from "next/navigation";
 import { Metadata, ResolvingMetadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
 
-import { getTranslation } from "@/lib/format";
+import { getTranslation, slugify } from "@/lib/format";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ locale: string; category: string; slug: string }> },
@@ -17,7 +17,7 @@ export async function generateMetadata(
   const { locale, category, slug } = await params;
   const { getProductBySlugWithFallback } = await import('@/services/productService');
   const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
-  
+
   if (!product) return {};
 
   const translation = getTranslation<Translation>(product.translations, locale);
@@ -77,7 +77,7 @@ export default async function ProductDetailsPage({
   params: Promise<{ locale: string; category: string; slug: string }>
 }) {
   const { locale, category, slug } = await params
-  
+
   const { getProductBySlugWithFallback } = await import('@/services/productService');
   const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
 
@@ -129,15 +129,28 @@ export default async function ProductDetailsPage({
   ];
 
   const relatedProducts = product.related_products?.map((p: any) => {
+    const translation = getTranslation(p.translations, locale) as any;
+    const name = translation?.name || p.name;
     const relatedCategory = p.categories && p.categories.length > 0 ? p.categories[0] : p.category;
+    const catTranslation = getTranslation(relatedCategory?.translations, locale) as any;
+    const categoryName = catTranslation?.title || relatedCategory?.title || "Sản phẩm";
+
+    const productSlug = locale === 'vi'
+      ? (p.slug ? p.slug.replace(/-\d+$/, '') : slugify(name))
+      : slugify(name);
+
+    const categorySlug = locale === 'vi'
+      ? (relatedCategory?.slug || slugify(categoryName))
+      : slugify(categoryName);
+
     return {
       id: p.id,
-      title: p.name,
-      slug: p.slug ? p.slug.replace(/-\d+$/, '') : p.slug,
+      title: name,
+      slug: productSlug,
       price: parseInt(p.price),
-      category: { title: relatedCategory?.title || "Sản phẩm", slug: relatedCategory?.slug || "" },
+      category: { title: categoryName, slug: categorySlug },
       image: { url: p.image },
-      description: p.description,
+      description: translation?.description || p.description,
       created_at: p.created_at
     };
   }) || [];

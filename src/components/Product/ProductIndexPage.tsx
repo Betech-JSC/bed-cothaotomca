@@ -52,7 +52,7 @@ export default function ProductIndexPage({
     return {
       id: cat.id.toString(),
       title,
-      slug: slugify(title)
+      slug: locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title)
     }
   }), [categories, locale]);
 
@@ -78,21 +78,25 @@ export default function ProductIndexPage({
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || productCategory?.title || "";
     const categoryId = productCategory?.id?.toString() || "";
-    const categorySlug = slugify(categoryName);
+    const categorySlug = locale === 'vi' ? (productCategory?.slug || slugify(categoryName)) : slugify(categoryName);
     
     // Store all category slugs for filtering (support multi-category)
     const allCategorySlugs = p.categories && p.categories.length > 0
       ? p.categories.map(cat => {
           const trans = getTranslation(cat.translations, locale) as any;
           const title = trans?.title || cat.title || "";
-          return slugify(title);
+          return locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title);
         })
       : [categorySlug];
+
+    const productSlug = locale === 'vi' 
+      ? (p.slug ? p.slug.replace(/-\d+$/, '') : slugify(name)) 
+      : slugify(name);
 
     return {
       id: p.id,
       title: name,
-      slug: slugify(name),
+      slug: productSlug,
       price: parseFloat(p.price as string) || 0,
       category: { id: categoryId, title: categoryName, slug: categorySlug },
       allCategorySlugs, // Add this for multi-category filtering
