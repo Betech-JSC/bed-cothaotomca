@@ -32,7 +32,8 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
 
   try {
     const response = await fetch(url, {
-      next: { revalidate }
+      next: { revalidate },
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -65,7 +66,8 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
 
   try {
     const response = await fetch(url, {
-      next: { revalidate }
+      next: { revalidate },
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -93,6 +95,7 @@ export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
       'Accept': 'application/json',
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
   });
 
   if (!response.ok) {

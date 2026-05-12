@@ -34,7 +34,8 @@ export async function getGeneralSettings(lang?: string): Promise<GeneralSettings
   }
 
   const response = await fetch(url, {
-    next: { revalidate: 3600 }
+    next: { revalidate: 3600 },
+    signal: AbortSignal.timeout(5000),
   });
 
   if (!response.ok) {

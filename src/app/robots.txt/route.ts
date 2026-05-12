@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSeoSettings } from '@/services/seoService';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 60; // Revalidate every minute
 
 export async function GET() {

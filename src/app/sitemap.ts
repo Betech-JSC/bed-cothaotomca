@@ -4,8 +4,14 @@ import { getBlogs } from '@/services/blogService';
 import { getPolicies } from '@/services/policyService';
 import { slugify, getTranslation } from '@/lib/format';
 
+// Force dynamic rendering — sitemap will be generated at request time,
+// not during build. This avoids ConnectTimeoutError when the build server
+// cannot reach the API backend.
+export const dynamic = 'force-dynamic';
+export const revalidate = 3600; // re-generate at most every hour
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com/api/v1').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
   const locales = ['vi', 'en'];
 
   // Helper: build prefixed URL based on locale
@@ -63,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         productRoutes.push(...localeProductRoutes);
       }
     } catch (error) {
-      console.error(`Error fetching products for sitemap (${locale}):`, error);
+      console.warn(`[sitemap] Skipped products (${locale}): API unreachable`);
     }
   }
 
@@ -93,7 +99,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         blogRoutes.push(...localeBlogRoutes);
       }
     } catch (error) {
-      console.error(`Error fetching blogs for sitemap (${locale}):`, error);
+      console.warn(`[sitemap] Skipped blogs (${locale}): API unreachable`);
     }
   }
 
@@ -119,7 +125,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         policyRoutes.push(...localePolicyRoutes);
       }
     } catch (error) {
-      console.error(`Error fetching policies for sitemap (${locale}):`, error);
+      console.warn(`[sitemap] Skipped policies (${locale}): API unreachable`);
     }
   }
 
