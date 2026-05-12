@@ -34,7 +34,6 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
   try {
     const response = await fetch(url, {
       next: { revalidate },
-      signal: AbortSignal.timeout(30000), // Increased timeout to 30s
     });
 
     if (!response.ok) {
@@ -69,7 +68,6 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
   try {
     const response = await fetch(url, {
       next: { revalidate },
-      signal: AbortSignal.timeout(30000), // Increased timeout to 30s
     });
 
     if (!response.ok) {
