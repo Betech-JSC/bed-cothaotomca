@@ -1,6 +1,6 @@
 import { ApiKey } from './apiService';
 
-const BASE_URL = 'https://staging-cothaotomca.betech-digital.com/api/v1';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://staging-cothaotomca.betech-digital.com/api/v1';
 
 export interface GeneralSettings {
   id: number;

@@ -5,7 +5,7 @@ import { getPolicies } from '@/services/policyService';
 import { slugify, getTranslation } from '@/lib/format';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com/api/v1').replace(/\/$/, '');
   const locales = ['vi', 'en'];
 
   // Helper: build prefixed URL based on locale
@@ -39,18 +39,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         const localeProductRoutes = productsRes.data.map((product: any) => {
           const translation = getTranslation(product.translations, locale) as any;
           const name = translation?.name || product.name || "";
-          
-          const productCategory = product.categories && product.categories.length > 0 
-            ? product.categories[0] 
+
+          const productCategory = product.categories && product.categories.length > 0
+            ? product.categories[0]
             : product.category;
           const catTranslation = getTranslation(productCategory?.translations, locale) as any;
           const categoryName = catTranslation?.title || productCategory?.title || "san-pham";
 
-          const productSlug = locale === 'vi' 
-            ? (product.slug ? product.slug.replace(/-\d+$/, '') : slugify(name)) 
+          const productSlug = locale === 'vi'
+            ? (product.slug ? product.slug.replace(/-\d+$/, '') : slugify(name))
             : slugify(name);
-          const categorySlug = locale === 'vi' 
-            ? (productCategory?.slug || slugify(categoryName)) 
+          const categorySlug = locale === 'vi'
+            ? (productCategory?.slug || slugify(categoryName))
             : slugify(categoryName);
 
           return {
