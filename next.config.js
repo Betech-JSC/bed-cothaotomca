@@ -3,7 +3,7 @@ const withNextIntl = require('next-intl/plugin')('./src/i18n/request.ts');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // unoptimized: true,
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
@@ -19,11 +19,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "**.betech-digital.com",
-      },
-      {
-        protocol: "http",
-        hostname: "**.betech-digital.com",
+        hostname: "staging-cothaotomca.betech-digital.com",
       },
       {
         protocol: "https",
