@@ -1,5 +1,4 @@
-// const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://staging-cothaotomca.betech-digital.com/api/v1';
-const BASE_URL = 'https://staging-cothaotomca.betech-digital.com/api/v1';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://staging-cothaotomca.betech-digital.com/api/v1';
 
 
 export type ApiKey = 'hero-banners' | 'products' | 'categories' | 'banners' | string;
@@ -35,15 +34,16 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
   try {
     const response = await fetch(url, {
       next: { revalidate },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(30000), // Increased timeout to 30s
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch API: ${key}`);
+      throw new Error(`Failed to fetch API: ${key} - Status: ${response.status}`);
     }
 
     return response.json();
   } catch (error) {
+    console.error(`Error in getApi(${key}):`, error);
     throw error;
   }
 }
@@ -69,15 +69,16 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
   try {
     const response = await fetch(url, {
       next: { revalidate },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(30000), // Increased timeout to 30s
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch API: ${key}`);
+      throw new Error(`Failed to fetch API: ${key} - Status: ${response.status}`);
     }
 
     return response.json();
   } catch (error) {
+    console.error(`Error in getSingleApi(${key}):`, error);
     throw error;
   }
 }
@@ -97,7 +98,7 @@ export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
       'Accept': 'application/json',
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(30000), // Increased timeout to 30s
   });
 
   if (!response.ok) {

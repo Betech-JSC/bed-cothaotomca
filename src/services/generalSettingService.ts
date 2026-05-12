@@ -1,6 +1,4 @@
-import { ApiKey } from './apiService';
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://staging-cothaotomca.betech-digital.com/api/v1';
+import { getSingleApi } from './apiService';
 
 export interface GeneralSettings {
   id: number;
@@ -25,23 +23,10 @@ export interface GeneralSettingsResponse {
 
 /**
  * Fetch general settings (single object, not array)
- * This API returns { data: {...} } instead of { data: [...] }
  */
 export async function getGeneralSettings(lang?: string): Promise<GeneralSettings> {
-  let url = `${BASE_URL}/general-settings`;
-  if (lang) {
-    url += `?lang=${lang}`;
-  }
-
-  const response = await fetch(url, {
-    next: { revalidate: 3600 },
-    signal: AbortSignal.timeout(5000),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch general settings');
-  }
-
-  const json: GeneralSettingsResponse = await response.json();
+  const params = lang ? { lang } : undefined;
+  const json = await getSingleApi<GeneralSettings>('general-settings', { params, revalidate: 3600 });
   return json.data;
 }
+
