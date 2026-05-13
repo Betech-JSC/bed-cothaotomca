@@ -36,13 +36,36 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3, ba
     const signal = controller.signal;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const response = await fetch(url, { ...options, signal });
+    const response = await fetch(url, { 
+      ...options, 
+      signal,
+      cache: 'no-store', // Đảm bảo không lấy cache lỗi
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Language': 'vi,en;q=0.9',
+        'Referer': 'https://cothaotomca.vn/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ...options.headers,
+      }
+    });
     clearTimeout(timeoutId);
 
-    if (!response.ok && effectiveRetries > 0 && response.status >= 500) {
-      console.warn(`Fetch failed (${response.status}) for ${url}. Retrying...`);
-      await new Promise(resolve => setTimeout(resolve, backoff));
-      return fetchWithRetry(url, options, effectiveRetries - 1, backoff * 1.5);
+    if (!response.ok) {
+      if (response.status >= 500) {
+        const errorText = await response.text().catch(() => 'No error body');
+        console.error(`Server Error (500+) for ${url}:`, errorText);
+        // Trả về dữ liệu trống thay vì throw lỗi để không làm sập trang web
+        return new Response(JSON.stringify({ data: [], message: 'Server error bypassed' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      if (effectiveRetries > 0 && response.status >= 500) {
+        console.warn(`Fetch failed (${response.status}) for ${url}. Retrying...`);
+        await new Promise(resolve => setTimeout(resolve, backoff));
+        return fetchWithRetry(url, options, effectiveRetries - 1, backoff * 1.5);
+      }
     }
     return response;
   } catch (error: any) {
