@@ -53,7 +53,7 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
   try {
     const response = await fetchWithRetry(url, {
       next: { revalidate },
-      signal: AbortSignal.timeout(30000), // 30s timeout
+      signal: AbortSignal.timeout(60000), // Increased to 60s
     });
 
     if (!response.ok) {
@@ -86,7 +86,7 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
   try {
     const response = await fetchWithRetry(url, {
       next: { revalidate },
-      signal: AbortSignal.timeout(30000), // 30s timeout
+      signal: AbortSignal.timeout(60000), // Increased to 60s
     });
 
     if (!response.ok) {
@@ -113,8 +113,9 @@ export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
       'Accept': 'application/json',
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30000), // 30s timeout
+    signal: AbortSignal.timeout(60000), // Increased to 60s
   });
+
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
