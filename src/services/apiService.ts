@@ -15,7 +15,7 @@ export interface ApiSingleResponse<T> {
 /**
  * Enhanced fetch with retry logic for handling intermittent connection issues
  */
-async function fetchWithRetry(url: string, options: RequestInit, retries = 3, backoff = 1000): Promise<Response> {
+async function fetchWithRetry(url: string, options: RequestInit, retries = 1, backoff = 1000): Promise<Response> {
   const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
   
   // If we are building, don't even try to fetch if it's causing issues.
@@ -29,7 +29,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3, ba
   }
 
   const effectiveRetries = retries;
-  const timeoutMs = isBuildPhase ? 5000 : 15000; // Tăng lên 15s cho runtime
+  const timeoutMs = 3000; // Giảm xuống 3s cho cả build và runtime để load cực nhanh khi bị chặn
 
   try {
     const controller = new AbortController();
@@ -39,7 +39,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3, ba
     const response = await fetch(url, { 
       ...options, 
       signal,
-      cache: 'no-store', // Đảm bảo không lấy cache lỗi
+      cache: 'no-store',
       headers: {
         'Accept': 'application/json',
         'Accept-Language': 'vi,en;q=0.9',
@@ -51,45 +51,40 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3, ba
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      // Handle rate limit with exponential backoff and jitter
       if (response.status === 429) {
-        console.warn(`Rate limit hit (429) for ${url}. Retrying after delay...`);
-        await new Promise(resolve => setTimeout(resolve, backoff * 2));
+        const delay = (backoff * 2) + Math.random() * 1000;
+        console.warn(`Rate limit hit (429) for ${url}. Retrying after ${Math.round(delay)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
         return fetchWithRetry(url, options, effectiveRetries, backoff * 2);
       }
 
       if (response.status >= 500) {
         const errorText = await response.text().catch(() => 'No error body');
         console.error(`Server Error (500+) for ${url}:`, errorText);
-        // Trả về dữ liệu trống thay vì throw lỗi để không làm sập trang web
+        // Trả về dữ liệu trống ngay lập tức
         return new Response(JSON.stringify({ data: [], message: 'Server error bypassed' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
         });
       }
-      
-      if (effectiveRetries > 0 && response.status >= 500) {
-        console.warn(`Fetch failed (${response.status}) for ${url}. Retrying...`);
-        await new Promise(resolve => setTimeout(resolve, backoff));
-        return fetchWithRetry(url, options, effectiveRetries - 1, backoff * 1.5);
-      }
     }
     return response;
   } catch (error: any) {
-    if (effectiveRetries > 0) {
-      console.warn(`Fetch error for ${url}: ${error.message}. Retrying...`);
-      await new Promise(resolve => setTimeout(resolve, backoff));
-      return fetchWithRetry(url, options, effectiveRetries - 1, backoff * 1.5);
-    }
-    throw error;
+    // Nếu timeout hoặc lỗi kết nối, trả về dữ liệu trống ngay lập tức (không retry lâu)
+    console.warn(`Fetch failed for ${url}: ${error.message}. Returning empty data.`);
+    return new Response(JSON.stringify({ data: [], message: 'Fetch error bypassed' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
-
 
 /**
  * Generic API fetch function for collections
  */
 export async function getApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiResponse<T>> {
-  const { params, revalidate = 60 } = options;
+  const { params, revalidate = 300 } = options;
 
   let url = `${BASE_URL}/${key}`;
 
@@ -113,7 +108,8 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
     return response.json();
   } catch (error) {
     console.error(`Error in getApi(${key}):`, error);
-    throw error;
+    // Trả về mảng trống thay vì throw để không sập trang
+    return { data: [] };
   }
 }
 
@@ -121,7 +117,7 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
  * Generic API fetch function for single items
  */
 export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiSingleResponse<T>> {
-  const { params, revalidate = 60 } = options;
+  const { params, revalidate = 300 } = options;
 
   let url = `${BASE_URL}/${key}`;
 
@@ -145,7 +141,8 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
     return response.json();
   } catch (error) {
     console.error(`Error in getSingleApi(${key}):`, error);
-    throw error;
+    // Trả về object trống thay vì throw
+    return { data: null as any };
   }
 }
 
@@ -165,11 +162,8 @@ export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Failed to post API: ${key}`);
+    throw new Error(`Failed to post API: ${key} - Status: ${response.status}`);
   }
 
   return response.json();
 }
-
-
