@@ -39,7 +39,6 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
     const response = await fetch(url, { 
       ...options, 
       signal,
-      cache: 'no-store',
       headers: {
         'Accept': 'application/json',
         'Accept-Language': 'vi,en;q=0.9',
