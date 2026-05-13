@@ -72,7 +72,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     return {
       id: item.id,
       title: name,
-      slug: slugify(name),
+      slug: item.slug || slugify(name),
       price: parseFloat(item.price as string),
       category: { title: categoryName, slug: categorySlug },
       ingredients: item.ingredients?.map(ing => slugify(ing.name)) || [],

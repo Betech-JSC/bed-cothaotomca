@@ -49,12 +49,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const catTranslation = getTranslation(productCategory?.translations, locale) as any;
           const categoryName = catTranslation?.title || productCategory?.title || "san-pham";
 
-          const productSlug = locale === 'vi'
-            ? (product.slug ? product.slug.replace(/-\d+$/, '') : slugify(name))
-            : slugify(name);
-          const categorySlug = locale === 'vi'
-            ? (productCategory?.slug || slugify(categoryName))
-            : slugify(categoryName);
+          const productSlug = product.slug || slugify(name);
+          const categorySlug = productCategory?.slug || slugify(categoryName);
 
           return {
             url: buildUrl(locale, `${productBase}/${categorySlug}/${productSlug}`),
@@ -83,8 +79,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const catTranslation = getTranslation(blog.category?.translations, locale) as any;
           const categoryName = catTranslation?.title || blog.category?.title || "tin-tuc";
 
-          const blogSlug = locale === 'vi' ? (blog.slug || slugify(title)) : slugify(title);
-          const categorySlug = locale === 'vi' ? (blog.category?.slug || slugify(categoryName)) : slugify(categoryName);
+          const blogSlug = blog.slug || slugify(title);
+          const categorySlug = blog.category?.slug || slugify(categoryName);
 
           return {
             url: buildUrl(locale, `${blogBase}/${categorySlug}/${blogSlug}`),
@@ -110,7 +106,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         const localePolicyRoutes = policiesRes.data.map((policy: any) => {
           const translation = getTranslation(policy.translations, locale) as any;
           const title = translation?.title || policy.title || "";
-          const slug = locale === 'vi' ? (policy.slug || slugify(title)) : slugify(title);
+          const slug = policy.slug || slugify(title);
 
           return {
             url: buildUrl(locale, `${policyBase}/${slug}`),

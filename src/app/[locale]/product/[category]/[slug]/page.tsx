@@ -135,13 +135,8 @@ export default async function ProductDetailsPage({
     const catTranslation = getTranslation(relatedCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || relatedCategory?.title || "Sản phẩm";
 
-    const productSlug = locale === 'vi'
-      ? (p.slug ? p.slug.replace(/-\d+$/, '') : slugify(name))
-      : slugify(name);
-
-    const categorySlug = locale === 'vi'
-      ? (relatedCategory?.slug || slugify(categoryName))
-      : slugify(categoryName);
+    const productSlug = p.slug || slugify(name);
+    const categorySlug = relatedCategory?.slug || slugify(categoryName);
 
     return {
       id: p.id,

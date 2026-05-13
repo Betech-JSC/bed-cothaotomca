@@ -89,9 +89,7 @@ export default function ProductIndexPage({
         })
       : [categorySlug];
 
-    const productSlug = locale === 'vi' 
-      ? (p.slug ? p.slug.replace(/-\d+$/, '') : slugify(name)) 
-      : slugify(name);
+    const productSlug = p.slug || slugify(name);
 
     return {
       id: p.id,
