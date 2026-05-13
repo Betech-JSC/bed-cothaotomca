@@ -16,19 +16,30 @@ export interface ApiSingleResponse<T> {
  * Enhanced fetch with retry logic for handling intermittent connection issues
  */
 async function fetchWithRetry(url: string, options: RequestInit, retries = 3, backoff = 1000): Promise<Response> {
+  // Reduce retries and timeout during build phase to prevent hanging the build
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+  const effectiveRetries = isBuildPhase ? 1 : retries;
+  const timeoutMs = isBuildPhase ? 5000 : (options.signal ? 30000 : 30000);
+
   try {
-    const response = await fetch(url, options);
-    if (!response.ok && retries > 0 && response.status >= 500) {
-      console.warn(`Fetch failed with status ${response.status}. Retrying in ${backoff}ms... (${retries} retries left)`);
+    const controller = new AbortController();
+    const signal = controller.signal;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    const response = await fetch(url, { ...options, signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok && effectiveRetries > 0 && response.status >= 500) {
+      console.warn(`Fetch failed (${response.status}) for ${url}. Retrying...`);
       await new Promise(resolve => setTimeout(resolve, backoff));
-      return fetchWithRetry(url, options, retries - 1, backoff * 2);
+      return fetchWithRetry(url, options, effectiveRetries - 1, backoff * 1.5);
     }
     return response;
   } catch (error: any) {
-    if (retries > 0 && (error.name === 'ConnectTimeoutError' || error.name === 'TimeoutError' || error.message.includes('timeout') || error.message.includes('fetch failed'))) {
-      console.warn(`Fetch encountered a timeout/error: ${error.message}. Retrying in ${backoff}ms... (${retries} retries left)`);
+    if (effectiveRetries > 0) {
+      console.warn(`Fetch error for ${url}: ${error.message}. Retrying...`);
       await new Promise(resolve => setTimeout(resolve, backoff));
-      return fetchWithRetry(url, options, retries - 1, backoff * 2);
+      return fetchWithRetry(url, options, effectiveRetries - 1, backoff * 1.5);
     }
     throw error;
   }
@@ -53,7 +64,6 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
   try {
     const response = await fetchWithRetry(url, {
       next: { revalidate },
-      signal: AbortSignal.timeout(60000), // Increased to 60s
     });
 
     if (!response.ok) {
@@ -86,7 +96,6 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
   try {
     const response = await fetchWithRetry(url, {
       next: { revalidate },
-      signal: AbortSignal.timeout(60000), // Increased to 60s
     });
 
     if (!response.ok) {
@@ -113,9 +122,7 @@ export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
       'Accept': 'application/json',
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60000), // Increased to 60s
   });
-
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -124,4 +131,5 @@ export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
 
   return response.json();
 }
+
 

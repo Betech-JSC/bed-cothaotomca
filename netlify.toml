@@ -6,6 +6,7 @@
   NODE_VERSION = "20"
   NEXT_USE_NETLIFY_EDGE = "true"
   NEXT_PRIVATE_BUILD_WORKER_THREADS = "1"
+  EXPERIMENTAL_CPUS = "1"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
