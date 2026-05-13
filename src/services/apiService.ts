@@ -51,6 +51,12 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3, ba
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      if (response.status === 429) {
+        console.warn(`Rate limit hit (429) for ${url}. Retrying after delay...`);
+        await new Promise(resolve => setTimeout(resolve, backoff * 2));
+        return fetchWithRetry(url, options, effectiveRetries, backoff * 2);
+      }
+
       if (response.status >= 500) {
         const errorText = await response.text().catch(() => 'No error body');
         console.error(`Server Error (500+) for ${url}:`, errorText);
