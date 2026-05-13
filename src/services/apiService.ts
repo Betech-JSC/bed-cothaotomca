@@ -29,7 +29,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3, ba
   }
 
   const effectiveRetries = retries;
-  const timeoutMs = isBuildPhase ? 5000 : 8000; // 8s at runtime to stay under Netlify's 10s limit
+  const timeoutMs = isBuildPhase ? 5000 : 15000; // Tăng lên 15s cho runtime
 
   try {
     const controller = new AbortController();
