@@ -40,7 +40,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       const translation = cat.translations?.find(t => t.locale === lang) ||
         cat.translations?.find(t => t.locale.startsWith(lang))
       const title = translation?.title || cat.title || ''
-      return slugify(title) === slug
+      const categorySlug = lang === 'vi' ? (cat.slug || slugify(title)) : slugify(title)
+      return categorySlug === slug
     })?.id
   }
 

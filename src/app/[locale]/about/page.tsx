@@ -33,7 +33,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       alt: introBanner?.title || "banner about",
     },
     image_mobile: {
-      url: introBanner?.image_mobile || introBanner?.image  || "/images/demo/banner-about.jpg",
+      url: introBanner?.image_mobile || introBanner?.image || "/images/demo/banner-about.jpg",
       alt: introBanner?.title || "banner about",
     },
   };
@@ -83,7 +83,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       },
       image_mobile: {
         url: item.image_mobile || item.image || "/cover.jpg",
-        alt: translation?.title || item.image_mobile?.alt|| item.title || ""
+        alt: translation?.title || item.image_mobile?.alt || item.title || ""
       },
       title: translation?.title || item.title || "",
       description: translation?.description || item.description || "",
@@ -198,9 +198,9 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         </div>
         <div className="relative max-md:-mt-32">
           <div className="container">
-            <AnimateOnScroll animate="slideup" delay={0} className="md:space-y-4 space-y-6 xl:space-y-6 max-w-[602px] w-full mx-auto flex flex-col items-center justify-center text-center">
+            <AnimateOnScroll animate="slideup" delay={0} className="md:space-y-4 space-y-6 xl:space-y-6  w-full mx-auto max-w-[593px] flex flex-col items-center justify-center text-center">
               <h2 className="display-2 text-center text-primary max-md:max-w-[250px]">{t('about.section-5.title.text1')} <span className="text-secondary">{t('about.section-5.title.text2')}</span></h2>
-              <div className="body-0 max-md:text-[16px] text-primary">{t('about.section-5.description')}</div>
+              <div className="body-0 max-md:text-[16px] text-primary" dangerouslySetInnerHTML={{ __html: t('about.section-5.description') }}></div>
               <Link href="/product" className="btn btn-primary gap-2 w-max mx-auto px-[18px]">
                 <Cart />
                 <span>{t('button.explore-menu')}</span>

@@ -157,7 +157,7 @@ const Header = () => {
     >
       <div className="container">
         <nav
-          className="relative hidden items-center justify-between lg:flex"
+          className="relative hidden items-center justify-between xl:flex"
           aria-label="Main"
         >
 
@@ -390,7 +390,7 @@ const MobileMenu = ({
   }, [open]);
 
   return (
-    <nav aria-label="Mobile main navigation" className="w-full lg:hidden">
+    <nav aria-label="Mobile main navigation" className="w-full xl:hidden">
       <div className="flex w-full items-center justify-between py-1 relative">
         <Logo width={100} height={60} className="h-20" />
         <div className="flex items-center gap-4">

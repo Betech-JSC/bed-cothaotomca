@@ -164,9 +164,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </div>
         <div className="container">
           <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
-            <div className="col-span-full md:col-span-10 xl:col-span-8">
+            <div className="col-span-full md:col-span-11 lg:col-span-10 xl:col-span-8">
               <AnimateOnScroll animate="slideup" delay={0} className="headline-3 text-secondary">{t('home.section-2.subTitle')}</AnimateOnScroll>
-              <div className="relative mt-4 mb-[94px] md:mb-8 xl:mb-12">
+              <div className="relative mt-4 mb-[94px] md:mb-8 xl:mb-12 lg:max-w-full md:max-w-[595px]">
                 <AnimateOnScroll animate="slideup" delay={0} className='z-10 relative'>
                   <h1 className="display-1 text-primary">{t('home.section-2.title')}</h1>
                 </AnimateOnScroll>
@@ -179,11 +179,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                   />
                 </div>
               </div>
-              <AnimateOnScroll animate="slideup" delay={300} className="max-w-[660px] w-full space-y-3 body-1 text-gray-800">
-                <p>{t('home.section-2.description.text1')}</p>
-                <p>{t('home.section-2.description.text2')}</p>
-                <p>{t('home.section-2.description.text3')}</p>
-                <p>{t('home.section-2.description.text4')}</p>
+              <AnimateOnScroll animate="slideup" delay={300} className="max-w-[720px] lg:max-w-[680px] w-full space-y-3 body-1 text-gray-800">
+                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text1') }}></p>
+                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text2') }}></p>
+                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text3') }}></p>
+                <strong><p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text4') }}></p></strong>
               </AnimateOnScroll>
               <div className="md:mt-12 mt-6 xl:mt-16">
                 <Link href="/about" className="btn btn-primary max-w-[240px]">
@@ -214,9 +214,15 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         <div className="absolute md:top-12 top-[100px] xl:top-[100px] left-0 w-full">
           <div className="container">
             <AnimateOnScroll animate="slideup">
-              <h2 className="display-1 max-md:text-[36px] text-center text-primary">
-                {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span>{t('home.section-5.title.text3')}
-              </h2>
+              {locale == 'vi' ? (
+                <h2 className="display-1 max-md:text-[36px] text-center text-primary">
+                  {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span>{t('home.section-5.title.text3')}
+                </h2>
+              ) : (
+                <h2 className="display-1 max-md:text-[36px] text-center text-primary">
+                  <span className="text-secondary">{t('home.section-5.title.text1')}</span>{t('home.section-5.title.text2')}<span className="text-secondary">{t('home.section-5.title.text3')}</span>{t('home.section-5.title.text4')}
+                </h2>
+              )}
             </AnimateOnScroll>
           </div>
         </div>
@@ -269,7 +275,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       </section>
       <section className="bg-secondary md:py-16 py-12 xl:py-20">
         <div className="container">
-          <div className="grid md:grid-cols-2 gap-4 md:gap-6 xl:gap-8">
+          <div className="grid lg:grid-cols-2 gap-4 md:gap-6 xl:gap-8">
             <AnimateOnScroll animate='slideleft' delay={300} className="relative aspect-[8/5]">
               <Image
                 src="/images/home/image-shipping.png"
@@ -280,7 +286,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             </AnimateOnScroll>
             <AnimateOnScroll animate='slideright' delay={300} className="space-y-6 md:space-y-4 xl:space-y-8 xl:pl-32">
               <h2 className="headline-1 text-yellow">{t('home.section-7.title.text1')} <br /> {t('home.section-7.title.text2')}</h2>
-              <div className="body-1 text-white space-y-2 md:space-y-3 xl:space-y-4">
+              <div className="body-1 text-white space-y-2 md:space-y-3 xl:space-y-4 lg:max-w-[440px]">
                 <p>{t('home.section-7.description.text1')}</p>
                 {/* <ol>
                   <li><span className="font-bold">{t('home.section-7.description.text2.title')}</span> {t('home.section-7.description.text2.description')}</li>
