@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import AnimateOnScroll from "../Animated/animated-appear";
 
-// Custom Checkbox component
 function CustomCheckbox({
   checked,
   onChange,
@@ -21,11 +20,10 @@ function CustomCheckbox({
       className="group flex w-full cursor-pointer items-center gap-2 py-2 transition-colors duration-200 lg:px-3"
     >
       <span
-        className={`relative h-6 w-6 flex-shrink-0 rounded-md border-2 transition-all duration-200 ${
-          checked
+        className={`relative h-6 w-6 flex-shrink-0 rounded-md border-2 transition-all duration-200 ${checked
             ? "bg-primary border-primary"
             : "lg:group-hover:border-primary border-gray-500 bg-white"
-        } `}
+          } `}
       >
         <svg
           className={`absolute inset-0 h-full w-full p-0.5 text-white transition-all duration-150 ${checked ? "scale-100 opacity-100" : "scale-75 opacity-0"}`}
@@ -95,23 +93,20 @@ export default function ProductFilter({
   return (
     <>
       <div
-        className={`fixed inset-0 z-[100] bg-black/50 transition-opacity duration-300 ease-in-out lg:hidden ${
-          isFilterOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
+        className={`fixed inset-0 z-[100] bg-black/50 transition-opacity duration-300 ease-in-out lg:hidden ${isFilterOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
         onClick={() => setIsFilterOpen(false)}
       />
       <div
-        className={`w-full flex-shrink-0 transition-transform duration-300 ease-in-out lg:block lg:max-w-[280px] ${
-          isFilterOpen
+        className={`w-full flex-shrink-0 transition-transform duration-300 ease-in-out lg:block lg:max-w-[280px] ${isFilterOpen
             ? "fixed top-0 right-0 bottom-0 z-[110] flex w-[85%] max-w-[360px] translate-x-0 transform flex-col bg-gray-50 shadow-xl"
             : "translate-x-full transform max-lg:fixed max-lg:top-0 max-lg:right-0 max-lg:bottom-0 max-lg:z-[110] max-lg:flex max-lg:w-[85%] max-lg:max-w-[360px] max-lg:flex-col max-lg:bg-gray-50 max-lg:shadow-xl lg:block lg:translate-x-0 lg:bg-transparent lg:shadow-none lg:sticky lg:top-24 lg:z-30 lg:w-full"
-        } `}
+          } `}
       >
         {/* Mobile Header */}
         <div
-          className={`flex items-center justify-between border-b border-gray-100 bg-white px-5 py-4 transition-opacity duration-300 ease-in-out lg:hidden ${
-            isFilterOpen ? "opacity-100" : "opacity-0"
-          }`}
+          className={`flex items-center justify-between border-b border-gray-100 bg-white px-5 py-4 transition-opacity duration-300 ease-in-out lg:hidden ${isFilterOpen ? "opacity-100" : "opacity-0"
+            }`}
         >
           <span className="title-2 text-primary">{t("common.filter")}</span>
           <button
@@ -179,11 +174,10 @@ export default function ProductFilter({
                   key={cat.id}
                   type="button"
                   onClick={() => handleCategoryClick(cat.slug)}
-                  className={`title-3 w-full cursor-pointer py-3 text-left duration-300 ease-in-out lg:px-3 ${
-                    category === cat.slug
+                  className={`title-3 w-full cursor-pointer py-3 text-left duration-300 ease-in-out lg:px-3 ${category === cat.slug
                       ? "bg-secondary/5 text-secondary"
                       : "lg:hover:text-secondary text-gray-800"
-                  } `}
+                    } `}
                 >
                   {cat.title}
                 </button>
