@@ -45,6 +45,7 @@ export interface Product {
     translations?: any[];
   }[];
   created_at: string;
+  variant_type?: string;
   variants?: any[];
   gallery?: string[];
   images?: {

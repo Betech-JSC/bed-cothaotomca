@@ -40,6 +40,8 @@
   },
   "product": {
     "size": "Size",
+    "volume": "Volume",
+    "type": "Type",
     "standard": "Standard",
     "buy_now": "Buy now",
     "contact": "Contact",

@@ -90,6 +90,7 @@ export default async function ProductDetailsPage({
   const productData = {
     title: product.name,
     description: product.description,
+    variant_type: product.variant_type,
     image: {
       url: product.image,
       alt: product.name,

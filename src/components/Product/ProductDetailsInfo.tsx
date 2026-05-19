@@ -12,6 +12,7 @@ interface ProductDetailsInfoProps {
   productData: {
     title: string;
     description: string;
+    variant_type?: string;
     images: any[];
     sizes: { title: string; price: number }[];
     infos: { title: string; content: string }[];
@@ -39,7 +40,13 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
         <div className="body-1 text-gray-900" dangerouslySetInnerHTML={{ __html: productData.description }} />
 
         <div className="flex md:flex-row flex-col items-start md:gap-4 gap-3 xl:gap-6">
-          <div className="label-1 font-semibold text-gray-900 flex-shrink-0 md:mt-3">{t('product.size')}</div>
+          <div className="label-1 font-semibold text-gray-900 flex-shrink-0 md:mt-3">
+            {productData.variant_type?.toLowerCase() === "volume"
+              ? t("product.volume")
+              : productData.variant_type?.toLowerCase() === "type"
+              ? t("product.type")
+              : t("product.size")}
+          </div>
           <div className="flex-1 w-full">
             {productData.sizes.length > 1 && (
               <div className="flex items-center flex-wrap md:gap-4 gap-3 xl:gap-3">

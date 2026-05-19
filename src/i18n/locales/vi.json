@@ -40,6 +40,8 @@
   },
   "product": {
     "size": "Kích thước",
+    "volume": "Thể tích",
+    "type": "Loại",
     "standard": "Tiêu chuẩn",
     "buy_now": "Mua ngay",
     "contact": "Liên hệ tư vấn",
