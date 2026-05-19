@@ -58,10 +58,10 @@
       "subTitle": "Hải sản ngâm tương, mẻ mới mỗi ngày",
       "title": "Tươi nguyên bản, 100% không chất bảo quản.",
       "description": {
-        "text1": "Tại Cô Thảo Tôm Cá, chúng tôi chỉ cho phép chế biến hải sản thượng hạng, <br/> 100% đạt độ tươi ngon cao nhất.",
+        "text1": "Tại Cô Thảo Tôm Cá, chúng tôi chỉ cho phép chế biến hải sản thượng hạng, '<br class=\"hidden md:inline\" />' 100% đạt độ tươi ngon cao nhất.",
         "text2": "Tại bếp, nguyên liệu đều được nhập từ nguồn cung ngon nhất vùng. Từ cá hồi Na Uy, cua Cà Mau, ghẹ Phan Thiết, tôm tươi sống từ các trang trại uy tín, bào ngư Hàn Quốc, trứng gà ta vườn, cho đến từng nguyên liệu nhỏ nhất — tất cả đều được chọn lọc kỹ lưỡng, chế biến trong ngày và nói không với việc sử dụng chất bảo quản.",
         "text3": "Công thức nước tương độc quyền được mang chuẩn chỉnh từ Hàn Quốc, cân chỉnh để phù hợp với khẩu vị người Việt — đậm đà nhưng vẫn thanh nhẹ, không dầu mỡ, giúp tôn lên trọn vẹn vị ngọt tự nhiên của từng thớ thịt.",
-        "text4": "\"Mẻ mới mỗi ngày\" sẽ luôn là tiêu chí thật nhất, chắc chắn nhất tại bếp Cô Thảo Tôm Cá <br/> — độ tươi là tiêu chuẩn bắt buộc, không phải là lựa chọn."
+        "text4": "\"Mẻ mới mỗi ngày\" sẽ luôn là tiêu chí thật nhất, chắc chắn nhất tại bếp Cô Thảo Tôm Cá '<br class=\"hidden md:inline\" />' — độ tươi là tiêu chuẩn bắt buộc, không phải là lựa chọn."
       }
     },
     "section-3": {
