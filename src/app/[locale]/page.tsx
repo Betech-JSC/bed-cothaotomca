@@ -180,7 +180,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 </div>
               </div>
               <AnimateOnScroll animate="slideup" delay={300} className="max-w-[720px] lg:max-w-[680px] w-full space-y-3 body-1 text-gray-800">
-                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text1') }}></p>
+                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text1').replaceAll('<br/>', '<br class="hidden md:inline" />').replaceAll('<br>', '<br class="hidden md:inline" />') }}></p>
                 <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text2') }}></p>
                 <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text3') }}></p>
                 <strong><p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text4') }}></p></strong>
