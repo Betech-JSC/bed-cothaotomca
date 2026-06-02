@@ -1,23 +1,27 @@
-import SectionSliderPost from '@/components/Common/SectionSliderPost';
-import SectionHero from '@/components/Hero/SectionHero';
-import SectionHotProduct from '@/components/Hero/SectionHotProduct';
-import SectionReason from '@/components/Hero/SectionReason';
-import Arrow from '@/components/Icons/Arrow';
-import Phone from '@/components/Icons/Phone';
-import { Link } from '@/i18n/i18n-navigation';
-import { getTranslations } from 'next-intl/server';
-import { notFound } from 'next/navigation';
-import { locales as supportedLocales } from '@/i18n/config';
-import Image from 'next/image';
-import { getApi } from '@/services/apiService';
-import { HeroBanner } from '@/services/heroBannerService';
-import { Product } from '@/services/productService';
-import { Category } from '@/services/categoryService';
-import { slugify } from '@/lib/format';
-import { getBlogs, Blog } from '@/services/blogService';
+import SectionSliderPost from "@/components/Common/SectionSliderPost";
+import SectionHero from "@/components/Hero/SectionHero";
+import SectionHotProduct from "@/components/Hero/SectionHotProduct";
+import SectionReason from "@/components/Hero/SectionReason";
+import Arrow from "@/components/Icons/Arrow";
+import Phone from "@/components/Icons/Phone";
+import { Link } from "@/i18n/i18n-navigation";
+import { getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
+import { locales as supportedLocales } from "@/i18n/config";
+import Image from "next/image";
+import { getApi } from "@/services/apiService";
+import { HeroBanner } from "@/services/heroBannerService";
+import { getProductCatalog, mapProductToCardItem } from "@/services/productService";
+import { getCategories, getCategoryImageUrl } from "@/services/categoryService";
+import { slugify } from "@/lib/format";
+import { getBlogs, Blog } from "@/services/blogService";
 import AnimateOnScroll from "@/components/Animated/animated-appear";
 
-export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function HomePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
   const { locale } = await params;
 
   // If the locale is not supported, render the app's not-found (404)
@@ -26,18 +30,39 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   }
   const t = await getTranslations({ locale });
 
-  const [heroBannersData, sliderBannersData, productsData, categoriesData, blogsData] = await Promise.all([
-    getApi<HeroBanner>('banners', { params: { position: 'hero_home', lang: locale } }).catch(() => ({ data: [] })),
-    getApi<HeroBanner>('banners', { params: { position: 'slide_home', lang: locale } }).catch(() => ({ data: [] })),
-    getApi<Product>('products', { params: { lang: locale } }).catch(() => ({ data: [] })),
-    getApi<Category>('categories', { params: { lang: locale, is_featured: true } }).catch(() => ({ data: [] })),
-    getBlogs({ is_featured: true, per_page: 10, lang: locale }).catch(() => ({ data: [] }))
+  const [
+    heroBannersData,
+    sliderBannersData,
+    productsData,
+    categoriesData,
+    blogsData,
+  ] = await Promise.all([
+    getApi<HeroBanner>("banners", {
+      params: { position: "hero_home", lang: locale },
+    }).catch(() => ({ data: [] })),
+    getApi<HeroBanner>("banners", {
+      params: { position: "slide_home", lang: locale },
+    }).catch(() => ({ data: [] })),
+    getProductCatalog(locale)
+      .then((items) => ({ data: items.slice(0, 20) }))
+      .catch(() => ({ data: [] })),
+    getCategories({ lang: locale, is_featured: true }).catch(() => ({
+      data: [],
+    })),
+    getBlogs({ is_featured: true, per_page: 10, lang: locale }).catch(() => ({
+      data: [],
+    })),
   ]);
 
-  const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
+  const getTranslation = <T extends { locale: string }>(
+    translations: T[] | undefined,
+    currentLocale: string,
+  ): T | undefined => {
     if (!translations || translations.length === 0) return undefined;
-    return translations.find(t => t.locale === currentLocale) ||
-      translations.find(t => t.locale.startsWith(currentLocale));
+    return (
+      translations.find((t) => t.locale === currentLocale) ||
+      translations.find((t) => t.locale.startsWith(currentLocale))
+    );
   };
 
   const sliderHero = heroBannersData.data.map((item) => {
@@ -46,56 +71,37 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     return {
       image: {
         url: item.image || "/cover.jpg",
-        alt: translation?.title || item.image?.alt || title
+        alt: translation?.title || item.image?.alt || title,
       },
       image_mobile: {
         url: item.image_mobile || item.image || "/cover.jpg",
-        alt: translation?.title || item.image_mobile?.alt || title
+        alt: translation?.title || item.image_mobile?.alt || title,
       },
       title: title,
     };
   });
 
   const productsDisplay = productsData.data.map((item) => {
-    const translation = getTranslation(item.translations, locale) as any;
-    const name = translation?.name || item.name;
-
-    // Get category from categories array (new structure) or category object (old structure)
-    const productCategory = item.categories && item.categories.length > 0
-      ? item.categories[0]
-      : item.category;
-
-    const catTranslation = getTranslation(productCategory?.translations, locale) as any;
-    const categoryName = catTranslation?.title || productCategory?.title || "Tất cả";
-    const categorySlug = slugify(categoryName);
-
+    const card = mapProductToCardItem(item, locale);
     return {
-      id: item.id,
-      title: name,
-      slug: item.slug || slugify(name),
-      price: parseFloat(item.price as string),
-      category: { title: categoryName, slug: categorySlug },
-      ingredients: item.ingredients?.map(ing => slugify(ing.name)) || [],
-      image: {
-        url: item.image || "/cover.jpg",
-        alt: name
-      },
-      description: translation?.description || item.description,
-      variants: item.variants,
-      created_at: '2024-03-15T00:00:00Z',
+      ...card,
+      category: { title: card.category.title, slug: card.category.slug },
+      ingredients: item.ingredients?.map((ing) => slugify(ing.name)) || [],
     };
   });
 
   const categoriesDisplay = categoriesData.data.map((item) => {
-    const translation = getTranslation(item.translations, locale) as any;
+    const translation = getTranslation(item.translations, locale) as {
+      title?: string;
+    };
     const title = translation?.title || item.title;
     return {
       id: item.id,
       title: title,
-      slug: slugify(title),
+      slug: item.slug || slugify(title),
       image: {
-        url: item.image || 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop',
-        alt: title
+        url: getCategoryImageUrl(item),
+        alt: title,
       },
     };
   });
@@ -105,11 +111,16 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     return {
       image: {
         url: item.image || "/cover.jpg",
-        alt: translation?.title || item.title || ""
+        alt: translation?.title || item.title || "",
       },
       image_mobile: {
         url: item.image_mobile || item.image || "/cover.jpg",
-        alt: translation?.title || item.image_mobile?.alt || translation?.title || item.title || ""
+        alt:
+          translation?.title ||
+          item.image_mobile?.alt ||
+          translation?.title ||
+          item.title ||
+          "",
       },
       title: translation?.title || item.title || "",
       description: translation?.description || item.description || "",
@@ -118,9 +129,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   const postsDisplay = blogsData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
-    const catTranslation = getTranslation(item.category?.translations, locale) as any;
+    const catTranslation = getTranslation(
+      item.category?.translations,
+      locale,
+    ) as any;
     const title = translation?.title || item.title;
-    const categoryName = catTranslation?.title || item.category?.title || t('blog.category');
+    const categoryName =
+      catTranslation?.title || item.category?.title || t("blog.category");
 
     return {
       image: {
@@ -140,54 +155,98 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   return (
     <main>
       <SectionHero items={sliderHero} />
-      <section className="md:py-20 py-[50px] xl:py-[100px] relative overflow-hidden">
-        <div className="absolute top-6 left-0 max-w-[280px] md:max-w-[320px] xl:max-w-[420px] w-full h-[120px] md:h-[100px] xl:h-[130px]">
-          <AnimateOnScroll animate="slideleft" delay={0} className="w-full h-full">
+      <section className="relative overflow-hidden py-[50px] md:py-20 xl:py-[100px]">
+        <div className="absolute top-6 left-0 h-[120px] w-full max-w-[280px] md:h-[100px] md:max-w-[320px] xl:h-[130px] xl:max-w-[420px]">
+          <AnimateOnScroll
+            animate="slideleft"
+            delay={0}
+            className="h-full w-full"
+          >
             <Image
               src="/images/home/image-fish.png"
               alt="image fish"
               fill
-              className="object-cover w-full h-full"
+              className="h-full w-full object-cover"
             />
           </AnimateOnScroll>
         </div>
 
-        <div className="absolute -bottom-6 -right-16 max-w-[180px] md:max-w-[320px] xl:max-w-[427px] w-full h-[150px] md:h-[260px] xl:h-[350px]">
-          <AnimateOnScroll animate="slideright" delay={0} className="w-full h-full">
+        <div className="absolute -right-16 -bottom-6 h-[150px] w-full max-w-[180px] md:h-[260px] md:max-w-[320px] xl:h-[350px] xl:max-w-[427px]">
+          <AnimateOnScroll
+            animate="slideright"
+            delay={0}
+            className="h-full w-full"
+          >
             <Image
               src="/images/home/image-crab.png"
               alt="image crab"
               fill
-              className="object-cover w-full h-full"
+              className="h-full w-full object-cover"
             />
           </AnimateOnScroll>
         </div>
         <div className="container">
-          <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
+          <div className="grid grid-cols-12 gap-4 md:gap-6 xl:gap-8">
             <div className="col-span-full md:col-span-11 lg:col-span-10 xl:col-span-8">
-              <AnimateOnScroll animate="slideup" delay={0} className="headline-3 text-secondary">{t('home.section-2.subTitle')}</AnimateOnScroll>
-              <div className="relative mt-4 mb-[94px] md:mb-8 xl:mb-12 lg:max-w-full md:max-w-[595px]">
-                <AnimateOnScroll animate="slideup" delay={0} className='z-10 relative'>
-                  <h1 className="display-1 text-primary">{t('home.section-2.title')}</h1>
+              <AnimateOnScroll
+                animate="slideup"
+                delay={0}
+                className="headline-3 text-secondary"
+              >
+                {t("home.section-2.subTitle")}
+              </AnimateOnScroll>
+              <div className="relative mt-4 mb-[94px] md:mb-8 md:max-w-[595px] lg:max-w-full xl:mb-12">
+                <AnimateOnScroll
+                  animate="slideup"
+                  delay={0}
+                  className="relative z-10"
+                >
+                  <h1 className="display-1 text-primary">
+                    {t("home.section-2.title")}
+                  </h1>
                 </AnimateOnScroll>
-                <div className="absolute block top-16 md:top-6 -right-6 md:-right-20 xl:-right-20 size-[120px] md:size-[220px] xl:size-[250px]">
+                <div className="absolute top-16 -right-6 block size-[120px] md:top-6 md:-right-20 md:size-[220px] xl:-right-20 xl:size-[250px]">
                   <Image
                     src="/images/home/image-certificate.png"
                     alt="image certificate"
                     fill
-                    className="object-cover w-full h-full"
+                    className="h-full w-full object-cover"
                   />
                 </div>
               </div>
-              <AnimateOnScroll animate="slideup" delay={300} className="max-w-[720px] lg:max-w-[680px] w-full space-y-3 body-1 text-gray-800">
-                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text1').replaceAll('<br/>', '<br class="hidden md:inline" />').replaceAll('<br>', '<br class="hidden md:inline" />') }}></p>
-                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text2') }}></p>
-                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text3') }}></p>
-                <strong><p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text4') }}></p></strong>
+              <AnimateOnScroll
+                animate="slideup"
+                delay={300}
+                className="body-1 w-full max-w-[720px] space-y-3 text-gray-800 lg:max-w-[680px]"
+              >
+                <p
+                  dangerouslySetInnerHTML={{
+                    __html: t("home.section-2.description.text1")
+                      .replaceAll("<br/>", '<br class="hidden md:inline" />')
+                      .replaceAll("<br>", '<br class="hidden md:inline" />'),
+                  }}
+                ></p>
+                <p
+                  dangerouslySetInnerHTML={{
+                    __html: t("home.section-2.description.text2"),
+                  }}
+                ></p>
+                <p
+                  dangerouslySetInnerHTML={{
+                    __html: t("home.section-2.description.text3"),
+                  }}
+                ></p>
+                <strong>
+                  <p
+                    dangerouslySetInnerHTML={{
+                      __html: t("home.section-2.description.text4"),
+                    }}
+                  ></p>
+                </strong>
               </AnimateOnScroll>
-              <div className="md:mt-12 mt-6 xl:mt-16">
+              <div className="mt-6 md:mt-12 xl:mt-16">
                 <Link href="/about" className="btn btn-primary max-w-[240px]">
-                  {t('button.about')}
+                  {t("button.about")}
                 </Link>
               </div>
             </div>
@@ -202,70 +261,96 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             src="/images/home/bg-give.png"
             alt="background give"
             fill
-            className="object-cover w-full h-full md:block hidden"
+            className="hidden h-full w-full object-cover md:block"
           />
           <Image
             src="/images/home/bg-give-mobile.png"
             alt="background give mobile"
             fill
-            className="object-cover w-full h-full md:hidden"
+            className="h-full w-full object-cover md:hidden"
           />
         </div>
-        <div className="absolute md:top-12 top-[100px] xl:top-[100px] left-0 w-full">
+        <div className="absolute top-[100px] left-0 w-full md:top-12 xl:top-[100px]">
           <div className="container">
             <AnimateOnScroll animate="slideup">
-              {locale == 'vi' ? (
-                <h2 className="display-2 max-md:text-[36px] text-center text-primary">
-                  {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span>{t('home.section-5.title.text3')}
+              {locale == "vi" ? (
+                <h2 className="display-2 text-primary text-center max-md:text-[36px]">
+                  {t("home.section-5.title.text1")}
+                  <span className="text-secondary">
+                    {t("home.section-5.title.text2")}
+                  </span>
+                  {t("home.section-5.title.text3")}
                 </h2>
               ) : (
-                <h2 className="display-2 max-md:text-[36px] text-center text-primary">
-                  <span className="text-secondary">{t('home.section-5.title.text1')}</span>{t('home.section-5.title.text2')}<span className="text-secondary">{t('home.section-5.title.text3')}</span>{t('home.section-5.title.text4')}
+                <h2 className="display-2 text-primary text-center max-md:text-[36px]">
+                  <span className="text-secondary">
+                    {t("home.section-5.title.text1")}
+                  </span>
+                  {t("home.section-5.title.text2")}
+                  <span className="text-secondary">
+                    {t("home.section-5.title.text3")}
+                  </span>
+                  {t("home.section-5.title.text4")}
                 </h2>
               )}
             </AnimateOnScroll>
           </div>
         </div>
       </section>
-      <section className="relative pt-8 pb-12 md:py-20 xl:py-[100px] md:bg-primary">
-        <div className="absolute top-[-200px] left-0 w-full bg-linear-mobile h-full md:hidden"></div>
+      <section className="md:bg-primary relative pt-8 pb-12 md:py-20 xl:py-[100px]">
+        <div className="bg-linear-mobile absolute top-[-200px] left-0 h-full w-full md:hidden"></div>
         <div className="absolute inset-0 z-[1] max-md:mt-4">
           <Image
             src="/images/home/bg-category.png"
             alt="background category"
             fill
-            className="object-cover w-full h-full md:block hidden"
+            className="hidden h-full w-full object-cover md:block"
           />
           <Image
             src="/images/home/bg-category-mobile-2.png"
             alt="background category mobile"
             fill
-            className="object-cover w-full h-full md:hidden"
+            className="h-full w-full object-cover md:hidden"
           />
         </div>
         <div className="relative z-10">
           <div className="container">
-            <div className="grid md:grid-cols-2 gap-6 md:gap-16 xl:gap-20">
-              <div className="space-y-6 md:space-y-12 xl:space-y-16 flex flex-col justify-center">
+            <div className="grid gap-6 md:grid-cols-2 md:gap-16 xl:gap-20">
+              <div className="flex flex-col justify-center space-y-6 md:space-y-12 xl:space-y-16">
                 <AnimateOnScroll animate="slideup">
-                  <h2 className="display-3 max-md:text-[28px] text-yellow uppercase max-md:text-center max-md:w-full max-md:mx-auto">{t('home.section-6.title')}</h2>
+                  <h2 className="display-3 text-yellow uppercase max-md:mx-auto max-md:w-full max-md:text-center max-md:text-[28px]">
+                    {t("home.section-6.title")}
+                  </h2>
                 </AnimateOnScroll>
-                <AnimateOnScroll animate="slideup" delay={300} className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
+                <AnimateOnScroll
+                  animate="slideup"
+                  delay={300}
+                  className="bg-primary relative w-full max-w-[568px] overflow-hidden rounded-[24px]"
+                >
                   {categoriesDisplay.map((itemCategory, indexCategory) => (
-                    <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
+                    <Link
+                      href={{
+                        pathname: "/product/[category]",
+                        params: { category: itemCategory.slug },
+                      }}
+                      key={indexCategory}
+                      className="title-2 text-yellow lg:hover:bg-secondary flex items-center justify-between gap-2 px-4 py-[27px] duration-300 ease-in-out"
+                    >
                       <span>{itemCategory.title}</span>
-                      <span className="rotate-180"><Arrow /></span>
+                      <span className="rotate-180">
+                        <Arrow />
+                      </span>
                     </Link>
                   ))}
                 </AnimateOnScroll>
               </div>
               <div>
-                <div className="relative overflow-hidden aspect-w-4 aspect-h-5 rounded-[12px]">
+                <div className="aspect-w-4 aspect-h-5 relative overflow-hidden rounded-[12px]">
                   <Image
                     src="/images/demo/image-category.jpg"
                     alt="image category"
                     fill
-                    className="object-cover w-full h-full"
+                    className="h-full w-full object-cover"
                   />
                 </div>
               </div>
@@ -273,39 +358,60 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </div>
       </section>
-      <section className="bg-secondary md:py-16 py-12 xl:py-20">
+      <section className="bg-secondary py-12 md:py-16 xl:py-20">
         <div className="container">
-          <div className="grid lg:grid-cols-2 gap-4 md:gap-6 xl:gap-8">
-            <AnimateOnScroll animate='slideleft' delay={300} className="relative aspect-[8/5]">
+          <div className="grid gap-4 md:gap-6 lg:grid-cols-2 xl:gap-8">
+            <AnimateOnScroll
+              animate="slideleft"
+              delay={300}
+              className="relative aspect-[8/5]"
+            >
               <Image
                 src="/images/home/image-shipping.png"
                 alt="image shipping"
                 fill
-                className="object-cover w-full h-full"
+                className="h-full w-full object-cover"
               />
             </AnimateOnScroll>
-            <AnimateOnScroll animate='slideright' delay={300} className="space-y-6 md:space-y-4 xl:space-y-8 xl:pl-32">
-              <h2 className="headline-1 text-yellow">{t('home.section-7.title.text1')} <br /> {t('home.section-7.title.text2')}</h2>
-              <div className="body-1 text-white space-y-2 md:space-y-3 xl:space-y-4 lg:max-w-[440px]">
-                <p>{t('home.section-7.description.text1')}</p>
+            <AnimateOnScroll
+              animate="slideright"
+              delay={300}
+              className="space-y-6 md:space-y-4 xl:space-y-8 xl:pl-32"
+            >
+              <h2 className="headline-1 text-yellow">
+                {t("home.section-7.title.text1")} <br />{" "}
+                {t("home.section-7.title.text2")}
+              </h2>
+              <div className="body-1 space-y-2 text-white md:space-y-3 lg:max-w-[440px] xl:space-y-4">
+                <p>{t("home.section-7.description.text1")}</p>
                 {/* <ol>
                   <li><span className="font-bold">{t('home.section-7.description.text2.title')}</span> {t('home.section-7.description.text2.description')}</li>
                   <li><span className="font-bold">{t('home.section-7.description.text3.title')}</span> {t('home.section-7.description.text3.description')}</li>
                   <li><span className="font-bold">{t('home.section-7.description.text4.title')}</span> {t('home.section-7.description.text4.description')}</li>
                 </ol> */}
               </div>
-              <div className="grid grid-cols-2 md:flex items-center md:gap-4 gap-6 xl:gap-6">
-                <a href="tel:02499997122" className="btn btn-white flex items-center gap-2 px-3.5">
+              <div className="grid grid-cols-2 items-center gap-6 md:flex md:gap-4 xl:gap-6">
+                <a
+                  href="tel:02499997122"
+                  className="btn btn-white flex items-center gap-2 px-3.5"
+                >
                   <Phone />
                   <span>024.9999.7122</span>
                 </a>
-                <a href="https://m.me/cothaotomca" target="_blank" rel="noopener noreferrer nofollow" className="btn btn-white !max-w-full">{t('button.advise-contact')}</a>
+                <a
+                  href="https://m.me/cothaotomca"
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="btn btn-white !max-w-full"
+                >
+                  {t("button.advise-contact")}
+                </a>
               </div>
             </AnimateOnScroll>
           </div>
         </div>
       </section>
       <SectionSliderPost items={postsDisplay} />
-    </main >
-  )
+    </main>
+  );
 }

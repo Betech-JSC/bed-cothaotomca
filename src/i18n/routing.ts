@@ -57,7 +57,15 @@ export const routing = defineRouting({
     '/search': {
       vi: '/tim-kiem',
       en: '/search',
-    }
+    },
+    '/checkout': {
+      vi: '/thanh-toan',
+      en: '/checkout',
+    },
+    '/order-success': {
+      vi: '/dat-hang-thanh-cong',
+      en: '/order-success',
+    },
   }
 });
 
