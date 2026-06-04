@@ -48,6 +48,14 @@ async function fetchWithRetry(
     const signal = controller.signal;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+    const authHeaders: Record<string, string> = {};
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("auth_token");
+      if (token) {
+        authHeaders["Authorization"] = `Bearer ${token}`;
+      }
+    }
+
     const response = await fetch(url, {
       ...options,
       signal,
@@ -57,6 +65,7 @@ async function fetchWithRetry(
         Referer: "https://cothaotomca.vn/",
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        ...authHeaders,
         ...options.headers,
       },
     });

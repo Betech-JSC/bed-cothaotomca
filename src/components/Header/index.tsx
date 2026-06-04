@@ -10,6 +10,7 @@ import Hotline from "../Icons/Hotline";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
 import SearchSuggestions from "./SearchSuggestions";
+import { useAuth } from "@/contexts/AuthContext";
 
 type LinkHref = ComponentProps<typeof Link>["href"];
 
@@ -31,6 +32,7 @@ const isNavActive = (href: string | undefined, pathname: string): boolean => {
 };
 
 const Header = () => {
+  const { user, loading } = useAuth();
   const pathname = usePathname();
   const t = useTranslations();
   const locale = useLocale();
@@ -209,6 +211,28 @@ const Header = () => {
             <li>
               <LanguageSwitcher />
             </li>
+            {!loading && (
+              <li>
+                {user ? (
+                  <Link
+                    href="/profile"
+                    className="text-yellow lg:hover:text-secondary font-semibold text-sm border border-yellow/30 lg:hover:border-secondary rounded-full px-4 py-2 transition-all duration-300 flex items-center justify-center gap-1 bg-white/5"
+                  >
+                    <svg className="h-4 w-4 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Chào, {user.first_name || user.name.split(" ").pop()}
+                  </Link>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="text-yellow lg:hover:text-secondary font-semibold text-sm border border-yellow/30 lg:hover:border-secondary rounded-full px-4 py-2 transition-all duration-300 bg-white/5"
+                  >
+                    Đăng nhập
+                  </Link>
+                )}
+              </li>
+            )}
             <li>
               <a
                 href={`tel:${hotlineClean}`}
@@ -380,6 +404,7 @@ const MobileMenu = ({
   onClose,
   onToggleSearch,
 }: MobileMenuProps) => {
+  const { user, loading } = useAuth();
   const [openSection, setOpenSection] = useState<number | null>(null);
   const settings = useGeneralSettings();
   const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
@@ -444,6 +469,23 @@ const MobileMenu = ({
         aria-modal="true"
       >
         <ul className="title-3 mt-4 flex flex-col gap-1">
+          {!loading && (
+            <li className="border-b border-white/10 pb-4 mb-3 px-3">
+              {user ? (
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-gray-400">Thành viên:</span>
+                  <Link href="/profile" className="text-secondary font-bold text-lg" onClick={onClose}>
+                    {user.name}
+                  </Link>
+                  <span className="text-xs text-green-450 font-mono font-semibold">{user.points} điểm</span>
+                </div>
+              ) : (
+                <Link href="/login" className="text-yellow hover:text-secondary font-bold" onClick={onClose}>
+                  Đăng nhập / Đăng ký
+                </Link>
+              )}
+            </li>
+          )}
           {navItems.map((item, index) => {
             const active = isNavActive(
               item.href as string | undefined,

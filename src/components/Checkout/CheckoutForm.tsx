@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/routing";
@@ -15,6 +15,7 @@ import {
   type OrderInitiated,
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface CheckoutOrderItem {
   productId: number;
@@ -57,6 +58,7 @@ const POPULAR_DISTRICTS = [
 ];
 
 export default function CheckoutForm({ order, config }: CheckoutFormProps) {
+  const { user } = useAuth();
   const t = useTranslations("checkout");
   const router = useRouter();
 
@@ -76,6 +78,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setPhone(user.phone || "");
+      setEmail(user.email || "");
+    }
+  }, [user]);
   
   // COD/Transfer/Card selection
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER" | "CARD">("COD");
@@ -756,6 +766,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 {formatPrice(total)}
               </span>
             </div>
+
+            {user && total > 0 && (
+              <div className="text-[12px] text-green-600 font-semibold text-right flex items-center justify-end gap-1 pt-1.5 border-t border-dashed border-gray-200/80">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+                <span>Đơn hàng này sẽ tích lũy thêm ~{Math.floor(total / 100000)} điểm thố!</span>
+              </div>
+            )}
           </div>
 
           {/* Nút submit dạng Pill đỏ cam (Terracotta red) */}
