@@ -9,7 +9,7 @@ export interface StorefrontUser {
   first_name: string;
   last_name: string;
   email: string | null;
-  phone: string;
+  phone: string | null;
   points: number;
   dob: string | null;
   gender: boolean | null;
@@ -21,6 +21,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (phone: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  loginWithGoogle: (credential: string) => Promise<{ success: boolean; message?: string }>;
   register: (data: {
     name: string;
     phone: string;
@@ -33,6 +34,7 @@ interface AuthContextType {
   updateProfile: (data: {
     name: string;
     email?: string;
+    phone?: string;
     dob?: string;
     gender?: boolean | null;
   }) => Promise<{ success: boolean; message?: string }>;
@@ -99,6 +101,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, message: "Đăng nhập thất bại. Định dạng dữ liệu không khớp." };
     } catch (e: any) {
       return { success: false, message: e.message || "Số điện thoại hoặc mật khẩu không chính xác." };
+    }
+  };
+
+  const loginWithGoogle = async (credential: string) => {
+    try {
+      const res = await postApi<any>("auth/google", { credential });
+      if (res?.data?.token) {
+        const userToken = res.data.token;
+        const userProfile = res.data.user;
+
+        localStorage.setItem("auth_token", userToken);
+        setToken(userToken);
+        setUser(userProfile);
+
+        return { success: true };
+      }
+      return { success: false, message: "Đăng nhập Google thất bại. Định dạng dữ liệu không khớp." };
+    } catch (e: any) {
+      return { success: false, message: e.message || "Đăng nhập Google thất bại." };
     }
   };
 
@@ -174,7 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateProfile, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, register, logout, updateProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

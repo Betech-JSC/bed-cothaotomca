@@ -8,7 +8,7 @@ import { useTranslations } from "next-intl";
 
 export default function LoginPage() {
   const t = useTranslations();
-  const { user, login, loading } = useAuth();
+  const { user, login, loginWithGoogle, loading } = useAuth();
   const router = useRouter();
   
   const [phone, setPhone] = useState("");
@@ -22,6 +22,59 @@ export default function LoginPage() {
       router.push("/profile");
     }
   }, [user, loading, router]);
+
+  // Google Sign-In initialization
+  useEffect(() => {
+    if (loading || user || typeof window === "undefined") return;
+
+    const initializeGoogle = () => {
+      const google = (window as any).google;
+      if (google) {
+        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredential,
+        });
+        
+        const btnElement = document.getElementById("google-signin-btn");
+        if (btnElement) {
+          google.accounts.id.renderButton(btnElement, {
+            theme: "outline",
+            size: "large",
+            width: btnElement.clientWidth || 382,
+            logo_alignment: "left",
+          });
+        }
+      }
+    };
+
+    const handleGoogleCredential = async (response: any) => {
+      setSubmitting(true);
+      setError(null);
+      const res = await loginWithGoogle(response.credential);
+      setSubmitting(false);
+
+      if (res.success) {
+        router.push("/profile");
+      } else {
+        setError(res.message || "Xác thực tài khoản Google thất bại.");
+      }
+    };
+
+    if (!document.getElementById("google-gsi-client")) {
+      const script = document.createElement("script");
+      script.id = "google-gsi-client";
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        initializeGoogle();
+      };
+      document.body.appendChild(script);
+    } else {
+      initializeGoogle();
+    }
+  }, [loading, user, loginWithGoogle, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +155,20 @@ export default function LoginPage() {
             {submitting ? "Đang xử lý..." : "Đăng Nhập"}
           </button>
         </form>
+
+        <div className="relative my-6 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/10"></div>
+          </div>
+          <span className="relative bg-[#1c306b] px-4 text-xs font-semibold uppercase text-gray-300 rounded-full">
+            Hoặc
+          </span>
+        </div>
+
+        <div 
+          id="google-signin-btn" 
+          className="w-full flex justify-center min-h-[44px]"
+        ></div>
 
         <div className="mt-8 text-center text-sm text-gray-400">
           Chưa có tài khoản thành viên?{" "}

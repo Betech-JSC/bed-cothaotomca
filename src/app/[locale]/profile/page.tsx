@@ -10,6 +10,7 @@ export default function ProfilePage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState<boolean | null>(null);
 
@@ -25,6 +26,7 @@ export default function ProfilePage() {
     } else if (user) {
       setName(user.name || "");
       setEmail(user.email || "");
+      setPhone(user.phone || "");
       setDob(user.dob || "");
       setGender(user.gender);
     }
@@ -69,6 +71,11 @@ export default function ProfilePage() {
       return;
     }
 
+    if (!user.phone && !phone.trim()) {
+      setErrorMsg("Vui lòng cung cấp số điện thoại để kích hoạt tích điểm.");
+      return;
+    }
+
     setSaving(true);
     setSuccessMsg(null);
     setErrorMsg(null);
@@ -76,6 +83,7 @@ export default function ProfilePage() {
     const res = await updateProfile({
       name: name.trim(),
       email: email.trim() || undefined,
+      phone: !user.phone ? phone.trim() : undefined,
       dob: dob || undefined,
       gender: gender !== null ? gender : undefined,
     });
@@ -104,8 +112,6 @@ export default function ProfilePage() {
   }
 
   const tier = getTierInfo(user.points);
-  // Generate high quality QR code for counter checkout scanning
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=282828&bgcolor=FFFFFF&data=${user.phone}`;
 
   return (
     <div className="relative min-h-[800px] bg-primary text-white py-16 px-4">
@@ -128,7 +134,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Member Card & QR scanning (Left Column) */}
+          {/* Member Card & Actions (Left Column) */}
           <div className="lg:col-span-5 space-y-6">
             {/* Membership Virtual Card */}
             <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${tier.gradient} p-6 shadow-2xl transition-all duration-500 hover:scale-[1.02]`}>
@@ -159,7 +165,9 @@ export default function ProfilePage() {
                 <div>
                   <div className="text-xs text-black/50 font-bold uppercase tracking-wider">Số điện thoại</div>
                   <div className={`text-base font-semibold font-mono ${tier.textColor}`}>
-                    {user.phone.replace(/(\d{4})(\d{3})(\d{3})/, "$1 $2 $3")}
+                    {user.phone 
+                      ? user.phone.replace(/(\d{4})(\d{3})(\d{3})/, "$1 $2 $3") 
+                      : "Chưa cập nhật"}
                   </div>
                 </div>
                 <div className="text-right">
@@ -171,43 +179,23 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Loyalty points QR Code for cashier scanning */}
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center shadow-xl backdrop-blur-md">
-              <h3 className="text-base font-bold mb-2">Mã Thành Viên Tại Quầy</h3>
-              <p className="text-xs text-gray-400 mb-6">Đưa mã này cho nhân viên khi thanh toán tại quầy để được cộng điểm thố thưởng</p>
-              
-              <div className="relative mx-auto w-[200px] h-[200px] rounded-xl bg-white p-2.5 shadow-inner flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={qrCodeUrl}
-                  alt="QR Code Phone Number"
-                  width={180}
-                  height={180}
-                  className="rounded-lg"
-                />
-              </div>
-              
-              <div className="mt-4 font-mono font-bold text-lg text-yellow tracking-wider">
-                {user.phone.replace(/(\d{4})(\d{3})(\d{3})/, "$1 $2 $3")}
-              </div>
-
-              <div className="mt-6 border-t border-white/10 pt-4 flex items-center justify-between">
-                <span className="text-xs text-gray-400">
-                  {tier.nextTier 
-                    ? `Cần thêm ${tier.nextTier.remaining} điểm để lên hạng ${tier.nextTier.name}` 
-                    : "Hạng cao nhất đã đạt được!"}
-                </span>
-                <button
-                  onClick={handleRefreshPoints}
-                  disabled={refreshing}
-                  className="text-xs font-semibold text-yellow hover:text-secondary flex items-center gap-1 transition-colors"
-                >
-                  <svg className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.247 7H16" />
-                  </svg>
-                  {refreshing ? "Đang đồng bộ..." : "Cập nhật điểm"}
-                </button>
-              </div>
+            {/* Sync Points Action & Tier Info (Underneath Member Card) */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-gray-400 px-2 mt-4">
+              <span>
+                {tier.nextTier 
+                  ? `Cần thêm ${tier.nextTier.remaining} điểm để lên hạng ${tier.nextTier.name}` 
+                  : "Hạng cao nhất đã đạt được!"}
+              </span>
+              <button
+                onClick={handleRefreshPoints}
+                disabled={refreshing}
+                className="text-xs font-semibold text-yellow hover:text-secondary flex items-center gap-1.5 transition-colors self-start sm:self-auto"
+              >
+                <svg className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.247 7H16" />
+                </svg>
+                {refreshing ? "Đang đồng bộ..." : "Cập nhật điểm"}
+              </button>
             </div>
           </div>
 
@@ -215,6 +203,17 @@ export default function ProfilePage() {
           <div className="lg:col-span-7">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-xl backdrop-blur-md">
               <h2 className="text-xl font-bold mb-6 border-b border-white/10 pb-4">Thông Tin Cá Nhân</h2>
+
+              {!user.phone && (
+                <div className="mb-6 rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-4 text-sm text-yellow-200 flex items-start gap-3">
+                  <svg className="h-5 w-5 text-yellow shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <span className="font-bold text-white">Yêu cầu bổ sung Số điện thoại:</span> Tài khoản của bạn hiện chưa liên kết với Số điện thoại nào. Vui lòng cập nhật bên dưới để kích hoạt tích điểm và đồng bộ với KiotViet.
+                  </div>
+                </div>
+              )}
 
               {successMsg && (
                 <div className="mb-6 rounded-lg bg-green-500/20 border border-green-500/30 p-3.5 text-sm text-green-200">
@@ -242,12 +241,20 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-200 mb-2">Số điện thoại</label>
+                    <label className="block text-sm font-semibold text-gray-200 mb-2">
+                      Số điện thoại {!user.phone && <span className="text-yellow">*</span>}
+                    </label>
                     <input
-                      type="text"
-                      value={user.phone}
-                      disabled
-                      className="w-full rounded-xl border border-white/10 bg-white/10 py-3 px-4 text-gray-400 cursor-not-allowed focus:outline-none"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      disabled={!!user.phone}
+                      className={user.phone
+                        ? "w-full rounded-xl border border-white/10 bg-white/10 py-3 px-4 text-gray-400 cursor-not-allowed focus:outline-none"
+                        : "w-full rounded-xl border border-white/10 bg-white/5 py-3 px-4 text-white focus:border-yellow focus:outline-none focus:ring-1 focus:ring-yellow transition-all"
+                      }
+                      placeholder="Ví dụ: 0987654321"
+                      required={!user.phone}
                     />
                   </div>
                 </div>
