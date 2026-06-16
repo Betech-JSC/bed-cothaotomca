@@ -1,6 +1,10 @@
 .prose-blog {
-  h3 {
+  h2, h3 {
     @apply font-display text-[18px] md:text-[22px] leading-[145%] tracking-[0.02em];
+  }
+
+  p.ql-align-center {
+    @apply text-center;
   }
 
   p,
