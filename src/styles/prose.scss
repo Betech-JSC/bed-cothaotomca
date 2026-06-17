@@ -1,5 +1,9 @@
 .prose-blog {
-  h2, h3 {
+  h2 {
+    @apply font-display text-[20px] md:text-[24px] leading-[145%] tracking-[0.02em];
+  }
+
+  h3 {
     @apply font-display text-[18px] md:text-[22px] leading-[145%] tracking-[0.02em];
   }
 
