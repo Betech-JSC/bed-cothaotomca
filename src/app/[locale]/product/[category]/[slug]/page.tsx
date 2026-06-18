@@ -96,7 +96,7 @@ export default async function ProductDetailsPage({
       alt: product.name,
     },
     images: product.images && product.images.length > 0
-      ? product.images.map((img: any, idx: number) => ({ url: img.image, alt: `${product.name} ${idx + 1}` }))
+      ? product.images.map((img: any, idx: number) => ({ url: img.image, alt: img.alt_text || img.title || img.caption || `${product.name} ${idx + 1}` }))
       : [{ url: product.image, alt: product.name }],
     sizes: product.variants && product.variants.length > 0
       ? product.variants.map((v: any) => ({
