@@ -175,5 +175,51 @@
       "description": "This page could not be found.",
       "go_home": "Go to homepage"
     }
+  },
+  "signin": {
+    "title": "Sign In",
+    "description": "Welcome back. Please enter your login credentials",
+    "email_phone": "Email or Phone Number",
+    "email_phone_placeholder": "Enter email or phone number...",
+    "password": "Password",
+    "password_placeholder": "Enter password...",
+    "button": "Sign In",
+    "forgot_password": "Forgot password?",
+    "register_now": "Register now"
+  },
+  "signup": {
+    "title": "Sign Up",
+    "description": "Fill in the details below to create a new account",
+    "name": "Full Name",
+    "name_placeholder": "Enter your full name...",
+    "email": "Email",
+    "email_placeholder": "Enter your email address...",
+    "phone": "Phone Number",
+    "phone_placeholder": "Enter your phone number...",
+    "password": "Password",
+    "password_placeholder": "Enter password...",
+    "button": "Sign Up",
+    "already_have_account": "Already have an account?",
+    "login_now": "Sign In now"
+  },
+  "profile": {
+    "title": "Personal Information",
+    "order_history": "Order History",
+    "transaction_history": "Transaction History",
+    "gold_member": "Gold member",
+    "points": "1,250 Points",
+    "order_code": "ORDER CODE",
+    "order_date": "ORDER DATE",
+    "status": "Status",
+    "status_shipping": "Delivering",
+    "status_processing": "Processing",
+    "status_completed": "Completed",
+    "fullname": "Full name",
+    "phone": "Phone number",
+    "email": "Email",
+    "address": "Detailed address",
+    "save": "Save changes",
+    "logout": "Sign Out",
+    "account_label": "ACCOUNT"
   }
 }
