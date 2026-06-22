@@ -174,5 +174,51 @@
       "description": "Không tìm thấy trang này.",
       "go_home": "Về trang chủ"
     }
+  },
+  "signin": {
+    "title": "Đăng nhập",
+    "description": "Chào mừng bạn đã quay lại. Vui lòng nhập thông tin đăng nhập của bạn",
+    "email_phone": "Email hoặc Số điện thoại",
+    "email_phone_placeholder": "Nhập email hoặc số điện thoại...",
+    "password": "Mật khẩu",
+    "password_placeholder": "Nhập mật khẩu...",
+    "button": "Đăng nhập",
+    "forgot_password": "Quên mật khẩu?",
+    "register_now": "Đăng ký ngay"
+  },
+  "signup": {
+    "title": "Đăng ký tài khoản",
+    "description": "Điền thông tin bên dưới để tạo tài khoản mới",
+    "name": "Họ và tên",
+    "name_placeholder": "Nhập họ và tên...",
+    "email": "Email",
+    "email_placeholder": "Nhập địa chỉ email...",
+    "phone": "Số điện thoại",
+    "phone_placeholder": "Nhập số điện thoại...",
+    "password": "Mật khẩu",
+    "password_placeholder": "Nhập mật khẩu...",
+    "button": "Đăng ký",
+    "already_have_account": "Đã có tài khoản?",
+    "login_now": "Đăng nhập ngay"
+  },
+  "profile": {
+    "title": "Thông tin cá nhân",
+    "order_history": "Lịch sử đơn hàng",
+    "transaction_history": "Lịch sử giao dịch",
+    "gold_member": "Gold member",
+    "points": "1,250 Points",
+    "order_code": "MÃ GIAO DỊCH",
+    "order_date": "NGÀY GIAO DỊCH",
+    "status": "Trạng thái",
+    "status_shipping": "Đang giao",
+    "status_processing": "Đang xử lý",
+    "status_completed": "Hoàn thành",
+    "fullname": "Họ và tên",
+    "phone": "Số điện thoại",
+    "email": "Email",
+    "address": "Địa chỉ chi tiết",
+    "save": "Lưu thay đổi",
+    "logout": "Đăng xuất",
+    "account_label": "TÀI KHOẢN"
   }
 }

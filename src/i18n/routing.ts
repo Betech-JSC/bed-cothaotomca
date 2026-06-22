@@ -57,6 +57,18 @@ export const routing = defineRouting({
     '/search': {
       vi: '/tim-kiem',
       en: '/search',
+    },
+    '/signin': {
+      vi: '/dang-nhap',
+      en: '/signin',
+    },
+    '/signup': {
+      vi: '/dang-ky',
+      en: '/signup',
+    },
+    '/forgot-password': {
+      vi: '/quen-mat-khau',
+      en: '/forgot-password',
     }
   }
 });
