@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import Logo from "../Logo";
 import LanguageSwitcher from "../LanguageSwitcher";
 import Search from "../Icons/Search";
+import User from "../Icons/User";
 import Hotline from "../Icons/Hotline";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
@@ -207,6 +208,15 @@ const Header = () => {
               </button>
             </li>
             <li>
+              <Link
+                href="/signin"
+                className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer flex items-center justify-center w-6 h-6"
+                aria-label="Profile"
+              >
+                <User />
+              </Link>
+            </li>
+            <li>
               <LanguageSwitcher />
             </li>
             <li>
@@ -396,11 +406,18 @@ const MobileMenu = ({
         <div className="flex items-center gap-4">
           <button
             onClick={onToggleSearch}
-            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
+            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out flex items-center justify-center"
             aria-label="Search"
           >
             <Search />
           </button>
+          <Link
+            href="/signin"
+            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out flex items-center justify-center w-6 h-6"
+            aria-label="Profile"
+          >
+            <User />
+          </Link>
           <LanguageSwitcher />
           <button
             type="button"
