@@ -113,9 +113,34 @@ export default async function ProductDetailsPage({
   }
 
   const t = await getTranslations({ locale });
-  const productData = mapProductToDetailView(product, locale, {
-    standard: t("product.standard"),
-  });
+
+  const productData = {
+    title: product.name,
+    description: product.description,
+    variant_type: product.variant_type,
+    image: {
+      url: product.image,
+      alt: product.name,
+    },
+    images: product.images && product.images.length > 0
+      ? product.images.map((img: any, idx: number) => ({ url: img.image, alt: img.alt_text || img.title || img.caption || `${product.name} ${idx + 1}` }))
+      : [{ url: product.image, alt: product.name }],
+    sizes: product.variants && product.variants.length > 0
+      ? product.variants.map((v: any) => ({
+        title: locale === "vi" ? v.size : (v.size_en || v.size),
+        price: v.price,
+      }))
+      : [{ title: t("product.standard"), price: parseInt(product.price) }],
+    category: {
+      title: (product.categories && product.categories.length > 0 ? product.categories[0]?.title : product.category?.title) || "Sản phẩm",
+      slug: (product.categories && product.categories.length > 0 ? product.categories[0]?.slug : product.category?.slug) || ""
+    },
+    infos: product.sections?.map((section: any) => ({
+      title: section.title,
+      content: section.content
+    })) || []
+
+  };
 
   const breadcrumbs = [
     {
@@ -124,11 +149,11 @@ export default async function ProductDetailsPage({
     },
     ...(productData.category.slug
       ? [
-          {
-            title: productData.category.title,
-            href: `/product/${productData.category.slug}`,
-          },
-        ]
+        {
+          title: productData.category.title,
+          href: `/product/${productData.category.slug}`,
+        },
+      ]
       : []),
     {
       title: productData.title,

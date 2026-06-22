@@ -66,19 +66,17 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
           href={{ pathname: '/product/[category]/[slug]', params: { category: categorySlug, slug: item.slug } }}
           className="block"
         >
-          <h3 className={`title-1 max-md:text-[16px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-1 min-h-[24px] md:min-h-[32px]`}>
+          <h3 className={`title-1 max-md:text-[16px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 min-h-[24px] md:min-h-[64px]`}>
             {item.title}
           </h3>
         </Link>
-        <div className="body-1 text-gray-900 line-clamp-3 min-h-[72px] mt-1.5 mb-3">{item.description}</div>
-        {showPrice ? (
-          <div className="flex items-center justify-center gap-1.5">
-            {variants.length > 1 ? (
-              <span className="body-0 text-gray-900">{t('common.only_from')}</span>
-            ) : null}
-            <span className="title-2 text-secondary">{formatPrice(unitPrice)}</span>
-          </div>
-        ) : null}
+        <div className="body-1 text-gray-900 line-clamp-2 min-h-[48px] mt-1.5 mb-3">{item.description}</div>
+        <div className="flex items-center justify-center gap-1.5">
+          {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
+          <span className="title-2 text-secondary">
+            {formatPrice(item.variants?.[0]?.price || 0)}
+          </span>
+        </div>
       </div>
     </div>
   );
