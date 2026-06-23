@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Link } from "@/i18n/i18n-navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 type LoginFormProps = {
   onLoginSuccess?: () => void;
@@ -10,6 +11,7 @@ type LoginFormProps = {
 
 const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
   const t = useTranslations("signin");
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -29,11 +31,13 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
     setError(null);
 
     try {
-      // Logic for authentication can be integrated here
-      // For now, we simulate a successful login or a simple delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      if (onLoginSuccess) {
-        onLoginSuccess();
+      const res = await login(formData.username, formData.password);
+      if (res.success) {
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        }
+      } else {
+        setError(res.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
       }
     } catch (err: any) {
       setError(err.message || "Đăng nhập thất bại. Vui lòng thử lại.");

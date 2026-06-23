@@ -119,12 +119,21 @@ export async function getCheckoutConfig(): Promise<CheckoutConfig> {
 export async function createOrder(
   payload: CreateOrderPayload,
 ): Promise<{ data: OrderInitiated; message?: string }> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
   const res = await fetch(`${API_BASE}/orders`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 

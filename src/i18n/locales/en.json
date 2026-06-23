@@ -252,8 +252,12 @@
     "title": "Personal Information",
     "order_history": "Order History",
     "transaction_history": "Transaction History",
-    "gold_member": "Gold member",
-    "points": "1,250 Points",
+    "gold_member": "Gold Member",
+    "silver_member": "Silver Member",
+    "bronze_member": "Bronze Member",
+    "points": "{count} Points",
+    "save_success": "Personal profile saved successfully!",
+    "no_orders": "No orders found.",
     "order_code": "ORDER CODE",
     "order_date": "ORDER DATE",
     "status": "Status",
@@ -267,5 +271,13 @@
     "save": "Save changes",
     "logout": "Sign Out",
     "account_label": "ACCOUNT"
+  },
+  "forgot_password": {
+    "title": "Forgot Password - Co Thao Kitchen",
+    "description": "Request a password reset for your Co Thao Kitchen account."
+  },
+  "reset_password": {
+    "title": "Reset Password - Co Thao Kitchen",
+    "description": "Set a new password for your Co Thao Kitchen account."
   }
 }

@@ -35,7 +35,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const unitPrice =
     variants.length > 0
       ? parseFloat(String(variants[0]?.price)) || 0
-      : (item.price ?? 0);
+      : parseFloat(String(item.price ?? 0)) || 0;
   const showPrice = unitPrice > 0;
   const categorySlug = item.category.slug || item.category.id || 'san-pham';
 
@@ -72,9 +72,9 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         </Link>
         <div className="body-1 text-gray-900 line-clamp-2 min-h-[48px] mt-1.5 mb-3">{item.description}</div>
         <div className="flex items-center justify-center gap-1.5">
-          {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
+          {variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
           <span className="title-2 text-secondary">
-            {formatPrice(item.variants?.[0]?.price || 0)}
+            {formatPrice(unitPrice)}
           </span>
         </div>
       </div>

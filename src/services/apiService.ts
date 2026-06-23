@@ -192,9 +192,6 @@ export async function getSingleApi<T>(
   }
 }
 
-/**
- * Generic API POST function
- */
 export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
   const url = `${BASE_URL}/${key}`;
 
@@ -208,7 +205,19 @@ export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to post API: ${key} - Status: ${response.status}`);
+    let errorMessage = `Failed to post API: ${key} - Status: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.errors) {
+        // Format Laravel validation errors
+        errorMessage = Object.values(errorData.errors).flat().join("\n");
+      }
+    } catch (_) {
+      // response is not JSON, keep default message
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();

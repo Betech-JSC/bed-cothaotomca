@@ -279,7 +279,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             }
           : null,
         payment_method: paymentMethod, // CASH (COD) or TRANSFER (SePay)
-        branch_id: deliveryType === "pickup" ? selectedBranchId : undefined,
+        branch_id: selectedBranchId,
       });
 
       if (paymentMethod === "COD" || paymentMethod === "CARD") {

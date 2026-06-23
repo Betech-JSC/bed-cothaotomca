@@ -138,8 +138,13 @@ export default async function ProductDetailsPage({
     infos: product.sections?.map((section: any) => ({
       title: section.title,
       content: section.content
-    })) || []
-
+    })) || [],
+    checkout: {
+      productId: product.id,
+      productCode: product.code || "",
+      slug: product.slug || slug,
+      categorySlug: (product.categories && product.categories.length > 0 ? product.categories[0]?.slug : product.category?.slug) || category || "",
+    }
   };
 
   const breadcrumbs = [

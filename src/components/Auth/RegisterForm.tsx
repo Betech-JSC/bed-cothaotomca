@@ -2,10 +2,13 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { Link } from "@/i18n/i18n-navigation";
+import { Link, useRouter } from "@/i18n/i18n-navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 const RegisterForm = () => {
   const t = useTranslations("signup");
+  const { register } = useAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -27,9 +30,18 @@ const RegisterForm = () => {
     setError(null);
 
     try {
-      // Logic for authentication can be integrated here
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      alert("Đăng ký thành công! (Simulated)");
+      const res = await register({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+      });
+
+      if (res.success) {
+        router.push("/profile");
+      } else {
+        setError(res.message || "Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.");
+      }
     } catch (err: any) {
       setError(err.message || "Đăng ký thất bại. Vui lòng thử lại.");
     } finally {

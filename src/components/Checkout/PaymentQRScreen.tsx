@@ -78,6 +78,34 @@ export default function PaymentQRScreen({
   const bankAccount = orderData.qr_info.bank_account;
   const bankCode = orderData.qr_info.bank_code;
 
+  const handleSimulatePayment = async () => {
+    try {
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
+      const res = await fetch(`${baseUrl}/sepay/webhook`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Apikey BepCoThaoSecured2026",
+        },
+        body: JSON.stringify({
+          id: Math.floor(Math.random() * 100000) + 1,
+          gateway: "Vietcombank",
+          transactionDate: new Date().toISOString().slice(0, 19).replace("T", " "),
+          accountNumber: bankAccount,
+          code: "MOCK_SEPAY_" + orderData.order_code,
+          content: content,
+          transferType: "in",
+          transferAmount: amount,
+          referenceCode: "FT" + Math.floor(Math.random() * 10000000),
+        }),
+      });
+      const data = await res.json();
+      console.log("Simulated payment response:", data);
+    } catch (err) {
+      console.error("Failed to simulate payment:", err);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 xl:gap-10">
       {/* QR Code Panel */}
@@ -109,11 +137,10 @@ export default function PaymentQRScreen({
 
           {/* Countdown */}
           <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
-              countdown.secondsLeft <= 60
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${countdown.secondsLeft <= 60
                 ? "bg-red-50 text-red-600"
                 : "bg-yellow/20 text-primary"
-            }`}
+              }`}
           >
             <span>⏱</span>
             <span>
@@ -153,6 +180,17 @@ export default function PaymentQRScreen({
             {countdown.isExpired ? "Đặt lại đơn hàng" : "Huỷ và quay lại"}
           </button>
         )}
+
+        {/* DEV ONLY: Simulate Payment Button */}
+        {(process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_DEV_MODE === "true") && !countdown.isExpired && (
+          <button
+            type="button"
+            onClick={handleSimulatePayment}
+            className="w-full py-2.5 px-4 rounded-xl border border-dashed border-amber-500 bg-amber-50/50 hover:bg-amber-100/50 text-amber-800 text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 mt-2"
+          >
+            ⚡ Giả lập thanh toán thành công (Dev)
+          </button>
+        )}
       </div>
 
       {/* Payment Info Panel */}
@@ -180,9 +218,8 @@ export default function PaymentQRScreen({
                 <span className="label-1 text-gray-500 shrink-0">{row.label}</span>
                 <div className="flex items-center gap-2 min-w-0">
                   <span
-                    className={`body-1 break-all text-right ${
-                      row.highlight ? "title-2 text-secondary" : "text-gray-900"
-                    } ${row.mono ? "font-mono text-sm" : ""}`}
+                    className={`body-1 break-all text-right ${row.highlight ? "title-2 text-secondary" : "text-gray-900"
+                      } ${row.mono ? "font-mono text-sm" : ""}`}
                   >
                     {row.value}
                   </span>

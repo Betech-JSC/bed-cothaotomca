@@ -211,38 +211,24 @@ const Header = () => {
             </li>
             <li>
               <Link
-                href="/signin"
+                href={user ? "/profile" : "/signin"}
                 className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer flex items-center justify-center w-6 h-6"
                 aria-label="Profile"
               >
-                <User />
+                {user?.photo_url ? (
+                  <img
+                    src={user.photo_url}
+                    alt={user.name}
+                    className="w-6 h-6 rounded-full object-cover border border-secondary"
+                  />
+                ) : (
+                  <User />
+                )}
               </Link>
             </li>
             <li>
               <LanguageSwitcher />
             </li>
-            {!loading && (
-              <li>
-                {user ? (
-                  <Link
-                    href="/profile"
-                    className="text-yellow lg:hover:text-secondary font-semibold text-sm border border-yellow/30 lg:hover:border-secondary rounded-full px-4 py-2 transition-all duration-300 flex items-center justify-center gap-1 bg-white/5"
-                  >
-                    <svg className="h-4 w-4 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    Chào, {user.first_name || user.name.split(" ").pop()}
-                  </Link>
-                ) : (
-                  <Link
-                    href="/login"
-                    className="text-yellow lg:hover:text-secondary font-semibold text-sm border border-yellow/30 lg:hover:border-secondary rounded-full px-4 py-2 transition-all duration-300 bg-white/5"
-                  >
-                    Đăng nhập
-                  </Link>
-                )}
-              </li>
-            )}
             <li>
               <a
                 href={`tel:${hotlineClean}`}
@@ -437,11 +423,19 @@ const MobileMenu = ({
             <Search />
           </button>
           <Link
-            href="/signin"
+            href={user ? "/profile" : "/signin"}
             className="text-yellow lg:hover:text-secondary duration-300 ease-in-out flex items-center justify-center w-6 h-6"
             aria-label="Profile"
           >
-            <User />
+            {user?.photo_url ? (
+              <img
+                src={user.photo_url}
+                alt={user.name}
+                className="w-6 h-6 rounded-full object-cover border border-secondary"
+              />
+            ) : (
+              <User />
+            )}
           </Link>
           <LanguageSwitcher />
           <button
@@ -497,7 +491,7 @@ const MobileMenu = ({
                   <span className="text-xs text-green-450 font-mono font-semibold">{user.points} điểm</span>
                 </div>
               ) : (
-                <Link href="/login" className="text-yellow hover:text-secondary font-bold" onClick={onClose}>
+                <Link href="/signin" className="text-yellow hover:text-secondary font-bold" onClick={onClose}>
                   Đăng nhập / Đăng ký
                 </Link>
               )}

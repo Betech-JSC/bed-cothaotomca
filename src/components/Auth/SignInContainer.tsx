@@ -1,43 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import LoginForm from "./LoginForm";
-import ProfileDashboard from "./ProfileDashboard";
 import Image from "next/image";
 import AnimateOnScroll from "@/components/Animated/animated-appear";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "@/i18n/i18n-navigation";
 
 const SignInContainer = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    // Check if user was logged in previously from localStorage
-    const savedLoginStatus = localStorage.getItem("is_logged_in");
-    setIsLoggedIn(savedLoginStatus === "true");
-  }, []);
+    if (!loading && user) {
+      router.push("/profile");
+    }
+  }, [user, loading, router]);
 
   const handleLoginSuccess = () => {
-    localStorage.setItem("is_logged_in", "true");
-    setIsLoggedIn(true);
+    router.push("/profile");
   };
 
-  const handleLogout = () => {
-    localStorage.setItem("is_logged_in", "false");
-    setIsLoggedIn(false);
-  };
-
-  // Prevent flash of content during initial SSR check
-  if (isLoggedIn === null) {
+  if (loading || user) {
     return (
-      <div className="w-full min-h-[90vh] bg-yellow flex items-center justify-center" style={{ backgroundColor: "#F1EEDF" }}>
+      <div className="w-full min-h-[90vh] bg-[#F1EEDF] flex items-center justify-center">
         <div className="animate-pulse text-primary font-bold text-lg font-serif">Loading...</div>
       </div>
-    );
-  }
-
-  if (isLoggedIn) {
-    // Profile Dashboard view
-    return (
-      <ProfileDashboard onLogout={handleLogout} />
     );
   }
 

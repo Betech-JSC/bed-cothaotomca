@@ -251,8 +251,12 @@
     "title": "Thông tin cá nhân",
     "order_history": "Lịch sử đơn hàng",
     "transaction_history": "Lịch sử giao dịch",
-    "gold_member": "Gold member",
-    "points": "1,250 Points",
+    "gold_member": "Hạng Vàng",
+    "silver_member": "Hạng Bạc",
+    "bronze_member": "Hạng Đồng",
+    "points": "{count} Điểm",
+    "save_success": "Đã lưu thay đổi thông tin cá nhân!",
+    "no_orders": "Chưa có đơn hàng nào.",
     "order_code": "MÃ GIAO DỊCH",
     "order_date": "NGÀY GIAO DỊCH",
     "status": "Trạng thái",
@@ -266,5 +270,13 @@
     "save": "Lưu thay đổi",
     "logout": "Đăng xuất",
     "account_label": "TÀI KHOẢN"
+  },
+  "forgot_password": {
+    "title": "Quên mật khẩu - Bếp Cô Thảo",
+    "description": "Yêu cầu đặt lại mật khẩu của bạn trên Bếp Cô Thảo."
+  },
+  "reset_password": {
+    "title": "Đặt lại mật khẩu - Bếp Cô Thảo",
+    "description": "Đặt lại mật khẩu mới cho tài khoản Bếp Cô Thảo của bạn."
   }
 }

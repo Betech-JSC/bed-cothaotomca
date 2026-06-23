@@ -14,6 +14,7 @@ export interface StorefrontUser {
   dob: string | null;
   gender: boolean | null;
   kiotviet_customer_id: number | null;
+  photo_url?: string | null;
 }
 
 interface AuthContextType {
@@ -98,8 +99,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         return { success: true };
       }
+      console.error("Login failed: Unexpected response structure", res);
       return { success: false, message: "Đăng nhập thất bại. Định dạng dữ liệu không khớp." };
     } catch (e: any) {
+      console.error("Login API Error:", e);
       return { success: false, message: e.message || "Số điện thoại hoặc mật khẩu không chính xác." };
     }
   };
@@ -117,8 +120,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         return { success: true };
       }
+      console.error("Google login failed: Unexpected response structure", res);
       return { success: false, message: "Đăng nhập Google thất bại. Định dạng dữ liệu không khớp." };
     } catch (e: any) {
+      console.error("Google Login API Error:", e);
       return { success: false, message: e.message || "Đăng nhập Google thất bại." };
     }
   };
@@ -136,8 +141,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         return { success: true };
       }
+      console.error("Register failed: Unexpected response structure", res);
       return { success: false, message: "Đăng ký thất bại. Vui lòng kiểm tra lại thông tin." };
     } catch (e: any) {
+      console.error("Register API Error:", e);
       return { success: false, message: e.message || "Đăng ký thất bại. Số điện thoại đã tồn tại hoặc dữ liệu không hợp lệ." };
     }
   };
@@ -168,8 +175,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(body.data);
         return { success: true };
       }
-      return { success: false, message: body.message || "Cập nhật thông tin thất bại." };
+      
+      let errorMsg = body.message || "Cập nhật thông tin thất bại.";
+      if (body.errors) {
+        errorMsg = Object.values(body.errors).flat().join("\n");
+      }
+      console.error("Update profile failed:", errorMsg, body);
+      return { success: false, message: errorMsg };
     } catch (e: any) {
+      console.error("Update Profile API Error:", e);
       return { success: false, message: e.message || "Lỗi mạng. Vui lòng thử lại sau." };
     }
   };
