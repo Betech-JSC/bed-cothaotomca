@@ -87,8 +87,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     }
   }, [user]);
   
-  // COD/Transfer/Card selection
-  const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER" | "CARD">("COD");
+  // COD/Transfer selection (CARD removed)
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
 
   // Shipping inputs
   const [selectedDistrict, setSelectedDistrict] = useState("");
@@ -282,8 +282,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         branch_id: selectedBranchId,
       });
 
-      if (paymentMethod === "COD" || paymentMethod === "CARD") {
-        // COD or CARD order is immediately synced. Go directly to success screen!
+      if (paymentMethod === "COD") {
+        // COD order is immediately synced. Go directly to success screen!
         router.push({
           pathname: "/order-success",
           query: { code: result.data.order_code, phone: phone.trim() },
@@ -605,18 +605,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </span>
               </label>
 
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="payment_method"
-                  checked={paymentMethod === "CARD"}
-                  onChange={() => setPaymentMethod("CARD")}
-                  className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
-                />
-                <span className="body-2 text-gray-900 group-hover:text-primary transition-colors">
-                  Thanh toán bằng thẻ (Visa/Mastercard)
-                </span>
-              </label>
             </div>
           </div>
 
