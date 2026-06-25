@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { getProductCatalog } from '@/services/productService';
+import { getProducts } from '@/services/productService';
 import { getBlogs } from '@/services/blogService';
 import { getPolicies } from '@/services/policyService';
 import { slugify, getTranslation } from '@/lib/format';
@@ -36,10 +36,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const productRoutes: MetadataRoute.Sitemap = [];
   for (const locale of locales) {
     try {
-      const catalog = await getProductCatalog(locale);
-      if (catalog.length > 0) {
+      const productsRes = await getProducts({ per_page: 500, lang: locale });
+      if (productsRes?.data) {
         const productBase = locale === 'vi' ? '/san-pham' : '/product';
-        const localeProductRoutes = catalog.map((product: any) => {
+        const localeProductRoutes = productsRes.data.map((product: any) => {
           const translation = getTranslation(product.translations, locale) as any;
           const name = translation?.name || product.name || "";
 
