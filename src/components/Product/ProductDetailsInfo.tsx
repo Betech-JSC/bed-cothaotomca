@@ -37,7 +37,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
     <div className="relative top-0 md:space-y-8 space-y-6 xl:space-y-12">
       <div className="space-y-4 md:space-y-6">
         <div className="space-y-3 flex flex-col items-start">
-          <h1 className="headline-1 max-md:text-[24px] text-primary">
+          <h1 className="headline-1 max-md:text-[24px] text-primary whitespace-pre-line">
             {productData.title}
           </h1>
           {productData.images.length > 0 && (
