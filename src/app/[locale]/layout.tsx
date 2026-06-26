@@ -12,6 +12,7 @@ import JsonLd from '@/components/SEO/JsonLd'
 import FixedSocial from '@/components/FixedSocial'
 import { getSeoSettings } from '@/services/seoService'
 import Script from 'next/script'
+import CustomScriptLoader from '@/components/SEO/CustomScriptLoader'
 
 export async function generateMetadata({
   params
@@ -34,14 +35,14 @@ export async function generateMetadata({
     seo = null
   }
 
-  const title = seo?.title || defaultTitle
-  const description = seo?.description || defaultDescription
-  let image = seo?.meta_image || seo?.metaImage || seo?.meta_image_url || defaultImage
+  const title = seo?.seo_title || seo?.title || defaultTitle
+  const description = seo?.seo_description || seo?.description || defaultDescription
+  let image = seo?.seo_og_image_url || seo?.seo_og_image || seo?.meta_image || seo?.metaImage || seo?.meta_image_url || defaultImage
   // Make image absolute when necessary
   if (image && !image.startsWith('http')) image = `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`
 
   const favicon = seo?.favicon || seo?.favicon_url || '/favicon.ico'
-  const keywords = seo?.keywords ? seo.keywords.split(',').map((k: string) => k.trim()) : undefined
+  const keywords = (seo?.seo_keywords || seo?.keywords) ? (seo.seo_keywords || seo.keywords).split(',').map((k: string) => k.trim()) : undefined
 
   return {
     metadataBase: new URL(baseUrl),
@@ -146,7 +147,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
 
                   {/* Raw head scripts from CMS */}
                   {(seo.head_scripts || seo.headScripts) && (
-                    <div dangerouslySetInnerHTML={{ __html: seo.head_scripts || seo.headScripts }} />
+                    <CustomScriptLoader html={seo.head_scripts || seo.headScripts} id="head-custom" position="head" />
                   )}
                 </>
               )}
@@ -156,8 +157,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
 
               {/* Body scripts from CMS - place before footer */}
               {seo?.body_scripts && (
-                // eslint-disable-next-line react/no-danger
-                <div dangerouslySetInnerHTML={{ __html: seo.body_scripts }} />
+                <CustomScriptLoader html={seo.body_scripts} id="body-custom" position="body" />
               )}
 
               <Footer />
