@@ -13,6 +13,7 @@ import FixedSocial from '@/components/FixedSocial'
 import { getSeoSettings } from '@/services/seoService'
 import Script from 'next/script'
 import CustomScriptLoader from '@/components/SEO/CustomScriptLoader'
+import ServerScriptLoader from '@/components/SEO/ServerScriptLoader'
 
 export async function generateMetadata({
   params
@@ -147,7 +148,9 @@ export default async function LocaleLayout({ children, params }: { children: Rea
 
                   {/* Raw head scripts from CMS */}
                   {(seo.head_scripts || seo.headScripts) && (
-                    <CustomScriptLoader html={seo.head_scripts || seo.headScripts} id="head-custom" position="head" />
+                    <head>
+                      <ServerScriptLoader html={seo.head_scripts || seo.headScripts} keyPrefix="head-custom" />
+                    </head>
                   )}
                 </>
               )}
