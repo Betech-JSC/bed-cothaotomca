@@ -100,22 +100,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <head>
-        {/* Hardcoded Google Analytics Tag */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-DWYQVDL3BZ" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-DWYQVDL3BZ');
-            `,
-          }}
-        />
-        {/* Google Site Verification */}
-        <meta name="google-site-verification" content="wu7G5Y43-OJpfT_MdiJok7SiXB9rzE2Q988xapcDYQw" />
-      </head>
+
       <GeneralSettingsProvider settings={settings}>
         <BranchProvider branches={branches}>
           <Providers>
