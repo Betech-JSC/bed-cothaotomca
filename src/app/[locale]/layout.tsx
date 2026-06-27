@@ -113,6 +113,8 @@ export default async function LocaleLayout({ children, params }: { children: Rea
             `,
           }}
         />
+        {/* Google Site Verification */}
+        <meta name="google-site-verification" content="wu7G5Y43-OJpfT_MdiJok7SiXB9rzE2Q988xapcDYQw" />
       </head>
       <GeneralSettingsProvider settings={settings}>
         <BranchProvider branches={branches}>
