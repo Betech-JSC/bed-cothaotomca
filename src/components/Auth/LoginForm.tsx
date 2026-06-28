@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
-import { Link } from "@/i18n/i18n-navigation";
+import { useState, useEffect } from "react";
+import { Link, useRouter } from "@/i18n/i18n-navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 type LoginFormProps = {
@@ -11,7 +11,8 @@ type LoginFormProps = {
 
 const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
   const t = useTranslations("signin");
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -19,6 +20,63 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Google Sign-In initialization
+  useEffect(() => {
+    if (loading || typeof window === "undefined") return;
+
+    const initializeGoogle = () => {
+      const google = (window as any).google;
+      if (google) {
+        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredential,
+        });
+        
+        const btnElement = document.getElementById("google-signin-btn");
+        if (btnElement) {
+          google.accounts.id.renderButton(btnElement, {
+            theme: "outline",
+            size: "large",
+            width: btnElement.clientWidth || 382,
+            logo_alignment: "left",
+          });
+        }
+      }
+    };
+
+    const handleGoogleCredential = async (response: any) => {
+      setLoading(true);
+      setError(null);
+      const res = await loginWithGoogle(response.credential);
+      setLoading(false);
+
+      if (res.success) {
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        } else {
+          router.push("/profile");
+        }
+      } else {
+        setError(res.message || "Xác thực tài khoản Google thất bại.");
+      }
+    };
+
+    if (!document.getElementById("google-gsi-client")) {
+      const script = document.createElement("script");
+      script.id = "google-gsi-client";
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        initializeGoogle();
+      };
+      document.body.appendChild(script);
+    } else {
+      initializeGoogle();
+    }
+  }, [loading, loginWithGoogle, router, onLoginSuccess]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -119,6 +177,21 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
       >
         {loading ? "..." : t("button")}
       </button>
+
+      {/* Google Login Option */}
+      <div className="relative my-1 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-300/60"></div>
+        </div>
+        <span className="relative bg-[#F1EEDF] px-3.5 text-xs font-semibold uppercase text-gray-500 rounded-full font-serif">
+          Hoặc
+        </span>
+      </div>
+
+      <div 
+        id="google-signin-btn" 
+        className="w-full flex justify-center min-h-[44px]"
+      ></div>
 
       {/* Footer Links */}
       <div className="text-center font-serif text-[14px] leading-[150%] text-gray-700 flex justify-between px-2">
