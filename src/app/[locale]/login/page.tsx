@@ -10,7 +10,7 @@ export default function LoginPage() {
   const t = useTranslations();
   const { user, login, loginWithGoogle, loading } = useAuth();
   const router = useRouter();
-  
+
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -35,7 +35,7 @@ export default function LoginPage() {
           client_id: clientId,
           callback: handleGoogleCredential,
         });
-        
+
         const btnElement = document.getElementById("google-signin-btn");
         if (btnElement) {
           google.accounts.id.renderButton(btnElement, {
@@ -113,7 +113,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-md">
         <div className="mb-8 text-center">
           <h2 className="text-3xl font-extrabold text-white">Đăng Nhập Thành Viên</h2>
-          <p className="mt-2 text-sm text-gray-300">Tích lũy điểm thố thưởng cho mỗi bữa ăn ngon!</p>
+          <p className="mt-2 text-sm text-gray-300">Tích lũy điểm thưởng cho mỗi bữa ăn ngon!</p>
         </div>
 
         {error && (
@@ -165,8 +165,8 @@ export default function LoginPage() {
           </span>
         </div>
 
-        <div 
-          id="google-signin-btn" 
+        <div
+          id="google-signin-btn"
           className="w-full flex justify-center min-h-[44px]"
         ></div>
 
