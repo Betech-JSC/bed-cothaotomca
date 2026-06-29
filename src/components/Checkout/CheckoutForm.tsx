@@ -45,7 +45,7 @@ const POPULAR_DISTRICTS = [
   { group: "Hà Nội", value: "Quận Nam Từ Liêm, Hà Nội" },
   { group: "Hà Nội", value: "Quận Bắc Từ Liêm, Hà Nội" },
   { group: "Hà Nội", value: "Quận Tây Hồ, Hà Nội" },
-  
+
   // TP. Hồ Chí Minh
   { group: "TP. Hồ Chí Minh", value: "Quận 1, TP. Hồ Chí Minh" },
   { group: "TP. Hồ Chí Minh", value: "Quận 3, TP. Hồ Chí Minh" },
@@ -70,7 +70,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const defaultShippingFee = parseFloat(config.default_shipping_fee) || 50000;
 
   const [quantity, setQuantity] = useState(1);
-  
+
   // Delivery option state
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("delivery");
 
@@ -86,7 +86,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       setEmail(user.email || "");
     }
   }, [user]);
-  
+
   // COD/Transfer selection (CARD removed)
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
 
@@ -94,12 +94,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
   const [shippingFee] = useState(defaultShippingFee);
-  
+
   // Store Pickup input
   const [selectedBranchId, setSelectedBranchId] = useState<number>(() => {
     return config.branches?.[0]?.id || 1;
   });
-  
+
   // Expected delivery time
   const [deliverySchedule, setDeliverySchedule] = useState<"now" | "schedule">("now");
   const [expectedDelivery, setExpectedDelivery] = useState("");
@@ -240,15 +240,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         delivery:
           deliveryType === "delivery"
             ? {
-                receiver: name.trim(),
-                contact_number: phone.trim(),
-                address: finalAddress,
-                price: shippingFee,
-                expected_delivery:
-                  deliverySchedule === "schedule" && expectedDelivery
-                    ? new Date(expectedDelivery).toISOString()
-                    : undefined,
-              }
+              receiver: name.trim(),
+              contact_number: phone.trim(),
+              address: finalAddress,
+              price: shippingFee,
+              expected_delivery:
+                deliverySchedule === "schedule" && expectedDelivery
+                  ? new Date(expectedDelivery).toISOString()
+                  : undefined,
+            }
             : null,
         items: [
           {
@@ -273,10 +273,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
         voucher: appliedVoucher
           ? {
-              voucher_id: appliedVoucher.id,
-              campaign_id: appliedVoucher.campaignId,
-              amount: appliedVoucher.value,
-            }
+            voucher_id: appliedVoucher.id,
+            campaign_id: appliedVoucher.campaignId,
+            amount: appliedVoucher.value,
+          }
           : null,
         payment_method: paymentMethod, // CASH (COD) or TRANSFER (SePay)
         branch_id: selectedBranchId,
@@ -331,7 +331,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   // ── Form checkout ─────────────────────────────────────────────────────────
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
-      
+
       {/* CỘT TRÁI: THÔNG TIN LIÊN HỆ & GIAO HÀNG */}
       <div className="lg:col-span-7">
         <form
@@ -424,7 +424,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           {deliveryType === "delivery" && (
             <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
               <p className="body-2 text-gray-700 font-bold">Địa chỉ giao hàng tận nơi</p>
-              
+
               {/* Chọn Quận Huyện dropdown */}
               <div className="space-y-1">
                 <label className="text-xs text-gray-500 font-bold block">Quận/Huyện khu vực</label>
@@ -475,7 +475,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           {deliveryType === "pickup" && (
             <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
               <p className="body-2 text-gray-700 font-bold">Chi nhánh KiotViet nhận hàng</p>
-              
+
               <div className="space-y-1">
                 <label className="text-xs text-gray-500 font-bold block">Chọn chi nhánh gần bạn nhất</label>
                 <select
@@ -526,10 +526,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             />
           </div>
 
-          {/* Thời gian giao hàng mong muốn */}
+          {/* Thời gian giao/nhận mong muốn */}
           <div className="space-y-3 pt-2">
             <label className="body-2 font-display text-primary font-bold block">
-              Thời gian giao hàng mong muốn
+              {deliveryType === "pickup" ? "Thời gian đến lấy hàng mong muốn" : "Thời gian giao hàng mong muốn"}
             </label>
             <div className="space-y-2">
               <label className="flex items-center gap-3 cursor-pointer group">
@@ -541,7 +541,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                 />
                 <span className="body-2 text-gray-900 group-hover:text-primary transition-colors">
-                  Giao ngay (Hỏa tốc 45 - 90 phút)
+                  {deliveryType === "pickup" ? "Lấy ngay (Chuẩn bị 15 - 30 phút)" : "Giao ngay (Hỏa tốc 45 - 90 phút)"}
                 </span>
               </label>
 
@@ -554,12 +554,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                 />
                 <span className="body-2 text-gray-900 group-hover:text-primary transition-colors">
-                  Hẹn giờ giao
+                  {deliveryType === "pickup" ? "Hẹn giờ đến lấy" : "Hẹn giờ giao"}
                 </span>
               </label>
             </div>
 
-            {/* Ô chọn giờ nếu Hẹn giờ giao được tích */}
+            {/* Ô chọn giờ nếu Hẹn giờ được tích */}
             {deliverySchedule === "schedule" && (
               <div className="pt-2 animate-fade-in">
                 <input
@@ -635,14 +635,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {/* Thông tin ở giữa */}
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex justify-between items-start gap-2">
-                  <p className="title-3 font-display text-primary font-bold truncate">
+                  <p className="title-3 font-display text-primary font-bold whitespace-pre-line">
                     {order.title}
                   </p>
                   <p className="title-3 text-secondary font-bold shrink-0">
                     {formatPrice(order.unitPrice)}
                   </p>
                 </div>
-                
+
                 <p className="body-3 text-gray-500 font-medium">
                   Size: {order.variant}
                 </p>
@@ -660,9 +660,27 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     >
                       −
                     </button>
-                    <span className="body-2 text-primary font-bold min-w-[1.5rem] text-center px-1">
-                      {quantity}
-                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={quantity === 0 ? "" : quantity}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        if (val === "") {
+                          setQuantity(0);
+                        } else {
+                          const parsed = parseInt(val, 10);
+                          setQuantity(parsed);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (quantity < 1) {
+                          setQuantity(1);
+                        }
+                      }}
+                      className="w-10 text-center body-2 text-primary font-bold focus:outline-none bg-transparent"
+                    />
                     <button
                       type="button"
                       aria-label="Increase quantity"
@@ -747,7 +765,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </span>
               </div>
             )}
-            
+
             <div className="flex justify-between items-center border-t border-gray-200/50 pt-2.5">
               <span className="text-gray-900 font-bold text-base">Tổng cộng</span>
               <span className="text-[20px] font-display text-primary font-bold">
@@ -757,10 +775,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
             {user && total > 0 && (
               <div className="text-[12px] text-green-600 font-semibold text-right flex items-center justify-end gap-1 pt-1.5 border-t border-dashed border-gray-200/80">
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                <svg className="h-3.5 w-3.5 overflow-visible" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                 </svg>
-                <span>Đơn hàng này sẽ tích lũy thêm ~{Math.floor(total / 100000)} điểm thố!</span>
+                <span>Đơn hàng này sẽ tích lũy thêm ~{Math.floor(total / 100000)} điểm!</span>
               </div>
             )}
           </div>

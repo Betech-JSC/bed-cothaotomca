@@ -41,6 +41,58 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
+  // OTP States
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [sendingOtp, setSendingOtp] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (otpCountdown > 0) {
+      timer = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [otpCountdown]);
+
+  const handleSendOtp = async () => {
+    const phoneTrimmed = formData.phone.trim();
+    if (!phoneTrimmed) {
+      alert("Vui lòng nhập số điện thoại.");
+      return;
+    }
+
+    setSendingOtp(true);
+    try {
+      const token = localStorage.getItem("auth_token");
+      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
+      const res = await fetch(`${BASE_URL}/auth/profile/send-otp`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ phone: phoneTrimmed }),
+      });
+
+      const body = await res.json();
+      if (res.ok) {
+        setOtpSent(true);
+        setOtpCountdown(60);
+        alert(body.message || "Mã OTP đã được gửi thành công. Hãy kiểm tra điện thoại của bạn.");
+      } else {
+        const errorMsg = body.errors?.phone?.[0] || body.message || "Gửi OTP thất bại.";
+        alert(errorMsg);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Đã xảy ra lỗi kết nối khi gửi OTP. Vui lòng thử lại sau.");
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
   // Load address from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -99,17 +151,36 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const isPhoneChanged = formData.phone.trim().replace(/[^0-9]/g, "") !== (user.phone || "").replace(/[^0-9]/g, "");
+    if (isPhoneChanged && !otpSent) {
+      alert("Vui lòng gửi và xác thực mã OTP trước khi thay đổi số điện thoại.");
+      return;
+    }
+    if (isPhoneChanged && otp.length !== 6) {
+      alert("Mã OTP phải có 6 chữ số.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await updateProfile({
+      const payload: any = {
         name: formData.fullname.trim(),
         email: formData.email.trim() || undefined,
-        phone: !user.phone ? formData.phone.trim() : undefined,
-      });
+      };
+
+      if (isPhoneChanged) {
+        payload.phone = formData.phone.trim();
+        payload.otp = otp;
+      }
+
+      const res = await updateProfile(payload);
 
       if (res.success) {
         localStorage.setItem("customer_address", formData.address.trim());
         alert(t("save_success") || "Đã lưu thay đổi thông tin cá nhân!");
+        setOtpSent(false);
+        setOtp("");
       } else {
         alert(res.message || "Cập nhật thông tin thất bại.");
       }
@@ -177,20 +248,20 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   };
 
   const getTierInfo = (points: number) => {
-    if (points >= 500) {
+    if (points >= 800) {
+      return {
+        name: t("diamond_member"),
+        bgBadge: "bg-blue-50 text-blue-700 border-blue-200/50",
+      };
+    } else if (points >= 400) {
       return {
         name: t("gold_member"),
         bgBadge: "bg-[#FDF9ED] text-amber-700 border-amber-200/50",
       };
-    } else if (points >= 100) {
-      return {
-        name: t("silver_member"),
-        bgBadge: "bg-slate-100 text-slate-700 border-slate-200/50",
-      };
     } else {
       return {
-        name: t("bronze_member"),
-        bgBadge: "bg-orange-50 text-orange-700 border-orange-200/50",
+        name: t("member"),
+        bgBadge: "bg-slate-100 text-slate-700 border-slate-200/50",
       };
     }
   };
@@ -242,7 +313,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 />
               ) : (
                 <Image
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop"
+                  src="/images/default-avatar.svg"
                   alt="Avatar"
                   fill
                   className="object-cover"
@@ -260,7 +331,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               className="absolute bottom-0 right-0 bg-[#142A68] rounded-full p-2 border border-white hover:bg-secondary duration-300 disabled:opacity-50"
             >
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10.5 3.5H9.33333C9.02333 3.5 8.74917 3.325 8.62083 3.03917L8.14333 1.96583C7.945 1.5225 7.50167 1.23083 7.0175 1.23083H4.9825C4.49833 1.23083 4.055 1.5225 3.85667 1.96583L3.37917 3.03917C3.25083 3.325 2.97667 3.5 2.66667 3.5H1.5C0.670833 3.5 0 4.17083 0 5V11.5C0 12.3292 0.670833 13 1.5 13H10.5C11.3292 13 12 12.3292 12 11.5V5C12 4.17083 11.3292 3.5 10.5 3.5ZM6 10.75C4.48 10.75 3.25 9.52 3.25 8C3.25 6.48 4.48 5.25 6 5.25C7.52 5.25 8.75 6.48 8.75 8C8.75 9.52 7.52 10.75 6 10.75Z" fill="white"/>
+                <path d="M10.5 3.5H9.33333C9.02333 3.5 8.74917 3.325 8.62083 3.03917L8.14333 1.96583C7.945 1.5225 7.50167 1.23083 7.0175 1.23083H4.9825C4.49833 1.23083 4.055 1.5225 3.85667 1.96583L3.37917 3.03917C3.25083 3.325 2.97667 3.5 2.66667 3.5H1.5C0.670833 3.5 0 4.17083 0 5V11.5C0 12.3292 0.670833 13 1.5 13H10.5C11.3292 13 12 12.3292 12 11.5V5C12 4.17083 11.3292 3.5 10.5 3.5ZM6 10.75C4.48 10.75 3.25 9.52 3.25 8C3.25 6.48 4.48 5.25 6 5.25C7.52 5.25 8.75 6.48 8.75 8C8.75 9.52 7.52 10.75 6 10.75Z" fill="white" />
               </svg>
             </button>
           </div>
@@ -283,8 +354,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               disabled={refreshingPoints}
               className="text-primary font-bold text-[14px] flex items-center gap-1 hover:text-secondary duration-300"
             >
-              <svg className={`h-3.5 w-3.5 ${refreshingPoints ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.247 7H16" />
+              <svg className={`h-4 w-4 overflow-visible ${refreshingPoints ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.247 7H16" />
               </svg>
               {t("points", { count: user.points })}
             </button>
@@ -299,15 +370,14 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Personal Info Tab Button */}
               <button
                 onClick={() => setActiveTab("info")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm ${
-                  activeTab === "info"
-                    ? "bg-secondary text-white shadow-sm"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm ${activeTab === "info"
+                  ? "bg-secondary text-white shadow-sm"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10 10C12.2091 10 14 8.20914 14 6C14 3.79086 12.2091 2 10 2C7.79086 2 6 3.79086 6 6C6 8.20914 7.79086 10 10 10Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M3 17C3 14.2386 6.13401 12 10 12C13.866 12 17 14.2386 17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M10 10C12.2091 10 14 8.20914 14 6C14 3.79086 12.2091 2 10 2C7.79086 2 6 3.79086 6 6C6 8.20914 7.79086 10 10 10Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3 17C3 14.2386 6.13401 12 10 12C13.866 12 17 14.2386 17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 {t("title")}
               </button>
@@ -315,14 +385,13 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Order History Tab Button */}
               <button
                 onClick={() => setActiveTab("orders")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm ${
-                  activeTab === "orders"
-                    ? "bg-secondary text-white shadow-sm"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm ${activeTab === "orders"
+                  ? "bg-secondary text-white shadow-sm"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 {t("order_history")}
               </button>
@@ -349,7 +418,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
           <div className="space-y-6">
             <h3 className="text-primary font-display font-bold text-[22px] flex items-center gap-2">
               <svg width="24" height="24" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               {t("transaction_history")}
             </h3>
@@ -439,8 +508,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
           <form onSubmit={handleSave} className="space-y-6">
             <h3 className="text-primary font-display font-bold text-[22px] flex items-center gap-2">
               <svg width="24" height="24" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 10C12.2091 10 14 8.20914 14 6C14 3.79086 12.2091 2 10 2C7.79086 2 6 3.79086 6 6C6 8.20914 7.79086 10 10 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M3 17C3 14.2386 6.13401 12 10 12C13.866 12 17 14.2386 17 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M10 10C12.2091 10 14 8.20914 14 6C14 3.79086 12.2091 2 10 2C7.79086 2 6 3.79086 6 6C6 8.20914 7.79086 10 10 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M3 17C3 14.2386 6.13401 12 10 12C13.866 12 17 14.2386 17 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               {t("title")}
             </h3>
@@ -466,17 +535,43 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 <label className="text-sm font-semibold text-primary block">
                   {t("phone")}
                 </label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  required
-                  disabled={!!user.phone}
-                  className={`input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900 ${
-                    user.phone ? "opacity-60 cursor-not-allowed bg-gray-50" : ""
-                  }`}
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    required
+                    className="input-form flex-1 rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
+                  />
+                  {formData.phone.trim().replace(/[^0-9]/g, "") !== (user.phone || "").replace(/[^0-9]/g, "") && (
+                    <button
+                      type="button"
+                      disabled={sendingOtp || otpCountdown > 0}
+                      onClick={handleSendOtp}
+                      className="px-4 py-2 text-xs font-semibold text-white bg-primary rounded-[12px] hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-[44px]"
+                    >
+                      {sendingOtp ? "Đang gửi..." : otpCountdown > 0 ? `Gửi lại (${otpCountdown}s)` : "Gửi OTP"}
+                    </button>
+                  )}
+                </div>
+                {formData.phone.trim().replace(/[^0-9]/g, "") !== (user.phone || "").replace(/[^0-9]/g, "") && otpSent && (
+                  <div className="mt-2 space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-600 block">
+                      Mã xác thực OTP (Đã gửi)
+                    </label>
+                    <input
+                      type="text"
+                      name="otp"
+                      maxLength={6}
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ""))}
+                      required
+                      placeholder="Nhập 6 số OTP"
+                      className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Email */}
@@ -512,9 +607,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               <button
                 type="submit"
                 disabled={loading}
-                className={`btn btn-secondary text-white font-bold h-[44px] rounded-full px-8 shadow-sm hover:shadow-md transition-all duration-300 ${
-                  loading ? "opacity-75 cursor-not-allowed" : ""
-                }`}
+                className={`btn btn-secondary text-white font-bold h-[44px] rounded-full px-8 shadow-sm hover:shadow-md transition-all duration-300 ${loading ? "opacity-75 cursor-not-allowed" : ""
+                  }`}
               >
                 {loading ? "..." : t("save")}
               </button>

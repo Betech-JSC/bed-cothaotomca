@@ -44,6 +44,11 @@
   img {
     @apply mx-auto w-full h-auto md:my-4 my-3 xl:my-6;
   }
+
+  iframe {
+    @apply w-full h-auto mx-auto border-none rounded-lg md:my-4 my-3 xl:my-6;
+    aspect-ratio: 16 / 9;
+  }
 }
 
 
