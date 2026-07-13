@@ -55,6 +55,52 @@
     "policy": "Chính sách",
     "contact": "Liên hệ"
   },
+  "checkout": {
+    "title": "Thanh toán",
+    "description": "Vui lòng điền thông tin giao hàng. Bếp Cô Thảo sẽ xác nhận đơn và liên hệ với bạn sớm nhất.",
+    "order_summary": "Đơn hàng",
+    "customer_info": "Thông tin nhận hàng",
+    "product": "Sản phẩm",
+    "variant": "Phân loại",
+    "quantity": "Số lượng",
+    "unit_price": "Đơn giá",
+    "total": "Tổng thanh toán",
+    "name": "Họ và tên",
+    "name_placeholder": "Nhập họ và tên...",
+    "phone": "Số điện thoại",
+    "phone_placeholder": "Nhập số điện thoại...",
+    "email": "Email",
+    "email_placeholder": "Nhập email (không bắt buộc)...",
+    "address": "Địa chỉ giao hàng",
+    "address_placeholder": "Số nhà, đường, quận, thành phố...",
+    "note": "Ghi chú",
+    "note_placeholder": "Ghi chú thêm cho đơn hàng...",
+    "place_order": "Đặt hàng",
+    "submitting": "Đang gửi...",
+    "back_to_product": "Quay lại sản phẩm",
+    "submit_error": "Không thể gửi đơn. Vui lòng thử lại.",
+    "order_message_header": "--- ĐƠN HÀNG TỪ WEBSITE ---",
+    "sku": "Mã SP",
+    "subtotal": "Tạm tính",
+    "shipping_fee": "Phí giao hàng",
+    "delivery_type": "Hình thức nhận hàng",
+    "receiver": "Người nhận",
+    "receiver_placeholder": "Tên người nhận",
+    "receiver_phone": "SĐT người nhận",
+    "expected_delivery": "Giờ giao mong muốn",
+    "payment_method": "Phương thức thanh toán",
+    "payment_account": "Tài khoản nhận",
+    "select_account": "Chọn tài khoản",
+    "item_note": "Ghi chú món",
+    "item_note_placeholder": "Ví dụ: ít cay, không hành...",
+    "order_note": "Ghi chú đơn hàng"
+  },
+  "orderSuccess": {
+    "title": "Đặt hàng thành công",
+    "description": "Cảm ơn bạn! Bếp Cô Thảo đã nhận đơn và sẽ liên hệ xác nhận sớm.",
+    "sync_warning": "Đơn đã lưu nhưng đồng bộ hệ thống bán hàng đang xử lý lại. Bạn vẫn có thể giữ mã đơn bên dưới.",
+    "continue_shopping": "Tiếp tục mua sắm"
+  },
   "home": {
     "section-2": {
       "subTitle": "Hải sản ngâm tương, mẻ mới mỗi ngày",
@@ -174,5 +220,63 @@
       "description": "Không tìm thấy trang này.",
       "go_home": "Về trang chủ"
     }
+  },
+  "signin": {
+    "title": "Đăng nhập",
+    "description": "Chào mừng bạn đã quay lại. Vui lòng nhập thông tin đăng nhập của bạn",
+    "email_phone": "Email hoặc Số điện thoại",
+    "email_phone_placeholder": "Nhập email hoặc số điện thoại...",
+    "password": "Mật khẩu",
+    "password_placeholder": "Nhập mật khẩu...",
+    "button": "Đăng nhập",
+    "forgot_password": "Quên mật khẩu?",
+    "register_now": "Đăng ký ngay"
+  },
+  "signup": {
+    "title": "Đăng ký tài khoản",
+    "description": "Điền thông tin bên dưới để tạo tài khoản mới",
+    "name": "Họ và tên",
+    "name_placeholder": "Nhập họ và tên...",
+    "email": "Email",
+    "email_placeholder": "Nhập địa chỉ email...",
+    "phone": "Số điện thoại",
+    "phone_placeholder": "Nhập số điện thoại...",
+    "password": "Mật khẩu",
+    "password_placeholder": "Nhập mật khẩu...",
+    "button": "Đăng ký",
+    "already_have_account": "Đã có tài khoản?",
+    "login_now": "Đăng nhập ngay"
+  },
+  "profile": {
+    "title": "Thông tin cá nhân",
+    "order_history": "Lịch sử đơn hàng",
+    "transaction_history": "Lịch sử giao dịch",
+    "member": "Hạng Member",
+    "gold_member": "Hạng Vàng",
+    "diamond_member": "Hạng Kim Cương",
+    "points": "{count} Điểm",
+    "save_success": "Đã lưu thay đổi thông tin cá nhân!",
+    "no_orders": "Chưa có đơn hàng nào.",
+    "order_code": "MÃ GIAO DỊCH",
+    "order_date": "NGÀY GIAO DỊCH",
+    "status": "Trạng thái",
+    "status_shipping": "Đang giao",
+    "status_processing": "Đang xử lý",
+    "status_completed": "Hoàn thành",
+    "fullname": "Họ và tên",
+    "phone": "Số điện thoại",
+    "email": "Email",
+    "address": "Địa chỉ chi tiết",
+    "save": "Lưu thay đổi",
+    "logout": "Đăng xuất",
+    "account_label": "TÀI KHOẢN"
+  },
+  "forgot_password": {
+    "title": "Quên mật khẩu - Bếp Cô Thảo",
+    "description": "Yêu cầu đặt lại mật khẩu của bạn trên Bếp Cô Thảo."
+  },
+  "reset_password": {
+    "title": "Đặt lại mật khẩu - Bếp Cô Thảo",
+    "description": "Đặt lại mật khẩu mới cho tài khoản Bếp Cô Thảo của bạn."
   }
 }

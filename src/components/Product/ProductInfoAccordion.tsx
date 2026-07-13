@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Chevron from "@/components/Icons/Chevron";
+import { formatRichTextContent } from "@/lib/format";
 
 interface InfoItem {
   title: string;
@@ -41,7 +42,7 @@ const ProductInfoAccordion = ({ infos }: ProductInfoAccordionProps) => {
             <div className="overflow-hidden">
               <div
                 className="prose prose-product max-w-full"
-                dangerouslySetInnerHTML={{ __html: info.content }}
+                dangerouslySetInnerHTML={{ __html: formatRichTextContent(info.content) }}
               />
             </div>
           </div>

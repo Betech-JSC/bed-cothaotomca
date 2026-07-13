@@ -3,7 +3,7 @@ import SocialShare from "@/components/SocialShare";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { getBlogDetail, getBlogs, Blog, BlogTranslation, BlogCategoryTranslation } from "@/services/blogService";
-import { getTranslation, formatDate } from "@/lib/format";
+import { getTranslation, formatDate, formatRichTextContent } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
@@ -89,7 +89,7 @@ export default async function BlogDetailsPage({
 
   const blogTitle = translation?.title || blog.title || "";
   const blogDescription = translation?.description || blog.description || "";
-  const blogContent = translation?.content || blog.content || "";
+  const blogContent = formatRichTextContent(translation?.content || blog.content || "");
   const categoryName = catTranslation?.title || blog.category?.title || t('blog.category');
 
   const breadcrumbs = [
