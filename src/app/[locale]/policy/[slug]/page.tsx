@@ -3,6 +3,7 @@ import { Link } from "@/i18n/routing";
 import { getPolicies } from "@/services/policyService";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
+import { formatRichTextContent } from "@/lib/format";
 
 export async function generateMetadata({
   params
@@ -129,7 +130,7 @@ export default async function PolicyPage({
                 <h1 className="display-3 text-primary">{currentPolicy.title || currentPolicy.name}</h1>
                 <div
                   className="prose prose-policy max-w-full"
-                  dangerouslySetInnerHTML={{ __html: currentPolicy.content }}
+                  dangerouslySetInnerHTML={{ __html: formatRichTextContent(currentPolicy.content) }}
                 />
               </div>
             </div>

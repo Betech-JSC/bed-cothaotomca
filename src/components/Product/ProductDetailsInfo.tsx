@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatRichTextContent } from "@/lib/format";
 import BoxMessage from "@/components/Icons/BoxMessage";
 import SocialShare from "@/components/SocialShare";
 import ProductInfoAccordion from "@/components/Product/ProductInfoAccordion";
 import { useTranslations } from "next-intl";
 import SliderProductImages from "@/components/Product/SliderProductImages";
-import { useRouter } from "@/i18n/routing";
+// import { useRouter } from "@/i18n/routing";
 import type { ProductDetailView } from "@/services/productService";
 
 interface ProductDetailsInfoProps {
@@ -16,22 +16,22 @@ interface ProductDetailsInfoProps {
 
 const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
   const t = useTranslations();
-  const router = useRouter();
+  // const router = useRouter();
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
 
   const selectedSize = productData.sizes[selectedSizeIndex];
 
-  const handleBuyNow = () => {
-    router.push({
-      pathname: "/checkout",
-      query: {
-        slug: productData.checkout.slug,
-        category: productData.checkout.categorySlug,
-        variant: selectedSize.title,
-        price: String(selectedSize.price),
-      },
-    });
-  };
+  // const handleBuyNow = () => {
+  //   router.push({
+  //     pathname: "/checkout",
+  //     query: {
+  //       slug: productData.checkout.slug,
+  //       category: productData.checkout.categorySlug,
+  //       variant: selectedSize.title,
+  //       price: String(selectedSize.price),
+  //     },
+  //   });
+  // };
 
   return (
     <div className="relative top-0 md:space-y-8 space-y-6 xl:space-y-12">
@@ -49,7 +49,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
 
         <div
           className="body-1 text-gray-900"
-          dangerouslySetInnerHTML={{ __html: productData.description }}
+          dangerouslySetInnerHTML={{ __html: formatRichTextContent(productData.description) }}
         />
 
         {productData.sizes.length > 1 ? (
@@ -88,14 +88,15 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
         ) : null}
 
         <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={handleBuyNow}
+          <a
+            href="https://m.me/cothaotomca"
+            target="_blank"
+            rel="noopener noreferrer nofollow"
             className="btn btn-primary flex items-center justify-center gap-2"
           >
             <BoxMessage />
             <span>{t("product.buy_now")}</span>
-          </button>
+          </a>
           <a
             href="https://m.me/cothaotomca"
             target="_blank"

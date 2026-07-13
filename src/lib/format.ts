@@ -38,3 +38,33 @@ export function getTranslation<T extends { locale: string }>(translations: T[] |
   return translations.find(t => t.locale === currentLocale) ||
     translations.find(t => t.locale.startsWith(currentLocale));
 }
+
+export function formatRichTextContent(content: string | undefined | null): string {
+  if (!content) return '';
+  
+  const figures: string[] = [];
+  // Tạm thời ẩn các khối figure đã tồn tại
+  let processed = content.replace(/<figure[^>]*?>[\s\S]*?<\/figure>/gi, (match) => {
+    figures.push(match);
+    return `__FIGURE_PLACEHOLDER_${figures.length - 1}__`;
+  });
+  
+  // Format các thẻ img có data-caption nằm riêng lẻ bên ngoài figure
+  processed = processed.replace(
+    /<img([^>]*?)data-caption="([^"]*?)"([^>]*?)>/gi,
+    (match, p1, caption, p3) => {
+      const decodedCaption = caption.replace(/&quot;/g, '"');
+      if (!decodedCaption.trim()) {
+        return match;
+      }
+      return `<figure style="display: flex; flex-direction: column; align-items: center; margin: 1.5rem auto; width: 100%; text-align: center;"><img${p1}data-caption="${caption}"${p3}><figcaption style="font-size: 0.875rem; color: #666; margin-top: 0.5rem; text-align: center; font-style: italic;">${decodedCaption}</figcaption></figure>`;
+    }
+  );
+  
+  // Khôi phục lại các khối figure ban đầu
+  processed = processed.replace(/__FIGURE_PLACEHOLDER_(\d+)__/g, (match, index) => {
+    return figures[parseInt(index, 10)];
+  });
+  
+  return processed;
+}
