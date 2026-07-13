@@ -6,7 +6,8 @@ import { useTranslations } from 'next-intl'
 import Breadcrumb from '../Common/Breadcrumb'
 import CardProduct from '../Card/CardProduct'
 import Chevron from '../Icons/Chevron'
-import { mapProductToCardItem, type Product } from '@/services/productService'
+import { Product } from '@/services/productService'
+import { slugify } from '@/lib/format'
 
 interface SearchResultPageProps {
   query: string
@@ -28,10 +29,36 @@ export default function SearchResultPage({
   const router = useRouter()
   const t = useTranslations()
 
-  const productsDisplay = useMemo(
-    () => products.map((p) => mapProductToCardItem(p, locale)),
-    [products, locale],
-  );
+  const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
+    if (!translations || translations.length === 0) return undefined;
+    return translations.find(t => t.locale === currentLocale) ||
+      translations.find(t => t.locale.startsWith(currentLocale));
+  };
+
+  const productsDisplay = useMemo(() => products.map(p => {
+    const translation = getTranslation(p.translations, locale) as any;
+    const name = translation?.name || p.name;
+    const catTranslation = getTranslation(p.category?.translations, locale) as any;
+    const categoryName = catTranslation?.title || p.category?.title || "";
+    const categoryId = p.category?.id?.toString() || "";
+    const categorySlug = slugify(categoryName);
+
+    return {
+      id: p.id,
+      title: name,
+      slug: slugify(name),
+      price: parseFloat(p.price as string) || 0,
+      category: { id: categoryId, title: categoryName, slug: categorySlug },
+      ingredientIds: p.ingredients?.map(ing => ing.id.toString()) || [],
+      variants: p.variants,
+      image: {
+        url: p.image || "/cover.jpg",
+        alt: name
+      },
+      description: translation?.description || p.description || "",
+      created_at: p.created_at || '2024-03-15T00:00:00Z',
+    };
+  }), [products, locale]);
 
   const handlePageChange = (page: number) => {
     const params = new URLSearchParams()

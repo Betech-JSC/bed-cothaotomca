@@ -1,10 +1,10 @@
 .prose-blog {
   h2 {
-    @apply font-display text-[20px] md:text-[24px] leading-[145%] tracking-[0.02em] mt-6 mb-3;
+    @apply font-display text-[20px] md:text-[24px] leading-[145%] tracking-[0.02em];
   }
 
   h3 {
-    @apply font-display text-[18px] md:text-[22px] leading-[145%] tracking-[0.02em] mt-5 mb-2.5;
+    @apply font-display text-[18px] md:text-[22px] leading-[145%] tracking-[0.02em];
   }
 
   p.ql-align-center {
@@ -12,28 +12,15 @@
   }
 
   p,
-  ul,
-  ol {
-    @apply font-serif text-[16px] leading-[150%] text-gray-700 my-2;
+  ul {
+    @apply font-serif text-[16px] leading-[150%] text-gray-700;
   }
 
   ul {
-    @apply pl-4 list-disc my-2;
+    @apply pl-4 list-disc;
 
     li {
-      @apply pl-0 md:pl-1 my-1;
-
-      &::marker {
-        @apply text-[14px] text-black;
-      }
-    }
-  }
-
-  ol {
-    @apply pl-4 list-decimal my-2;
-
-    li {
-      @apply pl-0 md:pl-1 my-1;
+      @apply pl-0 md:pl-1 my-0;
 
       &::marker {
         @apply text-[14px] text-black;

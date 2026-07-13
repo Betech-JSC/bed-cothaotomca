@@ -1,13 +1,6 @@
-const BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-).replace(/\/$/, "");
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://staging-cothaotomca.betech-digital.com/api/v1';
 
-export type ApiKey =
-  | "hero-banners"
-  | "products"
-  | "categories"
-  | "banners"
-  | string;
+export type ApiKey = 'hero-banners' | 'products' | 'categories' | 'banners' | string;
 
 export interface ApiResponse<T> {
   data: T[];
@@ -22,21 +15,16 @@ export interface ApiSingleResponse<T> {
 /**
  * Enhanced fetch with retry logic for handling intermittent connection issues
  */
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit,
-  retries = 1,
-  backoff = 1000,
-): Promise<Response> {
-  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
-
+async function fetchWithRetry(url: string, options: RequestInit, retries = 1, backoff = 1000): Promise<Response> {
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+  
   // If we are building, don't even try to fetch if it's causing issues.
   // This ensures the build completes. Data will be fetched at runtime.
   if (isBuildPhase) {
     console.log(`Bypassing fetch for ${url} during build phase.`);
     return new Response(JSON.stringify({ data: [] }), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 
@@ -48,79 +36,53 @@ async function fetchWithRetry(
     const signal = controller.signal;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const authHeaders: Record<string, string> = {};
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("auth_token");
-      if (token) {
-        authHeaders["Authorization"] = `Bearer ${token}`;
-      }
-    }
-
-    const response = await fetch(url, {
-      ...options,
+    const response = await fetch(url, { 
+      ...options, 
       signal,
       headers: {
-        Accept: "application/json",
-        "Accept-Language": "vi,en;q=0.9",
-        Referer: "https://cothaotomca.vn/",
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        ...authHeaders,
+        'Accept': 'application/json',
+        'Accept-Language': 'vi,en;q=0.9',
+        'Referer': 'https://cothaotomca.vn/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         ...options.headers,
-      },
+      }
     });
     clearTimeout(timeoutId);
 
     if (!response.ok) {
       // Handle rate limit with exponential backoff and jitter
       if (response.status === 429) {
-        const delay = backoff * 2 + Math.random() * 1000;
-        console.warn(
-          `Rate limit hit (429) for ${url}. Retrying after ${Math.round(delay)}ms...`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        const delay = (backoff * 2) + Math.random() * 1000;
+        console.warn(`Rate limit hit (429) for ${url}. Retrying after ${Math.round(delay)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
         return fetchWithRetry(url, options, effectiveRetries, backoff * 2);
       }
 
       if (response.status >= 500) {
-        const errorText = await response.text().catch(() => "No error body");
+        const errorText = await response.text().catch(() => 'No error body');
         console.error(`Server Error (500+) for ${url}:`, errorText);
         // Trả về dữ liệu trống ngay lập tức
-        return new Response(
-          JSON.stringify({ data: [], message: "Server error bypassed" }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
+        return new Response(JSON.stringify({ data: [], message: 'Server error bypassed' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
     }
     return response;
   } catch (error: any) {
     // Nếu timeout hoặc lỗi kết nối, trả về dữ liệu trống ngay lập tức (không retry lâu)
-    console.warn(
-      `Fetch failed for ${url}: ${error.message}. Returning empty data.`,
-    );
-    return new Response(
-      JSON.stringify({ data: [], message: "Fetch error bypassed" }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    console.warn(`Fetch failed for ${url}: ${error.message}. Returning empty data.`);
+    return new Response(JSON.stringify({ data: [], message: 'Fetch error bypassed' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
 /**
  * Generic API fetch function for collections
  */
-export async function getApi<T>(
-  key: ApiKey,
-  options: {
-    params?: Record<string, string | number | boolean>;
-    revalidate?: number;
-  } = {},
-): Promise<ApiResponse<T>> {
+export async function getApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiResponse<T>> {
   const { params, revalidate = 300 } = options;
 
   let url = `${BASE_URL}/${key}`;
@@ -139,28 +101,21 @@ export async function getApi<T>(
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch API: ${key} - Status: ${response.status}`,
-      );
+      throw new Error(`Failed to fetch API: ${key} - Status: ${response.status}`);
     }
 
     return response.json();
   } catch (error) {
-    console.warn(`Error in getApi(${key}):`, error);
-    return { data: [], current_page: 1, last_page: 1, total: 0 };
+    console.error(`Error in getApi(${key}):`, error);
+    // Trả về mảng trống thay vì throw để không sập trang
+    return { data: [] };
   }
 }
 
 /**
  * Generic API fetch function for single items
  */
-export async function getSingleApi<T>(
-  key: ApiKey,
-  options: {
-    params?: Record<string, string | number | boolean>;
-    revalidate?: number;
-  } = {},
-): Promise<ApiSingleResponse<T>> {
+export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiSingleResponse<T>> {
   const { params, revalidate = 300 } = options;
 
   let url = `${BASE_URL}/${key}`;
@@ -179,9 +134,7 @@ export async function getSingleApi<T>(
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch API: ${key} - Status: ${response.status}`,
-      );
+      throw new Error(`Failed to fetch API: ${key} - Status: ${response.status}`);
     }
 
     return response.json();
@@ -192,32 +145,23 @@ export async function getSingleApi<T>(
   }
 }
 
+/**
+ * Generic API POST function
+ */
 export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
   const url = `${BASE_URL}/${key}`;
 
   const response = await fetchWithRetry(url, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    let errorMessage = `Failed to post API: ${key} - Status: ${response.status}`;
-    try {
-      const errorData = await response.json();
-      if (errorData.message) {
-        errorMessage = errorData.message;
-      } else if (errorData.errors) {
-        // Format Laravel validation errors
-        errorMessage = Object.values(errorData.errors).flat().join("\n");
-      }
-    } catch (_) {
-      // response is not JSON, keep default message
-    }
-    throw new Error(errorMessage);
+    throw new Error(`Failed to post API: ${key} - Status: ${response.status}`);
   }
 
   return response.json();

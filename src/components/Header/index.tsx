@@ -6,12 +6,10 @@ import { useTranslations, useLocale } from "next-intl";
 import Logo from "../Logo";
 import LanguageSwitcher from "../LanguageSwitcher";
 import Search from "../Icons/Search";
-import User from "../Icons/User";
 import Hotline from "../Icons/Hotline";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
 import SearchSuggestions from "./SearchSuggestions";
-import { useAuth } from "@/contexts/AuthContext";
 
 type LinkHref = ComponentProps<typeof Link>["href"];
 
@@ -33,7 +31,6 @@ const isNavActive = (href: string | undefined, pathname: string): boolean => {
 };
 
 const Header = () => {
-  const { user, loading } = useAuth();
   const pathname = usePathname();
   const t = useTranslations();
   const locale = useLocale();
@@ -210,23 +207,6 @@ const Header = () => {
               </button>
             </li>
             <li>
-              <Link
-                href={user ? "/profile" : "/signin"}
-                className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer flex items-center justify-center w-6 h-6"
-                aria-label="Profile"
-              >
-                {user?.photo_url ? (
-                  <img
-                    src={user.photo_url}
-                    alt={user.name}
-                    className="w-6 h-6 rounded-full object-cover border border-secondary"
-                  />
-                ) : (
-                  <User />
-                )}
-              </Link>
-            </li>
-            <li>
               <LanguageSwitcher />
             </li>
             <li>
@@ -400,7 +380,6 @@ const MobileMenu = ({
   onClose,
   onToggleSearch,
 }: MobileMenuProps) => {
-  const { user, loading } = useAuth();
   const [openSection, setOpenSection] = useState<number | null>(null);
   const settings = useGeneralSettings();
   const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
@@ -417,26 +396,11 @@ const MobileMenu = ({
         <div className="flex items-center gap-4">
           <button
             onClick={onToggleSearch}
-            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out flex items-center justify-center"
+            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
             aria-label="Search"
           >
             <Search />
           </button>
-          <Link
-            href={user ? "/profile" : "/signin"}
-            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out flex items-center justify-center w-6 h-6"
-            aria-label="Profile"
-          >
-            {user?.photo_url ? (
-              <img
-                src={user.photo_url}
-                alt={user.name}
-                className="w-6 h-6 rounded-full object-cover border border-secondary"
-              />
-            ) : (
-              <User />
-            )}
-          </Link>
           <LanguageSwitcher />
           <button
             type="button"
@@ -480,23 +444,6 @@ const MobileMenu = ({
         aria-modal="true"
       >
         <ul className="title-3 mt-4 flex flex-col gap-1">
-          {!loading && (
-            <li className="border-b border-white/10 pb-4 mb-3 px-3">
-              {user ? (
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-gray-400">Thành viên:</span>
-                  <Link href="/profile" className="text-secondary font-bold text-lg" onClick={onClose}>
-                    {user.name}
-                  </Link>
-                  <span className="text-xs text-green-450 font-mono font-semibold">{user.points} điểm</span>
-                </div>
-              ) : (
-                <Link href="/signin" className="text-yellow hover:text-secondary font-bold" onClick={onClose}>
-                  Đăng nhập / Đăng ký
-                </Link>
-              )}
-            </li>
-          )}
           {navItems.map((item, index) => {
             const active = isNavActive(
               item.href as string | undefined,
