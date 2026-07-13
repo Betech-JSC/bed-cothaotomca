@@ -57,6 +57,42 @@ export const routing = defineRouting({
     '/search': {
       vi: '/tim-kiem',
       en: '/search',
+    },
+    '/checkout': {
+      vi: '/thanh-toan',
+      en: '/checkout',
+    },
+    '/order-success': {
+      vi: '/dat-hang-thanh-cong',
+      en: '/order-success',
+    },
+    '/signin': {
+      vi: '/dang-nhap',
+      en: '/signin',
+    },
+    '/signup': {
+      vi: '/dang-ky',
+      en: '/signup',
+    },
+    '/login': {
+      vi: '/login',
+      en: '/login',
+    },
+    '/register': {
+      vi: '/register',
+      en: '/register',
+    },
+    '/profile': {
+      vi: '/trang-ca-nhan',
+      en: '/profile',
+    },
+    '/forgot-password': {
+      vi: '/quen-mat-khau',
+      en: '/forgot-password',
+    },
+    '/reset-password': {
+      vi: '/dat-lai-mat-khau',
+      en: '/reset-password',
     }
   }
 });
