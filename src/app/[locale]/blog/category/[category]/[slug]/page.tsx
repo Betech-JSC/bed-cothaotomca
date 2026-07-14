@@ -34,7 +34,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string; category: string; slug: string }>
 }): Promise<Metadata> {
-  const { locale, slug } = await params
+  const { locale, category, slug } = await params
   const blog = await fetchBlog(slug, locale);
   if (!blog) {
     return {};
@@ -48,21 +48,37 @@ export async function generateMetadata({
   const seoDescription = translation?.seo_description || blog.seo_description || blog.meta_description || blogDescription;
   const seoKeywords = translation?.seo_keywords || blog.seo_keywords || blog.meta_keywords || "";
 
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
+  const customCanonical = translation?.canonical_url || blog.canonical_url;
+  const canonicalUrl = customCanonical || `${baseUrl}/${locale}/blog/category/${category}/${slug}`;
+  const customOgImage = translation?.og_image || blog.og_image;
+  const blogImage = customOgImage || blog.thumbnail || "/cover.jpg";
+  const customRobots = translation?.meta_robots || blog.meta_robots || undefined;
+
   const metadata = {
     title: seoTitle,
     description: seoDescription,
     keywords: seoKeywords,
+    robots: customRobots,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        vi: `${baseUrl}/vi/blog/category/${category}/${slug}`,
+        en: `${baseUrl}/en/blog/category/${category}/${slug}`,
+      },
+    },
     openGraph: {
       title: seoTitle,
       description: seoDescription,
-      images: [blog.thumbnail || "/cover.jpg"],
+      url: canonicalUrl,
+      images: [blogImage],
       type: 'article' as const,
     },
     twitter: {
       card: 'summary_large_image' as const,
       title: seoTitle,
       description: seoDescription,
-      images: [blog.thumbnail || "/cover.jpg"],
+      images: [blogImage],
     }
   };
 

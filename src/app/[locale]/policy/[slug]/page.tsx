@@ -36,21 +36,38 @@ export async function generateMetadata({
   const seoDescription = currentPolicy.seo_description || currentPolicy.meta_description || description;
   const seoKeywords = currentPolicy.seo_keywords || currentPolicy.meta_keywords || "";
 
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
+  const customCanonical = currentPolicy.canonical_url;
+  const canonicalUrl = customCanonical || `${baseUrl}/${locale}/policy/${slug}`;
+
+  const customOgImage = currentPolicy.og_image;
+  const policyImage = customOgImage || currentPolicy.image || "/cover.jpg";
+  const customRobots = currentPolicy.meta_robots || undefined;
+
   return {
     title: seoTitle,
     description: seoDescription,
     keywords: seoKeywords,
+    robots: customRobots,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        vi: `${baseUrl}/vi/policy/${slug}`,
+        en: `${baseUrl}/en/policy/${slug}`,
+      },
+    },
     openGraph: {
       title: seoTitle,
       description: seoDescription,
-      images: [currentPolicy.image || "/cover.jpg"],
+      url: canonicalUrl,
+      images: [policyImage],
       type: 'article' as const,
     },
     twitter: {
       card: 'summary_large_image' as const,
       title: seoTitle,
       description: seoDescription,
-      images: [currentPolicy.image || "/cover.jpg"],
+      images: [policyImage],
     }
   };
 }

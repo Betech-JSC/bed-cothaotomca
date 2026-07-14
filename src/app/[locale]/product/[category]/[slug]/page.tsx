@@ -30,14 +30,18 @@ export async function generateMetadata(
   const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
 
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
-  const canonicalUrl = `${baseUrl}/${locale}/product/${category}/${slug}`;
+  const customCanonical = translation?.canonical_url || product.canonical_url;
+  const canonicalUrl = customCanonical || `${baseUrl}/${locale}/product/${category}/${slug}`;
+  const customOgImage = translation?.og_image || product.og_image;
   const previousImages = (await parent).openGraph?.images || [];
-  const productImage = product.image || (previousImages.length > 0 ? (typeof previousImages[0] === 'string' ? previousImages[0] : (previousImages[0] as any).url) : "/cover.jpg");
+  const productImage = customOgImage || product.image || (previousImages.length > 0 ? (typeof previousImages[0] === 'string' ? previousImages[0] : (previousImages[0] as any).url) : "/cover.jpg");
+  const customRobots = translation?.meta_robots || product.meta_robots || undefined;
 
   const metadata = {
     title: seoTitle,
     description: seoDescription,
     keywords: seoKeywords,
+    robots: customRobots,
     alternates: {
       canonical: canonicalUrl,
       languages: {

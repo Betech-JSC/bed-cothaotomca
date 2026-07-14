@@ -23,6 +23,9 @@ export interface BlogTranslation {
   seo_title?: string;
   seo_description?: string;
   seo_keywords?: string;
+  meta_robots?: string | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
 }
 
 export interface Blog {
@@ -42,6 +45,9 @@ export interface Blog {
   meta_title?: string;
   meta_description?: string;
   meta_keywords?: string;
+  meta_robots?: string | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
 }
 
 export const getBlogCategories = async (params: { lang?: string } = {}) => {

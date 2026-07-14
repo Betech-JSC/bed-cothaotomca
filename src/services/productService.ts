@@ -14,6 +14,9 @@ export interface Translation {
   meta_title?: string;
   meta_description?: string;
   meta_keywords?: string;
+  meta_robots?: string | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
 }
 
 export interface ProductVariant {
@@ -73,6 +76,9 @@ export interface Product {
   meta_title?: string;
   meta_description?: string;
   meta_keywords?: string;
+  meta_robots?: string | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
 }
 
 /** Props cho ProductDetailsInfo — map từ GET /products/slug/{slug} */
