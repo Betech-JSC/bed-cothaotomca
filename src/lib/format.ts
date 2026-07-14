@@ -18,6 +18,7 @@ export function formatDate(date: Date | string | number, locale: string = 'vi') 
 }
 
 export function formatPrice(price: number) {
+  if (!price || price <= 0) return 'Liên hệ';
   return new Intl.NumberFormat('vi-VN').format(price).replace(/,/g, '.') + ' VNĐ';
 }
 
