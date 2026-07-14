@@ -129,7 +129,7 @@ export default async function PolicyPage({
               <div className="space-y-3">
                 <h1 className="display-3 text-primary">{currentPolicy.title || currentPolicy.name}</h1>
                 <div
-                  className="prose prose-policy max-w-full"
+                  className="ql-content max-w-full"
                   dangerouslySetInnerHTML={{ __html: formatRichTextContent(currentPolicy.content) }}
                 />
               </div>

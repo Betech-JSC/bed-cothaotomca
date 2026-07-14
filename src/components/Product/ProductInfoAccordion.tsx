@@ -41,7 +41,7 @@ const ProductInfoAccordion = ({ infos }: ProductInfoAccordionProps) => {
           >
             <div className="overflow-hidden">
               <div
-                className="prose prose-product max-w-full"
+                className="ql-content max-w-full"
                 dangerouslySetInnerHTML={{ __html: formatRichTextContent(info.content) }}
               />
             </div>

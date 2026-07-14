@@ -1,171 +1,163 @@
 // =============================================================================
-// Prose Styles - Synchronized with CMS Quill Editor
+// .ql-content — Exact replica of Quill's .ql-editor CSS
 // =============================================================================
-// These styles ensure that content created in the CMS rich text editor (Quill)
-// displays identically on the frontend. We override Tailwind Typography's
-// aggressive default spacing and font rules to match the editor output.
+// This class is applied on the frontend to rich text content produced by the
+// CMS Quill editor. It replicates the editor's own styling so that what users
+// see in the CMS is exactly what appears on the public site.
+//
+// Source: quill/dist/quill.snow.css (.ql-editor rules)
 // =============================================================================
 
-// ---------------------------------------------------------------------------
-// SHARED: Reset Tailwind Typography defaults & apply Quill-compatible styles
-// ---------------------------------------------------------------------------
-.prose-blog,
-.prose-product,
-.prose-policy {
+.ql-content {
+  // --- Base editor styles (from .ql-editor) ---
+  line-height: 1.42;
+  font-size: 15px;
+  tab-size: 4;
+  text-align: left;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: #333;
 
-  // --- Reset Tailwind Typography aggressive spacing ---
-  // Tailwind `prose` adds very large margins to elements. We reset them to
-  // match the compact spacing that Quill editor uses.
-  > :first-child {
-    margin-top: 0 !important;
-  }
-  > :last-child {
-    margin-bottom: 0 !important;
-  }
-
+  // --- Paragraphs: no extra spacing (Quill default) ---
   p {
-    margin-top: 0.25em !important;
-    margin-bottom: 0.25em !important;
-    line-height: 1.6 !important;
+    margin: 0;
+    padding: 0;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    margin-top: 0.5em !important;
-    margin-bottom: 0.25em !important;
-    line-height: 1.4 !important;
-    font-weight: 700 !important;
+  // --- Headings (Quill uses browser defaults) ---
+  h1 {
+    font-size: 2em;
+    font-weight: bold;
+    margin: 0;
   }
-
   h2 {
-    font-size: 1.5em !important;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 0;
   }
-
   h3 {
-    font-size: 1.25em !important;
+    font-size: 1.17em;
+    font-weight: bold;
+    margin: 0;
   }
-
   h4 {
-    font-size: 1.1em !important;
+    font-size: 1em;
+    font-weight: bold;
+    margin: 0;
+  }
+  h5 {
+    font-size: 0.83em;
+    font-weight: bold;
+    margin: 0;
+  }
+  h6 {
+    font-size: 0.67em;
+    font-weight: bold;
+    margin: 0;
   }
 
-  // --- Lists ---
-  ul, ol {
-    margin-top: 0.25em !important;
-    margin-bottom: 0.25em !important;
-    padding-left: 1.5em !important;
-    line-height: 1.6 !important;
-  }
-
-  ul {
-    list-style-type: disc !important;
-  }
-
-  ol {
-    list-style-type: decimal !important;
-  }
-
-  li {
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
-    padding-left: 0.25em !important;
-    line-height: 1.6 !important;
-
-    &::marker {
-      color: inherit !important;
-    }
-  }
-
-  // --- Strong / Bold ---
+  // --- Bold / Italic / Underline / Strike ---
   strong {
-    font-weight: 700 !important;
+    font-weight: bold;
+  }
+  em {
+    font-style: italic;
+  }
+  u {
+    text-decoration: underline;
+  }
+  s {
+    text-decoration: line-through;
   }
 
   // --- Links ---
   a {
-    color: #1677ff !important;
-    text-decoration: underline !important;
+    color: #06c;
+    text-decoration: underline;
+  }
+
+  // --- Lists ---
+  ol, ul {
+    margin: 0;
+    padding-left: 1.5em;
+  }
+  ul {
+    list-style-type: disc;
+  }
+  ol {
+    list-style-type: decimal;
+  }
+  li {
+    padding-left: 0;
+  }
+
+  // Quill nested list indent classes
+  li.ql-indent-1 { padding-left: 1.5em; }
+  li.ql-indent-2 { padding-left: 3em; }
+  li.ql-indent-3 { padding-left: 4.5em; }
+  li.ql-indent-4 { padding-left: 6em; }
+  li.ql-indent-5 { padding-left: 7.5em; }
+  li.ql-indent-6 { padding-left: 9em; }
+  li.ql-indent-7 { padding-left: 10.5em; }
+  li.ql-indent-8 { padding-left: 12em; }
+
+  // --- Blockquote (Quill default) ---
+  blockquote {
+    border-left: 4px solid #ccc;
+    margin: 0;
+    padding-left: 16px;
+  }
+
+  // --- Code block (Quill default) ---
+  pre {
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    padding: 5px 10px;
+    margin: 0;
+    white-space: pre-wrap;
+  }
+  code {
+    font-size: 85%;
+    padding: 2px 4px;
   }
 
   // --- Images ---
   img {
-    margin: 0 auto !important;
-    max-width: 100% !important;
-    height: auto !important;
-    display: block !important;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0;
   }
 
-  // --- Iframes / Videos ---
-  iframe {
-    width: 100% !important;
+  // --- Video / iframe ---
+  iframe,
+  .ql-video {
+    width: 100%;
     aspect-ratio: 16 / 9;
-    height: auto !important;
-    border: none !important;
-    border-radius: 8px;
-    margin: 0.75em 0 !important;
+    height: auto;
+    border: none;
+    margin: 0;
   }
 
-  // --- Blockquotes ---
-  blockquote {
-    border-left: 4px solid #d9d9d9 !important;
-    padding-left: 16px !important;
-    margin: 0.5em 0 !important;
-    color: #555 !important;
-    font-style: italic !important;
+  // --- Tables ---
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0;
+  }
+  td, th {
+    border: 1px solid #ddd;
+    padding: 4px 8px;
   }
 
-  // --- Horizontal Rules ---
+  // --- Horizontal rule ---
   hr {
-    margin: 1em 0 !important;
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 8px 0;
   }
 
-  // =========================================================================
-  // Quill-specific class mappings
-  // =========================================================================
-
-  // --- Alignments ---
-  .ql-align-center {
-    text-align: center !important;
-  }
-  .ql-align-right {
-    text-align: right !important;
-  }
-  .ql-align-justify {
-    text-align: justify !important;
-  }
-
-  // --- Sizes ---
-  .ql-size-small {
-    font-size: 0.75em !important;
-  }
-  .ql-size-large {
-    font-size: 1.5em !important;
-  }
-  .ql-size-huge {
-    font-size: 2.25em !important;
-  }
-
-  // --- Fonts ---
-  .ql-font-serif {
-    font-family: Georgia, "Times New Roman", serif !important;
-  }
-  .ql-font-monospace {
-    font-family: Monaco, "Courier New", monospace !important;
-  }
-  .ql-font-sans-serif {
-    font-family: var(--font-sans), sans-serif !important;
-  }
-
-  // --- Indents ---
-  .ql-indent-1 { padding-left: 2em !important; }
-  .ql-indent-2 { padding-left: 4em !important; }
-  .ql-indent-3 { padding-left: 6em !important; }
-  .ql-indent-4 { padding-left: 8em !important; }
-  .ql-indent-5 { padding-left: 10em !important; }
-  .ql-indent-6 { padding-left: 12em !important; }
-  .ql-indent-7 { padding-left: 14em !important; }
-  .ql-indent-8 { padding-left: 16em !important; }
-
-  // --- Subscript / Superscript ---
+  // --- Sub / Superscript ---
   sub {
     vertical-align: sub;
     font-size: smaller;
@@ -175,124 +167,55 @@
     font-size: smaller;
   }
 
-  // --- Checklists (Quill format) ---
+  // =========================================================================
+  // Quill Format Classes (from quill.snow.css)
+  // =========================================================================
+
+  // --- Text Alignment ---
+  .ql-align-center { text-align: center; }
+  .ql-align-right { text-align: right; }
+  .ql-align-justify { text-align: justify; }
+
+  // --- Font Size ---
+  .ql-size-small { font-size: 0.75em; }
+  .ql-size-large { font-size: 1.5em; }
+  .ql-size-huge { font-size: 2.5em; }
+
+  // --- Font Family ---
+  .ql-font-serif { font-family: Georgia, "Times New Roman", serif; }
+  .ql-font-monospace { font-family: Monaco, "Courier New", monospace; }
+
+  // --- Indent (non-list elements) ---
+  .ql-indent-1 { padding-left: 3em; }
+  .ql-indent-2 { padding-left: 6em; }
+  .ql-indent-3 { padding-left: 9em; }
+  .ql-indent-4 { padding-left: 12em; }
+  .ql-indent-5 { padding-left: 15em; }
+  .ql-indent-6 { padding-left: 18em; }
+  .ql-indent-7 { padding-left: 21em; }
+  .ql-indent-8 { padding-left: 24em; }
+
+  // --- Checklist (Quill data-list attribute) ---
   li[data-list="checked"],
   li[data-list="unchecked"] {
-    list-style-type: none !important;
+    list-style-type: none;
     position: relative;
-    padding-left: 1.75em !important;
+    padding-left: 1.75em;
   }
   li[data-list="checked"]::before {
-    content: "☑";
+    content: "\2611"; // ☑
     position: absolute;
     left: 0;
-    top: 0;
-    font-size: 1.1em;
-    color: #1677ff;
   }
   li[data-list="unchecked"]::before {
-    content: "☐";
+    content: "\2610"; // ☐
     position: absolute;
     left: 0;
-    top: 0;
-    font-size: 1.1em;
-    color: #8c8c8c;
   }
 
-  // --- Code ---
-  code {
-    background-color: #f5f5f5;
-    color: #eb2f96;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: Monaco, "Courier New", monospace;
-    font-size: 0.9em;
-  }
-  pre {
-    background-color: #f5f5f5;
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-family: Monaco, "Courier New", monospace;
-    overflow-x: auto;
-    margin: 0.5em 0 !important;
-    white-space: pre-wrap;
+  // --- Color & Background (inline styles from Quill, no CSS needed) ---
+  // Quill applies color/background as inline styles, so they work automatically.
 
-    code {
-      background-color: transparent;
-      color: inherit;
-      padding: 0;
-      font-size: inherit;
-    }
-  }
-
-  // --- Tables ---
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 0.5em 0 !important;
-
-    th, td {
-      border: 1px solid #d9d9d9;
-      padding: 8px 12px;
-      text-align: left;
-    }
-    th {
-      background-color: #fafafa;
-      font-weight: 600;
-    }
-  }
-
-  // --- Video embed (Quill class) ---
-  .ql-video {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border-radius: 8px;
-    margin: 0.75em 0 !important;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// BLOG-SPECIFIC overrides
-// ---------------------------------------------------------------------------
-.prose-blog {
-  font-size: 15px;
-  line-height: 1.6;
-  color: #374151; // gray-700
-  font-family: Roboto, sans-serif;
-
-  h2, h3, h4 {
-    font-family: TomCaSerif, sans-serif;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// PRODUCT-SPECIFIC overrides
-// ---------------------------------------------------------------------------
-.prose-product {
-  font-size: 15px;
-  line-height: 1.6;
-  color: #111827; // gray-900
-  font-family: Roboto, sans-serif;
-
-  h2, h3, h4 {
-    font-family: TomCaSerif, sans-serif;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// POLICY-SPECIFIC overrides
-// ---------------------------------------------------------------------------
-.prose-policy {
-  font-size: 15px;
-  line-height: 1.6;
-  color: #111827; // gray-900
-  font-family: Roboto, sans-serif;
-
-  h2, h3, h4 {
-    font-family: TomCaSerif, sans-serif;
-  }
-
-  h3 {
-    color: #142A68 !important; // text-primary
-  }
+  // --- Direction ---
+  .ql-direction-rtl { direction: rtl; text-align: inherit; }
 }

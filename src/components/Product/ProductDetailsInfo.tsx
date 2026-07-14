@@ -48,7 +48,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
         </div>
 
         <div
-          className="prose prose-product max-w-full text-gray-900"
+          className="ql-content max-w-full text-gray-900"
           dangerouslySetInnerHTML={{ __html: formatRichTextContent(productData.description) }}
         />
 
