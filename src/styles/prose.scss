@@ -114,3 +114,145 @@
     }
   }
 }
+
+// Quill style helper classes to match CMS editor styling in frontend
+.prose-blog,
+.prose-product,
+.prose-policy {
+  // Alignments
+  .ql-align-center {
+    text-align: center !important;
+  }
+  .ql-align-right {
+    text-align: right !important;
+  }
+  .ql-align-justify {
+    text-align: justify !important;
+  }
+
+  // Sizes
+  .ql-size-small {
+    font-size: 0.75em !important;
+  }
+  .ql-size-large {
+    font-size: 1.5em !important;
+  }
+  .ql-size-huge {
+    font-size: 2.25em !important;
+  }
+
+  // Fonts
+  .ql-font-serif {
+    font-family: Georgia, Times New Roman, serif !important;
+  }
+  .ql-font-monospace {
+    font-family: Monaco, Courier New, monospace !important;
+  }
+  .ql-font-sans-serif {
+    font-family: var(--font-sans), sans-serif !important;
+  }
+
+  // Indents
+  .ql-indent-1 { padding-left: 2em !important; }
+  .ql-indent-2 { padding-left: 4em !important; }
+  .ql-indent-3 { padding-left: 6em !important; }
+  .ql-indent-4 { padding-left: 8em !important; }
+  .ql-indent-5 { padding-left: 10em !important; }
+  .ql-indent-6 { padding-left: 12em !important; }
+  .ql-indent-7 { padding-left: 14em !important; }
+  .ql-indent-8 { padding-left: 16em !important; }
+
+  // Subscript / Superscript
+  sub {
+    vertical-align: sub;
+    font-size: smaller;
+  }
+  sup {
+    vertical-align: super;
+    font-size: smaller;
+  }
+
+  // Blockquotes
+  blockquote {
+    border-left: 4px solid #d9d9d9;
+    padding-left: 16px;
+    margin: 1.5rem 0;
+    color: #555;
+    font-style: italic;
+  }
+
+  // Checklists (Quill format)
+  li[data-list="checked"],
+  li[data-list="unchecked"] {
+    list-style-type: none !important;
+    position: relative;
+    padding-left: 1.75em !important;
+  }
+  li[data-list="checked"]::before {
+    content: "☑";
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 1.1em;
+    color: #1677ff;
+  }
+  li[data-list="unchecked"]::before {
+    content: "☐";
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 1.1em;
+    color: #8c8c8c;
+  }
+
+  // Inline Code and Code Blocks
+  code {
+    background-color: #f5f5f5;
+    color: #eb2f96;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: Monaco, Courier New, monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    background-color: #f5f5f5;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-family: Monaco, Courier New, monospace;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+    white-space: pre-wrap;
+    
+    code {
+      background-color: transparent;
+      color: inherit;
+      padding: 0;
+      font-size: inherit;
+    }
+  }
+
+  // Tables
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    
+    th, td {
+      border: 1px solid #d9d9d9;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #fafafa;
+      font-weight: 600;
+    }
+  }
+  
+  // Custom video aspect ratio
+  .ql-video {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+  }
+}
