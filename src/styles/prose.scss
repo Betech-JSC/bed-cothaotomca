@@ -208,6 +208,36 @@
     margin: 0;
   }
 
+  // --- Figures (Parchment BlockEmbed) ---
+  figure {
+    margin: 1rem auto;
+    max-width: 100%;
+    display: block;
+    clear: both;
+
+    img {
+      display: inline-block;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
+    }
+
+    figcaption {
+      font-size: 0.875rem;
+      color: #666;
+      margin-top: 0.5rem;
+      text-align: center;
+      font-style: italic;
+    }
+  }
+
+  // Clearfix to contain floated images/figures
+  &::after {
+    content: "";
+    display: table;
+    clear: both;
+  }
+
   // --- Video / iframe (exact from quill.snow.css) ---
   iframe.ql-video,
   .ql-video {
