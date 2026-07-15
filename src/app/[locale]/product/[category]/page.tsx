@@ -22,14 +22,42 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const { locale, category: categorySlug } = await params
   const { ingredients: ingredientsParam, page = '1' } = await searchParams
 
-  // 1. Fetch categories, ingredients, and banners in parallel for step 1
-  const [categoriesResp, ingredientsResp, bannerResp] = await Promise.all([
-    getApi<Category>('categories', { params: { lang: locale } }).catch(() => ({ data: [] })),
-    getApi<Ingredient>('ingredients', { params: { lang: locale } }).catch(() => ({ data: [] })),
-    getApi<HeroBanner>('banners', { params: { position: 'banner_product', lang: locale } }).catch(() => ({ data: [] }))
-  ]);
+  const selectedIngredientsSlugs = ingredientsParam ? ingredientsParam.split(',').filter(Boolean) : []
+  
+  // Define promises
+  const categoriesPromise = getApi<Category>('categories', { params: { lang: locale } }).catch(() => ({ data: [] }));
+  const ingredientsPromise = getApi<Ingredient>('ingredients', { params: { lang: locale } }).catch(() => ({ data: [] }));
+  const bannerPromise = getApi<HeroBanner>('banners', { params: { position: 'banner_product', lang: locale } }).catch(() => ({ data: [] }));
 
-  console.log('Fetched banners:', bannerResp);
+  let categoriesResp: { data: Category[] };
+  let ingredientsResp: { data: Ingredient[] };
+  let bannerResp: { data: HeroBanner[] };
+  let productsResp: { data: Product[], last_page?: number, current_page?: number, total?: number };
+
+  if (selectedIngredientsSlugs.length === 0) {
+    // 100% Parallel fetch on initial load using category_slug directly
+    [categoriesResp, ingredientsResp, bannerResp, productsResp] = await Promise.all([
+      categoriesPromise,
+      ingredientsPromise,
+      bannerPromise,
+      getApi<Product>('products', {
+        params: {
+          lang: locale,
+          per_page: 9,
+          page: page,
+          category_slug: categorySlug,
+          ingredients: ''
+        }
+      }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }))
+    ]);
+  } else {
+    // Fetch lookup metadata first, then products
+    [categoriesResp, ingredientsResp, bannerResp] = await Promise.all([
+      categoriesPromise,
+      ingredientsPromise,
+      bannerPromise
+    ]);
+  }
 
   const categories = categoriesResp.data;
   const ingredients = ingredientsResp.data;
@@ -69,31 +97,32 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     )
   }
 
-  // Map ingredient slugs to IDs for the products API call
-  const selectedIngredientsSlugs = ingredientsParam ? ingredientsParam.split(',').filter(Boolean) : []
-  const ingredientIds = selectedIngredientsSlugs
-    .map(slug => {
-      const ing = ingredients.find(ing => {
-        const translation = ing.translations?.find((t: any) => t.locale === locale) ||
-          ing.translations?.find((t: any) => t.locale.startsWith(locale))
-        const name = translation?.name || ing.name
-        return slugify(name) === slug
+  if (selectedIngredientsSlugs.length > 0) {
+    // Map ingredient slugs to IDs for the products API call
+    const ingredientIds = selectedIngredientsSlugs
+      .map(slug => {
+        const ing = ingredients.find(ing => {
+          const translation = ing.translations?.find((t: any) => t.locale === locale) ||
+            ing.translations?.find((t: any) => t.locale.startsWith(locale))
+          const name = translation?.name || ing.name
+          return slugify(name) === slug
+        })
+        return ing?.id
       })
-      return ing?.id
-    })
-    .filter(Boolean)
-    .join(',')
+      .filter(Boolean)
+      .join(',')
 
-  // 2. Call API products with the resolved category_id and mapped ingredientIds
-  const productsResp = await getApi<Product>('products', {
-    params: {
-      lang: locale,
-      per_page: 9,
-      page: page,
-      ingredients: ingredientIds,
-      category_id: categoryId || ''
-    }
-  }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }));
+    // 2. Call API products with the resolved category_id and mapped ingredientIds
+    productsResp = await getApi<Product>('products', {
+      params: {
+        lang: locale,
+        per_page: 9,
+        page: page,
+        ingredients: ingredientIds,
+        category_id: categoryId || ''
+      }
+    }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }));
+  }
 
   const bannerItem = bannerResp.data[0];
   const banner = {

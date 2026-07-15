@@ -85,18 +85,14 @@ export async function generateMetadata({
 
 export default async function LocaleLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params
-  const messages = await getMessages()
-
-  const settings = await getGeneralSettings(locale).catch(() => null);
-  const branches = await getBranches(locale).catch(() => []);
-  // load seo settings to expose body scripts / GTM noscript per-locale
-  let seo = null
-  try {
-    const { getSeoSettings } = await import('@/services/seoService')
-    seo = await getSeoSettings(locale).catch(() => null)
-  } catch (e) {
-    seo = null
-  }
+  
+  // Parallelize layout configuration and message loading
+  const [messages, settings, branches, seo] = await Promise.all([
+    getMessages(),
+    getGeneralSettings(locale).catch(() => null),
+    getBranches(locale).catch(() => []),
+    getSeoSettings(locale).catch(() => null),
+  ]);
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>

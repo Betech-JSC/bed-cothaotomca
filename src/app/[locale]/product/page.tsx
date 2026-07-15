@@ -22,37 +22,65 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const { locale } = await params
   const { ingredients: ingredientsParam, page = '1' } = await searchParams
 
-  const [ingredientsData, categoriesData, bannerData] = await Promise.all([
-    getApi<Ingredient>('ingredients', { params: { lang: locale } }).catch(() => ({ data: [] })),
-    getApi<Category>('categories', { params: { lang: locale } }).catch(() => ({ data: [] })),
-    getApi<HeroBanner>('banners', { params: { position: 'banner_product', lang: locale } }).catch(() => ({ data: [] }))
-  ]);
-
   const selectedIngredients = ingredientsParam ? ingredientsParam.split(',').filter(Boolean) : []
   
-  // Find IDs for ingredients to filter via API with robust translation logic
-  const findIngredientId = (ingredients: Ingredient[], slug: string, lang: string) => {
-    return ingredients.find(ing => {
-      const translation = ing.translations?.find((t: any) => t.locale === lang) ||
-                          ing.translations?.find((t: any) => t.locale.startsWith(lang))
-      const name = translation?.name || ing.name
-      return slugify(name) === slug
-    })?.id
-  }
+  // Define promises
+  const ingredientsPromise = getApi<Ingredient>('ingredients', { params: { lang: locale } }).catch(() => ({ data: [] }));
+  const categoriesPromise = getApi<Category>('categories', { params: { lang: locale } }).catch(() => ({ data: [] }));
+  const bannerPromise = getApi<HeroBanner>('banners', { params: { position: 'banner_product', lang: locale } }).catch(() => ({ data: [] }));
 
-  const ingredientIds = selectedIngredients
-    .map(slug => findIngredientId(ingredientsData.data, slug, locale))
-    .filter(Boolean)
-    .join(',')
+  let ingredientsData: { data: Ingredient[] };
+  let categoriesData: { data: Category[] };
+  let bannerData: { data: HeroBanner[] };
+  let productsData: { data: Product[], last_page?: number, current_page?: number, total?: number };
 
-  const productsData = await getApi<Product>('products', {
-    params: {
-      lang: locale,
-      per_page: 9,
-      page: page,
-      ingredients: ingredientIds
+  if (selectedIngredients.length === 0) {
+    // 100% Parallel fetch for initial load
+    [ingredientsData, categoriesData, bannerData, productsData] = await Promise.all([
+      ingredientsPromise,
+      categoriesPromise,
+      bannerPromise,
+      getApi<Product>('products', {
+        params: {
+          lang: locale,
+          per_page: 9,
+          page: page,
+          ingredients: ''
+        }
+      }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }))
+    ]);
+  } else {
+    // Fetch lookup metadata first, then products
+    [ingredientsData, categoriesData, bannerData] = await Promise.all([
+      ingredientsPromise,
+      categoriesPromise,
+      bannerPromise
+    ]);
+
+    // Find IDs for ingredients to filter via API with robust translation logic
+    const findIngredientId = (ingredients: Ingredient[], slug: string, lang: string) => {
+      return ingredients.find(ing => {
+        const translation = ing.translations?.find((t: any) => t.locale === lang) ||
+                            ing.translations?.find((t: any) => t.locale.startsWith(lang))
+        const name = translation?.name || ing.name
+        return slugify(name) === slug
+      })?.id
     }
-  }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }));
+
+    const ingredientIds = selectedIngredients
+      .map(slug => findIngredientId(ingredientsData.data, slug, locale))
+      .filter(Boolean)
+      .join(',')
+
+    productsData = await getApi<Product>('products', {
+      params: {
+        lang: locale,
+        per_page: 9,
+        page: page,
+        ingredients: ingredientIds
+      }
+    }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }));
+  }
 
   const bannerItem = bannerData.data[0];
   const banner = {

@@ -92,9 +92,12 @@ export default async function BlogDetailsPage({
   params: Promise<{ locale: string; category: string; slug: string }>
 }) {
   const { locale, category, slug } = await params
-  const t = await getTranslations({ locale })
-
-  const blog = await fetchBlog(slug, locale);
+  
+  // Parallelize translations and blog data fetching
+  const [t, blog] = await Promise.all([
+    getTranslations({ locale }),
+    fetchBlog(slug, locale)
+  ]);
 
   if (!blog) {
     notFound();
