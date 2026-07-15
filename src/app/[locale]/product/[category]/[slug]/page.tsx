@@ -173,7 +173,7 @@ export default async function ProductDetailsPage({
           <div className="grid grid-cols-12 gap-4 md:gap-6 xl:gap-8">
             <div className="col-span-full lg:col-span-6 xl:col-span-7 lg:pr-3 xl:pr-4">
               <div className="md:block hidden space-y-6 md:sticky md:top-28">
-                {productData.images && productData.images.length > 0 ? <div className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
+                {productData.images && productData.images.length > 0 ? <div className="relative w-full aspect-square rounded-[24px] overflow-hidden" >
                   <ZoomableImage
                     src={productData.image?.url || '/cover.jpg'}
                     alt={productData.title || "image product"}
@@ -183,7 +183,7 @@ export default async function ProductDetailsPage({
                 </div> : <>
                   {productData.images.map((image: any, index: number) => {
                     return (
-                      <div key={index} className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
+                      <div key={index} className="relative w-full aspect-square rounded-[24px] overflow-hidden" >
                         <ZoomableImage
                           src={image.url}
                           alt={image.alt || image.title || "image product"}
