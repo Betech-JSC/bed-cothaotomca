@@ -10,6 +10,7 @@ interface CardProductProps {
   item: {
     id: number;
     title: string;
+    custom_name?: string;
     slug: string;
     variants: any[];
     category: {
@@ -55,7 +56,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
           className="block"
         >
           <h3 className={`title-1 max-md:text-[16px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 min-h-[36px] md:min-h-[44px] whitespace-pre-line`}>
-            {item.title}
+            {item.custom_name || item.title}
           </h3>
         </Link>
         <div className="body-2 text-gray-900 line-clamp-2 min-h-[32px] md:min-h-[36px] mt-1 mb-2">{item.description}</div>

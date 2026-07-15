@@ -43,6 +43,7 @@ export interface Product {
   id: number;
   slug?: string;
   name: string;
+  custom_name?: string;
   description: string;
   price: string;
   image: string | null;
@@ -254,6 +255,7 @@ export function mapProductToCardItem(
 ): {
   id: number;
   title: string;
+  custom_name?: string;
   slug: string;
   price: number;
   category: { title: string; id: string; slug: string };
@@ -278,6 +280,7 @@ export function mapProductToCardItem(
   return {
     id: item.id,
     title: name,
+    custom_name: item.custom_name,
     slug: item.slug || slugify(name),
     price: parseFloat(String(item.price)) || 0,
     category: {

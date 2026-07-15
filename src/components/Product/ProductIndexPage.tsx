@@ -94,6 +94,7 @@ export default function ProductIndexPage({
     return {
       id: p.id,
       title: name,
+      custom_name: p.custom_name,
       slug: productSlug,
       price: parseFloat(p.price as string) || 0,
       category: { id: categoryId, title: categoryName, slug: categorySlug },
