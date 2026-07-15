@@ -11,6 +11,8 @@ import JsonLd from "@/components/SEO/JsonLd";
 
 import { getTranslation, slugify } from "@/lib/format";
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata(
   { params }: { params: Promise<{ locale: string; category: string; slug: string }> },
   parent: ResolvingMetadata

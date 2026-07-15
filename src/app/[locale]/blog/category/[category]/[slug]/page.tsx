@@ -8,6 +8,8 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
 
+export const dynamic = 'force-dynamic';
+
 async function fetchBlog(slug: string, locale: string) {
   let blogResponse = await getBlogDetail(slug, { lang: locale }, 0).catch(() => null);
 
