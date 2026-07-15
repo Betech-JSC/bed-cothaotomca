@@ -8,7 +8,7 @@ import { notFound } from "next/navigation";
 import { Metadata, ResolvingMetadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
 
-import { getTranslation, slugify, cleanTitleForSeo } from "@/lib/format";
+import { getTranslation, slugify } from "@/lib/format";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ locale: string; category: string; slug: string }> },
@@ -25,7 +25,7 @@ export async function generateMetadata(
   const productDescription = translation?.description || product.description || "";
 
   // Ưu tiên lấy SEO từ bản dịch, nếu không có thì lấy SEO ở cấp root, cuối cùng mới fallback về name/description mặc định
-  const seoTitle = cleanTitleForSeo(translation?.seo_title || product.seo_title || product.meta_title || productName);
+  const seoTitle = translation?.seo_title || product.seo_title || product.meta_title || productName;
   const seoDescription = translation?.seo_description || product.seo_description || product.meta_description || productDescription;
   const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
 
@@ -58,7 +58,7 @@ export async function generateMetadata(
           url: (productImage as any)?.url || productImage,
           width: 800,
           height: 600,
-          alt: cleanTitleForSeo(productName),
+          alt: productName,
         },
       ],
       type: 'article' as const,
@@ -134,7 +134,7 @@ export default async function ProductDetailsPage({
       href: `/product/${productData.category.slug}`,
     }] : []),
     {
-      title: cleanTitleForSeo(productData.title),
+      title: productData.title,
     },
   ];
 

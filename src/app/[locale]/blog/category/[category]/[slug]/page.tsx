@@ -3,7 +3,7 @@ import SocialShare from "@/components/SocialShare";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { getBlogDetail, getBlogs, Blog, BlogTranslation, BlogCategoryTranslation } from "@/services/blogService";
-import { getTranslation, formatDate, formatRichTextContent, formatTitle, cleanTitleForSeo } from "@/lib/format";
+import { getTranslation, formatDate, formatRichTextContent } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
@@ -44,7 +44,7 @@ export async function generateMetadata({
   const blogTitle = translation?.title || blog.title || "";
   const blogDescription = translation?.description || blog.description || "";
 
-  const seoTitle = cleanTitleForSeo(translation?.seo_title || blog.seo_title || blog.meta_title || blogTitle);
+  const seoTitle = translation?.seo_title || blog.seo_title || blog.meta_title || blogTitle;
   const seoDescription = translation?.seo_description || blog.seo_description || blog.meta_description || blogDescription;
   const seoKeywords = translation?.seo_keywords || blog.seo_keywords || blog.meta_keywords || "";
 
@@ -121,7 +121,7 @@ export default async function BlogDetailsPage({
       url: { pathname: '/blog/category/[category]', params: { category: blog.category?.slug || category } },
     },
     {
-      title: cleanTitleForSeo(blogTitle),
+      title: blogTitle,
     },
   ] as const
 
@@ -137,8 +137,8 @@ export default async function BlogDetailsPage({
           <div className="flex flex-col items-center md:gap-4 gap-4 xl:gap-6 w-full max-w-[880px] mx-auto">
             <div className="flex flex-col gap-3 w-full">
               <Breadcrumb breadcrumbs={breadcrumbs} classNameNav="md:mx-auto" />
-              <h1 className="display-3 max-md:text-[28px] text-primary text-center whitespace-pre-line">
-                {formatTitle(blogTitle)}
+              <h1 className="display-3 max-md:text-[28px] text-primary text-center">
+                {blogTitle}
               </h1>
 
               <div className="flex justify-center items-center gap-3 w-full">

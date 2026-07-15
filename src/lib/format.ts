@@ -69,27 +69,3 @@ export function formatRichTextContent(content: string | undefined | null): strin
   
   return processed;
 }
-
-/**
- * Formats a title for visual display, replacing line break indicators like |, //, or <br> with newlines (\n)
- */
-export function formatTitle(title: string | undefined | null): string {
-  if (!title) return '';
-  return title
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/\||\/\//g, '\n')
-    .replace(/\n+/g, '\n')
-    .trim();
-}
-
-/**
- * Strips all line break indicators from a title (useful for SEO tags, alt attributes, etc.)
- */
-export function cleanTitleForSeo(title: string | undefined | null): string {
-  if (!title) return '';
-  return title
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/\||\/\//g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}

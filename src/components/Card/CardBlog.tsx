@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Link } from "@/i18n/i18n-navigation";
 import React from "react";
-import { formatDate, formatTitle, cleanTitleForSeo } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 
 type BlogItem = {
   image: {
@@ -32,12 +32,12 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
         <Link
           href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }}
           className="block"
-          aria-label={cleanTitleForSeo(item.title)}
+          aria-label={item.title}
         >
           <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[12px]">
             <Image
               src={imageSrc}
-              alt={item.image?.alt ? cleanTitleForSeo(item.image.alt) : cleanTitleForSeo(item.title)}
+              alt={item.image?.alt || item.title}
               priority={false}
               fill
               className="h-full w-full object-cover duration-300 ease-in-out lg:group-hover:scale-105"
@@ -62,8 +62,8 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
 
       <div>
         <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block">
-          <h3 className={`${isHot ? "title-1 max-md:text-[18px]" : "title-2"} text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 whitespace-pre-line`}>
-            {formatTitle(item.title)}
+          <h3 className={`${isHot ? "title-1 max-md:text-[18px]" : "title-2"} text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2`}>
+            {item.title}
           </h3>
         </Link>
       </div>

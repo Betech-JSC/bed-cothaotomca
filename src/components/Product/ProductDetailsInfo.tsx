@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatPrice, formatRichTextContent, formatTitle } from "@/lib/format";
+import { formatPrice, formatRichTextContent } from "@/lib/format";
 import BoxMessage from "@/components/Icons/BoxMessage";
 import SocialShare from "@/components/SocialShare";
 import ProductInfoAccordion from "@/components/Product/ProductInfoAccordion";
@@ -38,7 +38,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
       <div className="space-y-4 md:space-y-6">
         <div className="space-y-3 flex flex-col items-start">
           <h1 className="headline-1 max-md:text-[24px] text-primary whitespace-pre-line">
-            {formatTitle(productData.title)}
+            {productData.title}
           </h1>
           {productData.images.length > 0 && (
             <div className="mb-6 md:hidden w-full">
