@@ -2,6 +2,7 @@ import Breadcrumb from "@/components/Common/Breadcrumb";
 import Image from "next/image";
 import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
 import SliderProductRelated from "@/components/Product/SliderProductRelated";
+import ZoomableImage from "@/components/Common/ZoomableImage";
 import { getTranslations } from "next-intl/server";
 import { Translation } from "@/services/productService";
 import { notFound } from "next/navigation";
@@ -173,7 +174,7 @@ export default async function ProductDetailsPage({
             <div className="col-span-full lg:col-span-6 xl:col-span-7 lg:pr-3 xl:pr-4">
               <div className="md:block hidden space-y-6 md:sticky md:top-28">
                 {productData.images && productData.images.length > 0 ? <div className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
-                  <Image
+                  <ZoomableImage
                     src={productData.image?.url || '/cover.jpg'}
                     alt={productData.title || "image product"}
                     fill
@@ -183,7 +184,7 @@ export default async function ProductDetailsPage({
                   {productData.images.map((image: any, index: number) => {
                     return (
                       <div key={index} className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
-                        <Image
+                        <ZoomableImage
                           src={image.url}
                           alt={image.alt || image.title || "image product"}
                           fill
