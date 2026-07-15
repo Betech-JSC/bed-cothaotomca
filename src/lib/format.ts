@@ -40,6 +40,16 @@ export function getTranslation<T extends { locale: string }>(translations: T[] |
     translations.find(t => t.locale.startsWith(currentLocale));
 }
 
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&#x27;/g, "'");
+}
+
 export function formatRichTextContent(content: string | undefined | null): string {
   if (!content) return '';
   
@@ -54,7 +64,7 @@ export function formatRichTextContent(content: string | undefined | null): strin
   processed = processed.replace(
     /<img([^>]*?)data-caption="([^"]*?)"([^>]*?)>/gi,
     (match, p1, caption, p3) => {
-      const decodedCaption = caption.replace(/&quot;/g, '"');
+      const decodedCaption = decodeHtmlEntities(caption);
       if (!decodedCaption.trim()) {
         return match;
       }
