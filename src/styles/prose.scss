@@ -223,11 +223,12 @@
     }
 
     figcaption {
-      font-size: 0.875rem;
-      color: #666;
-      margin-top: 0.5rem;
-      text-align: center;
       font-style: italic;
+      text-align: center;
+      margin-top: 0.5rem;
+      font-size: inherit;
+      color: inherit;
+      opacity: 0.85;
     }
   }
 
