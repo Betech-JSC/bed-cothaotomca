@@ -22,9 +22,9 @@ export interface Category {
 }
 
 export const getCategories = async () => {
-  return getApi<Category>('categories');
+  return getApi<Category>('categories', { revalidate: 60 });
 };
 
 export const getCategoryTree = async () => {
-  return getApi<Category>('categories/tree');
+  return getApi<Category>('categories/tree', { revalidate: 60 });
 };

@@ -22,7 +22,7 @@ export interface SeoSettingsResponse {
  */
 export async function getSeoSettings(lang?: string): Promise<SeoSettings> {
   const params = lang ? { lang } : undefined;
-  const json = await getSingleApi<SeoSettings>('seo-settings', { params, revalidate: 0 });
+  const json = await getSingleApi<SeoSettings>('seo-settings', { params, revalidate: 60 });
   // getSingleApi returns { data: ... }
   return json.data as SeoSettings;
 }

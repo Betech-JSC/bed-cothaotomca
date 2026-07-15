@@ -318,7 +318,7 @@ export async function getProductCatalog(
 
     const result = await getApi<Product>("products", {
       params: apiParams,
-      revalidate: options.revalidate ?? 0,
+      revalidate: options.revalidate,
     });
 
     const batch = (result.data || []).map(normalizeProduct);
@@ -374,7 +374,7 @@ export const getProducts = async (
 
   const result = await getApi<Product>("products", {
     params: apiParams,
-    revalidate: revalidate ?? 300,
+    revalidate: revalidate,
   });
 
   const data = (result.data || []).map(normalizeProduct);

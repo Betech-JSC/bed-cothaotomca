@@ -86,11 +86,34 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
   }
 }
 
+function getDefaultRevalidate(key: string): number {
+  const baseKey = key.split('/')[0];
+  
+  if (baseKey === 'general-settings' || baseKey === 'seo-settings' || baseKey === 'branches') {
+    return 60; // 60s cache for layout and configuration
+  }
+  if (
+    baseKey === 'categories' || 
+    baseKey === 'ingredients' || 
+    baseKey === 'banners' || 
+    baseKey === 'hero-banners' || 
+    baseKey === 'blog-categories' || 
+    baseKey === 'policies'
+  ) {
+    return 10; // 10s cache for layout assets/taxonomy
+  }
+  if (baseKey === 'products' || baseKey === 'blogs') {
+    return 5; // 5s cache to enable Next.js link prefetching and dynamic views
+  }
+  return 0; // default to no-store for anything else
+}
+
 /**
  * Generic API fetch function for collections
  */
 export async function getApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiResponse<T>> {
-  const { params, revalidate = 0 } = options;
+  const revalidate = options.revalidate !== undefined ? options.revalidate : getDefaultRevalidate(key);
+  const { params } = options;
 
   let url = `${BASE_URL}/${key}`;
 
@@ -123,7 +146,8 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
  * Generic API fetch function for single items
  */
 export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiSingleResponse<T>> {
-  const { params, revalidate = 0 } = options;
+  const revalidate = options.revalidate !== undefined ? options.revalidate : getDefaultRevalidate(key);
+  const { params } = options;
 
   let url = `${BASE_URL}/${key}`;
 
