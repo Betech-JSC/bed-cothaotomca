@@ -16,7 +16,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { locale, category, slug } = await params;
   const { getProductBySlugWithFallback } = await import('@/services/productService');
-  const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
+  const product = await getProductBySlugWithFallback(slug, { revalidate: 0, lang: locale });
 
   if (!product) return {};
 
@@ -83,7 +83,7 @@ export default async function ProductDetailsPage({
   const { locale, category, slug } = await params
 
   const { getProductBySlugWithFallback } = await import('@/services/productService');
-  const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
+  const product = await getProductBySlugWithFallback(slug, { revalidate: 0, lang: locale });
 
   if (!product) {
     notFound();

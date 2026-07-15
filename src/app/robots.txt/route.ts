@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSeoSettings } from '@/services/seoService';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 60; // Revalidate every minute
+export const revalidate = 0; // Disable cache
 
 export async function GET() {
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
@@ -20,7 +20,7 @@ export async function GET() {
     return new NextResponse(seo.robots_txt, {
       headers: { 
         'Content-Type': 'text/plain',
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30'
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
       },
     });
   }
@@ -41,7 +41,7 @@ Disallow: /*?*filter=*${sitemapUrl}`;
   return new NextResponse(defaultRobots, {
     headers: { 
       'Content-Type': 'text/plain',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=59'
+      'Cache-Control': 'no-store, no-cache, must-revalidate'
     },
   });
 }

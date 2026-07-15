@@ -318,7 +318,7 @@ export async function getProductCatalog(
 
     const result = await getApi<Product>("products", {
       params: apiParams,
-      revalidate: options.revalidate ?? 300,
+      revalidate: options.revalidate ?? 0,
     });
 
     const batch = (result.data || []).map(normalizeProduct);

@@ -5,7 +5,7 @@ import { getPolicies } from '@/services/policyService';
 import { slugify, getTranslation } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 60;
+export const revalidate = 0;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');

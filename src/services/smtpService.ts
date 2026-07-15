@@ -15,6 +15,6 @@ export interface SmtpSettings {
 }
 
 export async function getSmtpSettings(): Promise<SmtpSettings> {
-  const response = await getSingleApi<SmtpSettings>('smtp-settings', { revalidate: 3600 });
+  const response = await getSingleApi<SmtpSettings>('smtp-settings', { revalidate: 0 });
   return response.data;
 }

@@ -36,7 +36,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
     const signal = controller.signal;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const response = await fetch(url, { 
+    const fetchOptions: RequestInit = { 
       ...options, 
       signal,
       headers: {
@@ -46,7 +46,14 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         ...options.headers,
       }
-    });
+    };
+
+    // Force no-store cache when revalidate is 0 to ensure absolutely no caching
+    if (options.next?.revalidate === 0) {
+      fetchOptions.cache = 'no-store';
+    }
+
+    const response = await fetch(url, fetchOptions);
     clearTimeout(timeoutId);
 
     if (!response.ok) {
@@ -83,7 +90,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
  * Generic API fetch function for collections
  */
 export async function getApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiResponse<T>> {
-  const { params, revalidate = 300 } = options;
+  const { params, revalidate = 0 } = options;
 
   let url = `${BASE_URL}/${key}`;
 
@@ -116,7 +123,7 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
  * Generic API fetch function for single items
  */
 export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<string, string | number | boolean>, revalidate?: number } = {}): Promise<ApiSingleResponse<T>> {
-  const { params, revalidate = 300 } = options;
+  const { params, revalidate = 0 } = options;
 
   let url = `${BASE_URL}/${key}`;
 
