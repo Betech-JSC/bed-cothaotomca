@@ -40,7 +40,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
               modules={[Navigation]}
               spaceBetween={24}
               slidesPerView={3}
-              loop
+              loop={products.length > 1}
               navigation={{
                 prevEl: '.swiper-btn-prev',
                 nextEl: '.swiper-btn-next',

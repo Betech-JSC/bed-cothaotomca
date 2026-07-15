@@ -98,7 +98,7 @@ const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
             delay: 3000,
             disableOnInteraction: true,
           }}
-          loop
+          loop={items.length > 1}
         >
           {items.map((item, index) => (
             <SwiperSlide key={index} className="h-full w-full relative">

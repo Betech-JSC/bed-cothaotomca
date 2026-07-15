@@ -35,7 +35,7 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
             pagination={{
               clickable: true,
             }}
-            loop
+            loop={items.length > 1}
             centeredSlides={true}
             breakpoints={{
               320: {

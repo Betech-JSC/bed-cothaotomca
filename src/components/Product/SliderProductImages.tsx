@@ -20,7 +20,7 @@ const SliderProductImages: React.FC<SliderProductImagesProps> = ({ items }) => {
         modules={[Pagination]}
         spaceBetween={24}
         slidesPerView={1}
-        loop
+        loop={items.length > 1}
         pagination={{
           clickable: true,
         }}

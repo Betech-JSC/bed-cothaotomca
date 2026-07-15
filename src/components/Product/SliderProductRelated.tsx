@@ -24,7 +24,7 @@ const SliderProductRelated: React.FC<SliderProductRelatedProps> = ({ products })
             modules={[Navigation]}
             spaceBetween={24}
             slidesPerView={1}
-            loop
+            loop={products.length > 1}
             navigation={{
               prevEl: '.swiper-btn-prev',
               nextEl: '.swiper-btn-next',
