@@ -36,7 +36,7 @@ const SocialShare = () => {
           <ShareFacebook />
         </a>
         
-        <a
+        {/* <a
           href={shareLinks.zalo}
           target="_blank"
           rel="noopener noreferrer nofollow"
@@ -44,7 +44,7 @@ const SocialShare = () => {
           title="Zalo"
         >
           <ShareZalo />
-        </a>
+        </a> */}
 
         <a
           href={shareLinks.threads}
