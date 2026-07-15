@@ -10,7 +10,7 @@ interface ZoomableImageProps extends Omit<ImageProps, 'onClick'> {
 const ZoomableImage: React.FC<ZoomableImageProps> = ({ 
   src, 
   alt, 
-  containerClassName = "",
+  containerClassName = "w-full h-full",
   className = "",
   fill,
   ...props 
