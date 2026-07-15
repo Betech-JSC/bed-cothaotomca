@@ -58,7 +58,7 @@ export function formatRichTextContent(content: string | undefined | null): strin
       if (!decodedCaption.trim()) {
         return match;
       }
-      return `<figure style="display: flex; flex-direction: column; align-items: center; margin: 1.5rem auto; width: 100%; text-align: center;"><img${p1}data-caption="${caption}"${p3}><figcaption style="font-size: 0.875rem; color: #666; margin-top: 0.5rem; text-align: center; font-style: italic;">${decodedCaption}</figcaption></figure>`;
+      return `<figure style="display: flex; flex-direction: column; align-items: center; margin: 1.5rem auto; width: 100%; text-align: center;"><img${p1}data-caption="${caption}"${p3}><figcaption>${decodedCaption}</figcaption></figure>`;
     }
   );
   
