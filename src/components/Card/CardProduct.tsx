@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import React from "react";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatTitle, cleanTitleForSeo } from "@/lib/format";
 import { useTranslations } from "next-intl";
 
 interface CardProductProps {
@@ -41,7 +41,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         <div className="aspect-w-1 aspect-h-1 relative overflow-hidden">
           <Image
             src={imageSrc}
-            alt={item.image?.alt || item.title}
+            alt={item.image?.alt ? cleanTitleForSeo(item.image.alt) : cleanTitleForSeo(item.title)}
             priority={false}
             fill
             className="h-full w-full object-cover duration-500 ease-in-out lg:group-hover:scale-110"
@@ -55,7 +55,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
           className="block"
         >
           <h3 className={`title-1 max-md:text-[16px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 min-h-[36px] md:min-h-[44px] whitespace-pre-line`}>
-            {item.title}
+            {formatTitle(item.title)}
           </h3>
         </Link>
         <div className="body-2 text-gray-900 line-clamp-2 min-h-[32px] md:min-h-[36px] mt-1 mb-2">{item.description}</div>

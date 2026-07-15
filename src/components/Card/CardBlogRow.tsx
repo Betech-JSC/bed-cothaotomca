@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Link } from "@/i18n/i18n-navigation";
 import React from "react";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatTitle, cleanTitleForSeo } from "@/lib/format";
 
 type BlogItem = {
   image: {
@@ -28,11 +28,11 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
     <article className="group flex md:flex-row flex-col md:items-center gap-3 md:gap-3">
       {/* Image */}
       <div className="relative block max-w-full md:max-w-[175px] w-full md:flex-shrink-0">
-        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} aria-label={item.title}>
+        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} aria-label={cleanTitleForSeo(item.title)}>
           <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[12px] md:rounded-[8px]">
             <Image
               src={imageSrc}
-              alt={item.image?.alt || item.title}
+              alt={item.image?.alt ? cleanTitleForSeo(item.image.alt) : cleanTitleForSeo(item.title)}
               priority={false}
               fill
               className="h-full w-full object-cover duration-300 ease-in-out lg:group-hover:scale-105"
@@ -70,8 +70,8 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
         </div>
 
         <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block">
-          <h3 className="title-2 text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 md:line-clamp-3">
-            {item.title}
+          <h3 className="title-2 text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 md:line-clamp-3 whitespace-pre-line">
+            {formatTitle(item.title)}
           </h3>
         </Link>
       </div>
