@@ -145,9 +145,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
 
                   {/* Raw head scripts from CMS */}
                   {(seo.head_scripts || seo.headScripts) && (
-                    <head>
-                      <ServerScriptLoader html={seo.head_scripts || seo.headScripts} keyPrefix="head-custom" />
-                    </head>
+                    <ServerScriptLoader html={seo.head_scripts || seo.headScripts} keyPrefix="head-custom" />
                   )}
                 </>
               )}
