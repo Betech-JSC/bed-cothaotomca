@@ -17,7 +17,7 @@
   text-align: left;
   white-space: pre-wrap;
   word-wrap: break-word;
-  color: #333;
+  color: #000;
 
   // --- .ql-editor p, ol, pre, blockquote, h1-h6 ---
   p, ol, ul, pre, blockquote, h1, h2, h3, h4, h5, h6 {
@@ -258,6 +258,36 @@
   // --- Direction ---
   .ql-direction-rtl { direction: rtl; text-align: inherit; }
 
-  // --- Color & Background: Quill applies as inline styles, auto-rendered ---
-  // --- Font Family & Size: Quill applies as inline styles, auto-rendered ---
+  // --- Quill Preset Color Classes (quill.snow.css) ---
+  .ql-color-white { color: #fff; }
+  .ql-color-red { color: #e60000; }
+  .ql-color-orange { color: #f90; }
+  .ql-color-yellow { color: #ff0; }
+  .ql-color-green { color: #008a00; }
+  .ql-color-blue { color: #06c; }
+  .ql-color-purple { color: #93f; }
+
+  // --- Quill Preset Background Classes (quill.snow.css) ---
+  .ql-bg-black { background-color: #000; }
+  .ql-bg-red { background-color: #e60000; }
+  .ql-bg-orange { background-color: #f90; }
+  .ql-bg-yellow { background-color: #ff0; }
+  .ql-bg-green { background-color: #008a00; }
+  .ql-bg-blue { background-color: #06c; }
+  .ql-bg-purple { background-color: #93f; }
+
+  // --- Quill Preset Font Classes (quill.snow.css) ---
+  .ql-font-serif { font-family: Georgia, "Times New Roman", serif; }
+  .ql-font-monospace { font-family: Monaco, "Courier New", monospace; }
+
+  // --- Quill Preset Size Classes (quill.snow.css) ---
+  .ql-size-small { font-size: 0.75em; }
+  .ql-size-large { font-size: 1.5em; }
+  .ql-size-huge { font-size: 2.5em; }
+
+  // --- Inline styles from CMS are auto-rendered (color, background-color, font-family, font-size) ---
+  // Quill attributors/style/* chèn trực tiếp inline style trên HTML element,
+  // nên browser render đúng mà không cần thêm class nào ở đây.
+  // CHÚ Ý: Không dùng Tailwind class (text-*, bg-*) trên container .ql-content
+  // vì chúng sẽ ghi đè inline styles của CMS editor.
 }
