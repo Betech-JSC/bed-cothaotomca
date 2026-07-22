@@ -50,12 +50,31 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&#x27;/g, "'");
 }
 
+export function getBackendBaseUrl(): string {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://staging-cothaotomca.betech-digital.com/api/v1';
+  try {
+    const url = new URL(apiUrl);
+    return url.origin;
+  } catch (e) {
+    return 'https://staging-cothaotomca.betech-digital.com';
+  }
+}
+
 export function formatRichTextContent(content: string | undefined | null): string {
   if (!content) return '';
   
+  const backendOrigin = getBackendBaseUrl();
+  let processed = content;
+
+  // Prefix relative image URLs (/storage/uploads/... or /uploads/...) with backendOrigin
+  processed = processed.replace(/<img([^>]*?)src="(\/storage\/[^"]*|\/uploads\/[^"]*)"([^>]*?)>/gi, (match, p1, srcPath, p3) => {
+    const fullSrc = `${backendOrigin}${srcPath}`;
+    return `<img${p1}src="${fullSrc}"${p3}>`;
+  });
+
   const figures: string[] = [];
   // Tạm thời ẩn các khối figure đã tồn tại
-  let processed = content.replace(/<figure[^>]*?>[\s\S]*?<\/figure>/gi, (match) => {
+  processed = processed.replace(/<figure[^>]*?>[\s\S]*?<\/figure>/gi, (match) => {
     figures.push(match);
     return `__FIGURE_PLACEHOLDER_${figures.length - 1}__`;
   });
