@@ -53,11 +53,13 @@ function decodeHtmlEntities(str: string): string {
 export function getBackendBaseUrl(): string {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://staging-cothaotomca.betech-digital.com/api/v1';
   try {
-    const url = new URL(apiUrl);
-    return url.origin;
-  } catch (e) {
-    return 'https://staging-cothaotomca.betech-digital.com';
-  }
+    if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
+      const url = new URL(apiUrl);
+      return url.origin;
+    }
+  } catch (e) {}
+  
+  return 'https://staging-cothaotomca.betech-digital.com';
 }
 
 export function formatRichTextContent(content: string | undefined | null): string {
