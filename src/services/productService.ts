@@ -6,6 +6,7 @@ export interface Translation {
   id: number;
   locale: string;
   name: string;
+  custom_name?: string;
   description: string;
   product_id: number;
   seo_title?: string;
@@ -40,6 +41,7 @@ export interface Product {
   id: number;
   slug?: string;
   name: string;
+  custom_name?: string;
   description: string;
   price: string;
   image: string | null;
@@ -172,7 +174,7 @@ export function mapProductToDetailView(
   const translation = getTranslation(product.translations, locale) as
     | Translation
     | undefined;
-  const name = translation?.name || product.name;
+  const name = translation?.custom_name || product.custom_name || translation?.name || product.name;
   const description =
     translation?.description || product.description || "";
 
@@ -259,7 +261,7 @@ export function mapProductToCardItem(
   created_at: string;
 } {
   const translation = getTranslation(item.translations, locale) as Translation | undefined;
-  const name = translation?.name || item.name;
+  const name = translation?.custom_name || item.custom_name || translation?.name || item.name;
   const productCategory = item.category;
   const catTranslation = getTranslation(
     productCategory?.translations,

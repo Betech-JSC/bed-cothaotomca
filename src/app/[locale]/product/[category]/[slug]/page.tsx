@@ -1,68 +1,40 @@
 import Breadcrumb from "@/components/Common/Breadcrumb";
+import Image from "next/image";
 import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
-import SliderProductImages from "@/components/Product/SliderProductImages";
+import SliderProductRelated from "@/components/Product/SliderProductRelated";
 import { getTranslations } from "next-intl/server";
 import { Translation } from "@/services/productService";
 import { notFound } from "next/navigation";
 import { Metadata, ResolvingMetadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
-import { getTranslation } from "@/lib/format";
-import {
-  getProductBySlugWithFallback,
-  mapProductToDetailView,
-} from "@/services/productService";
+
+import { getTranslation, slugify } from "@/lib/format";
 
 export async function generateMetadata(
-  {
-    params,
-  }: { params: Promise<{ locale: string; category: string; slug: string }> },
-  parent: ResolvingMetadata,
+  { params }: { params: Promise<{ locale: string; category: string; slug: string }> },
+  parent: ResolvingMetadata
 ): Promise<Metadata> {
   const { locale, category, slug } = await params;
-  const product = await getProductBySlugWithFallback(slug, {
-    revalidate: 3600,
-    lang: locale,
-  });
+  const { getProductBySlugWithFallback } = await import('@/services/productService');
+  const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
 
   if (!product) return {};
 
   const translation = getTranslation<Translation>(product.translations, locale);
-  const productName = translation?.name || product.name || "";
-  const productDescription =
-    translation?.description || product.description || "";
+  const productName = translation?.custom_name || product.custom_name || translation?.name || product.name || "";
+  const productDescription = translation?.description || product.description || "";
 
-  const seoTitle =
-    translation?.seo_title ||
-    product.seo_title ||
-    product.meta_title ||
-    productName;
-  const seoDescription =
-    translation?.seo_description ||
-    product.seo_description ||
-    product.meta_description ||
-    productDescription;
-  const seoKeywords =
-    translation?.seo_keywords ||
-    product.seo_keywords ||
-    product.meta_keywords ||
-    "";
+  // Ưu tiên lấy SEO từ bản dịch, nếu không có thì lấy SEO ở cấp root, cuối cùng mới fallback về name/description mặc định
+  const seoTitle = translation?.seo_title || product.seo_title || product.meta_title || productName;
+  const seoDescription = translation?.seo_description || product.seo_description || product.meta_description || productDescription;
+  const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
 
-  const baseUrl = (
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    "https://staging-cothaotomca.betech-digital.com"
-  ).replace(/\/$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
   const canonicalUrl = `${baseUrl}/${locale}/product/${category}/${slug}`;
   const previousImages = (await parent).openGraph?.images || [];
-  const firstImage =
-    product.images?.[0]?.image ||
-    product.image ||
-    (previousImages.length > 0
-      ? typeof previousImages[0] === "string"
-        ? previousImages[0]
-        : (previousImages[0] as { url?: string }).url
-      : "/cover.jpg");
+  const productImage = product.image || (previousImages.length > 0 ? (typeof previousImages[0] === 'string' ? previousImages[0] : (previousImages[0] as any).url) : "/cover.jpg");
 
-  return {
+  const metadata = {
     title: seoTitle,
     description: seoDescription,
     keywords: seoKeywords,
@@ -79,34 +51,35 @@ export async function generateMetadata(
       url: canonicalUrl,
       images: [
         {
-          url: firstImage,
+          url: (productImage as any)?.url || productImage,
           width: 800,
           height: 600,
           alt: productName,
         },
       ],
-      type: "article",
+      type: 'article' as const,
     },
     twitter: {
-      card: "summary_large_image",
+      card: 'summary_large_image' as const,
       title: seoTitle,
       description: seoDescription,
-      images: [firstImage],
+      images: [(productImage as any)?.url || productImage],
     },
   };
+
+  return metadata;
 }
 
-export default async function ProductDetailsPage({
-  params,
-}: {
-  params: Promise<{ locale: string; category: string; slug: string }>;
-}) {
-  const { locale, category, slug } = await params;
 
-  const product = await getProductBySlugWithFallback(slug, {
-    revalidate: 3600,
-    lang: locale,
-  });
+export default async function ProductDetailsPage({
+  params
+}: {
+  params: Promise<{ locale: string; category: string; slug: string }>
+}) {
+  const { locale, category, slug } = await params
+
+  const { getProductBySlugWithFallback } = await import('@/services/productService');
+  const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
 
   if (!product) {
     notFound();
@@ -149,40 +122,73 @@ export default async function ProductDetailsPage({
 
   const breadcrumbs = [
     {
-      title: t("breadcrumb.product"),
+      title: t('breadcrumb.product'),
       href: "/product",
     },
-    ...(productData.category.slug
-      ? [
-        {
-          title: productData.category.title,
-          href: `/product/${productData.category.slug}`,
-        },
-      ]
-      : []),
+    ...(productData.category.slug ? [{
+      title: productData.category.title,
+      href: `/product/${productData.category.slug}`,
+    }] : []),
     {
       title: productData.title,
     },
   ];
 
-  const baseUrl = (
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    "https://staging-cothaotomca.betech-digital.com"
-  ).replace(/\/$/, "");
+  const relatedProducts = product.related_products?.map((p: any) => {
+    const translation = getTranslation(p.translations, locale) as any;
+    const name = translation?.custom_name || p.custom_name || translation?.name || p.name;
+    const relatedCategory = p.categories && p.categories.length > 0 ? p.categories[0] : p.category;
+    const catTranslation = getTranslation(relatedCategory?.translations, locale) as any;
+    const categoryName = catTranslation?.title || relatedCategory?.title || "Sản phẩm";
+
+    const productSlug = p.slug || slugify(name);
+    const categorySlug = relatedCategory?.slug || slugify(categoryName);
+
+    return {
+      id: p.id,
+      title: name,
+      slug: productSlug,
+      price: parseInt(p.price),
+      category: { title: categoryName, slug: categorySlug },
+      image: { url: p.image },
+      description: translation?.description || p.description,
+      created_at: p.created_at
+    };
+  }) || [];
 
   return (
     <main>
       <JsonLd
         type="Product"
         data={product}
-        url={`${baseUrl}/${locale}/product/${productData.category.slug}/${slug}`}
+        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '')}/${locale}/product/${productData.category.slug}/${slug}`}
       />
       <section className="md:py-[56px] pt-4 pb-12 xl:py-[60px]">
         <div className="container">
           <div className="grid grid-cols-12 gap-4 md:gap-6 xl:gap-8">
             <div className="col-span-full lg:col-span-6 xl:col-span-7 lg:pr-3 xl:pr-4">
               <div className="md:block hidden space-y-6 md:sticky md:top-28">
-                <SliderProductImages items={productData.images} />
+                {productData.images && productData.images.length > 0 ? <div className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
+                  <Image
+                    src={productData.image?.url || '/cover.jpg'}
+                    alt={productData.title || "image product"}
+                    fill
+                    className="object-cover w-full h-full"
+                  />
+                </div> : <>
+                  {productData.images.map((image: any, index: number) => {
+                    return (
+                      <div key={index} className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
+                        <Image
+                          src={image.url}
+                          alt={image.alt || image.title || "image product"}
+                          fill
+                          className="object-cover w-full h-full"
+                        />
+                      </div>
+                    );
+                  })}
+                </>}
               </div>
             </div>
             <div className="col-span-full lg:col-span-6 xl:col-span-5">
@@ -194,7 +200,7 @@ export default async function ProductDetailsPage({
           </div>
         </div>
       </section>
-      {/* related_products: BE KiotViet chưa có — ẩn block */}
+      {relatedProducts.length > 0 && <SliderProductRelated products={relatedProducts} />}
     </main>
-  );
+  )
 }

@@ -7,17 +7,15 @@ import Breadcrumb from '../Common/Breadcrumb'
 import CardProduct from '../Card/CardProduct'
 import Chevron from '../Icons/Chevron'
 import ProductFilter from './ProductFilter'
-import { mapProductToCardItem, type Product } from '@/services/productService'
-import { getCategorySlug, type Category } from '@/services/categoryService'
-import { type Ingredient } from '@/services/ingredientService'
+import { Product } from '@/services/productService'
+import { Category } from '@/services/categoryService'
+import { Ingredient } from '@/services/ingredientService'
 import { slugify } from '@/lib/format'
 import AnimateOnScroll from '../Animated/animated-appear'
 
-const PAGE_SIZE = 9
-
 interface ProductIndexPageProps {
-  category: string | null
-  selectedIngredients: string[]
+  category: string | null // Current slug in URL
+  selectedIngredients: string[] // Current slugs in URL
   products: Product[]
   categories: Category[]
   ingredients: Ingredient[]
@@ -27,8 +25,6 @@ interface ProductIndexPageProps {
     lastPage: number
     total: number
   }
-  /** Khi filter category/ingredient — phân trang trên danh sách đã lọc client-side */
-  clientSidePagination?: boolean
 }
 
 export default function ProductIndexPage({
@@ -39,7 +35,6 @@ export default function ProductIndexPage({
   ingredients,
   locale,
   pagination,
-  clientSidePagination = false,
 }: ProductIndexPageProps) {
   const router = useRouter()
   const t = useTranslations()
@@ -47,43 +42,72 @@ export default function ProductIndexPage({
 
   const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
     if (!translations || translations.length === 0) return undefined;
-    return translations.find(tr => tr.locale === currentLocale) ||
-      translations.find(tr => tr.locale.startsWith(currentLocale));
+    return translations.find(t => t.locale === currentLocale) ||
+      translations.find(t => t.locale.startsWith(currentLocale));
   };
 
-  const ingredientIdsInCatalog = useMemo(() => {
-    const ids = new Set<number>()
-    products.forEach(p => {
-      p.ingredients?.forEach(ing => ids.add(ing.id))
-    })
-    return ids
-  }, [products])
-
   const categoriesDisplay = useMemo(() => categories.map(cat => {
-    const translation = getTranslation(cat.translations, locale) as { title?: string } | undefined;
+    const translation = getTranslation(cat.translations, locale) as any;
     const title = translation?.title || cat.title || "";
     return {
       id: cat.id.toString(),
       title,
-      slug: getCategorySlug(cat, locale),
+      slug: locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title)
     }
   }), [categories, locale]);
 
-  const ingredientsDisplay = useMemo(() => ingredients
-    .filter(ing => ingredientIdsInCatalog.has(ing.id))
-    .map(ing => {
-      const translation = getTranslation(ing.translations, locale) as { name?: string } | undefined;
-      const name = translation?.name || ing.name || "";
-      return {
-        id: ing.id.toString(),
-        title: name,
-        slug: slugify(name),
-      }
-    }), [ingredients, locale, ingredientIdsInCatalog]);
+  const ingredientsDisplay = useMemo(() => ingredients.map(ing => {
+    const translation = getTranslation(ing.translations, locale) as any;
+    const name = translation?.name || ing.name || "";
+    return {
+      id: ing.id.toString(),
+      title: name,
+      slug: slugify(name)
+    }
+  }), [ingredients, locale]);
 
-  const productsDisplay = useMemo(() =>
-    products.map(p => mapProductToCardItem(p, locale)),
-  [products, locale]);
+  const productsDisplay = useMemo(() => products.map(p => {
+    const translation = getTranslation(p.translations, locale) as any;
+    const name = translation?.custom_name || p.custom_name || translation?.name || p.name;
+    
+    // Get category from categories array (new structure) or category object (old structure)
+    const productCategory = p.categories && p.categories.length > 0 
+      ? p.categories[0] 
+      : p.category;
+    
+    const catTranslation = getTranslation(productCategory?.translations, locale) as any;
+    const categoryName = catTranslation?.title || productCategory?.title || "";
+    const categoryId = productCategory?.id?.toString() || "";
+    const categorySlug = locale === 'vi' ? (productCategory?.slug || slugify(categoryName)) : slugify(categoryName);
+    
+    // Store all category slugs for filtering (support multi-category)
+    const allCategorySlugs = p.categories && p.categories.length > 0
+      ? p.categories.map(cat => {
+          const trans = getTranslation(cat.translations, locale) as any;
+          const title = trans?.title || cat.title || "";
+          return locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title);
+        })
+      : [categorySlug];
+
+    const productSlug = p.slug || slugify(name);
+
+    return {
+      id: p.id,
+      title: name,
+      slug: productSlug,
+      price: parseFloat(p.price as string) || 0,
+      category: { id: categoryId, title: categoryName, slug: categorySlug },
+      allCategorySlugs, // Add this for multi-category filtering
+      ingredientIds: p.ingredients?.map(ing => ing.id.toString()) || [],
+      variants: p.variants,
+      image: {
+        url: p.image || "/cover.jpg",
+        alt: name
+      },
+      description: translation?.description || p.description || "",
+      created_at: p.created_at || '2024-03-15T00:00:00Z',
+    };
+  }), [products, locale]);
 
   const pushWithFilters = (newCategorySlug: string | null, newIngredientSlugs: string[], newPage: number = 1) => {
     setIsFilterOpen(false)
@@ -128,7 +152,6 @@ export default function ProductIndexPage({
   const clearCategory = () => pushWithFilters(null, selectedIngredients, 1)
   const clearIngredients = () => pushWithFilters(category, [], 1)
   const clearAll = () => pushWithFilters(null, [], 1)
-
   const currentCategory = useMemo(() => {
     return categoriesDisplay.find(cat => cat.slug === category)
   }, [category, categoriesDisplay])
@@ -145,7 +168,11 @@ export default function ProductIndexPage({
 
   const filteredProductsSorted = useMemo(() => {
     return productsDisplay.filter(p => {
+      // Category match: if no category in URL, match all. 
+      // Otherwise, check if ANY of the product's categories matches the URL slug.
       const catMatch = !category || p.allCategorySlugs.includes(category)
+
+      // Ingredient match: the product must have ALL selected ingredients.
       const ingMatch =
         selectedIngredients.length === 0 ||
         selectedIngredients.every(slug => {
@@ -155,37 +182,6 @@ export default function ProductIndexPage({
       return catMatch && ingMatch
     })
   }, [category, selectedIngredients, productsDisplay, ingredientsDisplay])
-
-  const effectivePagination = useMemo(() => {
-    const total = filteredProductsSorted.length
-    const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE))
-    if (!clientSidePagination) {
-      return {
-        currentPage: pagination.currentPage,
-        lastPage: pagination.lastPage,
-        total: pagination.total,
-      }
-    }
-    return {
-      currentPage: Math.min(pagination.currentPage, lastPage),
-      lastPage,
-      total,
-    }
-  }, [
-    clientSidePagination,
-    filteredProductsSorted.length,
-    pagination,
-  ])
-
-  const visibleProducts = useMemo(() => {
-    if (!clientSidePagination) return filteredProductsSorted
-    const start = (effectivePagination.currentPage - 1) * PAGE_SIZE
-    return filteredProductsSorted.slice(start, start + PAGE_SIZE)
-  }, [
-    clientSidePagination,
-    filteredProductsSorted,
-    effectivePagination.currentPage,
-  ])
 
   return (
     <section className="py-[60px]">
@@ -227,7 +223,7 @@ export default function ProductIndexPage({
             clearIngredients={clearIngredients}
           />
           <div className="flex-1 space-y-12">
-            {visibleProducts.length === 0 ? (
+            {filteredProductsSorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl border border-dashed border-gray-200 space-y-8">
                 <div className="space-y-3">
                   <h2 className="headline-1 text-primary">{t('common.no_products_found')}</h2>
@@ -242,17 +238,17 @@ export default function ProductIndexPage({
               </div>
             ) : (
               <AnimateOnScroll animate="slideup" delay={300} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-8">
-                {visibleProducts.map(product => (
-                  <CardProduct key={product.id} item={product} isHot={false} />
+                {filteredProductsSorted.map(product => (
+                  <CardProduct key={product.id} item={product} />
                 ))}
               </AnimateOnScroll>
             )}
 
-            {effectivePagination.lastPage > 1 && (
+            {pagination.lastPage > 1 && (
               <div className="flex justify-center items-center gap-2">
                 <button
-                  onClick={() => handlePageChange(effectivePagination.currentPage - 1)}
-                  disabled={effectivePagination.currentPage === 1}
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
                   className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer group"
                 >
                   <div className="rotate-90">
@@ -261,26 +257,28 @@ export default function ProductIndexPage({
                 </button>
 
                 <div className="flex gap-2">
-                  {Array.from({ length: effectivePagination.lastPage }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => handlePageChange(p)}
-                      className={`
+                  {Array.from({ length: pagination.lastPage }, (_, i) => i + 1).map((p) => {
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => handlePageChange(p)}
+                        className={`
                           size-12 flex items-center justify-center rounded-full transition-all duration-300 title-2 cursor-pointer
-                          ${effectivePagination.currentPage === p
-                          ? 'bg-secondary text-yellow'
-                          : 'bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow'
-                        }
+                          ${pagination.currentPage === p
+                            ? 'bg-secondary text-yellow'
+                            : 'bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow'
+                          }
                         `}
-                    >
-                      {p}
-                    </button>
-                  ))}
+                      >
+                        {p}
+                      </button>
+                    )
+                  })}
                 </div>
 
                 <button
-                  onClick={() => handlePageChange(effectivePagination.currentPage + 1)}
-                  disabled={effectivePagination.currentPage === effectivePagination.lastPage}
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.lastPage}
                   className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer disabled:cursor-not-allowed group"
                 >
                   <div className="-rotate-90">
