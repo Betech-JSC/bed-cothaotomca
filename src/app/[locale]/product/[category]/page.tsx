@@ -71,7 +71,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           categories={categories}
           ingredients={ingredients}
           locale={locale}
-          clientSidePagination
           pagination={{ currentPage: 1, lastPage: 1, total: 0 }}
         />
       </main>
@@ -88,7 +87,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         categories={categories}
         ingredients={ingredients}
         locale={locale}
-        clientSidePagination
         pagination={{
           currentPage,
           lastPage: Math.max(1, Math.ceil(catalog.length / PAGE_SIZE)),

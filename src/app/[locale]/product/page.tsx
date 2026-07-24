@@ -65,7 +65,6 @@ export default async function ProductPage({ params, searchParams }: Props) {
         categories={categoriesData.data}
         ingredients={ingredientsData.data}
         locale={locale}
-        clientSidePagination
         pagination={{
           currentPage: Math.min(currentPage, lastPage),
           lastPage,
