@@ -23,6 +23,26 @@ interface OrderItem {
   created_at: string;
   status: string;
   total: string;
+  payment_status?: string;
+  subtotal?: string;
+  discount?: string;
+  delivery_type?: string;
+  delivery?: {
+    receiver: string;
+    contact_number: string;
+    address: string;
+    price: string;
+  } | null;
+  payment?: {
+    method: string;
+    total_payment: string;
+  } | null;
+  items?: {
+    product_name: string;
+    quantity: number;
+    price: string;
+    note: string | null;
+  }[];
 }
 
 const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: ProfileDashboardProps) => {
@@ -36,6 +56,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   });
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [expandedOrderCode, setExpandedOrderCode] = useState<string | null>(null);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [refreshingPoints, setRefreshingPoints] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -423,69 +444,194 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   return (
                     <div
                       key={idx}
-                      className="bg-gray-50/50 hover:bg-gray-50 border border-gray-100 rounded-[16px] p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all"
+                      className="bg-gray-50/50 hover:bg-gray-50 border border-gray-100 rounded-[16px] p-5 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-sm"
+                      onClick={() => setExpandedOrderCode(expandedOrderCode === order.order_code ? null : order.order_code)}
                     >
-                      <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-                        {/* Order Code */}
-                        <div>
-                          <span className="text-[11px] font-bold text-gray-400 block tracking-wider">
-                            {t("order_code")}
-                          </span>
-                          <span className="text-secondary font-bold text-[15px]">
-                            {order.order_code}
-                          </span>
+                      {/* Main row */}
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
+                        <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+                          {/* Order Code */}
+                          <div>
+                            <span className="text-[11px] font-bold text-gray-400 block tracking-wider">
+                              {t("order_code")}
+                            </span>
+                            <span className="text-secondary font-bold text-[15px]">
+                              {order.order_code}
+                            </span>
+                          </div>
+
+                          {/* Order Date */}
+                          <div>
+                            <span className="text-[11px] font-bold text-gray-400 block tracking-wider">
+                              {t("order_date")}
+                            </span>
+                            <span className="text-primary font-bold text-[15px]">
+                              {formatDate(order.created_at)}
+                            </span>
+                          </div>
+
+                          {/* Order Status */}
+                          <div>
+                            <span className="text-[11px] font-bold text-gray-400 block tracking-wider mb-0.5">
+                              {t("status")}
+                            </span>
+                            {mappedStatus === "shipping" && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#CD4829] text-white text-[12px] font-bold">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="1" y="3" width="15" height="13" />
+                                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                  <circle cx="5.5" cy="18.5" r="2.5" />
+                                  <circle cx="18.5" cy="18.5" r="2.5" />
+                                </svg>
+                                {t("status_shipping")}
+                              </span>
+                            )}
+                            {mappedStatus === "processing" && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#A25F4E] text-white text-[12px] font-bold">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10" />
+                                  <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                                {t("status_processing")}
+                              </span>
+                            )}
+                            {mappedStatus === "completed" && (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-primary text-[12px] font-bold">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                {t("status_completed")}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Payment Status */}
+                          <div>
+                            <span className="text-[11px] font-bold text-gray-400 block tracking-wider mb-0.5">
+                              {t("payment_status")}
+                            </span>
+                            {order.payment_status === "paid" && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-600 text-white text-[12px] font-bold">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                {t("payment_status_paid")}
+                              </span>
+                            )}
+                            {order.payment_status === "pending" && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500 text-white text-[12px] font-bold">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10" />
+                                  <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                                {t("payment_status_pending")}
+                              </span>
+                            )}
+                            {order.payment_status === "expired" && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 text-white text-[12px] font-bold">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                                {t("payment_status_expired")}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
-                        {/* Order Date */}
-                        <div>
-                          <span className="text-[11px] font-bold text-gray-400 block tracking-wider">
-                            {t("order_date")}
-                          </span>
-                          <span className="text-primary font-bold text-[15px]">
-                            {formatDate(order.created_at)}
-                          </span>
-                        </div>
-
-                        {/* Order Status */}
-                        <div>
-                          <span className="text-[11px] font-bold text-gray-400 block tracking-wider mb-0.5">
-                            {t("status")}
-                          </span>
-                          {mappedStatus === "shipping" && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#CD4829] text-white text-[12px] font-bold">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="1" y="3" width="15" height="13" />
-                                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                                <circle cx="5.5" cy="18.5" r="2.5" />
-                                <circle cx="18.5" cy="18.5" r="2.5" />
-                              </svg>
-                              {t("status_shipping")}
-                            </span>
-                          )}
-                          {mappedStatus === "processing" && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#A25F4E] text-white text-[12px] font-bold">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10" />
-                                <polyline points="12 6 12 12 16 14" />
-                              </svg>
-                              {t("status_processing")}
-                            </span>
-                          )}
-                          {mappedStatus === "completed" && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-primary text-[12px] font-bold">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                              {t("status_completed")}
-                            </span>
-                          )}
+                        {/* Price & Toggle chevron */}
+                        <div className="flex items-center gap-3 self-end md:self-auto">
+                          <div className="text-[20px] font-bold text-primary">
+                            {formatPrice(order.total)}
+                          </div>
+                          <svg
+                            className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${expandedOrderCode === order.order_code ? "rotate-180" : ""}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
                         </div>
                       </div>
 
-                      {/* Order Price */}
-                      <div className="text-[20px] font-bold text-primary self-end md:self-auto">
-                        {formatPrice(order.total)}
-                      </div>
+                      {/* Detail Panel */}
+                      {expandedOrderCode === order.order_code && (
+                        <div className="mt-2 pt-5 border-t border-gray-200/80 grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm" onClick={(e) => e.stopPropagation()}>
+                          {/* Column 1: Items List */}
+                          <div className="space-y-3">
+                            <h4 className="font-bold text-primary border-b border-gray-100 pb-1.5 text-[14px]">
+                              Chi tiết món ăn
+                            </h4>
+                            <div className="space-y-3 divide-y divide-gray-100 max-h-[250px] overflow-y-auto pr-1">
+                              {order.items?.map((item, itemIdx) => (
+                                <div key={itemIdx} className={`flex justify-between items-start text-gray-700 ${itemIdx > 0 ? "pt-2.5" : ""}`}>
+                                  <div className="flex-1">
+                                    <span className="font-semibold text-secondary text-[13px]">{item.product_name}</span>
+                                    {item.note && <span className="block text-[11px] text-gray-400 mt-0.5">Ghi chú: {item.note}</span>}
+                                  </div>
+                                  <div className="w-12 text-center text-gray-500 text-[13px]">x{item.quantity}</div>
+                                  <div className="w-24 text-right font-semibold text-primary text-[13px]">{formatPrice(item.price)}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Column 2: Delivery & Summary */}
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <h4 className="font-bold text-primary border-b border-gray-100 pb-1.5 text-[14px]">
+                                Thông tin giao nhận
+                              </h4>
+                              <div className="grid grid-cols-3 gap-y-1.5 text-gray-600 text-[12px] leading-relaxed">
+                                <span className="text-gray-400 font-semibold">Hình thức:</span>
+                                <span className="col-span-2 font-bold text-secondary">
+                                  {order.delivery_type === "pickup" ? "Nhận tại quán" : "Giao hàng tận nơi"}
+                                </span>
+                                {order.delivery_type === "delivery" && order.delivery && (
+                                  <>
+                                    <span className="text-gray-400 font-semibold">Người nhận:</span>
+                                    <span className="col-span-2">{order.delivery.receiver}</span>
+                                    <span className="text-gray-400 font-semibold">Điện thoại:</span>
+                                    <span className="col-span-2">{order.delivery.contact_number}</span>
+                                    <span className="text-gray-400 font-semibold">Địa chỉ:</span>
+                                    <span className="col-span-2">{order.delivery.address}</span>
+                                  </>
+                                )}
+                                <span className="text-gray-400 font-semibold">Thanh toán:</span>
+                                <span className="col-span-2 font-bold text-secondary">
+                                  {order.payment?.method === "TRANSFER" ? "Chuyển khoản (SePay)" : order.payment?.method || "Chuyển khoản"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Order Totals Summary */}
+                            <div className="bg-gray-50/80 p-3 rounded-[12px] space-y-1.5 text-[12px] border border-gray-100">
+                              <div className="flex justify-between text-gray-500">
+                                <span>Tạm tính:</span>
+                                <span>{formatPrice(order.subtotal || "0")}</span>
+                              </div>
+                              {parseFloat(order.discount || "0") > 0 && (
+                                <div className="flex justify-between text-red-500">
+                                  <span>Giảm giá:</span>
+                                  <span>-{formatPrice(order.discount || "0")}</span>
+                                </div>
+                              )}
+                              {order.delivery_type === "delivery" && order.delivery && parseFloat(order.delivery.price || "0") > 0 && (
+                                <div className="flex justify-between text-gray-500">
+                                  <span>Phí vận chuyển:</span>
+                                  <span>+{formatPrice(order.delivery.price)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between font-bold text-sm text-primary pt-2 border-t border-dashed border-gray-200 mt-2">
+                                <span>Tổng cộng:</span>
+                                <span>{formatPrice(order.total)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })
