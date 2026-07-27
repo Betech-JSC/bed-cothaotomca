@@ -96,10 +96,28 @@
     "order_note": "Order note"
   },
   "orderSuccess": {
-    "title": "Order placed successfully",
-    "description": "Thank you! We have received your order and will contact you soon.",
+    "title": "Order placed successfully!",
+    "description": "Thank you, {name}, for trusting Cô Thảo Tôm Cá. Your order is being prepared and will be delivered to you at the latest by {time} today.",
+    "description_pickup": "Thank you, {name}, for trusting Cô Thảo Tôm Cá. Your order is being prepared and you can pick it up at the latest by {time} today.",
+    "hotline_message": "If you have not received your order by the above time, please contact our hotline {hotline} immediately for assistance!",
+    "hotline_message_pickup": "If you have not picked up your order by the above time, please contact our hotline {hotline} immediately for assistance!",
     "sync_warning": "Your order is saved. POS sync is being retried — keep your order code below.",
-    "continue_shopping": "Continue shopping"
+    "continue_shopping": "Continue shopping",
+    "receiver": "Receiver",
+    "phone": "Phone number",
+    "email": "Email",
+    "payment_method": "Payment method",
+    "delivery_address": "Delivery address",
+    "pickup_address": "Pickup address",
+    "subtotal": "Subtotal",
+    "shipping_fee": "Shipping fee",
+    "discount": "Discount",
+    "total_payment": "Total payment",
+    "receipt_info": "Receipt information",
+    "payment_cod": "Cash on delivery (COD)",
+    "payment_transfer": "Bank transfer (TRANSFER)",
+    "loading": "Loading order details...",
+    "error_load": "Could not load order details. Please try again or contact our hotline."
   },
   "home": {
     "section-2": {

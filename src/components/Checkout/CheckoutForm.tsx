@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/routing";
+import { useRouter, Link } from "@/i18n/routing";
 import { formatPrice } from "@/lib/format";
 import {
   calcOrderTotal,
@@ -16,6 +16,8 @@ import {
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+import MobileCartFlow from "../Header/MobileCartFlow";
 
 export interface CheckoutOrderItem {
   productId: number;
@@ -29,7 +31,7 @@ export interface CheckoutOrderItem {
 }
 
 interface CheckoutFormProps {
-  order: CheckoutOrderItem;
+  order: CheckoutOrderItem | null;
   config: CheckoutConfig;
 }
 
@@ -61,6 +63,30 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const { user } = useAuth();
   const t = useTranslations("checkout");
   const router = useRouter();
+  const { cartItems, updateQuantity, removeFromCart, clearCart, addToCart } = useCart();
+  const isCartCheckout = !order;
+
+  // Sync direct single-product checkout to cart on mobile
+  useEffect(() => {
+    if (order) {
+      const alreadyInCart = cartItems.some(
+        (item) => item.productId === order.productId && item.variant === order.variant
+      );
+      if (!alreadyInCart) {
+        addToCart({
+          id: `${order.slug}-${order.variant}`,
+          productId: order.productId,
+          productCode: order.productCode,
+          slug: order.slug,
+          categorySlug: order.categorySlug,
+          title: order.title,
+          imageUrl: order.imageUrl,
+          variant: order.variant,
+          unitPrice: order.unitPrice,
+        }, 1);
+      }
+    }
+  }, [order, addToCart, cartItems]);
 
   // Log branches list in browser F12 developer console for easy verification
   useMemo(() => {
@@ -117,14 +143,20 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
   const [validatingVoucher, setValidatingVoucher] = useState(false);
+  const [confirmInfo, setConfirmInfo] = useState(false);
 
   // Sau khi tạo đơn thành công → chuyển sang màn hình QR
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
 
-  const lineItems = useMemo(
-    () => [{ price: order.unitPrice, quantity, discount: 0 }],
-    [order.unitPrice, quantity],
-  );
+  const lineItems = useMemo(() => {
+    if (isCartCheckout) {
+      return cartItems.map(item => ({ price: item.unitPrice, quantity: item.quantity, discount: 0 }));
+    }
+    if (order) {
+      return [{ price: order.unitPrice, quantity, discount: 0 }];
+    }
+    return [];
+  }, [isCartCheckout, cartItems, order, quantity]);
 
   const { subtotal, shipping } = calcOrderTotal(
     lineItems,
@@ -206,6 +238,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     setError(null);
     setFieldErrors({});
 
+    if (isCartCheckout && cartItems.length === 0) {
+      setError("Giỏ hàng của bạn đang trống.");
+      setLoading(false);
+      return;
+    }
+
     // Validate custom delivery inputs
     if (deliveryType === "delivery") {
       const errs: Record<string, string> = {};
@@ -226,7 +264,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     const idempotencyKey =
       typeof crypto !== "undefined" && crypto.randomUUID
         ? crypto.randomUUID()
-        : `${Date.now()}-${order.productId}`;
+        : `${Date.now()}-${isCartCheckout ? "cart" : order?.productId}`;
 
     try {
       const result = await createOrder({
@@ -250,25 +288,45 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   : undefined,
             }
             : null,
-        items: [
-          {
-            product_id: order.productId,
-            product_code: order.productCode,
-            product_name: order.title,
-            quantity,
-            price: order.unitPrice,
-            discount: 0,
-            note: itemNote.trim() || undefined,
-          },
-        ],
+        items: isCartCheckout
+          ? cartItems.map((item) => ({
+              product_id: item.productId,
+              product_code: item.productCode,
+              product_name: item.title,
+              quantity: item.quantity,
+              price: item.unitPrice,
+              discount: 0,
+              note: undefined,
+            }))
+          : order
+          ? [
+              {
+                product_id: order.productId,
+                product_code: order.productCode,
+                product_name: order.title,
+                quantity,
+                price: order.unitPrice,
+                discount: 0,
+                note: itemNote.trim() || undefined,
+              },
+            ]
+          : [],
         discount: voucherDiscount,
-        description:
-          [
-            description.trim(),
-            order.variant !== order.title ? `Size: ${order.variant}` : "",
-          ]
-            .filter(Boolean)
-            .join(" | ") || undefined,
+        description: isCartCheckout
+          ? [
+              description.trim(),
+              cartItems.map((item) => `${item.title} (${item.variant}) x${item.quantity}`).join(", "),
+            ]
+              .filter(Boolean)
+              .join(" | ") || undefined
+          : order
+          ? [
+              description.trim(),
+              order.variant !== order.title ? `Size: ${order.variant}` : "",
+            ]
+              .filter(Boolean)
+              .join(" | ") || undefined
+          : undefined,
         is_apply_voucher: !!appliedVoucher,
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
         voucher: appliedVoucher
@@ -281,6 +339,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         payment_method: paymentMethod, // CASH (COD) or TRANSFER (SePay)
         branch_id: selectedBranchId,
       });
+
+      if (isCartCheckout) {
+        clearCart();
+      }
 
       if (paymentMethod === "COD") {
         // COD order is immediately synced. Go directly to success screen!
@@ -330,7 +392,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // ── Form checkout ─────────────────────────────────────────────────────────
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
+    <>
+      {/* Mobile step-by-step cart & checkout flow */}
+      <div className="xl:hidden">
+        <MobileCartFlow inline />
+      </div>
+
+      {/* Desktop side-by-side checkout layout */}
+      <div className="hidden xl:grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
 
       {/* CỘT TRÁI: THÔNG TIN LIÊN HỆ & GIAO HÀNG */}
       <div className="lg:col-span-7">
@@ -620,89 +689,170 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           </h2>
 
           {/* Hộp danh sách sản phẩm */}
-          <div className="space-y-4">
-            <div className="flex gap-4 items-start py-1">
-              {/* Ảnh */}
-              <div className="relative size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
-                <Image
-                  src={order.imageUrl}
-                  alt={order.title}
-                  fill
-                  className="object-cover"
-                />
-              </div>
+          <div className="space-y-4 divide-y divide-gray-100">
+            {isCartCheckout ? (
+              cartItems.length === 0 ? (
+                <div className="py-8 text-center space-y-2">
+                  <p className="body-2 text-gray-500 font-medium">Giỏ hàng của bạn đang trống</p>
+                  <Link
+                    href="/product"
+                    className="inline-block text-xs font-semibold text-secondary hover:underline"
+                  >
+                    Tiếp tục mua sắm
+                  </Link>
+                </div>
+              ) : (
+                cartItems.map((item) => (
+                  <div key={item.id} className="flex gap-4 items-start py-3 first:pt-0 last:pb-0">
+                    {/* Ảnh */}
+                    <div className="relative size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
 
-              {/* Thông tin ở giữa */}
-              <div className="flex-1 min-w-0 space-y-2">
-                <div className="flex justify-between items-start gap-2">
-                  <p className="title-3 font-display text-primary font-bold whitespace-pre-line">
-                    {order.title}
-                  </p>
-                  <p className="title-3 text-secondary font-bold shrink-0">
-                    {formatPrice(order.unitPrice)}
-                  </p>
+                    {/* Thông tin ở giữa */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex justify-between items-start gap-2">
+                        <p className="title-3 font-display text-primary font-bold whitespace-pre-line">
+                          {item.title}
+                        </p>
+                        <p className="title-3 text-secondary font-bold shrink-0">
+                          {formatPrice(item.unitPrice)}
+                        </p>
+                      </div>
+
+                      <p className="body-3 text-gray-500 font-medium">
+                        Size: {item.variant}
+                      </p>
+
+                      {/* Dòng điều khiển: Số lượng & Xóa */}
+                      <div className="flex items-center justify-between pt-1">
+                        {/* Tăng giảm số lượng kiểu Pill */}
+                        <div className="flex items-center border border-gray-200 rounded-full px-2 py-1 bg-white">
+                          <button
+                            type="button"
+                            aria-label="Decrease quantity"
+                            className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer flex justify-center"
+                            disabled={item.quantity <= 1}
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          >
+                            −
+                          </button>
+                          <span className="w-10 text-center body-2 text-primary font-bold">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label="Increase quantity"
+                            className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer flex justify-center"
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Nút Xóa */}
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item.id)}
+                          className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold cursor-pointer"
+                        >
+                          <span>🗑</span>
+                          <span>Xóa</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )
+            ) : order ? (
+              <div className="flex gap-4 items-start py-1">
+                {/* Ảnh */}
+                <div className="relative size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
+                  <Image
+                    src={order.imageUrl}
+                    alt={order.title}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
 
-                <p className="body-3 text-gray-500 font-medium">
-                  Size: {order.variant}
-                </p>
-
-                {/* Dòng điều khiển: Số lượng & Xóa */}
-                <div className="flex items-center justify-between pt-1">
-                  {/* Tăng giảm số lượng kiểu Pill */}
-                  <div className="flex items-center border border-gray-200 rounded-full px-2 py-1 bg-white">
-                    <button
-                      type="button"
-                      aria-label="Decrease quantity"
-                      className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30"
-                      disabled={quantity <= 1}
-                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    >
-                      −
-                    </button>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={quantity === 0 ? "" : quantity}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, "");
-                        if (val === "") {
-                          setQuantity(0);
-                        } else {
-                          const parsed = parseInt(val, 10);
-                          setQuantity(parsed);
-                        }
-                      }}
-                      onBlur={() => {
-                        if (quantity < 1) {
-                          setQuantity(1);
-                        }
-                      }}
-                      className="w-10 text-center body-2 text-primary font-bold focus:outline-none bg-transparent"
-                    />
-                    <button
-                      type="button"
-                      aria-label="Increase quantity"
-                      className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm"
-                      onClick={() => setQuantity((q) => q + 1)}
-                    >
-                      +
-                    </button>
+                {/* Thông tin ở giữa */}
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex justify-between items-start gap-2">
+                    <p className="title-3 font-display text-primary font-bold whitespace-pre-line">
+                      {order.title}
+                    </p>
+                    <p className="title-3 text-secondary font-bold shrink-0">
+                      {formatPrice(order.unitPrice)}
+                    </p>
                   </div>
 
-                  {/* Nút Xóa */}
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(1)} // Reset về 1 hoặc tương ứng
-                    className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold"
-                  >
-                    <span>🗑</span>
-                    <span>Xóa</span>
-                  </button>
+                  <p className="body-3 text-gray-500 font-medium">
+                    Size: {order.variant}
+                  </p>
+
+                  {/* Dòng điều khiển: Số lượng & Xóa */}
+                  <div className="flex items-center justify-between pt-1">
+                    {/* Tăng giảm số lượng kiểu Pill */}
+                    <div className="flex items-center border border-gray-200 rounded-full px-2 py-1 bg-white">
+                      <button
+                        type="button"
+                        aria-label="Decrease quantity"
+                        className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer flex justify-center"
+                        disabled={quantity <= 1}
+                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      >
+                        −
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={quantity === 0 ? "" : quantity}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          if (val === "") {
+                            setQuantity(0);
+                          } else {
+                            const parsed = parseInt(val, 10);
+                            setQuantity(parsed);
+                          }
+                        }}
+                        onBlur={() => {
+                          if (quantity < 1) {
+                            setQuantity(1);
+                          }
+                        }}
+                        className="w-10 text-center body-2 text-primary font-bold focus:outline-none bg-transparent"
+                      />
+                      <button
+                        type="button"
+                        aria-label="Increase quantity"
+                        className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer flex justify-center"
+                        onClick={() => setQuantity((q) => q + 1)}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Nút Xóa */}
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(1)}
+                      className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold cursor-pointer"
+                    >
+                      <span>🗑</span>
+                      <span>Xóa</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : null}
           </div>
 
           {/* Hộp nhập mã giảm giá */}
@@ -783,11 +933,49 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             )}
           </div>
 
+          {/* Confirm details check checkbox */}
+          <div className="py-2.5">
+            <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-gray-700 select-none">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={confirmInfo}
+                  onChange={(e) => setConfirmInfo(e.target.checked)}
+                  className="sr-only"
+                />
+                <div
+                  className={`w-5 h-5 rounded-[6px] border flex items-center justify-center transition-all ${
+                    confirmInfo
+                      ? "bg-[#142A68] border-[#142A68] text-white"
+                      : "border-gray-300 bg-white"
+                  }`}
+                >
+                  {confirmInfo && (
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      strokeWidth="3.5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <span>Tôi xác nhận thông tin giao hàng trên là chính xác</span>
+            </label>
+          </div>
+
           {/* Nút submit dạng Pill đỏ cam (Terracotta red) */}
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo}
             className="w-full bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none"
           >
             {loading ? "Đang xử lý..." : "Thanh toán"}
@@ -795,5 +983,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         </div>
       </div>
     </div>
+  </>
   );
 }

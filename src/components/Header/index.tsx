@@ -8,10 +8,14 @@ import LanguageSwitcher from "../LanguageSwitcher";
 import Search from "../Icons/Search";
 import User from "../Icons/User";
 import Hotline from "../Icons/Hotline";
+import Cart from "../Icons/Cart";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
 import SearchSuggestions from "./SearchSuggestions";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+import CartPopup from "./CartPopup";
+import MobileCartFlow from "./MobileCartFlow";
 
 type LinkHref = ComponentProps<typeof Link>["href"];
 
@@ -40,6 +44,8 @@ const Header = () => {
   const settings = useGeneralSettings();
   const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
   const hotlineClean = hotline.replace(/\s/g, "");
+  const { isCartOpen, setIsCartOpen, totalItems } = useCart();
+  const toggleCart = () => setIsCartOpen(!isCartOpen);
 
   const mainNavLeft: NavItem[] = [
     { label: t("common.about"), href: `/about`, i18nKey: "about" },
@@ -229,17 +235,23 @@ const Header = () => {
             <li>
               <LanguageSwitcher />
             </li>
-            <li>
-              <a
-                href={`tel:${hotlineClean}`}
-                className="border-yellow text-yellow lg:hover:border-secondary lg:hover:text-secondary flex items-center gap-1.5 rounded-full border px-3 py-1 duration-300 ease-in-out"
+            <li className="relative flex items-center">
+              <button
+                id="cart-toggle-btn"
+                onClick={toggleCart}
+                className="text-yellow lg:hover:text-secondary flex items-center gap-2.5 duration-300 ease-in-out cursor-pointer relative py-2"
               >
-                <Hotline />
-                <div>
-                  <div className="body-4 font-semibold uppercase">Hotline</div>
-                  <div className="label-1 font-semibold">{hotline}</div>
+                <div className="relative">
+                  <Cart />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-2.5 -right-2.5 bg-secondary text-white text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center">
+                      {totalItems}
+                    </span>
+                  )}
                 </div>
-              </a>
+                <span className="title-3 font-display whitespace-nowrap">Đặt hàng</span>
+              </button>
+              <CartPopup onClose={() => setIsCartOpen(false)} />
             </li>
           </ul>
         </nav>
@@ -405,6 +417,11 @@ const MobileMenu = ({
   const settings = useGeneralSettings();
   const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
   const hotlineClean = hotline.replace(/\s/g, "");
+  const { isCartOpen, setIsCartOpen, totalItems } = useCart();
+  const toggleCart = () => {
+    setIsCartOpen(!isCartOpen);
+    onClose();
+  };
 
   useEffect(() => {
     if (!open) setOpenSection(null);
@@ -438,6 +455,25 @@ const MobileMenu = ({
             )}
           </Link>
           <LanguageSwitcher />
+          <div className="relative">
+            <Link
+              id="cart-toggle-btn-mobile"
+              href="/checkout"
+              onClick={() => setIsCartOpen(false)}
+              className="text-yellow hover:text-secondary duration-300 ease-in-out relative flex items-center justify-center w-6 h-6 cursor-pointer"
+              aria-label="Cart"
+            >
+              <Cart />
+              {totalItems > 0 && (
+                <span className="absolute -top-2 -right-2 bg-secondary text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </Link>
+            <div className="xl:hidden">
+              <MobileCartFlow onClose={() => setIsCartOpen(false)} />
+            </div>
+          </div>
           <button
             type="button"
             onClick={onToggle}
@@ -575,16 +611,24 @@ const MobileMenu = ({
           })}
         </ul>
 
-        <a
-          href={`tel:${hotlineClean}`}
-          className="border-yellow text-yellow lg:hover:border-secondary lg:hover:text-secondary flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 duration-300 ease-in-out w-max"
+        <Link
+          href="/checkout"
+          onClick={() => {
+            setIsCartOpen(false);
+            onClose();
+          }}
+          className="text-yellow lg:hover:text-secondary flex items-center gap-2.5 duration-300 ease-in-out w-max cursor-pointer"
         >
-          <Hotline />
-          <div>
-            <div className="body-4 font-semibold uppercase">Hotline</div>
-            <div className="label-1 font-semibold">{hotline}</div>
+          <div className="relative">
+            <Cart />
+            {totalItems > 0 && (
+              <span className="absolute -top-2.5 -right-2.5 bg-secondary text-white text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
           </div>
-        </a>
+          <span className="title-3 font-display whitespace-nowrap">Đặt hàng</span>
+        </Link>
       </div>
     </nav>
   );

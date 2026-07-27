@@ -10,6 +10,8 @@ import SliderProductImages from "@/components/Product/SliderProductImages";
 import { useRouter } from "@/i18n/routing";
 import type { ProductDetailView } from "@/services/productService";
 
+import { useCart } from "@/contexts/CartContext";
+
 interface ProductDetailsInfoProps {
   productData: ProductDetailView;
 }
@@ -18,19 +20,23 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
   const t = useTranslations();
   const router = useRouter();
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
+  const { addToCart, setIsCartOpen } = useCart();
 
   const selectedSize = productData.sizes[selectedSizeIndex];
 
   const handleBuyNow = () => {
-    router.push({
-      pathname: "/checkout",
-      query: {
-        slug: productData.checkout.slug,
-        category: productData.checkout.categorySlug,
-        variant: selectedSize.title,
-        price: String(selectedSize.price),
-      },
-    });
+    addToCart({
+      id: `${productData.checkout.slug}-${selectedSize.title}`,
+      productId: productData.checkout.productId,
+      productCode: productData.checkout.productCode,
+      slug: productData.checkout.slug,
+      categorySlug: productData.checkout.categorySlug,
+      title: productData.title,
+      imageUrl: productData.images[0]?.url || "/cover.jpg",
+      variant: selectedSize.title,
+      unitPrice: selectedSize.price,
+    }, 1);
+    setIsCartOpen(true);
   };
 
   return (

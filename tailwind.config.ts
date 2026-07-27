@@ -6,12 +6,16 @@ const config = {
   ],
   theme: {
     screens: {
+      xs: "375px",
+      sm: "640px",
       md: "768px",
       lg: "1024px",
       xl: "1280px",
       "max-xl": { max: "1279px" },
       "max-lg": { max: "1023px" },
       "max-md": { max: "767px" },
+      "max-sm": { max: "639px" },
+      "max-xs": { max: "374px" },
     },
     container: {
       center: true,
