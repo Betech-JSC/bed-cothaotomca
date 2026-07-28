@@ -290,16 +290,16 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             : null,
         items: isCartCheckout
           ? cartItems.map((item) => ({
-              product_id: item.productId,
-              product_code: item.productCode,
-              product_name: item.title,
-              quantity: item.quantity,
-              price: item.unitPrice,
-              discount: 0,
-              note: undefined,
-            }))
+            product_id: item.productId,
+            product_code: item.productCode,
+            product_name: item.title,
+            quantity: item.quantity,
+            price: item.unitPrice,
+            discount: 0,
+            note: undefined,
+          }))
           : order
-          ? [
+            ? [
               {
                 product_id: order.productId,
                 product_code: order.productCode,
@@ -310,23 +310,23 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 note: itemNote.trim() || undefined,
               },
             ]
-          : [],
+            : [],
         discount: voucherDiscount,
         description: isCartCheckout
           ? [
-              description.trim(),
-              cartItems.map((item) => `${item.title} (${item.variant}) x${item.quantity}`).join(", "),
-            ]
-              .filter(Boolean)
-              .join(" | ") || undefined
+            description.trim(),
+            cartItems.map((item) => `${item.title} (${item.variant}) x${item.quantity}`).join(", "),
+          ]
+            .filter(Boolean)
+            .join(" | ") || undefined
           : order
-          ? [
+            ? [
               description.trim(),
               order.variant !== order.title ? `Size: ${order.variant}` : "",
             ]
               .filter(Boolean)
               .join(" | ") || undefined
-          : undefined,
+            : undefined,
         is_apply_voucher: !!appliedVoucher,
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
         voucher: appliedVoucher
@@ -401,588 +401,587 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       {/* Desktop side-by-side checkout layout */}
       <div className="hidden xl:grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
 
-      {/* CỘT TRÁI: THÔNG TIN LIÊN HỆ & GIAO HÀNG */}
-      <div className="lg:col-span-7">
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-[24px] p-6 md:p-8 space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100"
-        >
-          <h2 className="title-1 font-display text-primary border-b border-gray-100 pb-3">
-            Thông tin liên hệ
-          </h2>
+        {/* CỘT TRÁI: THÔNG TIN LIÊN HỆ & GIAO HÀNG */}
+        <div className="lg:col-span-7 font-serif">
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white rounded-[24px] p-6 md:p-8 space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100"
+          >
+            <h2 className="title-1 text-primary border-b border-gray-100 pb-3">
+              Thông tin liên hệ
+            </h2>
 
-          {/* Họ và tên */}
-          <div className="space-y-1">
-            <label className="body-2 font-display text-primary font-bold">Họ và tên</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm"
-              placeholder="Họ và tên"
-            />
-            {fieldError("customer.name") ? (
-              <p className="text-xs text-red-600 mt-1">{fieldError("customer.name")}</p>
-            ) : null}
-          </div>
-
-          {/* Số điện thoại */}
-          <div className="space-y-1">
-            <label className="body-2 font-display text-primary font-bold">Số điện thoại</label>
-            <input
-              type="tel"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm"
-              placeholder="Số điện thoại"
-            />
-            {fieldError("customer.phone") ? (
-              <p className="text-xs text-red-600 mt-1">{fieldError("customer.phone")}</p>
-            ) : null}
-          </div>
-
-          {/* Email (Optional) */}
-          <div className="space-y-1">
-            <label className="body-2 font-display text-primary font-bold">Email (Không bắt buộc)</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm"
-              placeholder="Email"
-            />
-          </div>
-
-          {/* LOẠI GIAO NHẬN (Giao hàng / Tự đến lấy) */}
-          <div className="space-y-3 pt-2 border-t border-gray-100">
-            <label className="body-2 font-display text-primary font-bold block">
-              Hình thức nhận hàng
-            </label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="delivery_type"
-                  checked={deliveryType === "delivery"}
-                  onChange={() => setDeliveryType("delivery")}
-                  className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
-                />
-                <span className="body-2 text-gray-900 group-hover:text-primary transition-colors font-bold">
-                  Giao hàng tận nơi
-                </span>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="delivery_type"
-                  checked={deliveryType === "pickup"}
-                  onChange={() => setDeliveryType("pickup")}
-                  className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
-                />
-                <span className="body-2 text-gray-900 group-hover:text-primary transition-colors font-bold">
-                  Tự đến lấy tại chi nhánh
-                </span>
-              </label>
-            </div>
-          </div>
-
-          {/* HIỂN THỊ ĐỊA CHỈ NHẬN HÀNG TỐI ƯU HÓA CHO DELIVERY */}
-          {deliveryType === "delivery" && (
-            <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
-              <p className="body-2 text-gray-700 font-bold">Địa chỉ giao hàng tận nơi</p>
-
-              {/* Chọn Quận Huyện dropdown */}
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500 font-bold block">Quận/Huyện khu vực</label>
-                <select
-                  value={selectedDistrict}
-                  onChange={(e) => setSelectedDistrict(e.target.value)}
-                  className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm cursor-pointer"
-                >
-                  <option value="">-- Chọn Quận/Huyện giao hàng --</option>
-                  <optgroup label="Hà Nội">
-                    {POPULAR_DISTRICTS.filter((d) => d.group === "Hà Nội").map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.value}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="TP. Hồ Chí Minh">
-                    {POPULAR_DISTRICTS.filter((d) => d.group === "TP. Hồ Chí Minh").map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.value}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
-                {fieldError("delivery.district") ? (
-                  <p className="text-xs text-red-600 mt-1">{fieldError("delivery.district")}</p>
-                ) : null}
-              </div>
-
-              {/* Địa chỉ chi tiết */}
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500 font-bold block">Số nhà, tên đường, ngõ ngách...</label>
-                <input
-                  type="text"
-                  value={streetAddress}
-                  onChange={(e) => setStreetAddress(e.target.value)}
-                  className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm"
-                  placeholder="Ví dụ: Số 20 ngõ 5 Láng Hạ"
-                />
-                {fieldError("delivery.address") ? (
-                  <p className="text-xs text-red-600 mt-1">{fieldError("delivery.address")}</p>
-                ) : null}
-              </div>
-            </div>
-          )}
-
-          {/* HIỂN THỊ CHỌN CHI NHÁNH DỰA TRÊN API KIOTVIET CHO PICKUP */}
-          {deliveryType === "pickup" && (
-            <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
-              <p className="body-2 text-gray-700 font-bold">Chi nhánh KiotViet nhận hàng</p>
-
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500 font-bold block">Chọn chi nhánh gần bạn nhất</label>
-                <select
-                  value={selectedBranchId}
-                  onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-                  className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm cursor-pointer font-semibold"
-                >
-                  {config.branches?.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.branchName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Chi tiết chi nhánh đã chọn */}
-              {selectedBranch && (
-                <div className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-2 shadow-sm text-xs">
-                  <p className="body-2 font-display text-primary font-bold">
-                    📍 Địa chỉ nhận hàng:
-                  </p>
-                  <p className="text-gray-600 leading-relaxed font-medium">
-                    {selectedBranch.address}
-                  </p>
-                  {selectedBranch.contactNumber && (
-                    <p className="text-gray-500 font-semibold">
-                      📞 Hotline: <span className="text-primary font-bold">{selectedBranch.contactNumber}</span>
-                    </p>
-                  )}
-                  <div className="text-[10px] text-green-600 font-bold flex items-center gap-1 pt-1.5 border-t border-gray-100">
-                    <span className="inline-block size-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                    <span>Tự đến lấy giúp tiết kiệm phí vận chuyển (Miễn phí ship)</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Lời nhắn */}
-          <div className="space-y-1 pt-2 border-t border-gray-100">
-            <label className="body-2 font-display text-primary font-bold">Lời nhắn cho Bếp</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm resize-none"
-              placeholder="Lời nhắn cho Bếp Cô Thảo"
-            />
-          </div>
-
-          {/* Thời gian giao/nhận mong muốn */}
-          <div className="space-y-3 pt-2">
-            <label className="body-2 font-display text-primary font-bold block">
-              {deliveryType === "pickup" ? "Thời gian đến lấy hàng mong muốn" : "Thời gian giao hàng mong muốn"}
-            </label>
+            {/* Họ và tên */}
             <div className="space-y-2">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="delivery_schedule"
-                  checked={deliverySchedule === "now"}
-                  onChange={() => setDeliverySchedule("now")}
-                  className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
-                />
-                <span className="body-2 text-gray-900 group-hover:text-primary transition-colors">
-                  {deliveryType === "pickup" ? "Lấy ngay (Chuẩn bị 15 - 30 phút)" : "Giao ngay (Hỏa tốc 45 - 90 phút)"}
-                </span>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="delivery_schedule"
-                  checked={deliverySchedule === "schedule"}
-                  onChange={() => setDeliverySchedule("schedule")}
-                  className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
-                />
-                <span className="body-2 text-gray-900 group-hover:text-primary transition-colors">
-                  {deliveryType === "pickup" ? "Hẹn giờ đến lấy" : "Hẹn giờ giao"}
-                </span>
-              </label>
-            </div>
-
-            {/* Ô chọn giờ nếu Hẹn giờ được tích */}
-            {deliverySchedule === "schedule" && (
-              <div className="pt-2 animate-fade-in">
-                <input
-                  type="datetime-local"
-                  required
-                  value={expectedDelivery}
-                  onChange={(e) => setExpectedDelivery(e.target.value)}
-                  className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Hình thức thanh toán */}
-          <div className="space-y-3 pt-2 border-t border-gray-100">
-            <label className="body-2 font-display text-primary font-bold block">
-              Hình thức thanh toán:
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="payment_method"
-                  checked={paymentMethod === "COD"}
-                  onChange={() => setPaymentMethod("COD")}
-                  className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
-                />
-                <span className="body-2 text-gray-900 group-hover:text-primary transition-colors">
-                  Thanh toán khi nhận hàng (COD)
-                </span>
-              </label>
-
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="payment_method"
-                  checked={paymentMethod === "TRANSFER"}
-                  onChange={() => setPaymentMethod("TRANSFER")}
-                  className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
-                />
-                <span className="body-2 text-gray-900 group-hover:text-primary transition-colors">
-                  Chuyển khoản ngân hàng (Qua mã QR)
-                </span>
-              </label>
-
-            </div>
-          </div>
-
-          {error ? <p className="body-2 text-red-600 font-semibold pt-2">{error}</p> : null}
-        </form>
-      </div>
-
-      {/* CỘT PHẢI: THÔNG TIN ĐƠN HÀNG */}
-      <div className="lg:col-span-5">
-        <div className="bg-white rounded-[24px] p-6 md:p-8 space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100">
-          <h2 className="title-1 font-display text-primary border-b border-gray-100 pb-3">
-            Thông tin đơn hàng
-          </h2>
-
-          {/* Hộp danh sách sản phẩm */}
-          <div className="space-y-4 divide-y divide-gray-100">
-            {isCartCheckout ? (
-              cartItems.length === 0 ? (
-                <div className="py-8 text-center space-y-2">
-                  <p className="body-2 text-gray-500 font-medium">Giỏ hàng của bạn đang trống</p>
-                  <Link
-                    href="/product"
-                    className="inline-block text-xs font-semibold text-secondary hover:underline"
-                  >
-                    Tiếp tục mua sắm
-                  </Link>
-                </div>
-              ) : (
-                cartItems.map((item) => (
-                  <div key={item.id} className="flex gap-4 items-start py-3 first:pt-0 last:pb-0">
-                    {/* Ảnh */}
-                    <div className="relative size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
-                      <Image
-                        src={item.imageUrl}
-                        alt={item.title}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-
-                    {/* Thông tin ở giữa */}
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex justify-between items-start gap-2">
-                        <p className="title-3 font-display text-primary font-bold whitespace-pre-line">
-                          {item.title}
-                        </p>
-                        <p className="title-3 text-secondary font-bold shrink-0">
-                          {formatPrice(item.unitPrice)}
-                        </p>
-                      </div>
-
-                      <p className="body-3 text-gray-500 font-medium">
-                        Size: {item.variant}
-                      </p>
-
-                      {/* Dòng điều khiển: Số lượng & Xóa */}
-                      <div className="flex items-center justify-between pt-1">
-                        {/* Tăng giảm số lượng kiểu Pill */}
-                        <div className="flex items-center border border-gray-200 rounded-full px-2 py-1 bg-white">
-                          <button
-                            type="button"
-                            aria-label="Decrease quantity"
-                            className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer flex justify-center"
-                            disabled={item.quantity <= 1}
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          >
-                            −
-                          </button>
-                          <span className="w-10 text-center body-2 text-primary font-bold">
-                            {item.quantity}
-                          </span>
-                          <button
-                            type="button"
-                            aria-label="Increase quantity"
-                            className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer flex justify-center"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        {/* Nút Xóa */}
-                        <button
-                          type="button"
-                          onClick={() => removeFromCart(item.id)}
-                          className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold cursor-pointer"
-                        >
-                          <span>🗑</span>
-                          <span>Xóa</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )
-            ) : order ? (
-              <div className="flex gap-4 items-start py-1">
-                {/* Ảnh */}
-                <div className="relative size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
-                  <Image
-                    src={order.imageUrl}
-                    alt={order.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-
-                {/* Thông tin ở giữa */}
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div className="flex justify-between items-start gap-2">
-                    <p className="title-3 font-display text-primary font-bold whitespace-pre-line">
-                      {order.title}
-                    </p>
-                    <p className="title-3 text-secondary font-bold shrink-0">
-                      {formatPrice(order.unitPrice)}
-                    </p>
-                  </div>
-
-                  <p className="body-3 text-gray-500 font-medium">
-                    Size: {order.variant}
-                  </p>
-
-                  {/* Dòng điều khiển: Số lượng & Xóa */}
-                  <div className="flex items-center justify-between pt-1">
-                    {/* Tăng giảm số lượng kiểu Pill */}
-                    <div className="flex items-center border border-gray-200 rounded-full px-2 py-1 bg-white">
-                      <button
-                        type="button"
-                        aria-label="Decrease quantity"
-                        className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer flex justify-center"
-                        disabled={quantity <= 1}
-                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                      >
-                        −
-                      </button>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={quantity === 0 ? "" : quantity}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, "");
-                          if (val === "") {
-                            setQuantity(0);
-                          } else {
-                            const parsed = parseInt(val, 10);
-                            setQuantity(parsed);
-                          }
-                        }}
-                        onBlur={() => {
-                          if (quantity < 1) {
-                            setQuantity(1);
-                          }
-                        }}
-                        className="w-10 text-center body-2 text-primary font-bold focus:outline-none bg-transparent"
-                      />
-                      <button
-                        type="button"
-                        aria-label="Increase quantity"
-                        className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer flex justify-center"
-                        onClick={() => setQuantity((q) => q + 1)}
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    {/* Nút Xóa */}
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(1)}
-                      className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold cursor-pointer"
-                    >
-                      <span>🗑</span>
-                      <span>Xóa</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          {/* Hộp nhập mã giảm giá */}
-          <div className="border-t border-gray-100 pt-4 space-y-3">
-            <label className="body-2 font-display text-primary font-bold block">
-              Mã giảm giá
-            </label>
-            <div className="flex gap-2">
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Họ và tên</label>
               <input
                 type="text"
-                value={voucherCode}
-                onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                disabled={!!appliedVoucher || validatingVoucher}
-                className="flex-1 rounded-[8px] border border-gray-200 px-4 py-2.5 bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm uppercase placeholder-gray-400"
-                placeholder="Nhập mã ưu đãi..."
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                placeholder="Họ và tên"
               />
-              {appliedVoucher ? (
-                <button
-                  type="button"
-                  onClick={handleRemoveVoucher}
-                  className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-4 py-2.5 rounded-[8px] text-sm transition-all"
-                >
-                  Xóa
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleApplyVoucher}
-                  disabled={validatingVoucher || !voucherCode.trim()}
-                  className="bg-primary hover:bg-primary/95 text-white font-bold px-4 py-2.5 rounded-[8px] text-sm transition-all disabled:opacity-40"
-                >
-                  {validatingVoucher ? "Đang check..." : "Áp dụng"}
-                </button>
-              )}
-            </div>
-            {voucherError && (
-              <p className="text-xs text-red-600 font-semibold">{voucherError}</p>
-            )}
-            {voucherSuccess && (
-              <p className="text-xs text-green-600 font-semibold flex items-center gap-1">
-                <span>✓</span> <span>{voucherSuccess}</span>
-              </p>
-            )}
-          </div>
-
-          {/* Hộp tính giá (Blue-Gray rounded container) */}
-          <div className="bg-gray-100 rounded-[12px] p-4 space-y-2.5">
-            <div className="flex justify-between items-center text-sm font-medium">
-              <span className="text-gray-600">Vận chuyển</span>
-              <span className="title-3 font-display text-primary font-bold">
-                {formatPrice(shipping)}
-              </span>
+              {fieldError("customer.name") ? (
+                <p className="text-sm text-red-600 mt-1">{fieldError("customer.name")}</p>
+              ) : null}
             </div>
 
-            {appliedVoucher && (
-              <div className="flex justify-between items-center text-sm font-medium text-green-600 border-t border-gray-200/50 pt-2">
-                <span>Giảm giá (Voucher)</span>
-                <span className="title-3 font-display font-bold">
-                  -{formatPrice(voucherDiscount)}
-                </span>
+            {/* Số điện thoại */}
+            <div className="space-y-2">
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Số điện thoại</label>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                placeholder="Số điện thoại"
+              />
+              {fieldError("customer.phone") ? (
+                <p className="text-sm text-red-600 mt-1">{fieldError("customer.phone")}</p>
+              ) : null}
+            </div>
+
+            {/* Email (Optional) */}
+            <div className="space-y-2">
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Email (Không bắt buộc)</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                placeholder="Email"
+              />
+            </div>
+
+            {/* LOẠI GIAO NHẬN (Giao hàng / Tự đến lấy) */}
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <label className="body-1 text-primary font-bold block">
+                Hình thức nhận hàng
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="delivery_type"
+                    checked={deliveryType === "delivery"}
+                    onChange={() => setDeliveryType("delivery")}
+                    className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
+                  />
+                  <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-bold">
+                    Giao hàng tận nơi
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="delivery_type"
+                    checked={deliveryType === "pickup"}
+                    onChange={() => setDeliveryType("pickup")}
+                    className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
+                  />
+                  <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-bold">
+                    Tự đến lấy tại chi nhánh
+                  </span>
+                </label>
               </div>
-            )}
-
-            <div className="flex justify-between items-center border-t border-gray-200/50 pt-2.5">
-              <span className="text-gray-900 font-bold text-base">Tổng cộng</span>
-              <span className="text-[20px] font-display text-primary font-bold">
-                {formatPrice(total)}
-              </span>
             </div>
 
-            {user && total > 0 && (
-              <div className="text-[12px] text-green-600 font-semibold text-right flex items-center justify-end gap-1 pt-1.5 border-t border-dashed border-gray-200/80">
-                <svg className="h-3.5 w-3.5 overflow-visible" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                </svg>
-                <span>Đơn hàng này sẽ tích lũy thêm ~{Math.floor(total / 100000)} điểm!</span>
-              </div>
-            )}
-          </div>
+            {/* HIỂN THỊ ĐỊA CHỈ NHẬN HÀNG TỐI ƯU HÓA CHO DELIVERY */}
+            {deliveryType === "delivery" && (
+              <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
+                <p className="body-1 text-gray-700 font-bold">Địa chỉ giao hàng tận nơi</p>
 
-          {/* Confirm details check checkbox */}
-          <div className="py-2.5">
-            <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-gray-700 select-none">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={confirmInfo}
-                  onChange={(e) => setConfirmInfo(e.target.checked)}
-                  className="sr-only"
-                />
-                <div
-                  className={`w-5 h-5 rounded-[6px] border flex items-center justify-center transition-all ${
-                    confirmInfo
-                      ? "bg-[#142A68] border-[#142A68] text-white"
-                      : "border-gray-300 bg-white"
-                  }`}
-                >
-                  {confirmInfo && (
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      strokeWidth="3.5"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  )}
+                {/* Chọn Quận Huyện dropdown */}
+                <div className="space-y-2">
+                  <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Quận/Huyện khu vực</label>
+                  <select
+                    value={selectedDistrict}
+                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                    className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
+                  >
+                    <option value="">-- Chọn Quận/Huyện giao hàng --</option>
+                    <optgroup label="Hà Nội">
+                      {POPULAR_DISTRICTS.filter((d) => d.group === "Hà Nội").map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.value}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="TP. Hồ Chí Minh">
+                      {POPULAR_DISTRICTS.filter((d) => d.group === "TP. Hồ Chí Minh").map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.value}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  {fieldError("delivery.district") ? (
+                    <p className="text-sm text-red-600 mt-1">{fieldError("delivery.district")}</p>
+                  ) : null}
+                </div>
+
+                {/* Địa chỉ chi tiết */}
+                <div className="space-y-2">
+                  <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Số nhà, tên đường, ngõ ngách...</label>
+                  <input
+                    type="text"
+                    value={streetAddress}
+                    onChange={(e) => setStreetAddress(e.target.value)}
+                    className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                    placeholder="Ví dụ: Số 20 ngõ 5 Láng Hạ"
+                  />
+                  {fieldError("delivery.address") ? (
+                    <p className="text-sm text-red-600 mt-1">{fieldError("delivery.address")}</p>
+                  ) : null}
                 </div>
               </div>
-              <span>Tôi xác nhận thông tin giao hàng trên là chính xác</span>
-            </label>
-          </div>
+            )}
 
-          {/* Nút submit dạng Pill đỏ cam (Terracotta red) */}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo}
-            className="w-full bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none"
-          >
-            {loading ? "Đang xử lý..." : "Thanh toán"}
-          </button>
+            {/* HIỂN THỊ CHỌN CHI NHÁNH DỰA TRÊN API KIOTVIET CHO PICKUP */}
+            {deliveryType === "pickup" && (
+              <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
+                <p className="body-1 text-gray-700 font-bold">Chi nhánh KiotViet nhận hàng</p>
+
+                <div className="space-y-2">
+                  <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Chọn chi nhánh gần bạn nhất</label>
+                  <select
+                    value={selectedBranchId}
+                    onChange={(e) => setSelectedBranchId(Number(e.target.value))}
+                    className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base cursor-pointer font-semibold font-serif font-normal leading-[150%] tracking-[0%]"
+                  >
+                    {config.branches?.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.branchName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Chi tiết chi nhánh đã chọn */}
+                {selectedBranch && (
+                  <div className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-2 shadow-sm text-sm">
+                    <p className="body-1 text-primary font-bold">
+                      📍 Địa chỉ nhận hàng:
+                    </p>
+                    <p className="text-gray-600 leading-relaxed font-medium">
+                      {selectedBranch.address}
+                    </p>
+                    {selectedBranch.contactNumber && (
+                      <p className="text-gray-500 font-semibold">
+                        📞 Hotline: <span className="text-primary font-bold">{selectedBranch.contactNumber}</span>
+                      </p>
+                    )}
+                    <div className="text-[10px] text-green-600 font-bold flex items-center gap-1 pt-1.5 border-t border-gray-100">
+                      <span className="inline-block size-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                      <span>Tự đến lấy giúp tiết kiệm phí vận chuyển (Miễn phí ship)</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Lời nhắn */}
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Lời nhắn cho Bếp</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                className="w-full rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base resize-none font-serif font-normal leading-[150%] tracking-[0%]"
+                placeholder="Lời nhắn cho Bếp Cô Thảo"
+              />
+            </div>
+
+            {/* Thời gian giao/nhận mong muốn */}
+            <div className="space-y-2 pt-2">
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
+                {deliveryType === "pickup" ? "Thời gian đến lấy hàng mong muốn" : "Thời gian giao hàng mong muốn"}
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="delivery_schedule"
+                    checked={deliverySchedule === "now"}
+                    onChange={() => setDeliverySchedule("now")}
+                    className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
+                  />
+                  <span className="body-1 text-gray-900 group-hover:text-primary transition-colors">
+                    {deliveryType === "pickup" ? "Lấy ngay (Chuẩn bị 15 - 30 phút)" : "Giao ngay (Hỏa tốc 45 - 90 phút)"}
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="delivery_schedule"
+                    checked={deliverySchedule === "schedule"}
+                    onChange={() => setDeliverySchedule("schedule")}
+                    className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
+                  />
+                  <span className="body-1 text-gray-900 group-hover:text-primary transition-colors">
+                    {deliveryType === "pickup" ? "Hẹn giờ đến lấy" : "Hẹn giờ giao"}
+                  </span>
+                </label>
+              </div>
+
+              {/* Ô chọn giờ nếu Hẹn giờ được tích */}
+              {deliverySchedule === "schedule" && (
+                <div className="pt-2 animate-fade-in">
+                  <input
+                    type="datetime-local"
+                    required
+                    value={expectedDelivery}
+                    onChange={(e) => setExpectedDelivery(e.target.value)}
+                    className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Hình thức thanh toán */}
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
+                Hình thức thanh toán:
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    checked={paymentMethod === "COD"}
+                    onChange={() => setPaymentMethod("COD")}
+                    className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
+                  />
+                  <span className="body-1 text-gray-900 group-hover:text-primary transition-colors">
+                    Thanh toán khi nhận hàng (COD)
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    checked={paymentMethod === "TRANSFER"}
+                    onChange={() => setPaymentMethod("TRANSFER")}
+                    className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
+                  />
+                  <span className="body-1 text-gray-900 group-hover:text-primary transition-colors">
+                    Chuyển khoản ngân hàng (Qua mã QR)
+                  </span>
+                </label>
+
+              </div>
+            </div>
+
+            {error ? <p className="body-1 text-red-600 font-semibold pt-2">{error}</p> : null}
+          </form>
+        </div>
+
+        {/* CỘT PHẢI: THÔNG TIN ĐƠN HÀNG */}
+        <div className="lg:col-span-5">
+          <div className="bg-white rounded-[24px] p-6 md:p-8 space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100">
+            <h2 className="title-1 font-display text-primary border-b border-gray-100 pb-3">
+              Thông tin đơn hàng
+            </h2>
+
+            {/* Hộp danh sách sản phẩm */}
+            <div className="space-y-4 divide-y divide-gray-100">
+              {isCartCheckout ? (
+                cartItems.length === 0 ? (
+                  <div className="py-8 text-center space-y-2">
+                    <p className="body-1 text-gray-500 font-medium">Giỏ hàng của bạn đang trống</p>
+                    <Link
+                      href="/product"
+                      className="inline-block text-sm font-semibold text-secondary hover:underline"
+                    >
+                      Tiếp tục mua sắm
+                    </Link>
+                  </div>
+                ) : (
+                  cartItems.map((item) => (
+                    <div key={item.id} className="flex gap-4 items-start py-3 first:pt-0 last:pb-0">
+                      {/* Ảnh */}
+                      <div className="relative size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.title}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+
+                      {/* Thông tin ở giữa */}
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex justify-between items-start gap-2">
+                          <p className="title-3 font-display text-primary font-bold whitespace-pre-line">
+                            {item.title}
+                          </p>
+                          <p className="title-3 text-secondary font-bold shrink-0">
+                            {formatPrice(item.unitPrice)}
+                          </p>
+                        </div>
+
+                        <p className="body-2 text-gray-500 font-medium">
+                          Size: {item.variant}
+                        </p>
+
+                        {/* Dòng điều khiển: Số lượng & Xóa */}
+                        <div className="flex items-center justify-between pt-1">
+                          {/* Tăng giảm số lượng kiểu Pill */}
+                          <div className="flex items-center border border-gray-200 rounded-full px-2 py-1 bg-white">
+                            <button
+                              type="button"
+                              aria-label="Decrease quantity"
+                              className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer flex justify-center"
+                              disabled={item.quantity <= 1}
+                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            >
+                              −
+                            </button>
+                            <span className="w-10 text-center body-1 text-primary font-bold">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label="Increase quantity"
+                              className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer flex justify-center"
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          {/* Nút Xóa */}
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(item.id)}
+                            className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-sm font-semibold cursor-pointer"
+                          >
+                            <span>🗑</span>
+                            <span>Xóa</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )
+              ) : order ? (
+                <div className="flex gap-4 items-start py-1">
+                  {/* Ảnh */}
+                  <div className="relative size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
+                    <Image
+                      src={order.imageUrl}
+                      alt={order.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+
+                  {/* Thông tin ở giữa */}
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex justify-between items-start gap-2">
+                      <p className="title-3 font-display text-primary font-bold whitespace-pre-line">
+                        {order.title}
+                      </p>
+                      <p className="title-3 text-secondary font-bold shrink-0">
+                        {formatPrice(order.unitPrice)}
+                      </p>
+                    </div>
+
+                    <p className="body-2 text-gray-500 font-medium">
+                      Size: {order.variant}
+                    </p>
+
+                    {/* Dòng điều khiển: Số lượng & Xóa */}
+                    <div className="flex items-center justify-between pt-1">
+                      {/* Tăng giảm số lượng kiểu Pill */}
+                      <div className="flex items-center border border-gray-200 rounded-full px-2 py-1 bg-white">
+                        <button
+                          type="button"
+                          aria-label="Decrease quantity"
+                          className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer flex justify-center"
+                          disabled={quantity <= 1}
+                          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                        >
+                          −
+                        </button>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={quantity === 0 ? "" : quantity}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, "");
+                            if (val === "") {
+                              setQuantity(0);
+                            } else {
+                              const parsed = parseInt(val, 10);
+                              setQuantity(parsed);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (quantity < 1) {
+                              setQuantity(1);
+                            }
+                          }}
+                          className="w-10 text-center body-1 text-primary font-bold focus:outline-none bg-transparent"
+                        />
+                        <button
+                          type="button"
+                          aria-label="Increase quantity"
+                          className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer flex justify-center"
+                          onClick={() => setQuantity((q) => q + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Nút Xóa */}
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(1)}
+                        className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-sm font-semibold cursor-pointer"
+                      >
+                        <span>🗑</span>
+                        <span>Xóa</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Hộp nhập mã giảm giá */}
+            <div className="border-t border-gray-100 pt-4 space-y-2">
+              <label className="body-1 font-display text-primary font-bold block">
+                Voucher
+              </label>
+              <div className="flex items-center border border-gray-200 rounded-full p-1 bg-white focus-within:border-primary transition-all">
+                <input
+                  type="text"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                  disabled={!!appliedVoucher || validatingVoucher}
+                  className="flex-1 bg-transparent px-4 py-2 text-gray-900 focus:outline-none text-base uppercase placeholder-gray-400"
+                  placeholder="Mã Voucher"
+                />
+                {appliedVoucher ? (
+                  <button
+                    type="button"
+                    onClick={handleRemoveVoucher}
+                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-6 py-2.5 rounded-full text-base transition-all shrink-0"
+                  >
+                    Xóa
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleApplyVoucher}
+                    disabled={validatingVoucher || !voucherCode.trim()}
+                    className="bg-[#142A68] hover:bg-[#142A68]/95 text-white font-bold px-6 py-2.5 rounded-full text-base transition-all disabled:opacity-40 shrink-0"
+                  >
+                    {validatingVoucher ? "Đang check..." : "Áp dụng"}
+                  </button>
+                )}
+              </div>
+              {voucherError && (
+                <p className="text-sm text-red-600 font-semibold px-2">{voucherError}</p>
+              )}
+              {voucherSuccess && (
+                <p className="text-sm text-green-600 font-semibold flex items-center gap-1 px-2">
+                  <span>✓</span> <span>{voucherSuccess}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Hộp tính giá (Blue-Gray rounded container) */}
+            <div className="bg-gray-100 rounded-[12px] p-4 space-y-2.5">
+              <div className="flex justify-between items-center text-base font-medium">
+                <span className="text-gray-600">Vận chuyển</span>
+                <span className="title-3 font-display text-primary font-bold">
+                  {formatPrice(shipping)}
+                </span>
+              </div>
+
+              {appliedVoucher && (
+                <div className="flex justify-between items-center text-base font-medium text-green-600 border-t border-gray-200/50 pt-2">
+                  <span>Giảm giá (Voucher)</span>
+                  <span className="title-3 font-display font-bold">
+                    -{formatPrice(voucherDiscount)}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center border-t border-gray-200/50 pt-2.5">
+                <span className="text-gray-900 font-bold text-base">Tổng cộng</span>
+                <span className="text-[20px] font-display text-primary font-bold">
+                  {formatPrice(total)}
+                </span>
+              </div>
+
+              {user && total > 0 && (
+                <div className="text-[14px] text-green-600 font-semibold text-right flex items-center justify-end gap-1 pt-1.5 border-t border-dashed border-gray-200/80">
+                  <svg className="h-3.5 w-3.5 overflow-visible" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  </svg>
+                  <span>Đơn hàng này sẽ tích lũy thêm ~{Math.floor(total / 100000)} điểm!</span>
+                </div>
+              )}
+            </div>
+
+            {/* Confirm details check checkbox */}
+            <div className="py-2.5">
+              <label className="flex items-center gap-2.5 cursor-pointer text-sm font-semibold text-gray-700 select-none">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={confirmInfo}
+                    onChange={(e) => setConfirmInfo(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div
+                    className={`w-5 h-5 rounded-[6px] border flex items-center justify-center transition-all ${confirmInfo
+                        ? "bg-[#142A68] border-[#142A68] text-white"
+                        : "border-gray-300 bg-white"
+                      }`}
+                  >
+                    {confirmInfo && (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        strokeWidth="3.5"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span>Tôi xác nhận thông tin giao hàng trên là chính xác</span>
+              </label>
+            </div>
+
+            {/* Nút submit dạng Pill đỏ cam (Terracotta red) */}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo}
+              className="w-full bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none"
+            >
+              {loading ? "Đang xử lý..." : "Thanh toán"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  </>
+    </>
   );
 }

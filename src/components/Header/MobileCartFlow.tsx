@@ -394,10 +394,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               {cartItems.length === 0 ? (
                 <div className="py-8 text-center space-y-3">
                   <div className="text-5xl">🛒</div>
-                  <p className="body-2 text-gray-500 font-medium">Giỏ hàng đang trống</p>
+                  <p className="body-1 text-gray-500 font-medium">Giỏ hàng đang trống</p>
                   <button
                     onClick={onClose}
-                    className="inline-block text-xs font-semibold text-secondary hover:underline"
+                    className="inline-block text-sm font-semibold text-secondary hover:underline"
                   >
                     Tiếp tục mua sắm
                   </button>
@@ -424,7 +424,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             {formatPrice(item.unitPrice)}
                           </span>
                         </div>
-                        <p className="text-[11px] text-gray-500 font-semibold uppercase">
+                        <p className="text-sm text-gray-500 font-semibold uppercase">
                           Size: {item.variant}
                         </p>
 
@@ -439,7 +439,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             >
                               &minus;
                             </button>
-                            <span className="w-8 text-center text-xs font-bold text-primary">
+                            <span className="w-8 text-center text-sm font-bold text-primary">
                               {item.quantity}
                             </span>
                             <button
@@ -455,7 +455,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           <button
                             type="button"
                             onClick={() => removeFromCart(item.id)}
-                            className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 font-semibold transition-colors"
+                            className="flex items-center gap-1 text-sm text-gray-400 hover:text-red-500 font-semibold transition-colors"
                           >
                             🗑 Xóa
                           </button>
@@ -471,7 +471,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               <>
                 {/* Voucher Code */}
                 <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
-                  <label className="body-2 text-primary font-bold block">Voucher</label>
+                  <label className="body-1 text-primary font-bold block">Voucher</label>
                   <div className="flex items-center rounded-full border border-gray-200 bg-white p-1 pl-4 focus-within:border-primary transition-all">
                     <input
                       type="text"
@@ -479,13 +479,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       value={voucherCode}
                       onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
                       disabled={!!appliedVoucher || validatingVoucher}
-                      className="flex-1 bg-transparent text-gray-900 focus:outline-none text-sm uppercase placeholder-gray-400"
+                      className="flex-1 bg-transparent text-gray-900 focus:outline-none text-base uppercase placeholder-gray-400"
                     />
                     {appliedVoucher ? (
                       <button
                         type="button"
                         onClick={handleRemoveVoucher}
-                        className="bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-full px-6 py-2 text-sm transition-all"
+                        className="bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-full px-6 py-2.5 text-base transition-all"
                       >
                         Xóa
                       </button>
@@ -494,27 +494,27 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         type="button"
                         onClick={handleApplyVoucher}
                         disabled={validatingVoucher || !voucherCode.trim()}
-                        className="bg-[#142A68] hover:bg-[#142A68]/95 text-white font-bold rounded-full px-6 py-2.5 text-sm transition-all disabled:opacity-50"
+                        className="bg-[#142A68] hover:bg-[#142A68]/95 text-white font-bold rounded-full px-6 py-2.5 text-base transition-all disabled:opacity-50"
                       >
                         {validatingVoucher ? "..." : "Áp dụng"}
                       </button>
                     )}
                   </div>
-                  {voucherError && <p className="text-xs text-red-600 font-semibold mt-1">{voucherError}</p>}
-                  {voucherSuccess && <p className="text-xs text-green-600 font-semibold mt-1">{voucherSuccess}</p>}
+                  {voucherError && <p className="text-sm text-red-600 font-semibold mt-1">{voucherError}</p>}
+                  {voucherSuccess && <p className="text-sm text-green-600 font-semibold mt-1">{voucherSuccess}</p>}
                 </div>
 
                 {/* Summary Panel */}
                 <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
-                  <div className="flex justify-between items-center text-sm">
+                  <div className="flex justify-between items-center text-base">
                     <span className="text-gray-500 font-medium">Tạm tính</span>
                     <span className="text-primary font-bold font-display">{formatPrice(subtotal)}</span>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
+                  <div className="flex justify-between items-center text-base">
                     <span className="text-gray-500 font-medium">Phí ship</span>
                     <span className="text-primary font-bold font-display">{formatPrice(shipping)}</span>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
+                  <div className="flex justify-between items-center text-base">
                     <span className="text-gray-500 font-medium">Giảm giá</span>
                     <span className="text-primary font-bold font-display">{formatPrice(voucherDiscount)}</span>
                   </div>
@@ -608,58 +608,58 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             </div>
 
             {/* Checkout contact details */}
-            <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-4">
+            <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-6 font-serif">
               <h3 className="title-2 font-display text-primary font-bold border-b border-gray-100 pb-2">
                 Thông tin liên hệ
               </h3>
 
               {error && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs font-semibold">
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-semibold">
                   {error}
                 </div>
               )}
 
               {/* Name */}
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500 font-bold block">Họ và tên</label>
+              <div className="space-y-3">
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Họ và tên</label>
                 <input
                   type="text"
                   placeholder="Họ và tên"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm"
+                  className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
                 />
-                {fieldErrors.name && <p className="text-xs text-red-600 mt-1 font-semibold">{fieldErrors.name}</p>}
+                {fieldErrors.name && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.name}</p>}
               </div>
 
               {/* Phone */}
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500 font-bold block">Số điện thoại</label>
+              <div className="space-y-3">
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Số điện thoại</label>
                 <input
                   type="tel"
                   placeholder="Số điện thoại"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm"
+                  className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
                 />
-                {fieldErrors.phone && <p className="text-xs text-red-600 mt-1 font-semibold">{fieldErrors.phone}</p>}
+                {fieldErrors.phone && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.phone}</p>}
               </div>
 
               {/* Email */}
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500 font-bold block">Email</label>
+              <div className="space-y-3">
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Email</label>
                 <input
                   type="email"
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm"
+                  className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
                 />
               </div>
 
               {/* Delivery method toggle button */}
-              <div className="space-y-2 pt-2 border-t border-gray-100">
-                <p className="body-2 text-gray-700 font-bold">Hình thức nhận hàng</p>
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Hình thức nhận hàng</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -687,27 +687,27 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               {/* Delivery address details selection */}
               {deliveryType === "delivery" ? (
                 <div className="space-y-4 rounded-xl bg-gray-50 p-4 border border-gray-100 mt-2">
-                  <p className="text-xs text-gray-700 font-bold">Địa chỉ giao hàng tận nơi</p>
+                  <p className="text-sm text-gray-700 font-bold font-serif">Địa chỉ giao hàng tận nơi</p>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-gray-500 font-bold block">Tỉnh/Thành phố</label>
+                  <div className="space-y-3">
+                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Tỉnh/Thành phố</label>
                     <select
                       onChange={(e) => {
                         setSelectedDistrict("");
                       }}
-                      className="w-full rounded-[8px] border border-gray-200 px-3 py-2 bg-white text-gray-900 focus:outline-none text-xs cursor-pointer"
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
                     >
                       <option value="HCM">Hồ Chí Minh</option>
                       <option value="HN">Hà Nội</option>
                     </select>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-gray-500 font-bold block">Quận/Huyện</label>
+                  <div className="space-y-3">
+                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Quận/Huyện</label>
                     <select
                       value={selectedDistrict}
                       onChange={(e) => setSelectedDistrict(e.target.value)}
-                      className="w-full rounded-[8px] border border-gray-200 px-3 py-2 bg-white text-gray-900 focus:outline-none text-xs cursor-pointer"
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
                     >
                       <option value="">-- Chọn Quận/Huyện giao hàng --</option>
                       <optgroup label="TP. Hồ Chí Minh">
@@ -725,37 +725,39 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         ))}
                       </optgroup>
                     </select>
-                    {fieldErrors.district && <p className="text-[10px] text-red-600 mt-1 font-semibold">{fieldErrors.district}</p>}
+                    {fieldErrors.district && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.district}</p>}
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-gray-500 font-bold block">Số nhà, tên đường, căn hộ...</label>
+                  <div className="space-y-3">
+                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Số nhà, tên đường, ngõ ngách...</label>
                     <input
                       type="text"
                       placeholder="Số nhà, tên đường, ngõ ngách..."
                       value={streetAddress}
                       onChange={(e) => setStreetAddress(e.target.value)}
-                      className="w-full rounded-[8px] border border-gray-200 px-3 py-2 bg-white text-gray-900 focus:outline-none text-xs"
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base font-serif font-normal leading-[150%] tracking-[0%]"
                     />
-                    {fieldErrors.address && <p className="text-[10px] text-red-600 mt-1 font-semibold">{fieldErrors.address}</p>}
+                    {fieldErrors.address && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.address}</p>}
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3 rounded-xl bg-gray-50 p-4 border border-gray-100 mt-2">
-                  <p className="text-xs text-gray-700 font-bold">Chọn chi nhánh lấy hàng</p>
-                  <select
-                    value={selectedBranchId}
-                    onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-                    className="w-full rounded-[8px] border border-gray-200 px-3 py-2 bg-white text-gray-900 focus:outline-none text-xs cursor-pointer"
-                  >
-                    {config?.branches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.branchName}
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-4 rounded-xl bg-gray-50 p-4 border border-gray-100 mt-2">
+                  <div className="space-y-3">
+                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Chọn chi nhánh lấy hàng</label>
+                    <select
+                      value={selectedBranchId}
+                      onChange={(e) => setSelectedBranchId(Number(e.target.value))}
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
+                    >
+                      {config?.branches.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.branchName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   {config?.branches.find(b => b.id === selectedBranchId) && (
-                    <div className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-1.5 shadow-sm text-[11px] text-gray-600">
+                    <div className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-1.5 shadow-sm text-sm text-gray-600 font-serif">
                       <p>📍 Địa chỉ: {config?.branches.find(b => b.id === selectedBranchId)?.address}</p>
                       <p>📞 Hotline: {config?.branches.find(b => b.id === selectedBranchId)?.contactNumber}</p>
                     </div>
@@ -764,19 +766,19 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               )}
 
               {/* Notes */}
-              <div className="space-y-1 pt-2 border-t border-gray-100">
-                <label className="text-xs text-gray-500 font-bold block">Lời nhắn (Ví dụ: Không cay, ít hành...)</label>
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Lời nhắn cho Bếp</label>
                 <textarea
                   placeholder="Ví dụ: Không cay, ít hành..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full rounded-[8px] border border-gray-200 px-4 py-2 bg-white text-gray-900 focus:outline-none focus:border-primary text-xs resize-none h-16"
+                  className="w-full rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base resize-none h-16 font-serif font-normal leading-[150%] tracking-[0%]"
                 />
               </div>
 
               {/* Expected time */}
-              <div className="space-y-2 pt-2 border-t border-gray-100 text-xs">
-                <p className="font-bold text-gray-700">Thời gian giao hàng mong muốn</p>
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Thời gian giao/nhận mong muốn</p>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -803,15 +805,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       type="datetime-local"
                       value={expectedDelivery}
                       onChange={(e) => setExpectedDelivery(e.target.value)}
-                      className="w-full rounded-[8px] border border-gray-200 px-3 py-2 bg-white text-xs cursor-pointer"
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
                     />
                   )}
                 </div>
               </div>
 
               {/* Payment methods selection */}
-              <div className="space-y-2 pt-2 border-t border-gray-100 text-xs">
-                <p className="font-bold text-gray-700">Hình thức thanh toán</p>
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Hình thức thanh toán</p>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -838,7 +840,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
               {/* Confirm details check checkbox */}
               <div className="pt-2.5 border-t border-gray-100">
-                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-gray-700 select-none">
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm font-semibold text-gray-700 select-none font-serif">
                   <div className="relative">
                     <input
                       type="checkbox"
