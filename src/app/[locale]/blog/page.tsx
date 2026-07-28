@@ -18,9 +18,14 @@ export default async function BlogIndexPage({
 
   const [bannerData, featuredBlogsData, allBlogsData] = await Promise.all([
     getApi<HeroBanner>('banners', { params: { position: 'banner_news', lang: locale } }).catch(() => ({ data: [] })),
-    getBlogs({ is_featured: true, per_page: 5, lang: locale }).catch(() => ({ data: [] })),
+    getBlogs({ is_featured: true, per_page: 5, lang: locale, blog_category_id: activeCategoryId }).catch(() => ({ data: [] })),
     getBlogs({ page: Number(page), per_page: 9, lang: locale, blog_category_id: activeCategoryId }).catch(() => ({ data: [], current_page: 1, last_page: 1, total: 0 })),
   ]);
+
+  let featuredBlogs = featuredBlogsData.data || [];
+  if (featuredBlogs.length === 0 && allBlogsData.data && allBlogsData.data.length > 0) {
+    featuredBlogs = allBlogsData.data.slice(0, 5);
+  }
 
   const bannerItem = bannerData.data[0];
   const banner = {
@@ -35,7 +40,7 @@ export default async function BlogIndexPage({
       locale={locale}
       banner={banner}
       categories={categoriesData.data}
-      featuredBlogs={featuredBlogsData.data}
+      featuredBlogs={featuredBlogs}
       allBlogs={allBlogsData.data}
       pagination={{
         currentPage: allBlogsData.current_page || 1,

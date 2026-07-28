@@ -3,10 +3,11 @@ import SocialShare from "@/components/SocialShare";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { getBlogDetail, getBlogs, Blog, BlogTranslation, BlogCategoryTranslation } from "@/services/blogService";
-import { getTranslation, formatDate, formatRichTextContent } from "@/lib/format";
+import { getTranslation, formatDate, formatRichTextContent, slugify } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
+import SectionRelatedPosts from "@/components/Blog/SectionRelatedPosts";
 
 export const dynamic = 'force-dynamic';
 
@@ -127,6 +128,45 @@ export default async function BlogDetailsPage({
     },
   ] as const
 
+  // Fetch related blogs from the same category or overall blogs
+  let relatedBlogsRes = await getBlogs({
+    blog_category_id: blog.category?.id,
+    per_page: 6,
+    lang: locale
+  }).catch(() => null);
+
+  let relatedBlogsData = (relatedBlogsRes?.data || []).filter((b: Blog) => b.id !== blog.id);
+
+  // If not enough posts in same category, fetch recent blogs as fallback
+  if (relatedBlogsData.length < 4) {
+    const allBlogsRes = await getBlogs({ per_page: 6, lang: locale }).catch(() => null);
+    if (allBlogsRes?.data) {
+      const extraBlogs = allBlogsRes.data.filter((b: Blog) => b.id !== blog.id && !relatedBlogsData.some((rb: Blog) => rb.id === b.id));
+      relatedBlogsData = [...relatedBlogsData, ...extraBlogs];
+    }
+  }
+
+  const relatedPostsDisplay = relatedBlogsData.slice(0, 4).map((item: Blog) => {
+    const itemTranslation = getTranslation<BlogTranslation>(item.translations, locale);
+    const itemCatTranslation = getTranslation<BlogCategoryTranslation>(item.category?.translations, locale);
+    const title = itemTranslation?.title || item.title;
+    const catName = itemCatTranslation?.title || item.category?.title || categoryName;
+
+    return {
+      image: {
+        url: item.thumbnail || "/cover.jpg",
+        alt: title,
+      },
+      title: title,
+      slug: item.slug,
+      category: {
+        title: catName,
+        slug: item.category?.slug || slugify(catName),
+      },
+      created_at: item.created_at,
+    };
+  });
+
   return (
     <main>
       <JsonLd
@@ -178,6 +218,9 @@ export default async function BlogDetailsPage({
           </div>
         </div>
       </section>
+
+      <SectionRelatedPosts items={relatedPostsDisplay} />
     </main>
   )
 }
+

@@ -147,7 +147,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                 <AnimateOnScroll animate="card-animate" delay={300} className="relative rounded-[24px] aspect-w-8 aspect-h-7 md:aspect-w-6 md:aspect-h-5 overflow-hidden">
                   <Image
                     src="/images/about/image-about.jpg"
-                    alt="image about"
+                    alt="Quy trình chế biến Cô Thảo Tôm Cá"
                     fill
                     className="object-cover w-full h-full"
                   />

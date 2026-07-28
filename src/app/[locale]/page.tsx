@@ -264,7 +264,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <div className="relative overflow-hidden aspect-w-4 aspect-h-5 rounded-[12px]">
                   <Image
                     src="/images/demo/image-category.jpg"
-                    alt="image category"
+                    alt="DANH MỤC SẢN PHẨM"
                     fill
                     className="object-cover w-full h-full"
                   />

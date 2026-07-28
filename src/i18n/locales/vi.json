@@ -178,7 +178,8 @@
   },
   "blog": {
     "title": "Góc Bếp Cô Thảo",
-    "category": "Danh mục"
+    "category": "Danh mục",
+    "related_posts": "Bài viết liên quan"
   },
   "contact": {
     "title": "Liên hệ",
