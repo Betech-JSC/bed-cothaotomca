@@ -156,13 +156,14 @@ export default function ProductFilter({
         >
           <div className="space-y-3 pt-4.5">
             <div className="flex items-center justify-between lg:px-3">
-              <span className="label-1 !font-display font-semibold text-gray-900 uppercase">
+              <span className="text-base font-bold text-gray-900 uppercase tracking-wider !font-display lg:text-lg">
                 {t("common.category")}
               </span>
               {category && (
                 <button
+                  type="button"
                   onClick={clearCategory}
-                  className="label-3 text-primary lg:hover:text-secondary cursor-pointer font-semibold duration-300 ease-in-out"
+                  className="inline-flex items-center gap-1 rounded-full border border-red-200/80 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 transition-all duration-200 hover:bg-red-100 cursor-pointer"
                 >
                   {t("common.clear")}
                 </button>
@@ -175,7 +176,7 @@ export default function ProductFilter({
                   type="button"
                   onClick={() => handleCategoryClick(cat.slug)}
                   className={`title-3 w-full cursor-pointer py-3 text-left duration-300 ease-in-out lg:px-3 ${category === cat.slug
-                      ? "bg-secondary/5 text-secondary"
+                      ? "bg-secondary/5 text-secondary font-semibold"
                       : "lg:hover:text-secondary text-gray-800"
                     } `}
                 >
@@ -188,26 +189,37 @@ export default function ProductFilter({
                   <button
                     type="button"
                     onClick={() => setShowAllCategories((prev) => !prev)}
-                    className="text-primary title-3 font-semibold hover:underline"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-all duration-200 hover:bg-primary/20 cursor-pointer"
                   >
-                    {showAllCategories
-                      ? t("common.collapse")
-                      : `${t("common.view_more")} (${categoriesDisplay.length - 5})`}
+                    <span>
+                      {showAllCategories
+                        ? t("common.collapse")
+                        : `${t("common.view_more")} (${categoriesDisplay.length - 5})`}
+                    </span>
+                    <svg
+                      className={`h-3.5 w-3.5 transition-transform duration-200 ${showAllCategories ? "rotate-180" : ""}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 pt-3">
             <div className="flex items-center justify-between py-3 pb-1 lg:px-3">
-              <span className="label-1 !font-display font-semibold text-gray-900 uppercase">
+              <span className="text-base font-bold text-gray-900 uppercase tracking-wider !font-display lg:text-lg">
                 {t("common.ingredient")}
               </span>
               {selectedIngredients.length > 0 && (
                 <button
+                  type="button"
                   onClick={clearIngredients}
-                  className="label-3 text-primary lg:hover:text-secondary cursor-pointer font-semibold duration-300 ease-in-out"
+                  className="inline-flex items-center gap-1 rounded-full border border-red-200/80 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 transition-all duration-200 hover:bg-red-100 cursor-pointer"
                 >
                   {t("common.clear")} ({selectedIngredients.length})
                 </button>
@@ -224,15 +236,25 @@ export default function ProductFilter({
               ))}
 
               {ingredientsDisplay.length > 5 && (
-                <div className="pt-2">
+                <div className="pt-2 lg:px-3">
                   <button
                     type="button"
                     onClick={() => setShowAllIngredients((prev) => !prev)}
-                    className="text-primary title-3 font-semibold hover:underline"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-all duration-200 hover:bg-primary/20 cursor-pointer"
                   >
-                    {showAllIngredients
-                      ? t("common.collapse")
-                      : `${t("common.view_more")} (${ingredientsDisplay.length - 5})`}
+                    <span>
+                      {showAllIngredients
+                        ? t("common.collapse")
+                        : `${t("common.view_more")} (${ingredientsDisplay.length - 5})`}
+                    </span>
+                    <svg
+                      className={`h-3.5 w-3.5 transition-transform duration-200 ${showAllIngredients ? "rotate-180" : ""}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
                 </div>
               )}
