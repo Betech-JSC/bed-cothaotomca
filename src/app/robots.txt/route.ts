@@ -36,7 +36,27 @@ Disallow: /_next/
 Disallow: /admin/
 Disallow: /private/
 Disallow: /*?*sort=*
-Disallow: /*?*filter=*${sitemapUrl}`;
+Disallow: /*?*filter=*
+
+# AI Search & Assistant Crawlers (AEO Enabled)
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Block Aggressive Scrapers
+User-agent: Bytespider
+Disallow: /${sitemapUrl}`;
 
   return new NextResponse(defaultRobots, {
     headers: { 
