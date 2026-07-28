@@ -9,7 +9,7 @@
   // --- .ql-editor base (exact from quill.snow.css + CMS overrides) ---
   box-sizing: border-box;
   counter-reset: list-0 list-1 list-2 list-3 list-4 list-5 list-6 list-7 list-8 list-9;
-  line-height: 1.6;
+  line-height: 1.75;
   font-size: 16px;
   outline: none;
   tab-size: 4;
@@ -17,12 +17,30 @@
   text-align: left;
   white-space: pre-wrap;
   word-wrap: break-word;
-  color: #000;
+  color: #1a1a1a;
 
-  // --- .ql-editor p, ol, pre, blockquote, h1-h6 ---
-  p, ol, ul, pre, blockquote, h1, h2, h3, h4, h5, h6 {
-    margin: 0;
-    padding: 0;
+  // --- Paragraphs ---
+  p {
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+    line-height: 1.8;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+
+  // --- Headings ---
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 2rem;
+    margin-bottom: 0.85rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #111322;
+  }
+
+  h1:first-child, h2:first-child, h3:first-child, h4:first-child {
+    margin-top: 0;
   }
 
   // --- Counter reset on block elements ---
@@ -37,13 +55,13 @@
     }
   }
 
-  // --- Headings (browser defaults, Quill doesn't set custom sizes) ---
-  h1 { font-size: 2em; }
+  // --- Headings (font sizes) ---
+  h1 { font-size: 1.85em; }
   h2 { font-size: 1.5em; }
-  h3 { font-size: 1.17em; }
-  h4 { font-size: 1em; }
-  h5 { font-size: 0.83em; }
-  h6 { font-size: 0.67em; }
+  h3 { font-size: 1.25em; }
+  h4 { font-size: 1.1em; }
+  h5 { font-size: 1em; }
+  h6 { font-size: 0.875em; }
 
   // --- Bold / Italic / Underline / Strike ---
   strong { font-weight: bold; }
