@@ -189,7 +189,7 @@ export default function ProductFilter({
                   <button
                     type="button"
                     onClick={() => setShowAllCategories((prev) => !prev)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-all duration-200 hover:bg-primary/20 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors duration-200 lg:hover:text-secondary cursor-pointer"
                   >
                     <span>
                       {showAllCategories
@@ -240,7 +240,7 @@ export default function ProductFilter({
                   <button
                     type="button"
                     onClick={() => setShowAllIngredients((prev) => !prev)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-all duration-200 hover:bg-primary/20 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors duration-200 lg:hover:text-secondary cursor-pointer"
                   >
                     <span>
                       {showAllIngredients
