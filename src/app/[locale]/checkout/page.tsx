@@ -27,17 +27,10 @@ const defaultConfig = {
   default_shipping_fee: "30000",
   branches: [
     {
-      id: 1,
-      branchName: "Bếp Cô Thảo - Cầu Giấy",
-      address: "Số 12 Dịch Vọng Hậu, Quận Cầu Giấy, Hà Nội",
-      contactNumber: "024.9999.7122",
-      isActive: true,
-    },
-    {
-      id: 2,
-      branchName: "Bếp Cô Thảo - Đống Đa",
-      address: "Số 34 Chùa Bộc, Quận Đống Đa, Hà Nội",
-      contactNumber: "024.9999.7123",
+      id: 916323,
+      branchName: "Chi nhánh trung tâm",
+      address: "73 Rạch Bùng Binh, Phường 14, Quận 3, Hồ Chí Minh",
+      contactNumber: "+84775600351",
       isActive: true,
     },
   ],

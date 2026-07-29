@@ -266,6 +266,24 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         ? crypto.randomUUID()
         : `${Date.now()}-${isCartCheckout ? "cart" : order?.productId}`;
 
+    let expectedDeliveryISO: string | undefined = undefined;
+    if (deliverySchedule === "schedule" && expectedDelivery) {
+      const matches = expectedDelivery.match(/^(\d{1,2}):(\d{2})/);
+      if (matches) {
+        const hours = parseInt(matches[1], 10);
+        const minutes = parseInt(matches[2], 10);
+        const date = new Date();
+        date.setHours(hours, minutes, 0, 0);
+        expectedDeliveryISO = date.toISOString();
+      } else {
+        try {
+          expectedDeliveryISO = new Date(expectedDelivery).toISOString();
+        } catch (e) {
+          expectedDeliveryISO = undefined;
+        }
+      }
+    }
+
     try {
       const result = await createOrder({
         idempotency_key: idempotencyKey,
@@ -282,12 +300,13 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               contact_number: phone.trim(),
               address: finalAddress,
               price: shippingFee,
-              expected_delivery:
-                deliverySchedule === "schedule" && expectedDelivery
-                  ? new Date(expectedDelivery).toISOString()
-                  : undefined,
+              expected_delivery: expectedDeliveryISO,
             }
-            : null,
+            : (deliverySchedule === "schedule" && expectedDelivery
+              ? {
+                expected_delivery: expectedDeliveryISO
+              }
+              : null),
         items: isCartCheckout
           ? cartItems.map((item) => ({
             product_id: item.productId,
@@ -543,7 +562,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             {/* HIỂN THỊ CHỌN CHI NHÁNH DỰA TRÊN API KIOTVIET CHO PICKUP */}
             {deliveryType === "pickup" && (
               <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
-                <p className="body-1 text-gray-700 font-bold">Chi nhánh KiotViet nhận hàng</p>
+                <p className="body-1 text-gray-700 font-bold">Chi nhánh nhận hàng</p>
 
                 <div className="space-y-2">
                   <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Chọn chi nhánh gần bạn nhất</label>
@@ -574,7 +593,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         📞 Hotline: <span className="text-primary font-bold">{selectedBranch.contactNumber}</span>
                       </p>
                     )}
-                    <div className="text-[10px] text-green-600 font-bold flex items-center gap-1 pt-1.5 border-t border-gray-100">
+                    <div className="text-[14px] text-green-600 font-bold flex items-center gap-1 pt-1.5 border-t border-gray-100">
                       <span className="inline-block size-1.5 rounded-full bg-green-500 animate-pulse"></span>
                       <span>Tự đến lấy giúp tiết kiệm phí vận chuyển (Miễn phí ship)</span>
                     </div>
@@ -632,10 +651,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {deliverySchedule === "schedule" && (
                 <div className="pt-2 animate-fade-in">
                   <input
-                    type="datetime-local"
+                    type="time"
                     required
                     value={expectedDelivery}
                     onChange={(e) => setExpectedDelivery(e.target.value)}
+                    onClick={(e) => {
+                      try {
+                        e.currentTarget.showPicker();
+                      } catch (err) {
+                        // ignore
+                      }
+                    }}
                     className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
                   />
                 </div>
@@ -945,8 +971,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   />
                   <div
                     className={`w-5 h-5 rounded-[6px] border flex items-center justify-center transition-all ${confirmInfo
-                        ? "bg-[#142A68] border-[#142A68] text-white"
-                        : "border-gray-300 bg-white"
+                      ? "bg-[#142A68] border-[#142A68] text-white"
+                      : "border-gray-300 bg-white"
                       }`}
                   >
                     {confirmInfo && (

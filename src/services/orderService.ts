@@ -23,9 +23,9 @@ export interface CreateOrderPayload {
   };
   delivery_type: DeliveryType;
   delivery?: {
-    receiver: string;
-    contact_number: string;
-    address: string;
+    receiver?: string;
+    contact_number?: string;
+    address?: string;
     price?: number;
     expected_delivery?: string;
   } | null;

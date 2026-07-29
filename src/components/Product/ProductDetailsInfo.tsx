@@ -20,11 +20,13 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
   const t = useTranslations();
   const router = useRouter();
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
-  const { addToCart, setIsCartOpen } = useCart();
+  const [quantity, setQuantity] = useState(1);
+  const [isAdded, setIsAdded] = useState(false);
+  const { addToCart } = useCart();
 
   const selectedSize = productData.sizes[selectedSizeIndex];
 
-  const handleBuyNow = () => {
+  const handleAddToCart = () => {
     addToCart({
       id: `${productData.checkout.slug}-${selectedSize.title}`,
       productId: productData.checkout.productId,
@@ -35,8 +37,12 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
       imageUrl: productData.images[0]?.url || "/cover.jpg",
       variant: selectedSize.title,
       unitPrice: selectedSize.price,
-    }, 1);
-    setIsCartOpen(true);
+    }, quantity);
+    
+    setIsAdded(true);
+    setTimeout(() => {
+      setIsAdded(false);
+    }, 2000);
   };
 
   return (
@@ -93,14 +99,40 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
           </div>
         ) : null}
 
+        {/* Bộ chọn số lượng */}
+        <div className="flex items-center gap-4 py-1">
+          <span className="label-1 font-semibold text-gray-900 flex-shrink-0">
+            Số lượng:
+          </span>
+          <div className="flex items-center border border-[#B9C0D4] rounded-full overflow-hidden h-11 bg-white shadow-sm">
+            <button
+              type="button"
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100 text-lg transition-colors border-r border-[#B9C0D4]"
+            >
+              -
+            </button>
+            <span className="w-12 h-full flex items-center justify-center font-bold text-gray-900 text-base">
+              {quantity}
+            </span>
+            <button
+              type="button"
+              onClick={() => setQuantity(quantity + 1)}
+              className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100 text-lg transition-colors border-l border-[#B9C0D4]"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={handleBuyNow}
+            onClick={handleAddToCart}
             className="btn btn-primary flex items-center justify-center gap-2"
           >
             <BoxMessage />
-            <span>{t("product.buy_now")}</span>
+            <span>Thêm vào giỏ hàng</span>
           </button>
           <a
             href="https://m.me/cothaotomca"
@@ -111,6 +143,15 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
             <span>{t("product.contact")}</span>
           </a>
         </div>
+
+        {isAdded && (
+          <div className="text-green-600 font-semibold text-sm flex items-center gap-1.5 animate-fade-in py-1">
+            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Đã thêm vào giỏ hàng thành công!</span>
+          </div>
+        )}
 
         <SocialShare />
       </div>
