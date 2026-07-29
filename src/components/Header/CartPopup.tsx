@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, isDefaultVariant } from "@/lib/format";
 
 interface CartPopupProps {
   onClose: () => void;
@@ -106,9 +106,11 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                       {formatPrice(item.unitPrice)}
                     </span>
                   </div>
-                  <p className="text-[11px] text-gray-500 font-semibold uppercase">
-                    Size: {item.variant}
-                  </p>
+                  {!isDefaultVariant(item.variant) && (
+                    <p className="text-[11px] text-gray-500 font-semibold uppercase">
+                      Size: {item.variant}
+                    </p>
+                  )}
 
                   <div className="flex items-center justify-between pt-1">
                     {/* Quantity Selector */}

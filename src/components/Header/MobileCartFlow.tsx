@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, isDefaultVariant } from "@/lib/format";
 import { useBranches } from "@/contexts/BranchContext";
 import {
   calcOrderTotal,
@@ -424,9 +424,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             {formatPrice(item.unitPrice)}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-500 font-semibold uppercase">
-                          Size: {item.variant}
-                        </p>
+                        {!isDefaultVariant(item.variant) && (
+                          <p className="text-sm text-gray-500 font-semibold uppercase">
+                            Size: {item.variant}
+                          </p>
+                        )}
 
                         <div className="flex items-center justify-between pt-1">
                           {/* Quantity selectors */}
@@ -578,7 +580,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                               <p className="body-2 text-primary font-bold font-display line-clamp-1">{item.title}</p>
                               <span className="body-2 text-primary font-bold whitespace-nowrap">{formatPrice(item.unitPrice)}</span>
                             </div>
-                            <p className="text-[10px] text-gray-500 font-semibold uppercase">Size: {item.variant} x{item.quantity}</p>
+                            <p className="text-[10px] text-gray-500 font-semibold uppercase">
+                              {isDefaultVariant(item.variant) ? `Số lượng: ${item.quantity}` : `Size: ${item.variant} x${item.quantity}`}
+                            </p>
                           </div>
                         </div>
                       ))}

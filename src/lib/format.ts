@@ -38,3 +38,9 @@ export function getTranslation<T extends { locale: string }>(translations: T[] |
   return translations.find(t => t.locale === currentLocale) ||
     translations.find(t => t.locale.startsWith(currentLocale));
 }
+
+export function isDefaultVariant(variant?: string): boolean {
+  if (!variant) return true;
+  const v = variant.toLowerCase().trim();
+  return v === 'mặc định' || v === 'standard' || v === 'default' || v.includes('mặc định');
+}

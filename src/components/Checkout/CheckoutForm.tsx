@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, isDefaultVariant } from "@/lib/format";
 import {
   calcOrderTotal,
   createOrder,
@@ -751,9 +751,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                           </p>
                         </div>
 
-                        <p className="body-2 text-gray-500 font-medium">
-                          Size: {item.variant}
-                        </p>
+                        {!isDefaultVariant(item.variant) && (
+                          <p className="body-2 text-gray-500 font-medium">
+                            Size: {item.variant}
+                          </p>
+                        )}
 
                         {/* Dòng điều khiển: Số lượng & Xóa */}
                         <div className="flex items-center justify-between pt-1">
@@ -818,9 +820,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       </p>
                     </div>
 
-                    <p className="body-2 text-gray-500 font-medium">
-                      Size: {order.variant}
-                    </p>
+                    {!isDefaultVariant(order.variant) && (
+                      <p className="body-2 text-gray-500 font-medium">
+                        Size: {order.variant}
+                      </p>
+                    )}
 
                     {/* Dòng điều khiển: Số lượng & Xóa */}
                     <div className="flex items-center justify-between pt-1">
