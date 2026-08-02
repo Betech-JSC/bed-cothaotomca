@@ -139,7 +139,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // Voucher states
   const [voucherCode, setVoucherCode] = useState("");
-  const [appliedVoucher, setAppliedVoucher] = useState<{ id: number; code: string; value: number; campaignId: number } | null>(null);
+  const [appliedVoucher, setAppliedVoucher] = useState<{ id: number; code: string; value: number; campaignId: number; prereqPrice?: number } | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
   const [validatingVoucher, setValidatingVoucher] = useState(false);
@@ -164,6 +164,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     shippingFee,
     0,
   );
+
+  // Auto-remove voucher if cart subtotal drops below the minimum required price
+  useEffect(() => {
+    if (appliedVoucher && appliedVoucher.prereqPrice && subtotal < appliedVoucher.prereqPrice) {
+      setAppliedVoucher(null);
+      setVoucherSuccess(null);
+      setVoucherError(
+        `Mã giảm giá đã bị gỡ do đơn hàng hiện tại chưa đủ ${appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ.`
+      );
+    }
+  }, [subtotal, appliedVoucher]);
 
   const voucherDiscount = useMemo(() => {
     if (!appliedVoucher) return 0;
@@ -193,13 +204,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     setVoucherSuccess(null);
 
     try {
-      const res = await validateVoucher(voucherCode.trim());
+      const res = await validateVoucher(voucherCode.trim(), subtotal);
       if (res.valid && res.voucher) {
         setAppliedVoucher({
           id: res.voucher.id,
           code: res.voucher.code,
           value: res.voucher.value,
           campaignId: res.voucher.campaign_id,
+          prereqPrice: res.voucher.prereq_price,
         });
         setVoucherSuccess(res.message);
       } else {
@@ -922,9 +934,16 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 <p className="text-sm text-red-600 font-semibold px-2">{voucherError}</p>
               )}
               {voucherSuccess && (
-                <p className="text-sm text-green-600 font-semibold flex items-center gap-1 px-2">
-                  <span>✓</span> <span>{voucherSuccess}</span>
-                </p>
+                <div className="text-sm text-green-600 font-semibold px-2">
+                  <p className="flex items-center gap-1">
+                    <span>✓</span> <span>{voucherSuccess}</span>
+                  </p>
+                  {appliedVoucher?.prereqPrice ? (
+                    <p className="text-xs text-gray-500 font-normal mt-0.5">
+                      * Áp dụng cho đơn hàng từ {appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ trở lên.
+                    </p>
+                  ) : null}
+                </div>
               )}
             </div>
 

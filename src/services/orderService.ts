@@ -210,12 +210,18 @@ export interface ValidateVoucherResult {
     value: number;
     campaign_id: number;
     campaign_name: string;
+    prereq_price?: number;
   };
   message: string;
 }
 
-export async function validateVoucher(code: string): Promise<ValidateVoucherResult> {
-  const res = await fetch(`${API_BASE}/vouchers/validate?code=${encodeURIComponent(code)}`, {
+export async function validateVoucher(code: string, subtotal?: number): Promise<ValidateVoucherResult> {
+  const params = new URLSearchParams({ code });
+  if (subtotal !== undefined) {
+    params.append("subtotal", subtotal.toString());
+  }
+
+  const res = await fetch(`${API_BASE}/vouchers/validate?${params.toString()}`, {
     headers: { Accept: "application/json" },
     cache: "no-store",
   });
