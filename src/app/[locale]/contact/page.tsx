@@ -31,12 +31,9 @@ export default async function ContactPage({
 
   const settings = await getGeneralSettings(locale).catch(() => null);
   const branches = await getBranches(locale).catch(() => []);
-  const mainBranch = branches.find((item) => item.is_main);
 
   const hotline = settings?.hotline?.replace(/\s/g, '') || '';
   const email = settings?.email;
-  const address = mainBranch ? mainBranch.address : settings?.address;
-  const linkAddress = mainBranch ? (mainBranch.address_link || '#') : (settings?.link_address || '#');
 
   const socials = [
     { icon: <ShareFacebook />, href: settings?.link_facebook },
@@ -67,40 +64,49 @@ export default async function ContactPage({
               <div className="grid grid-cols-1 md:grid-cols-2 md:gap-y-6 gap-y-3 xl:gap-y-8 md:gap-x-3 xl:gap-x-6">
                 <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
                   <h3 className="title-3 text-gray-900">{t('contact.address')}</h3>
-                  <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
-                    <a href={linkAddress} target="_blank" rel="noopener noreferrer nofollow">
-                      {address}
-                    </a>
-                  </div>
-                </AnimateOnScroll>
-                <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
-                  <h3 className="title-3 text-gray-900">Hotline</h3>
-                  <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
-                    <a href={`tel:${hotline.replace(/\s/g, '')}`}>{hotline}</a>
-                  </div>
-                </AnimateOnScroll>
-                <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
-                  <h3 className="title-3 text-gray-900">Email</h3>
-                  <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
-                    <a href={`mailto:${email}`}>{email}</a>
-                  </div>
-                </AnimateOnScroll>
-                <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
-                  <h3 className="title-3 text-gray-900">Social</h3>
-                  <div className="flex items-center gap-3 md:gap-2 xl:gap-3">
-                    {socials.map((item, idx) => (
-                      item.href && (
-                        <a
-                          key={idx}
-                          href={item.href}
-                          className="size-10 rounded-[8px] flex items-center justify-center bg-white text-[#4C76C0] lg:hover:text-secondary lg:hover:bg-primary duration-300 ease-in-out shadow-sm"
-                        >
-                          {item.icon}
-                        </a>
-                      )
+                  <div className="space-y-2">
+                    {branches.map((branch, indexShowroom) => (
+                      <div key={indexShowroom} className="space-x-1">
+                        <span className="title-4">{t('footer.branch')} {indexShowroom + 1}:</span>
+                        <span className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
+                          <a href={branch.address_link || '#'} target="_blank" rel="noopener noreferrer nofollow">
+                            {branch.address}
+                          </a>
+                        </span>
+                      </div>
                     ))}
                   </div>
                 </AnimateOnScroll>
+                <div className="md:space-y-6 space-y-3 xl:space-y-8">
+                  <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
+                    <h3 className="title-3 text-gray-900">Hotline</h3>
+                    <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
+                      <a href={`tel:${hotline.replace(/\s/g, '')}`}>{hotline}</a>
+                    </div>
+                  </AnimateOnScroll>
+                  <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
+                    <h3 className="title-3 text-gray-900">Email</h3>
+                    <div className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
+                      <a href={`mailto:${email}`}>{email}</a>
+                    </div>
+                  </AnimateOnScroll>
+                  <AnimateOnScroll animate="slideup" delay={300} className="space-y-2">
+                    <h3 className="title-3 text-gray-900">Social</h3>
+                    <div className="flex items-center gap-3 md:gap-2 xl:gap-3">
+                      {socials.map((item, idx) => (
+                        item.href && (
+                          <a
+                            key={idx}
+                            href={item.href}
+                            className="size-10 rounded-[8px] flex items-center justify-center bg-white text-[#4C76C0] lg:hover:text-secondary lg:hover:bg-primary duration-300 ease-in-out shadow-sm"
+                          >
+                            {item.icon}
+                          </a>
+                        )
+                      ))}
+                    </div>
+                  </AnimateOnScroll>
+                </div>
               </div>
             </div>
 
