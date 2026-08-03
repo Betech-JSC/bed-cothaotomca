@@ -121,10 +121,25 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     });
 
     let filteredList = result.data;
-    if (categoryId) {
-      filteredList = filteredList.filter(p => 
-        p.category?.id === categoryId || p.categories?.some(c => c.id === categoryId)
-      );
+    if (categorySlug) {
+      filteredList = filteredList.filter(p => {
+        const productCat = p.categories && p.categories.length > 0 ? p.categories[0] : p.category;
+        const catTrans = productCat?.translations?.find((t: any) => t.locale === locale) ||
+                         productCat?.translations?.find((t: any) => t.locale?.startsWith(locale));
+        const catTitle = catTrans?.title || productCat?.title || '';
+        const pCatSlug = locale === 'vi' ? (productCat?.slug || slugify(catTitle)) : slugify(catTitle);
+        
+        const allSlugs = p.categories && p.categories.length > 0
+          ? p.categories.map(cat => {
+              const trans = cat.translations?.find((t: any) => t.locale === locale) ||
+                            cat.translations?.find((t: any) => t.locale?.startsWith(locale));
+              const title = trans?.title || cat.title || '';
+              return locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title);
+            })
+          : [pCatSlug];
+        
+        return allSlugs.includes(categorySlug);
+      });
     }
     if (ingredientIds) {
       const idArr = ingredientIds.split(',');
