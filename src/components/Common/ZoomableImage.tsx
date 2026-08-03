@@ -8,13 +8,13 @@ interface ZoomableImageProps extends Omit<ImageProps, 'onClick'> {
   containerClassName?: string;
 }
 
-const ZoomableImage: React.FC<ZoomableImageProps> = ({ 
-  src, 
-  alt, 
+const ZoomableImage: React.FC<ZoomableImageProps> = ({
+  src,
+  alt,
   containerClassName = "w-full h-full",
   className = "",
   fill,
-  ...props 
+  ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -24,12 +24,12 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
   }, []);
 
   const modalContent = (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center cursor-zoom-out animate-zoom-fade"
       onClick={() => setIsOpen(false)}
     >
       {/* Close button */}
-      <button 
+      <button
         className="absolute top-6 right-6 text-white/80 hover:text-white transition-colors p-2 rounded-full bg-white/10 hover:bg-white/20"
         onClick={(e) => {
           e.stopPropagation();
@@ -44,14 +44,15 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
 
       {/* Centered Image */}
       <div className="relative max-w-[90vw] max-h-[90vh] md:max-w-[80vw] md:max-h-[80vh] w-full h-full flex items-center justify-center p-4">
-        <img 
-          src={typeof src === 'string' ? src : (src as any).src || ''} 
-          alt={alt} 
+        <img
+          src={typeof src === 'string' ? src : (src as any).src || ''}
+          alt={alt}
           className="max-w-full max-h-full object-contain rounded-lg shadow-2xl select-none animate-zoom-scale"
         />
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes zoomFadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
@@ -72,16 +73,16 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
 
   return (
     <>
-      <div 
-        className={`cursor-zoom-in relative ${containerClassName}`}
+      <div
+        className={`cursor-zoom-in relative max-md:contents ${containerClassName}`}
         onClick={() => setIsOpen(true)}
       >
-        <Image 
-          src={src} 
-          alt={alt} 
+        <Image
+          src={src}
+          alt={alt}
           className={`${className}`}
           fill={fill}
-          {...props} 
+          {...props}
         />
       </div>
 
