@@ -72,14 +72,36 @@ export default async function ProductPage({ params, searchParams }: Props) {
       .filter(Boolean)
       .join(',')
 
-    productsData = await getApi<Product>('products', {
-      params: {
-        lang: locale,
-        per_page: 9,
-        page: page,
-        ingredients: ingredientIds
-      }
-    }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }));
+    const { getProducts } = await import('@/services/productService');
+    const result = await getProducts({
+      lang: locale,
+      per_page: 9,
+      page: parseInt(page, 10) || 1,
+      catalog: true,
+    });
+
+    // Client-side ingredient filtering over full catalog to ensure all items are fetched properly per page
+    let filteredList = result.data;
+    if (ingredientIds) {
+      const idArr = ingredientIds.split(',');
+      filteredList = result.data.filter(p => 
+        idArr.every(id => p.ingredients?.some(ing => String(ing.id) === String(id)))
+      );
+    }
+
+    const perPage = 9;
+    const currPage = parseInt(page, 10) || 1;
+    const total = filteredList.length;
+    const lastPage = Math.max(1, Math.ceil(total / perPage));
+    const start = (currPage - 1) * perPage;
+    const pageData = filteredList.slice(start, start + perPage);
+
+    productsData = {
+      data: pageData,
+      current_page: currPage,
+      last_page: lastPage,
+      total: total
+    };
   }
 
   const bannerItem = bannerData.data[0];

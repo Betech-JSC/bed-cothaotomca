@@ -112,16 +112,40 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       .filter(Boolean)
       .join(',')
 
-    // 2. Call API products with the resolved category_id and mapped ingredientIds
-    productsResp = await getApi<Product>('products', {
-      params: {
-        lang: locale,
-        per_page: 9,
-        page: page,
-        ingredients: ingredientIds,
-        category_id: categoryId || ''
-      }
-    }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }));
+    const { getProducts } = await import('@/services/productService');
+    const result = await getProducts({
+      lang: locale,
+      per_page: 9,
+      page: parseInt(page, 10) || 1,
+      catalog: true,
+    });
+
+    let filteredList = result.data;
+    if (categoryId) {
+      filteredList = filteredList.filter(p => 
+        p.category?.id === categoryId || p.categories?.some(c => c.id === categoryId)
+      );
+    }
+    if (ingredientIds) {
+      const idArr = ingredientIds.split(',');
+      filteredList = filteredList.filter(p => 
+        idArr.every(id => p.ingredients?.some(ing => String(ing.id) === String(id)))
+      );
+    }
+
+    const perPage = 9;
+    const currPage = parseInt(page, 10) || 1;
+    const total = filteredList.length;
+    const lastPage = Math.max(1, Math.ceil(total / perPage));
+    const start = (currPage - 1) * perPage;
+    const pageData = filteredList.slice(start, start + perPage);
+
+    productsResp = {
+      data: pageData,
+      current_page: currPage,
+      last_page: lastPage,
+      total: total
+    };
   }
 
   const bannerItem = bannerResp.data[0];
