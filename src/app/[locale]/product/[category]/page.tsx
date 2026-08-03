@@ -129,7 +129,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     if (ingredientIds) {
       const idArr = ingredientIds.split(',');
       filteredList = filteredList.filter(p => 
-        idArr.every(id => p.ingredients?.some(ing => String(ing.id) === String(id)))
+        idArr.some(id => p.ingredients?.some(ing => String(ing.id) === String(id)))
       );
     }
 

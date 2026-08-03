@@ -85,7 +85,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     if (ingredientIds) {
       const idArr = ingredientIds.split(',');
       filteredList = result.data.filter(p => 
-        idArr.every(id => p.ingredients?.some(ing => String(ing.id) === String(id)))
+        idArr.some(id => p.ingredients?.some(ing => String(ing.id) === String(id)))
       );
     }
 

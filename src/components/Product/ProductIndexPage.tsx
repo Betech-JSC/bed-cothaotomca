@@ -173,10 +173,10 @@ export default function ProductIndexPage({
       // Otherwise, check if ANY of the product's categories matches the URL slug.
       const catMatch = !category || p.allCategorySlugs.includes(category)
 
-      // Ingredient match: the product must have ALL selected ingredients.
+      // Ingredient match: the product has ANY of the selected ingredients (OR logic for combos/multi-ingredients).
       const ingMatch =
         selectedIngredients.length === 0 ||
-        selectedIngredients.every(slug => {
+        selectedIngredients.some(slug => {
           const ingId = ingredientsDisplay.find(ing => ing.slug === slug)?.id
           return ingId && p.ingredientIds.includes(ingId)
         })
