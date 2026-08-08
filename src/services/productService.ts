@@ -143,6 +143,8 @@ export function normalizeProduct(item: Product): Product {
 export function normalizeProductDetail(item: Product): Product {
   const base = normalizeProduct(item);
   const variants = (item.variants ?? []).map((v) => ({
+    id: v.id,
+    code: v.code,
     size: v.size,
     size_en: v.size_en ?? v.size,
     price: String(v.price ?? base.price),
