@@ -1,7 +1,5 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-
-
 # dependencies
 
 /node_modules
@@ -13,11 +11,13 @@
 
 .vscode
 
-# testing
-
+# testing & logs
 /coverage
-
-
+*.log
+e2e-test-data-log.json
+playwright-report/
+test-results/
+tsconfig.tsbuildinfo
 
 # next.js
 

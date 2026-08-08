@@ -7,6 +7,7 @@ import { useRouter, Link } from "@/i18n/routing";
 import { formatPrice, isDefaultVariant } from "@/lib/format";
 import {
   calcOrderTotal,
+  calculateShippingFee,
   createOrder,
   OrderApiError,
   validateVoucher,
@@ -18,6 +19,7 @@ import PaymentQRScreen from "./PaymentQRScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import MobileCartFlow from "../Header/MobileCartFlow";
+import { checkOperatingHours } from "@/lib/operatingHours";
 
 export interface CheckoutOrderItem {
   productId: number;
@@ -116,26 +118,20 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   // COD/Transfer selection (CARD removed)
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
 
-  // Shipping inputs
+  // Regional Shipping & Freeship calculation states
+  const [selectedProvince, setSelectedProvince] = useState("TP. Hồ Chí Minh");
   const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedWard, setSelectedWard] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
-  const [shippingFee] = useState(defaultShippingFee);
 
-  // Store Pickup input
-  const [selectedBranchId, setSelectedBranchId] = useState<number>(() => {
-    return config.branches?.[0]?.id || 1;
-  });
-
-  // Expected delivery time
-  const [deliverySchedule, setDeliverySchedule] = useState<"now" | "schedule">("now");
-  const [expectedDelivery, setExpectedDelivery] = useState("");
-
-  const [itemNote] = useState("");
-  const [description, setDescription] = useState("");
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [shippingFee, setShippingFee] = useState<number>(defaultShippingFee);
+  const [originalFee, setOriginalFee] = useState<number>(defaultShippingFee);
+  const [isFreeship, setIsFreeship] = useState<boolean>(false);
+  const [freeshipReason, setFreeshipReason] = useState<string | null>(null);
+  const [isDeliverable, setIsDeliverable] = useState<boolean>(true);
+  const [shippingMessage, setShippingMessage] = useState<string | null>(null);
+  const [assignedBranchName, setAssignedBranchName] = useState<string | null>(null);
+  const [calculatingShipping, setCalculatingShipping] = useState<boolean>(false);
 
   // Voucher states
   const [voucherCode, setVoucherCode] = useState("");
@@ -145,8 +141,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [validatingVoucher, setValidatingVoucher] = useState(false);
   const [confirmInfo, setConfirmInfo] = useState(false);
 
-  // Sau khi tạo đơn thành công → chuyển sang màn hình QR
-  const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
+  // Operating hours check (10:00 - 23:00)
+  const operatingStatus = useMemo(() => {
+    return checkOperatingHours(config?.operating_hours);
+  }, [config?.operating_hours]);
 
   const lineItems = useMemo(() => {
     if (isCartCheckout) {
@@ -164,6 +162,73 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     shippingFee,
     0,
   );
+
+  // Trigger real-time calculation when address, subtotal or voucher changes
+  useEffect(() => {
+    if (deliveryType !== "delivery") {
+      setShippingFee(0);
+      setIsFreeship(false);
+      setIsDeliverable(true);
+      return;
+    }
+
+    let isSubscribed = true;
+    setCalculatingShipping(true);
+
+    calculateShippingFee({
+      province: selectedProvince,
+      district: selectedDistrict,
+      ward: selectedWard,
+      subtotal,
+      voucher_code: appliedVoucher?.code,
+    })
+      .then((res) => {
+        if (!isSubscribed) return;
+        setShippingFee(res.shipping_fee);
+        setOriginalFee(res.original_fee);
+        setIsFreeship(res.is_freeship);
+        setFreeshipReason(res.freeship_reason || null);
+        setIsDeliverable(res.is_deliverable);
+        setShippingMessage(res.message || null);
+        if (res.branch_id) {
+          setSelectedBranchId(res.branch_id);
+        }
+        if (res.branch_name) {
+          setAssignedBranchName(res.branch_name);
+        } else {
+          setAssignedBranchName(null);
+        }
+      })
+      .catch((err) => {
+        console.error("Error calculating shipping:", err);
+      })
+      .finally(() => {
+        if (isSubscribed) setCalculatingShipping(false);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, subtotal, appliedVoucher]);
+
+  // Store Pickup input
+  const [selectedBranchId, setSelectedBranchId] = useState<number>(() => {
+    return config.branches?.[0]?.id || 1;
+  });
+
+  // Expected delivery time
+  const [deliverySchedule, setDeliverySchedule] = useState<"now" | "schedule">("now");
+  const [expectedDelivery, setExpectedDelivery] = useState("");
+
+  const [itemNote] = useState("");
+  const [description, setDescription] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Sau khi tạo đơn thành công → chuyển sang màn hình QR
+  const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
 
   // Auto-remove voucher if cart subtotal drops below the minimum required price
   useEffect(() => {
@@ -241,14 +306,27 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         ? `Nhận tại chi nhánh: ${branch.branchName} - Địa chỉ: ${branch.address}`
         : "Nhận tại chi nhánh Cô Thảo";
     }
-    return `${streetAddress.trim()}${selectedDistrict ? `, ${selectedDistrict}` : ""}`;
-  }, [deliveryType, selectedBranchId, streetAddress, selectedDistrict, config.branches]);
+    const parts = [
+      streetAddress.trim(),
+      selectedWard.trim(),
+      selectedDistrict.trim(),
+      selectedProvince.trim(),
+    ].filter(Boolean);
+    return parts.join(", ");
+  }, [deliveryType, selectedBranchId, streetAddress, selectedWard, selectedDistrict, selectedProvince, config.branches]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setFieldErrors({});
+
+    const opCheck = checkOperatingHours(config?.operating_hours);
+    if (!opCheck.isStoreOpen) {
+      setError(opCheck.message || "Vui lòng quay trở lại đặt sau vì chưa đến giờ!");
+      setLoading(false);
+      return;
+    }
 
     if (isCartCheckout && cartItems.length === 0) {
       setError("Giỏ hàng của bạn đang trống.");
@@ -438,6 +516,25 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             onSubmit={handleSubmit}
             className="bg-white rounded-[24px] p-6 md:p-8 space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100"
           >
+            {/* Banner Khung giờ mở cửa nhận đơn */}
+            <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${
+              operatingStatus.isStoreOpen
+                ? "bg-blue-50/80 border-blue-200 text-blue-900"
+                : "bg-amber-50 border-amber-300 text-amber-900"
+            }`}>
+              <span className="text-xl leading-none mt-0.5">🕒</span>
+              <div className="text-sm space-y-1 font-serif">
+                <div className="font-bold text-base">Khung giờ mở cửa nhận đơn: 10:00 - 23:00 hàng ngày</div>
+                {!operatingStatus.isStoreOpen ? (
+                  <div className="font-semibold text-amber-800">
+                    ⚠️ {operatingStatus.message || "Vui lòng quay trở lại đặt sau vì chưa đến giờ mở cửa (10:00 - 23:00)!"}
+                  </div>
+                ) : (
+                  <div className="text-blue-700 font-medium">Quán đang trong giờ phục vụ nhận đơn hàng.</div>
+                )}
+              </div>
+            </div>
+
             <h2 className="title-1 text-primary border-b border-gray-100 pb-3">
               Thông tin liên hệ
             </h2>
@@ -525,49 +622,100 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
                 <p className="body-1 text-gray-700 font-bold">Địa chỉ giao hàng tận nơi</p>
 
-                {/* Chọn Quận Huyện dropdown */}
-                <div className="space-y-2">
-                  <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Quận/Huyện khu vực</label>
-                  <select
-                    value={selectedDistrict}
-                    onChange={(e) => setSelectedDistrict(e.target.value)}
-                    className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
-                  >
-                    <option value="">-- Chọn Quận/Huyện giao hàng --</option>
-                    <optgroup label="Hà Nội">
-                      {POPULAR_DISTRICTS.filter((d) => d.group === "Hà Nội").map((d) => (
-                        <option key={d.value} value={d.value}>
-                          {d.value}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="TP. Hồ Chí Minh">
-                      {POPULAR_DISTRICTS.filter((d) => d.group === "TP. Hồ Chí Minh").map((d) => (
-                        <option key={d.value} value={d.value}>
-                          {d.value}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                  {fieldError("delivery.district") ? (
-                    <p className="text-sm text-red-600 mt-1">{fieldError("delivery.district")}</p>
-                  ) : null}
+                {/* Chọn Tỉnh/Thành & Quận/Huyện */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-serif font-semibold text-primary block">Tỉnh / Thành phố *</label>
+                    <select
+                      value={selectedProvince}
+                      onChange={(e) => {
+                        setSelectedProvince(e.target.value);
+                        setSelectedDistrict("");
+                        setSelectedWard("");
+                      }}
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif cursor-pointer"
+                    >
+                      <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+                      <option value="Hà Nội">Hà Nội</option>
+                      <option value="Bình Dương">Bình Dương</option>
+                      <option value="Đồng Nai">Đồng Nai</option>
+                      <option value="Đà Nẵng">Đà Nẵng</option>
+                      <option value="Khác">Tỉnh / Thành khác</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-serif font-semibold text-primary block">Quận / Huyện *</label>
+                    <input
+                      type="text"
+                      required
+                      value={selectedDistrict}
+                      onChange={(e) => setSelectedDistrict(e.target.value)}
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
+                      placeholder="VD: Quận 3, Quận 1, Cầu Giấy..."
+                    />
+                    {fieldError("delivery.district") ? (
+                      <p className="text-sm text-red-600 mt-1">{fieldError("delivery.district")}</p>
+                    ) : null}
+                  </div>
                 </div>
 
-                {/* Địa chỉ chi tiết */}
-                <div className="space-y-2">
-                  <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Số nhà, tên đường, ngõ ngách...</label>
-                  <input
-                    type="text"
-                    value={streetAddress}
-                    onChange={(e) => setStreetAddress(e.target.value)}
-                    className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
-                    placeholder="Ví dụ: Số 20 ngõ 5 Láng Hạ"
-                  />
-                  {fieldError("delivery.address") ? (
-                    <p className="text-sm text-red-600 mt-1">{fieldError("delivery.address")}</p>
-                  ) : null}
+                {/* Phường / Xã & Số nhà */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-serif font-semibold text-primary block">Phường / Xã</label>
+                    <input
+                      type="text"
+                      value={selectedWard}
+                      onChange={(e) => setSelectedWard(e.target.value)}
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
+                      placeholder="VD: Phường 14, Phường Bến Nghé..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-serif font-semibold text-primary block">Số nhà, tên đường *</label>
+                    <input
+                      type="text"
+                      required
+                      value={streetAddress}
+                      onChange={(e) => setStreetAddress(e.target.value)}
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
+                      placeholder="VD: Số 73 Rạch Bùng Binh"
+                    />
+                    {fieldError("delivery.address") ? (
+                      <p className="text-sm text-red-600 mt-1">{fieldError("delivery.address")}</p>
+                    ) : null}
+                  </div>
                 </div>
+
+                {/* Thông báo chi nhánh tự động được chọn & thông tin ship */}
+                {assignedBranchName && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-900 font-medium flex items-center gap-2">
+                    <span>📍</span>
+                    <span>Hệ thống tự động xác định giao từ chi nhánh: <strong>{assignedBranchName}</strong></span>
+                  </div>
+                )}
+
+                {/* Warning nếu khu vực chưa được cấu hình và bị chặn */}
+                {!isDeliverable && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-sm text-red-700 font-semibold space-y-1">
+                    <p className="flex items-center gap-1.5 text-red-800">
+                      <span>⚠️</span>
+                      <span>Khu vực này hiện chưa hỗ trợ giao hàng tận nơi.</span>
+                    </p>
+                    <p className="text-xs text-red-600 font-normal">
+                      Vui lòng chọn hình thức <strong>"Tự đến lấy tại chi nhánh"</strong> hoặc liên hệ Hotline để được hỗ trợ.
+                    </p>
+                  </div>
+                )}
+
+                {/* Thẻ thông báo phí tiêu chuẩn */}
+                {isDeliverable && shippingMessage && !isFreeship && (
+                  <div className="text-xs text-gray-500 font-medium italic px-1">
+                    ℹ️ {shippingMessage}
+                  </div>
+                )}
               </div>
             )}
 
@@ -950,11 +1098,44 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             {/* Hộp tính giá (Blue-Gray rounded container) */}
             <div className="bg-gray-100 rounded-[12px] p-4 space-y-2.5">
               <div className="flex justify-between items-center text-base font-medium">
-                <span className="text-gray-600">Vận chuyển</span>
-                <span className="title-3 font-display text-primary font-bold">
-                  {formatPrice(shipping)}
+                <span className="text-gray-600 flex items-center gap-1.5">
+                  <span>Vận chuyển</span>
+                  {calculatingShipping && (
+                    <span className="text-xs text-gray-400 animate-pulse">(Đang tính...)</span>
+                  )}
                 </span>
+                <div className="text-right">
+                  {deliveryType === "pickup" ? (
+                    <span className="title-3 font-display text-green-600 font-bold">0đ (Tự đến lấy)</span>
+                  ) : isFreeship ? (
+                    <div className="flex flex-col items-end">
+                      <span className="title-3 font-display text-green-600 font-bold flex items-center gap-1">
+                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+                          ✓ Miễn phí vận chuyển
+                        </span>
+                        <span>0đ</span>
+                      </span>
+                      {originalFee > 0 && (
+                        <span className="text-xs text-gray-400 line-through">
+                          {formatPrice(originalFee)}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="title-3 font-display text-primary font-bold">
+                      {formatPrice(shipping)}
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {/* Thông báo lý do Freeship */}
+              {deliveryType === "delivery" && isFreeship && freeshipReason && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-xs text-green-700 font-medium flex items-center gap-1">
+                  <span>🎉</span>
+                  <span>{freeshipReason}</span>
+                </div>
+              )}
 
               {appliedVoucher && (
                 <div className="flex justify-between items-center text-base font-medium text-green-600 border-t border-gray-200/50 pt-2">
@@ -1023,10 +1204,16 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo}
+              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || !operatingStatus.isStoreOpen}
               className="w-full bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none"
             >
-              {loading ? "Đang xử lý..." : "Thanh toán"}
+              {loading
+                ? "Đang xử lý..."
+                : !operatingStatus.isStoreOpen
+                ? "Vui lòng quay lại đặt sau (10h-23h)"
+                : deliveryType === "delivery" && !isDeliverable
+                ? "Khu vực chưa hỗ trợ giao"
+                : "Thanh toán"}
             </button>
           </div>
         </div>

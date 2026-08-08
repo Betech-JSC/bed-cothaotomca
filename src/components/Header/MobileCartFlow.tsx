@@ -20,6 +20,7 @@ import {
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import Chevron from "../Icons/Chevron";
+import { checkOperatingHours } from "@/lib/operatingHours";
 
 const POPULAR_DISTRICTS = [
   // Hà Nội
@@ -86,6 +87,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   // Accordion summary expanded
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+
+  // Operating hours check (10:00 - 23:00)
+  const operatingStatus = useMemo(() => {
+    return checkOperatingHours(config?.operating_hours);
+  }, [config?.operating_hours]);
 
   // Sync user details when loaded
   useEffect(() => {
@@ -209,6 +215,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
     if (cartItems.length === 0) {
       setError("Giỏ hàng của bạn đang trống.");
+      setLoading(false);
+      return;
+    }
+
+    const opCheck = checkOperatingHours(config?.operating_hours);
+    if (!opCheck.isStoreOpen) {
+      setError(opCheck.message || "Vui lòng quay trở lại đặt sau vì chưa đến giờ!");
       setLoading(false);
       return;
     }
@@ -542,6 +555,25 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         {/* Step 2: Checkout Form & Collapsible Summary */}
         {step === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right duration-200">
+            {/* Banner Khung giờ mở cửa nhận đơn */}
+            <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${
+              operatingStatus.isStoreOpen
+                ? "bg-blue-50/80 border-blue-200 text-blue-900"
+                : "bg-amber-50 border-amber-300 text-amber-900"
+            }`}>
+              <span className="text-xl leading-none mt-0.5">🕒</span>
+              <div className="text-sm space-y-1 font-serif">
+                <div className="font-bold text-sm">Khung giờ mở cửa nhận đơn: 10:00 - 23:00</div>
+                {!operatingStatus.isStoreOpen ? (
+                  <div className="font-semibold text-amber-800 text-xs">
+                    ⚠️ {operatingStatus.message || "Vui lòng quay trở lại đặt sau vì chưa đến giờ mở cửa (10:00 - 23:00)!"}
+                  </div>
+                ) : (
+                  <div className="text-blue-700 font-medium text-xs">Quán đang mở cửa nhận đơn hàng.</div>
+                )}
+              </div>
+            </div>
+
             {/* Collapsible summary panel */}
             <div className="bg-white rounded-[24px] p-4 shadow-sm border border-gray-100">
               <button
@@ -884,10 +916,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || !confirmInfo}
+              disabled={loading || !confirmInfo || !operatingStatus.isStoreOpen}
               className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50"
             >
-              {loading ? "Đang xử lý..." : "Thanh toán"}
+              {loading ? "Đang xử lý..." : !operatingStatus.isStoreOpen ? "Vui lòng quay lại đặt sau (10h-23h)" : "Thanh toán"}
             </button>
           </div>
         )}

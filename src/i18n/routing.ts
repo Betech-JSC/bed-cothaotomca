@@ -93,6 +93,10 @@ export const routing = defineRouting({
     '/reset-password': {
       vi: '/dat-lai-mat-khau',
       en: '/reset-password',
+    },
+    '/order-lookup': {
+      vi: '/tra-cuu-don-hang',
+      en: '/order-lookup',
     }
   }
 });

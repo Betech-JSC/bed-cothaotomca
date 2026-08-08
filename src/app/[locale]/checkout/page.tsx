@@ -74,8 +74,8 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
         : matchedSize.price;
 
     order = {
-      productId: product.id,
-      productCode: productData.checkout.productCode,
+      productId: matchedSize.id ?? product.id,
+      productCode: matchedSize.code ?? productData.checkout.productCode,
       slug: productData.checkout.slug,
       categorySlug: productData.checkout.categorySlug,
       title: productData.title,

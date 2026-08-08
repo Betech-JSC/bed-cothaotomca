@@ -414,9 +414,6 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
           onClick={onLogout}
           className="w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 py-3 rounded-[24px] font-bold font-serif text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-sm"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-          </svg>
           {t("logout")}
         </button>
       </div>
@@ -425,134 +422,132 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       <div className="grow bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-gray-100">
         {activeTab === "orders" ? (
           /* TRANSACTION HISTORY TAB */
-          <div className="space-y-6">
-            <h3 className="text-primary font-display font-bold text-[22px] flex items-center gap-2">
+          <div className="space-y-6 font-serif">
+            <h3 className="text-primary font-display font-bold text-[20px] md:text-[22px] flex items-center gap-2.5">
               <svg width="24" height="24" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M3 5H17M3 10H17M3 15H17" stroke="#CD4829" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               {t("transaction_history")}
             </h3>
 
             <div className="flex flex-col gap-4 font-serif">
               {loadingOrders ? (
-                <div className="text-center py-10 text-gray-500 font-semibold animate-pulse">Loading orders...</div>
+                <div className="text-center py-12 text-gray-500 font-medium text-[14px] animate-pulse">
+                  Loading orders...
+                </div>
               ) : orders.length === 0 ? (
-                <div className="text-center py-10 text-gray-400 font-semibold">{t("no_orders") || "Chưa có đơn hàng nào."}</div>
+                <div className="text-center py-12 text-gray-400 font-medium text-[14px]">
+                  {t("no_orders") || "Chưa có đơn hàng nào."}
+                </div>
               ) : (
                 orders.map((order, idx) => {
                   const mappedStatus = mapStatus(order.status);
+                  const isCompleted = mappedStatus === "completed";
+                  const isShipping = mappedStatus === "shipping";
+                  const formattedCode = order.order_code.startsWith("#") ? order.order_code : `#${order.order_code}`;
+
                   return (
                     <div
                       key={idx}
-                      className="bg-gray-50/50 hover:bg-gray-50 border border-gray-100 rounded-[16px] p-5 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-sm"
+                      className={`border rounded-[16px] p-5 md:p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-md ${
+                        isCompleted
+                          ? "bg-[#F8F9FC] border-gray-100 hover:border-gray-200"
+                          : "bg-[#FFFDF6] border-[#F5EEDC] hover:border-amber-200/80"
+                      }`}
                       onClick={() => setExpandedOrderCode(expandedOrderCode === order.order_code ? null : order.order_code)}
                     >
-                      {/* Main row */}
+                      {/* Main transaction item row matching exact UI specification */}
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
-                        <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-                          {/* Order Code */}
-                          <div>
-                            <span className="text-[11px] font-bold text-gray-400 block tracking-wider">
-                              {t("order_code")}
+                        <div className="flex flex-wrap items-center gap-y-3">
+                          {/* 1. MÃ GIAO DỊCH */}
+                          <div className="pr-4 md:pr-6">
+                            <span className="text-[14px] text-[#7D89AF] font-normal block leading-tight mb-1 uppercase">
+                              {t("order_code") || "MÃ GIAO DỊCH"}
                             </span>
-                            <span className="text-secondary font-bold text-[15px]">
-                              {order.order_code}
+                            <span className="text-[18px] md:text-[20px] font-bold text-[#C03613]">
+                              {formattedCode}
                             </span>
                           </div>
 
-                          {/* Order Date */}
-                          <div>
-                            <span className="text-[11px] font-bold text-gray-400 block tracking-wider">
-                              {t("order_date")}
+                          {/* Vertical Divider 1 */}
+                          <div className="hidden sm:block h-10 w-px bg-gray-200/90 self-center mx-2 md:mx-4" />
+
+                          {/* 2. NGÀY GIAO DỊCH */}
+                          <div className="px-2 md:px-4">
+                            <span className="text-[14px] text-[#7D89AF] font-normal block leading-tight mb-1 uppercase">
+                              {t("order_date") || "NGÀY GIAO DỊCH"}
                             </span>
-                            <span className="text-primary font-bold text-[15px]">
+                            <span className="text-[16px] md:text-[18px] font-semibold text-[#111322]">
                               {formatDate(order.created_at)}
                             </span>
                           </div>
 
-                          {/* Order Status */}
-                          <div>
-                            <span className="text-[11px] font-bold text-gray-400 block tracking-wider mb-0.5">
-                              {t("status")}
-                            </span>
-                            {mappedStatus === "shipping" && (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#CD4829] text-white text-[12px] font-bold">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <rect x="1" y="3" width="15" height="13" />
-                                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                                  <circle cx="5.5" cy="18.5" r="2.5" />
-                                  <circle cx="18.5" cy="18.5" r="2.5" />
-                                </svg>
-                                {t("status_shipping")}
-                              </span>
-                            )}
-                            {mappedStatus === "processing" && (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#A25F4E] text-white text-[12px] font-bold">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="12" r="10" />
-                                  <polyline points="12 6 12 12 16 14" />
-                                </svg>
-                                {t("status_processing")}
-                              </span>
-                            )}
-                            {mappedStatus === "completed" && (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-primary text-[12px] font-bold">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                                {t("status_completed")}
-                              </span>
-                            )}
-                          </div>
+                          {/* Vertical Divider 2 */}
+                          <div className="hidden sm:block h-10 w-px bg-gray-200/90 self-center mx-2 md:mx-4" />
 
-                          {/* Payment Status */}
-                          <div>
-                            <span className="text-[11px] font-bold text-gray-400 block tracking-wider mb-0.5">
-                              {t("payment_status")}
+                          {/* 3. Trạng thái */}
+                          <div className="pl-2 md:pl-4">
+                            <span className="text-[14px] text-[#7D89AF] font-normal block leading-tight mb-1">
+                              {t("status") || "Trạng thái"}
                             </span>
-                            {order.payment_status === "paid" && (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-600 text-white text-[12px] font-bold">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                                {t("payment_status_paid")}
+
+                            {isShipping && (
+                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#CD4829] text-white text-[14px] font-medium shadow-sm">
+                                <Image
+                                  src="/images/fi_2769339.svg"
+                                  alt="Đang giao"
+                                  width={18}
+                                  height={18}
+                                  className="w-4 h-4 object-contain brightness-0 invert"
+                                />
+                                <span>{t("status_shipping") || "Đang giao"}</span>
                               </span>
                             )}
-                            {order.payment_status === "pending" && (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500 text-white text-[12px] font-bold">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="12" r="10" />
-                                  <polyline points="12 6 12 12 16 14" />
-                                </svg>
-                                {t("payment_status_pending")}
+
+                            {mappedStatus === "processing" && (
+                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#CD4829] text-white text-[14px] font-medium shadow-sm">
+                                <Image
+                                  src="/images/fi_3448102.svg"
+                                  alt="Đang xử lý"
+                                  width={18}
+                                  height={18}
+                                  className="w-4 h-4 object-contain brightness-0 invert"
+                                />
+                                <span>{t("status_processing") || "Đang xử lý"}</span>
                               </span>
                             )}
-                            {order.payment_status === "expired" && (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 text-white text-[12px] font-bold">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                                {t("payment_status_expired")}
+
+                            {isCompleted && (
+                              <span className="inline-flex items-center gap-1.5 text-[#4A5578] text-[14px] font-medium py-1">
+                                <Image
+                                  src="/images/check.svg"
+                                  alt="Hoàn thành"
+                                  width={18}
+                                  height={18}
+                                  className="w-4 h-4 object-contain"
+                                />
+                                <span>{t("status_completed") || "Hoàn thành"}</span>
                               </span>
                             )}
                           </div>
                         </div>
 
-                        {/* Price & Toggle chevron */}
-                        <div className="flex items-center gap-3 self-end md:self-auto">
-                          <div className="text-[20px] font-bold text-primary">
+                        {/* Far Right: Total Amount & Expand Chevron */}
+                        <div className="flex items-center gap-4 self-end md:self-auto">
+                          <div className="text-[18px] md:text-[20px] font-bold text-[#142A68]">
                             {formatPrice(order.total)}
                           </div>
-                          <svg
-                            className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${expandedOrderCode === order.order_code ? "rotate-180" : ""}`}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                          </svg>
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-primary transition-colors">
+                            <svg
+                              className={`w-5 h-5 transition-transform duration-300 ${expandedOrderCode === order.order_code ? "rotate-180" : ""}`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
                         </div>
                       </div>
 

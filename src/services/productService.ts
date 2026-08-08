@@ -18,6 +18,8 @@ export interface Translation {
 }
 
 export interface ProductVariant {
+  id?: number;
+  code?: string;
   size?: string;
   size_en?: string;
   price?: string | number;
@@ -85,7 +87,7 @@ export interface ProductDetailView {
   code?: string;
   unit?: string;
   images: { url: string; alt: string }[];
-  sizes: { title: string; price: number }[];
+  sizes: { id?: number; code?: string; title: string; price: number }[];
   infos: { title: string; content: string }[];
   category: { title: string; slug: string };
   checkout: {
@@ -213,11 +215,13 @@ export function mapProductToDetailView(
               ? v.size_en || v.size || labels.standard
               : v.size || v.size_en || labels.standard;
           return {
+            id: v.id,
+            code: v.code,
             title: title || labels.standard,
             price: parseFloat(String(v.price)) || unitPrice,
           };
         })
-      : [{ title: labels.standard, price: unitPrice }];
+      : [{ id: product.id, code: product.code, title: labels.standard, price: unitPrice }];
 
   const infos = (product.sections ?? []).map((section) => ({
     title: section.title,
@@ -305,7 +309,7 @@ export async function getProductCatalog(
   const chunkSize = 20;
   let page = 1;
 
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 5; i++) {
     const apiParams: Record<string, string | number> = {
       page,
       per_page: chunkSize,

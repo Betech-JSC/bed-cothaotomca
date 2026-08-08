@@ -79,7 +79,8 @@ export default async function ProductDetailsPage({
   const { locale, category, slug } = await params
 
   const { getProductBySlugWithFallback } = await import('@/services/productService');
-  const product = await getProductBySlugWithFallback(slug, { revalidate: 3600, lang: locale });
+  const product = await getProductBySlugWithFallback(slug, { revalidate: 0, lang: locale });
+
 
   if (!product) {
     notFound();
@@ -100,10 +101,14 @@ export default async function ProductDetailsPage({
       : [{ url: product.image, alt: product.name }],
     sizes: product.variants && product.variants.length > 0
       ? product.variants.map((v: any) => ({
+        id: v.id,
+        code: v.code || "",
         title: locale === "vi" ? v.size : (v.size_en || v.size),
-        price: v.price,
+        price: typeof v.price === "number" ? v.price : parseFloat(v.price) || 0,
       }))
-      : [{ title: t("product.standard"), price: parseInt(product.price) }],
+      : [{ id: product.id, code: product.code || "", title: t("product.standard"), price: parseInt(product.price) }],
+
+
     category: {
       title: (product.categories && product.categories.length > 0 ? product.categories[0]?.title : product.category?.title) || "Sản phẩm",
       slug: (product.categories && product.categories.length > 0 ? product.categories[0]?.slug : product.category?.slug) || ""

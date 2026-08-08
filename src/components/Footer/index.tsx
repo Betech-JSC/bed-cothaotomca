@@ -96,6 +96,9 @@ const Footer = () => {
                     <Chat />
                     <span>{t('button.message-now')}</span>
                   </a>
+                  <Link href="/order-lookup" className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out">
+                    <span>Tra cứu đơn hàng</span>
+                  </Link>
                 </div>
                 <div className="relative max-w-[130px] w-full h-[50px]">
                   <Image

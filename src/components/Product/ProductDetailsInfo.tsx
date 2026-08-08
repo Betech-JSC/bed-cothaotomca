@@ -29,8 +29,8 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
   const handleAddToCart = () => {
     addToCart({
       id: `${productData.checkout.slug}-${selectedSize.title}`,
-      productId: productData.checkout.productId,
-      productCode: productData.checkout.productCode,
+      productId: selectedSize.id ?? productData.checkout.productId,
+      productCode: selectedSize.code ?? productData.checkout.productCode,
       slug: productData.checkout.slug,
       categorySlug: productData.checkout.categorySlug,
       title: productData.title,
@@ -126,14 +126,26 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            className="btn btn-primary flex items-center justify-center gap-2"
-          >
-            <BoxMessage />
-            <span>Thêm vào giỏ hàng</span>
-          </button>
+          {(() => {
+            const hasCode = Boolean(selectedSize?.code);
+            return (
+              <button
+                type="button"
+                disabled={!hasCode}
+                onClick={handleAddToCart}
+                className={`btn flex items-center justify-center gap-2 ${
+                  hasCode
+                    ? "btn-primary"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
+                }`}
+              >
+                <BoxMessage />
+                <span>{hasCode ? "Thêm vào giỏ hàng" : "Tạm hết hàng"}</span>
+              </button>
+            );
+          })()}
+
+
           <a
             href="https://m.me/cothaotomca"
             target="_blank"
