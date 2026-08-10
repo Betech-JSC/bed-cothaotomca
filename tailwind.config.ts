@@ -55,9 +55,9 @@ const config = {
         'progress-bar': 'progress-bar 500ms ease-out forwards',
       },
       fontFamily: {
-        display: ["TomCaSerif", "Be Vietnam Pro", "Roboto", "sans-serif"],
-        sans: ["Roobert", "Be Vietnam Pro", "Roboto", "sans-serif"],
-        serif: ["Roboto", "Be Vietnam Pro", "sans-serif"],
+        display: ["TomCaSerif", "sans-serif"],
+        sans: ["Roobert", "sans-serif"],
+        serif: ["Roboto", "sans-serif"],
       },
     },
   },
