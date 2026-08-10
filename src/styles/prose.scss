@@ -1,10 +1,10 @@
 // =============================================================================
-// .ql-content / Article Content Styling
+// .prose-content - Rich Text Article Content Styling
 // =============================================================================
 // Standard HTML typography styling for TinyMCE & CMS rich text content
 // =============================================================================
 
-.ql-content {
+.prose-content {
   box-sizing: border-box;
   line-height: 1.75;
   font-size: 16px;
@@ -226,10 +226,37 @@
     border-radius: 8px;
   }
 
-  // --- Text Alignment Fallbacks ---
-  .ql-align-center { text-align: center; }
-  .ql-align-right { text-align: right; }
-  .ql-align-justify { text-align: justify; }
+  // --- Horizontal Rule ---
+  hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 2rem 0;
+  }
+
+  // --- Accordion / Collapse (TinyMCE Accordions) ---
+  details {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin: 1.25rem 0;
+    background-color: #f8fafc;
+
+    summary {
+      font-weight: 600;
+      cursor: pointer;
+      color: #0f172a;
+      outline: none;
+      user-select: none;
+    }
+
+    &[open] {
+      summary {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #e2e8f0;
+      }
+    }
+  }
 
   // Mobile Responsiveness for Floated Images
   @media (max-width: 640px) {

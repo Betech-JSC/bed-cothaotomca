@@ -211,7 +211,7 @@ export default async function BlogDetailsPage({
           </div>
 
           <div className="flex flex-col items-center w-full max-w-[880px] mx-auto md:space-y-4 space-y-6 xl:space-y-6">
-            <div className="ql-content max-w-full w-full" dangerouslySetInnerHTML={{ __html: blogContent }}></div>
+            <div className="prose-content max-w-full w-full" dangerouslySetInnerHTML={{ __html: blogContent }}></div>
             <div className="w-full border-t border-gray-300 pt-3">
               <SocialShare />
             </div>
