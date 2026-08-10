@@ -306,7 +306,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </div>
       </section>
-      <SectionSliderPost items={postsDisplay} />
+      <SectionSliderPost classCustom='md:pt-16 pt-12 xl:pt-[100px] lg:pb-[140px] pb-20 xl:pb-[250px]' items={postsDisplay} />
     </main >
   )
 }
