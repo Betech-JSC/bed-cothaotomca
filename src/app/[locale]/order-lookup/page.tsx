@@ -355,7 +355,7 @@ export default function OrderLookupPage() {
                 </div>
               </div>
               <div className="flex flex-col items-start sm:items-end gap-2">
-                <div>{renderStatusBadge(order.status, order.payment?.method, order.payment?.status)}</div>
+                <div>{renderStatusBadge(order.status, order.payment?.method, order.payment_status)}</div>
                 <div className="text-xs text-slate-300">
                   Phương thức: <span className="font-semibold text-white">{order.payment?.method}</span>
                 </div>
