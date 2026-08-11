@@ -196,7 +196,7 @@ export default function OrderLookupPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const renderStatusBadge = (status: string) => {
+  const renderStatusBadge = (status: string, paymentMethod?: string, paymentStatus?: string) => {
     switch (status) {
       case "pending_payment":
         return (
@@ -212,9 +212,11 @@ export default function OrderLookupPage() {
           </span>
         );
       case "synced":
+      case "paid":
+      case "completed":
         return (
           <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-            Đã đồng bộ KiotViet
+            {paymentMethod === "COD" && paymentStatus !== "paid" ? "Đã xác nhận" : "Đã thanh toán"}
           </span>
         );
       case "cancel_requested":
@@ -353,7 +355,7 @@ export default function OrderLookupPage() {
                 </div>
               </div>
               <div className="flex flex-col items-start sm:items-end gap-2">
-                <div>{renderStatusBadge(order.status)}</div>
+                <div>{renderStatusBadge(order.status, order.payment?.method, order.payment?.status)}</div>
                 <div className="text-xs text-slate-300">
                   Phương thức: <span className="font-semibold text-white">{order.payment?.method}</span>
                 </div>
@@ -468,7 +470,7 @@ export default function OrderLookupPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="flex items-center gap-1">
-                      Phí giao hàng (PHISHIP):
+                      Phí giao hàng:
                       {parseFloat(order.delivery?.price || "0") === 0 && (
                         <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
                           Freeship
@@ -513,29 +515,6 @@ export default function OrderLookupPage() {
                     </div>
                   </div>
                 ))}
-
-                {/* Delivery Fee PHISHIP Service Line Item */}
-                {order.delivery_type === "delivery" && (
-                  <div className="p-4 bg-amber-50/40 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900 text-sm flex items-center gap-2">
-                          Phí giao hàng (Dịch vụ)
-                          <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-amber-200 text-amber-900 rounded">PHISHIP</span>
-                        </div>
-                        <div className="text-xs text-gray-500 font-mono">Đồng bộ KiotViet x 1</div>
-                      </div>
-                    </div>
-                    <div className="text-right font-semibold text-gray-900 text-sm">
-                      {formatMoney(order.delivery?.price || 0)}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

@@ -188,11 +188,21 @@ export default function ProductFilter({
                   <button
                     type="button"
                     onClick={() => setShowAllCategories((prev) => !prev)}
-                    className="text-primary title-3 font-semibold hover:underline"
+                    className="inline-flex items-center gap-1.5 text-primary title-3 font-semibold hover:text-secondary cursor-pointer transition-colors duration-200"
                   >
-                    {showAllCategories
-                      ? t("common.collapse")
-                      : `${t("common.view_more")} (${categoriesDisplay.length - 5})`}
+                    <span>
+                      {showAllCategories
+                        ? t("common.collapse")
+                        : `${t("common.view_more")} (${categoriesDisplay.length - 5})`}
+                    </span>
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 ${showAllCategories ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
                 </div>
               )}
@@ -224,15 +234,25 @@ export default function ProductFilter({
               ))}
 
               {ingredientsDisplay.length > 5 && (
-                <div className="pt-2">
+                <div className="pt-2 lg:px-3">
                   <button
                     type="button"
                     onClick={() => setShowAllIngredients((prev) => !prev)}
-                    className="text-primary title-3 font-semibold hover:underline"
+                    className="inline-flex items-center gap-1.5 text-primary title-3 font-semibold hover:text-secondary cursor-pointer transition-colors duration-200"
                   >
-                    {showAllIngredients
-                      ? t("common.collapse")
-                      : `${t("common.view_more")} (${ingredientsDisplay.length - 5})`}
+                    <span>
+                      {showAllIngredients
+                        ? t("common.collapse")
+                        : `${t("common.view_more")} (${ingredientsDisplay.length - 5})`}
+                    </span>
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 ${showAllIngredients ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
                 </div>
               )}

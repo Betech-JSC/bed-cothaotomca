@@ -249,6 +249,35 @@ export async function validateVoucher(code: string, subtotal?: number): Promise<
   return json as ValidateVoucherResult;
 }
 
+export interface AdministrativeWard {
+  id: string;
+  name: string;
+  district?: string;
+  province?: string;
+}
+
+export interface AdministrativeProvince {
+  id: string;
+  name: string;
+  wards: AdministrativeWard[];
+}
+
+export async function getAdministrativeUnits(): Promise<AdministrativeProvince[]> {
+  try {
+    const res = await fetch(`${API_BASE}/administrative-units`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data as AdministrativeProvince[];
+  } catch (err) {
+    console.error("Failed to fetch administrative units:", err);
+    return [];
+  }
+}
+
 export interface ShippingCalculationResult {
   shipping_fee: number;
   original_fee: number;
@@ -265,6 +294,7 @@ export async function calculateShippingFee(params: {
   province?: string;
   district?: string;
   ward?: string;
+  ward_id?: string;
   subtotal: number;
   voucher_code?: string;
 }): Promise<ShippingCalculationResult> {

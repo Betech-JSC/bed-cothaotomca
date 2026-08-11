@@ -9,8 +9,11 @@ import {
   calcOrderTotal,
   calculateShippingFee,
   createOrder,
+  getAdministrativeUnits,
   OrderApiError,
   validateVoucher,
+  type AdministrativeProvince,
+  type AdministrativeWard,
   type CheckoutConfig,
   type DeliveryType,
   type OrderInitiated,
@@ -119,9 +122,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
 
   // Regional Shipping & Freeship calculation states
+  const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>([]);
   const [selectedProvince, setSelectedProvince] = useState("TP. Hồ Chí Minh");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedWard, setSelectedWard] = useState("");
+  const [selectedWardId, setSelectedWardId] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
 
   const [shippingFee, setShippingFee] = useState<number>(defaultShippingFee);
@@ -132,6 +137,23 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [shippingMessage, setShippingMessage] = useState<string | null>(null);
   const [assignedBranchName, setAssignedBranchName] = useState<string | null>(null);
   const [calculatingShipping, setCalculatingShipping] = useState<boolean>(false);
+
+  // Load administrative units catalog
+  useEffect(() => {
+    getAdministrativeUnits().then((units) => {
+      if (units && units.length > 0) {
+        setAdminProvinces(units);
+      }
+    });
+  }, []);
+
+  const currentProvinceData = useMemo(() => {
+    return adminProvinces.find((p) => p.name === selectedProvince);
+  }, [adminProvinces, selectedProvince]);
+
+  const availableWards = useMemo(() => {
+    return currentProvinceData?.wards || [];
+  }, [currentProvinceData]);
 
   // Voucher states
   const [voucherCode, setVoucherCode] = useState("");
@@ -169,6 +191,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       setShippingFee(0);
       setIsFreeship(false);
       setIsDeliverable(true);
+      setShippingMessage(null);
+      return;
+    }
+
+    // Do not trigger fee calculation or show undeliverable error if ward is not selected yet
+    if (!selectedWard && !selectedWardId) {
+      setShippingFee(0);
+      setIsFreeship(false);
+      setIsDeliverable(true);
+      setShippingMessage(null);
+      setAssignedBranchName(null);
       return;
     }
 
@@ -179,6 +212,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       province: selectedProvince,
       district: selectedDistrict,
       ward: selectedWard,
+      ward_id: selectedWardId,
       subtotal,
       voucher_code: appliedVoucher?.code,
     })
@@ -190,8 +224,16 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         setFreeshipReason(res.freeship_reason || null);
         setIsDeliverable(res.is_deliverable);
         setShippingMessage(res.message || null);
+        console.log("res", res)
         if (res.branch_id) {
-          setSelectedBranchId(res.branch_id);
+          const matchedBranch = config.branches?.find(
+            (b) => b.id === res.branch_id || (res.branch_name && b.branchName === res.branch_name)
+          );
+          if (matchedBranch) {
+            setSelectedBranchId(matchedBranch.id);
+          } else {
+            setSelectedBranchId(res.branch_id);
+          }
         }
         if (res.branch_name) {
           setAssignedBranchName(res.branch_name);
@@ -209,9 +251,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return () => {
       isSubscribed = false;
     };
-  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, subtotal, appliedVoucher]);
+  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, subtotal, appliedVoucher, config.branches]);
 
-  // Store Pickup input
+  // Store Pickup input & Auto-assigned delivery branch
   const [selectedBranchId, setSelectedBranchId] = useState<number>(() => {
     return config.branches?.[0]?.id || 1;
   });
@@ -230,14 +272,18 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   // Sau khi tạo đơn thành công → chuyển sang màn hình QR
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
 
-  // Auto-remove voucher if cart subtotal drops below the minimum required price
+  // Auto-remove voucher if cart subtotal drops below the minimum required price (Exempt Freeship vouchers)
   useEffect(() => {
-    if (appliedVoucher && appliedVoucher.prereqPrice && subtotal < appliedVoucher.prereqPrice) {
-      setAppliedVoucher(null);
-      setVoucherSuccess(null);
-      setVoucherError(
-        `Mã giảm giá đã bị gỡ do đơn hàng hiện tại chưa đủ ${appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ.`
-      );
+    if (appliedVoucher) {
+      const codeUpper = appliedVoucher.code.toUpperCase();
+      const isFreeshipCode = codeUpper.includes("SHIP") || codeUpper.includes("FREE");
+      if (!isFreeshipCode && appliedVoucher.prereqPrice && subtotal < appliedVoucher.prereqPrice) {
+        setAppliedVoucher(null);
+        setVoucherSuccess(null);
+        setVoucherError(
+          `Mã giảm giá đã bị gỡ do đơn hàng hiện tại chưa đủ ${appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ.`
+        );
+      }
     }
   }, [subtotal, appliedVoucher]);
 
@@ -517,11 +563,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             className="bg-white rounded-[24px] p-6 md:p-8 space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100"
           >
             {/* Banner Khung giờ mở cửa nhận đơn */}
-            <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${
-              operatingStatus.isStoreOpen
-                ? "bg-blue-50/80 border-blue-200 text-blue-900"
-                : "bg-amber-50 border-amber-300 text-amber-900"
-            }`}>
+            <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${operatingStatus.isStoreOpen
+              ? "bg-blue-50/80 border-blue-200 text-blue-900"
+              : "bg-amber-50 border-amber-300 text-amber-900"
+              }`}>
               <span className="text-xl leading-none mt-0.5">🕒</span>
               <div className="text-sm space-y-1 font-serif">
                 <div className="font-bold text-base">Khung giờ mở cửa nhận đơn: 10:00 - 23:00 hàng ngày</div>
@@ -622,71 +667,89 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
                 <p className="body-1 text-gray-700 font-bold">Địa chỉ giao hàng tận nơi</p>
 
-                {/* Chọn Tỉnh/Thành & Quận/Huyện */}
+                {/* Chọn Tỉnh/Thành & Phường/Xã (Danh mục chuẩn) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <label className="text-sm font-serif font-semibold text-primary block">Tỉnh / Thành phố *</label>
                     <select
                       value={selectedProvince}
                       onChange={(e) => {
-                        setSelectedProvince(e.target.value);
+                        const newProv = e.target.value;
+                        setSelectedProvince(newProv);
                         setSelectedDistrict("");
                         setSelectedWard("");
+                        setSelectedWardId("");
                       }}
                       className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif cursor-pointer"
                     >
-                      <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-                      <option value="Hà Nội">Hà Nội</option>
-                      <option value="Bình Dương">Bình Dương</option>
-                      <option value="Đồng Nai">Đồng Nai</option>
-                      <option value="Đà Nẵng">Đà Nẵng</option>
-                      <option value="Khác">Tỉnh / Thành khác</option>
+                      {adminProvinces.length > 0 ? (
+                        adminProvinces.map((prov) => (
+                          <option key={prov.id} value={prov.name}>
+                            {prov.name}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+                          <option value="Hà Nội">Hà Nội</option>
+                          <option value="Bình Dương">Bình Dương</option>
+                        </>
+                      )}
                     </select>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-serif font-semibold text-primary block">Quận / Huyện *</label>
-                    <input
-                      type="text"
-                      required
-                      value={selectedDistrict}
-                      onChange={(e) => setSelectedDistrict(e.target.value)}
-                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
-                      placeholder="VD: Quận 3, Quận 1, Cầu Giấy..."
-                    />
-                    {fieldError("delivery.district") ? (
-                      <p className="text-sm text-red-600 mt-1">{fieldError("delivery.district")}</p>
-                    ) : null}
+                    <label className="text-sm font-serif font-semibold text-primary block">Phường / Xã (Khu vực giao) *</label>
+                    {availableWards.length > 0 ? (
+                      <select
+                        value={selectedWardId}
+                        onChange={(e) => {
+                          const wId = e.target.value;
+                          const wObj = availableWards.find((w) => w.id === wId);
+                          if (wObj) {
+                            setSelectedWardId(wObj.id);
+                            setSelectedWard(wObj.name);
+                            if (wObj.district) setSelectedDistrict(wObj.district);
+                          } else {
+                            setSelectedWardId("");
+                            setSelectedWard("");
+                          }
+                        }}
+                        className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif cursor-pointer"
+                      >
+                        <option value="">-- Chọn Phường / Xã --</option>
+                        {availableWards.map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {w.name} {w.district ? `(${w.district})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={selectedWard}
+                        onChange={(e) => setSelectedWard(e.target.value)}
+                        className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
+                        placeholder="VD: Phường 14, Phường Bến Nghé..."
+                      />
+                    )}
                   </div>
                 </div>
 
-                {/* Phường / Xã & Số nhà */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <label className="text-sm font-serif font-semibold text-primary block">Phường / Xã</label>
-                    <input
-                      type="text"
-                      value={selectedWard}
-                      onChange={(e) => setSelectedWard(e.target.value)}
-                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
-                      placeholder="VD: Phường 14, Phường Bến Nghé..."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-serif font-semibold text-primary block">Số nhà, tên đường *</label>
-                    <input
-                      type="text"
-                      required
-                      value={streetAddress}
-                      onChange={(e) => setStreetAddress(e.target.value)}
-                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
-                      placeholder="VD: Số 73 Rạch Bùng Binh"
-                    />
-                    {fieldError("delivery.address") ? (
-                      <p className="text-sm text-red-600 mt-1">{fieldError("delivery.address")}</p>
-                    ) : null}
-                  </div>
+                {/* Số nhà, tên đường */}
+                <div className="space-y-2">
+                  <label className="text-sm font-serif font-semibold text-primary block">Số nhà, tên đường *</label>
+                  <input
+                    type="text"
+                    required
+                    value={streetAddress}
+                    onChange={(e) => setStreetAddress(e.target.value)}
+                    className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
+                    placeholder="VD: Số 73 Rạch Bùng Binh"
+                  />
+                  {fieldError("delivery.address") ? (
+                    <p className="text-sm text-red-600 mt-1">{fieldError("delivery.address")}</p>
+                  ) : null}
                 </div>
 
                 {/* Thông báo chi nhánh tự động được chọn & thông tin ship */}
@@ -1050,20 +1113,22 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               <label className="body-1 font-display text-primary font-bold block">
                 Voucher
               </label>
-              <div className="flex items-center border border-gray-200 rounded-full p-1 bg-white focus-within:border-primary transition-all">
+              <div className="flex items-center border border-gray-300 rounded-full p-1 bg-white focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all overflow-hidden">
                 <input
                   type="text"
                   value={voucherCode}
                   onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                  disabled={!!appliedVoucher || validatingVoucher}
-                  className="flex-1 bg-transparent px-4 py-2 text-gray-900 focus:outline-none text-base uppercase placeholder-gray-400"
+                  readOnly={!!appliedVoucher}
+                  disabled={validatingVoucher}
+                  style={{ backgroundColor: "transparent" }}
+                  className="flex-1 !bg-transparent px-4 py-2 text-gray-900 focus:outline-none text-base uppercase placeholder-gray-400 font-semibold tracking-wider"
                   placeholder="Mã Voucher"
                 />
                 {appliedVoucher ? (
                   <button
                     type="button"
                     onClick={handleRemoveVoucher}
-                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-6 py-2.5 rounded-full text-base transition-all shrink-0"
+                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-5 py-2 rounded-full text-sm transition-all border border-red-200/60 shrink-0"
                   >
                     Xóa
                   </button>
@@ -1072,22 +1137,22 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     type="button"
                     onClick={handleApplyVoucher}
                     disabled={validatingVoucher || !voucherCode.trim()}
-                    className="bg-[#142A68] hover:bg-[#142A68]/95 text-white font-bold px-6 py-2.5 rounded-full text-base transition-all disabled:opacity-40 shrink-0"
+                    className="bg-[#142A68] hover:bg-[#142A68]/95 text-white font-bold px-6 py-2 rounded-full text-sm transition-all disabled:opacity-40 shrink-0"
                   >
                     {validatingVoucher ? "Đang check..." : "Áp dụng"}
                   </button>
                 )}
               </div>
               {voucherError && (
-                <p className="text-sm text-red-600 font-semibold px-2">{voucherError}</p>
+                <p className="text-xs text-red-600 font-semibold px-2">{voucherError}</p>
               )}
               {voucherSuccess && (
-                <div className="text-sm text-green-600 font-semibold px-2">
-                  <p className="flex items-center gap-1">
+                <div className="text-xs text-emerald-600 font-semibold px-2 space-y-0.5">
+                  <p className="flex items-center gap-1.5">
                     <span>✓</span> <span>{voucherSuccess}</span>
                   </p>
                   {appliedVoucher?.prereqPrice ? (
-                    <p className="text-xs text-gray-500 font-normal mt-0.5">
+                    <p className="text-[11px] text-gray-500 font-normal">
                       * Áp dụng cho đơn hàng từ {appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ trở lên.
                     </p>
                   ) : null}
@@ -1096,8 +1161,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             </div>
 
             {/* Hộp tính giá (Blue-Gray rounded container) */}
-            <div className="bg-gray-100 rounded-[12px] p-4 space-y-2.5">
-              <div className="flex justify-between items-center text-base font-medium">
+            <div className="bg-gray-50 rounded-[16px] p-4 space-y-3 border border-gray-100/80">
+              <div className="flex justify-between items-center text-sm font-medium">
                 <span className="text-gray-600 flex items-center gap-1.5">
                   <span>Vận chuyển</span>
                   {calculatingShipping && (
@@ -1106,23 +1171,18 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </span>
                 <div className="text-right">
                   {deliveryType === "pickup" ? (
-                    <span className="title-3 font-display text-green-600 font-bold">0đ (Tự đến lấy)</span>
+                    <span className="text-emerald-600 font-bold">0đ (Tự đến lấy)</span>
                   ) : isFreeship ? (
-                    <div className="flex flex-col items-end">
-                      <span className="title-3 font-display text-green-600 font-bold flex items-center gap-1">
-                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-semibold">
-                          ✓ Miễn phí vận chuyển
-                        </span>
-                        <span>0đ</span>
-                      </span>
+                    <div className="flex items-center gap-2">
                       {originalFee > 0 && (
                         <span className="text-xs text-gray-400 line-through">
                           {formatPrice(originalFee)}
                         </span>
                       )}
+                      <span className="text-emerald-600 font-bold text-base">0đ</span>
                     </div>
                   ) : (
-                    <span className="title-3 font-display text-primary font-bold">
+                    <span className="text-primary font-bold text-base">
                       {formatPrice(shipping)}
                     </span>
                   )}
@@ -1131,31 +1191,31 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
               {/* Thông báo lý do Freeship */}
               {deliveryType === "delivery" && isFreeship && freeshipReason && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-xs text-green-700 font-medium flex items-center gap-1">
+                <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-xl px-3 py-2 text-xs text-emerald-800 font-medium flex items-center gap-1.5">
                   <span>🎉</span>
                   <span>{freeshipReason}</span>
                 </div>
               )}
 
-              {appliedVoucher && (
-                <div className="flex justify-between items-center text-base font-medium text-green-600 border-t border-gray-200/50 pt-2">
+              {appliedVoucher && voucherDiscount > 0 && (
+                <div className="flex justify-between items-center text-sm font-medium text-emerald-600 border-t border-gray-200/60 pt-2.5">
                   <span>Giảm giá (Voucher)</span>
-                  <span className="title-3 font-display font-bold">
+                  <span className="font-bold text-base">
                     -{formatPrice(voucherDiscount)}
                   </span>
                 </div>
               )}
 
-              <div className="flex justify-between items-center border-t border-gray-200/50 pt-2.5">
+              <div className="flex justify-between items-center border-t border-gray-200/80 pt-3">
                 <span className="text-gray-900 font-bold text-base">Tổng cộng</span>
-                <span className="text-[20px] font-display text-primary font-bold">
+                <span className="text-xl font-display text-primary font-bold">
                   {formatPrice(total)}
                 </span>
               </div>
 
               {user && total > 0 && (
-                <div className="text-[14px] text-green-600 font-semibold text-right flex items-center justify-end gap-1 pt-1.5 border-t border-dashed border-gray-200/80">
-                  <svg className="h-3.5 w-3.5 overflow-visible" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="text-xs text-emerald-600 font-semibold text-right flex items-center justify-end gap-1.5 pt-2 border-t border-dashed border-gray-200">
+                  <svg className="h-3.5 w-3.5 shrink-0 overflow-visible" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                   </svg>
                   <span>Đơn hàng này sẽ tích lũy thêm ~{Math.floor(total / 100000)} điểm!</span>
@@ -1210,10 +1270,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {loading
                 ? "Đang xử lý..."
                 : !operatingStatus.isStoreOpen
-                ? "Vui lòng quay lại đặt sau (10h-23h)"
-                : deliveryType === "delivery" && !isDeliverable
-                ? "Khu vực chưa hỗ trợ giao"
-                : "Thanh toán"}
+                  ? "Vui lòng quay lại đặt sau (10h-23h)"
+                  : deliveryType === "delivery" && !isDeliverable
+                    ? "Khu vực chưa hỗ trợ giao"
+                    : "Thanh toán"}
             </button>
           </div>
         </div>

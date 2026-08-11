@@ -493,8 +493,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       placeholder="Mã Voucher"
                       value={voucherCode}
                       onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                      disabled={!!appliedVoucher || validatingVoucher}
-                      className="flex-1 bg-transparent text-gray-900 focus:outline-none text-base uppercase placeholder-gray-400"
+                      readOnly={!!appliedVoucher}
+                      disabled={validatingVoucher}
+                      style={{ backgroundColor: "transparent" }}
+                      className="flex-1 !bg-transparent text-gray-900 focus:outline-none text-base uppercase placeholder-gray-400 font-semibold"
                     />
                     {appliedVoucher ? (
                       <button
