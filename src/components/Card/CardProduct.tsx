@@ -12,7 +12,9 @@ interface CardProductProps {
     title: string;
     custom_name?: string;
     slug: string;
-    variants: any[];
+    price?: number | string;
+    min_price?: number | string;
+    variants?: any[];
     category: {
       title: string;
       id: string;
@@ -31,6 +33,21 @@ interface CardProductProps {
 const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const t = useTranslations();
   const imageSrc = item.image?.url || '/cover.jpg';
+
+  const getPrice = () => {
+    const vPrice = parseFloat(String(item.variants?.[0]?.price || 0));
+    if (vPrice > 0) return vPrice;
+
+    const itemPrice = parseFloat(String(item.price || 0));
+    if (itemPrice > 0) return itemPrice;
+
+    const minPrice = parseFloat(String(item.min_price || 0));
+    if (minPrice > 0) return minPrice;
+
+    return 0;
+  };
+
+  const price = getPrice();
 
   return (
     <div className="group rounded-[24px] relative overflow-hidden bg-white">
@@ -63,7 +80,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         <div className="flex items-center justify-center gap-1.5">
           {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
           <span className="title-2 text-secondary">
-            {formatPrice(item.variants?.[0]?.price || 0)}
+            {formatPrice(price)}
           </span>
         </div>
       </div>
@@ -72,3 +89,4 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
 };
 
 export default CardProduct;
+

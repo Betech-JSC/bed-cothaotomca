@@ -154,8 +154,10 @@ export default async function ProductDetailsPage({
     return {
       id: p.id,
       title: name,
+      custom_name: p.custom_name,
       slug: productSlug,
-      price: parseInt(p.price),
+      price: parseFloat(String(p.price || 0)),
+      variants: p.variants,
       category: { title: categoryName, slug: categorySlug },
       image: { url: p.image },
       description: translation?.description || p.description,
