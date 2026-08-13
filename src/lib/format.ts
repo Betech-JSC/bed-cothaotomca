@@ -27,6 +27,8 @@ export function slugify(str: string | undefined | null) {
   return str
     .toString()
     .toLowerCase()
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim()

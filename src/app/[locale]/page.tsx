@@ -93,7 +93,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     return {
       id: item.id,
       title: title,
-      slug: slugify(title),
+      slug: locale === 'vi' ? (item.slug || slugify(title)) : slugify(title),
       image: {
         url: item.image || 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop',
         alt: title
