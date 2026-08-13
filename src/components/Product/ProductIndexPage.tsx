@@ -52,7 +52,7 @@ export default function ProductIndexPage({
     return {
       id: cat.id.toString(),
       title,
-      slug: locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title)
+      slug: cat.slug || slugify(title)
     }
   }), [categories, locale]);
 
@@ -78,16 +78,19 @@ export default function ProductIndexPage({
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || productCategory?.title || "";
     const categoryId = productCategory?.id?.toString() || "";
-    const categorySlug = locale === 'vi' ? (productCategory?.slug || slugify(categoryName)) : slugify(categoryName);
+    const categorySlug = productCategory?.slug || slugify(categoryName);
     
-    // Store all category slugs for filtering (support multi-category)
+    // Store all category slugs for filtering (support both DB slug and title slug)
     const allCategorySlugs = p.categories && p.categories.length > 0
-      ? p.categories.map(cat => {
+      ? p.categories.flatMap(cat => {
           const trans = getTranslation(cat.translations, locale) as any;
           const title = trans?.title || cat.title || "";
-          return locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title);
+          const slugs = [];
+          if (cat.slug) slugs.push(cat.slug);
+          if (title) slugs.push(slugify(title));
+          return slugs;
         })
-      : [categorySlug];
+      : [categorySlug, slugify(categoryName)].filter(Boolean);
 
     const productSlug = p.slug || slugify(name);
 
@@ -154,7 +157,7 @@ export default function ProductIndexPage({
   const clearIngredients = () => pushWithFilters(category, [], 1)
   const clearAll = () => pushWithFilters(null, [], 1)
   const currentCategory = useMemo(() => {
-    return categoriesDisplay.find(cat => cat.slug === category)
+    return categoriesDisplay.find(cat => cat.slug === category || slugify(cat.title) === category)
   }, [category, categoriesDisplay])
 
   const breadcrumbs = useMemo(() => {

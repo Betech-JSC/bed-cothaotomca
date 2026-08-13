@@ -34,50 +34,42 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   let bannerResp: { data: HeroBanner[] };
   let productsResp: { data: Product[], last_page?: number, current_page?: number, total?: number };
 
-  if (selectedIngredientsSlugs.length === 0) {
-    // 100% Parallel fetch on initial load using category_slug directly
-    [categoriesResp, ingredientsResp, bannerResp, productsResp] = await Promise.all([
-      categoriesPromise,
-      ingredientsPromise,
-      bannerPromise,
-      getApi<Product>('products', {
-        params: {
-          lang: locale,
-          per_page: 9,
-          page: page,
-          category_slug: categorySlug,
-          ingredients: ''
-        }
-      }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }))
-    ]);
-  } else {
-    // Fetch lookup metadata first, then products
-    [categoriesResp, ingredientsResp, bannerResp] = await Promise.all([
-      categoriesPromise,
-      ingredientsPromise,
-      bannerPromise
-    ]);
-  }
+  // 1. Fetch metadata first (categories, ingredients, banner)
+  [categoriesResp, ingredientsResp, bannerResp] = await Promise.all([
+    categoriesPromise,
+    ingredientsPromise,
+    bannerPromise,
+  ]);
 
   const categories = categoriesResp.data;
   const ingredients = ingredientsResp.data;
 
-  // Helper to translate and slugify for matching - Consistent with ProductIndexPage
-  const findCategoryIdBySlug = (categories: Category[], slug: string, lang: string) => {
+  // Helper to find category by DB slug or translated title slug
+  const findCategory = (categories: Category[], slug: string, lang: string) => {
     return categories.find(cat => {
-      const translation = cat.translations?.find(t => t.locale === lang) ||
-        cat.translations?.find(t => t.locale.startsWith(lang))
-      const title = translation?.title || cat.title || ''
-      const categorySlug = lang === 'vi' ? (cat.slug || slugify(title)) : slugify(title)
-      return categorySlug === slug
-    })?.id
-  }
+      // 1. Direct DB slug match
+      if (cat.slug === slug) return true;
 
-  // 1. Resolve category ID from slug
-  const categoryId = findCategoryIdBySlug(categories, categorySlug, locale)
+      // 2. Translated title slug match for current language
+      const translation = cat.translations?.find((t: any) => t.locale === lang) ||
+        cat.translations?.find((t: any) => t.locale.startsWith(lang));
+      const title = translation?.title || cat.title || '';
+      if (slugify(title) === slug) return true;
+
+      // 3. Fallback check across any translation title
+      if (cat.translations?.some((t: any) => slugify(t.title) === slug)) return true;
+
+      return false;
+    });
+  };
+
+  const targetCategory = findCategory(categories, categorySlug, locale);
+  const categoryId = targetCategory?.id;
+  // Use canonical DB slug if target category found, fallback to categorySlug
+  const canonicalCategorySlug = targetCategory?.slug || (targetCategory ? slugify(targetCategory.title) : categorySlug);
 
   // If category is provided in URL but not found in API, return 0 products
-  if (categorySlug && !categoryId) {
+  if (categorySlug && !targetCategory) {
     return (
       <main>
         <Banner banner={{
@@ -97,7 +89,20 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     )
   }
 
-  if (selectedIngredientsSlugs.length > 0) {
+  if (selectedIngredientsSlugs.length === 0) {
+    // Fetch products using canonical DB category slug
+    const productsData = await getApi<Product>('products', {
+      params: {
+        lang: locale,
+        per_page: 9,
+        page: page,
+        category_slug: canonicalCategorySlug,
+        ingredients: ''
+      }
+    }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }));
+
+    productsResp = productsData;
+  } else {
     // Map ingredient slugs to IDs for the products API call
     const ingredientIds = selectedIngredientsSlugs
       .map(slug => {
@@ -127,18 +132,21 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         const catTrans = productCat?.translations?.find((t: any) => t.locale === locale) ||
                          productCat?.translations?.find((t: any) => t.locale?.startsWith(locale));
         const catTitle = catTrans?.title || productCat?.title || '';
-        const pCatSlug = locale === 'vi' ? (productCat?.slug || slugify(catTitle)) : slugify(catTitle);
+        const pCatSlug = productCat?.slug || slugify(catTitle);
         
         const allSlugs = p.categories && p.categories.length > 0
-          ? p.categories.map(cat => {
+          ? p.categories.flatMap(cat => {
               const trans = cat.translations?.find((t: any) => t.locale === locale) ||
                             cat.translations?.find((t: any) => t.locale?.startsWith(locale));
               const title = trans?.title || cat.title || '';
-              return locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title);
+              const slugs = [];
+              if (cat.slug) slugs.push(cat.slug);
+              if (title) slugs.push(slugify(title));
+              return slugs;
             })
           : [pCatSlug];
         
-        return allSlugs.includes(categorySlug);
+        return allSlugs.includes(canonicalCategorySlug) || allSlugs.includes(categorySlug);
       });
     }
     if (ingredientIds) {
