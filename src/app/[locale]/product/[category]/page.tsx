@@ -110,7 +110,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           const translation = ing.translations?.find((t: any) => t.locale === locale) ||
             ing.translations?.find((t: any) => t.locale.startsWith(locale))
           const name = translation?.name || ing.name
-          return slugify(name) === slug
+          if (slugify(name) === slug) return true
+          if (slugify(ing.name) === slug) return true
+          if (ing.translations?.some((t: any) => slugify(t.name) === slug)) return true
+          return false
         })
         return ing?.id
       })
@@ -187,7 +190,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     <main>
       <Banner banner={banner} />
       <ProductIndexPage
-        category={categorySlug}
+        category={canonicalCategorySlug}
         selectedIngredients={selectedIngredientsSlugs}
         products={productsResp.data}
         categories={categories}

@@ -57,13 +57,22 @@ export default async function ProductPage({ params, searchParams }: Props) {
       bannerPromise
     ]);
 
-    // Find IDs for ingredients to filter via API with robust translation logic
+    // Find IDs for ingredients to filter via API with robust multi-locale translation logic
     const findIngredientId = (ingredients: Ingredient[], slug: string, lang: string) => {
       return ingredients.find(ing => {
+        // 1. Match translated name slug
         const translation = ing.translations?.find((t: any) => t.locale === lang) ||
                             ing.translations?.find((t: any) => t.locale.startsWith(lang))
         const name = translation?.name || ing.name
-        return slugify(name) === slug
+        if (slugify(name) === slug) return true
+
+        // 2. Match raw ingredient name slug
+        if (slugify(ing.name) === slug) return true
+
+        // 3. Fallback match across any translation
+        if (ing.translations?.some((t: any) => slugify(t.name) === slug)) return true
+
+        return false
       })?.id
     }
 
