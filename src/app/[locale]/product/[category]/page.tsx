@@ -120,15 +120,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       .filter(Boolean)
       .join(',')
 
-    const { getProducts } = await import('@/services/productService');
-    const result = await getProducts({
-      lang: locale,
-      per_page: 9,
-      page: parseInt(page, 10) || 1,
-      catalog: true,
-    });
+    const { getProductCatalog } = await import('@/services/productService');
+    const fullCatalog = await getProductCatalog(locale);
 
-    let filteredList = result.data;
+    let filteredList = fullCatalog;
     if (categorySlug) {
       filteredList = filteredList.filter(p => {
         const productCat = p.categories && p.categories.length > 0 ? p.categories[0] : p.category;

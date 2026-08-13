@@ -81,19 +81,14 @@ export default async function ProductPage({ params, searchParams }: Props) {
       .filter(Boolean)
       .join(',')
 
-    const { getProducts } = await import('@/services/productService');
-    const result = await getProducts({
-      lang: locale,
-      per_page: 9,
-      page: parseInt(page, 10) || 1,
-      catalog: true,
-    });
+    const { getProductCatalog } = await import('@/services/productService');
+    const fullCatalog = await getProductCatalog(locale);
 
-    // Client-side ingredient filtering over full catalog to ensure all items are fetched properly per page
-    let filteredList = result.data;
+    // Client-side ingredient filtering over full catalog to ensure all items (including combos) are included
+    let filteredList = fullCatalog;
     if (ingredientIds) {
       const idArr = ingredientIds.split(',');
-      filteredList = result.data.filter(p => 
+      filteredList = fullCatalog.filter(p => 
         idArr.some(id => p.ingredients?.some(ing => String(ing.id) === String(id)))
       );
     }
