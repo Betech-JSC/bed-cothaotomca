@@ -95,6 +95,18 @@ export function formatRichTextContent(content: string | undefined | null): strin
     }
   );
   
+  // Format iframe/Google Maps embeds to default 800x600 responsive dimensions
+  processed = processed.replace(/<iframe([^>]*?)>/gi, (match, attrs) => {
+    let newAttrs = attrs;
+    if (!/width=/i.test(newAttrs)) {
+      newAttrs += ' width="100%"';
+    }
+    if (!/height=/i.test(newAttrs)) {
+      newAttrs += ' height="600"';
+    }
+    return `<iframe${newAttrs}>`;
+  });
+
   // Khôi phục lại các khối figure ban đầu
   processed = processed.replace(/__FIGURE_PLACEHOLDER_(\d+)__/g, (match, index) => {
     return figures[parseInt(index, 10)];

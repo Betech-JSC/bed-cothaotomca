@@ -224,16 +224,20 @@
     }
   }
 
-  // --- Video / Iframe Embeds ---
+  // --- Video / Iframe Embeds (Google Maps, Youtube...) ---
   iframe, video {
     display: block;
-    max-width: 100%;
     width: 100%;
-    aspect-ratio: 16 / 9;
-    height: auto;
+    max-width: 800px;
+    height: 600px;
+    max-height: 80vh;
     border: none;
     margin: 1.25rem auto;
     border-radius: 8px;
+
+    @media (max-width: 640px) {
+      height: 400px;
+    }
   }
 
   // --- Horizontal Rule ---
