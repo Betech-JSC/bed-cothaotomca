@@ -33,7 +33,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
       <div className="relative">
         <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
           <AnimateOnScroll animate="slideup" delay={300}>
-            <h2 className="display-2 max-md:text-[22px] text-center text-primary md:uppercase">{t('home.section-4.title')}</h2>
+            <h2 className="display-2 max-md:text-[28px] text-center text-primary uppercase">{t('home.section-4.title')}</h2>
           </AnimateOnScroll>
           <div className="relative swiper-hot-product">
             <Swiper
