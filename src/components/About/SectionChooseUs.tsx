@@ -103,19 +103,20 @@ const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
           {items.map((item, index) => (
             <SwiperSlide key={index} className="h-full w-full relative">
               <img
-                src={item.image_mobile.url || item.image.url || "/cover.jpg"}
-                alt={item.image_mobile.alt}
+                src={item.image_mobile?.url || item.image?.url || "/cover.jpg"}
+                alt={item.image_mobile?.alt || item.title || ""}
                 className="object-cover w-full h-full lg:hidden"
               />
               <img
-                src={item.image.url || "/cover.jpg"}
-                alt={item.image.alt}
+                src={item.image?.url || "/cover.jpg"}
+                alt={item.image?.alt || item.title || ""}
                 className="object-cover w-full h-full hidden lg:block"
               />
-              <div className="bg-linear-chooseus w-full h-full absolute top-0 left-0 flex items-center">
-                <div className="md:p-6 py-4 px-8 lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] xl:max-w-[560px] w-full">
-                  <h3 className="display-2 max-md:text-[28px] text-yellow">{item.title}</h3>
-                  <p className="body-1 text-white">{item.description}</p>
+              <div className="absolute inset-0 w-full h-full bg-linear-chooseus"></div>
+              <div className="max-w-[840px] w-full md:h-full absolute top-20 md:top-0 left-0 flex items-center">
+                <div className="md:p-6 p-5 lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] md:max-w-[532px] lg:max-w-[600px] xl:max-w-[620px] w-full max-md:bg-[#fffced94] max-md:backdrop-blur-[3px] max-md:rounded-3xl mx-6">
+                  <h3 className="display-2 max-md:text-[28px] md:text-yellow text-primary">{item.title}</h3>
+                  <p className="body-1 md:text-white text-primary">{item.description}</p>
                 </div>
               </div>
             </SwiperSlide>

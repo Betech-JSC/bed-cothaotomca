@@ -17,15 +17,19 @@ const Footer = () => {
   const settings = useGeneralSettings();
   const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
   const hotlineClean = hotline.replace(/\s/g, "");
+  const isShowWave = pathname === "/" || pathname === "/about";
+
   return (
     <footer className="relative z-10 bg-[#142A68] pt-16 md:pt-8 xl:pt-16 pb-6 mt-12 md:mt-20">
-      <div className="absolute top-0 left-0 w-full -translate-y-[90%] pointer-events-none z-10">
-        <img
-          src="/images/footer/bg-wave.png"
-          alt="background wave"
-          className="w-full h-auto block"
-        />
-      </div>
+      {isShowWave && (
+        <div className="absolute top-0 left-0 w-full -translate-y-[90%] pointer-events-none z-10">
+          <img
+            src="/images/footer/bg-wave.png"
+            alt="background wave"
+            className="w-full h-auto block"
+          />
+        </div>
+      )}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <Image
           src="/images/footer/bg-footer.png"
