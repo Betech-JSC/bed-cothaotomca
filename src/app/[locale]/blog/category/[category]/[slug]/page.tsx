@@ -51,7 +51,7 @@ export async function generateMetadata({
   const seoDescription = translation?.seo_description || blog.seo_description || blog.meta_description || blogDescription;
   const seoKeywords = translation?.seo_keywords || blog.seo_keywords || blog.meta_keywords || "";
 
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
   const customCanonical = translation?.canonical_url || blog.canonical_url;
   const canonicalUrl = customCanonical || `${baseUrl}/${locale}/blog/category/${category}/${slug}`;
   const customOgImage = translation?.og_image || blog.og_image;
@@ -172,7 +172,7 @@ export default async function BlogDetailsPage({
       <JsonLd
         type="Article"
         data={blog}
-        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '')}/${locale}/blog/category/${category}/${slug}`}
+        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')}/${locale}/blog/category/${category}/${slug}`}
       />
       <section className="min-h-screen w-full md:py-12 py-8 xl:py-16">
         <div className="container md:space-y-8 space-y-6 xl:space-y-8">

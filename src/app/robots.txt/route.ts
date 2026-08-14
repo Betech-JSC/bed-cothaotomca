@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Disable cache
 
 export async function GET() {
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
   
   let seo = null;
   try {

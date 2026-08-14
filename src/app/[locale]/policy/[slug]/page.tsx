@@ -36,7 +36,7 @@ export async function generateMetadata({
   const seoDescription = currentPolicy.seo_description || currentPolicy.meta_description || description;
   const seoKeywords = currentPolicy.seo_keywords || currentPolicy.meta_keywords || "";
 
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
   const customCanonical = currentPolicy.canonical_url;
   const canonicalUrl = customCanonical || `${baseUrl}/${locale}/policy/${slug}`;
 
@@ -111,7 +111,7 @@ export default async function PolicyPage({
       <JsonLd
         type="Article"
         data={currentPolicy}
-        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '')}/${locale}/policy/${slug}`}
+        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')}/${locale}/policy/${slug}`}
       />
       <div className="container space-y-3">
         <Breadcrumb breadcrumbs={breadcrumbs} />

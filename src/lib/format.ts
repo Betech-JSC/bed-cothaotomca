@@ -53,7 +53,7 @@ function decodeHtmlEntities(str: string): string {
 }
 
 export function getBackendBaseUrl(): string {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://staging-cothaotomca.betech-digital.com/api/v1';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cms.cothaotomca.vn/api/v1';
   try {
     if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
       const url = new URL(apiUrl);
@@ -61,7 +61,7 @@ export function getBackendBaseUrl(): string {
     }
   } catch (e) {}
   
-  return 'https://staging-cothaotomca.betech-digital.com';
+  return 'https://cms.cothaotomca.vn';
 }
 
 export function formatRichTextContent(content: string | undefined | null): string {

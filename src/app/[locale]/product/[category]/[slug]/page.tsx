@@ -32,7 +32,7 @@ export async function generateMetadata(
   const seoDescription = translation?.seo_description || product.seo_description || product.meta_description || productDescription;
   const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
 
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
   const customCanonical = translation?.canonical_url || product.canonical_url;
   const canonicalUrl = customCanonical || `${baseUrl}/${locale}/product/${category}/${slug}`;
   const customOgImage = translation?.og_image || product.og_image;
@@ -170,7 +170,7 @@ export default async function ProductDetailsPage({
       <JsonLd
         type="Product"
         data={product}
-        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '')}/${locale}/product/${productData.category.slug}/${slug}`}
+        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')}/${locale}/product/${productData.category.slug}/${slug}`}
       />
       <section className="md:py-[56px] pt-4 pb-12 xl:py-[60px]">
         <div className="container">
