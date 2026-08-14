@@ -76,11 +76,8 @@ export default function BlogListPage({
   const featuredBlogsDisplay = useMemo(() => featuredBlogs.map(transformBlog), [featuredBlogs, locale]);
   
   const allBlogsDisplay = useMemo(() => {
-    const featuredIds = new Set(featuredBlogsDisplay.map(b => b.id));
-    return allBlogs
-      .filter(blog => !featuredIds.has(blog.id))
-      .map(transformBlog);
-  }, [allBlogs, featuredBlogsDisplay, locale]);
+    return allBlogs.map(transformBlog);
+  }, [allBlogs, locale]);
 
   const categoriesDisplay = useMemo(() => {
     return categories.map(cat => {

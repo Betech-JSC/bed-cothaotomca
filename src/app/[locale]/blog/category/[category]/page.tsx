@@ -59,7 +59,7 @@ export default async function BlogCategoryPage({
   const [bannerData, featuredBlogsData, allBlogsData] = await Promise.all([
     getApi<HeroBanner>('banners', { params: { position: 'banner_news', lang: locale } }).catch(() => ({ data: [] })),
     getBlogs({ is_featured: true, per_page: 5, lang: locale, blog_category_id: activeCategoryId }).catch(() => ({ data: [] })),
-    getBlogs({ page: Number(page), per_page: 9, lang: locale, blog_category_id: activeCategoryId }).catch(() => ({ data: [], current_page: 1, last_page: 1, total: 0 })),
+    getBlogs({ page: Number(page), per_page: 12, lang: locale, blog_category_id: activeCategoryId }).catch(() => ({ data: [], current_page: 1, last_page: 1, total: 0 })),
   ]);
 
   let featuredBlogs = featuredBlogsData.data || [];
