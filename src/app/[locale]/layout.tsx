@@ -48,7 +48,7 @@ export async function generateMetadata({
   return {
     metadataBase: new URL(baseUrl),
     title: {
-      template: `%s | Cô Thảo Tôm Cá`,
+      template: `%s`,
       default: title,
     },
     description,
