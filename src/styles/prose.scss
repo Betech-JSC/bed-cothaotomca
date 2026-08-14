@@ -229,14 +229,14 @@
     display: block;
     width: 100%;
     max-width: 800px;
-    height: 600px;
+    height: 400px;
     max-height: 80vh;
     border: none;
     margin: 1.25rem auto;
     border-radius: 8px;
 
     @media (max-width: 640px) {
-      height: 400px;
+      height: 300px;
     }
   }
 
