@@ -39,6 +39,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
     const fetchOptions: RequestInit = { 
       ...options, 
       signal,
+      cache: 'no-store',
       headers: {
         'Accept': 'application/json',
         'Accept-Language': 'vi,en;q=0.9',
@@ -48,10 +49,8 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
       }
     };
 
-    // Force no-store cache when revalidate is 0 to ensure absolutely no caching
-    if (options.next?.revalidate === 0) {
-      fetchOptions.cache = 'no-store';
-    }
+    // Force no-store cache
+    fetchOptions.cache = 'no-store';
 
     const response = await fetch(url, fetchOptions);
     clearTimeout(timeoutId);
@@ -87,25 +86,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
 }
 
 function getDefaultRevalidate(key: string): number {
-  const baseKey = key.split('/')[0];
-  
-  if (baseKey === 'general-settings' || baseKey === 'seo-settings' || baseKey === 'branches') {
-    return 60; // 60s cache for layout and configuration
-  }
-  if (
-    baseKey === 'categories' || 
-    baseKey === 'ingredients' || 
-    baseKey === 'banners' || 
-    baseKey === 'hero-banners' || 
-    baseKey === 'blog-categories' || 
-    baseKey === 'policies'
-  ) {
-    return 10; // 10s cache for layout assets/taxonomy
-  }
-  if (baseKey === 'products' || baseKey === 'blogs') {
-    return 5; // 5s cache to enable Next.js link prefetching and dynamic views
-  }
-  return 0; // default to no-store for anything else
+  return 0; // Temporarily disable cache (no-store) for all requests
 }
 
 /**
