@@ -30,7 +30,7 @@ const SectionRelatedPosts: React.FC<SectionRelatedPostsProps> = ({ items }) => {
   if (!items || items.length === 0) return null;
 
   return (
-    <section className="bg-yellow py-12 md:py-16 xl:py-20">
+    <section className="bg-transparent py-12 md:py-16 xl:py-20">
       <div className="container">
         <AnimateOnScroll animate="slideup" delay={0}>
           <h2 className="display-3 max-md:text-[28px] text-center text-primary mb-8 md:mb-12">
