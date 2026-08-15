@@ -209,7 +209,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           </div>
         </div>
       </section>
-      <SectionSliderPost classCustom='md:pt-16 pt-12 xl:pt-[100px] lg:pb-[140px] pb-20 xl:pb-[250px]' items={postsDisplay} />
+      <SectionSliderPost classCustom='md:pt-16 pt-12 xl:pt-[100px] pb-[65px] md:pb-[65px] xl:pb-[65px]' items={postsDisplay} />
     </main>
   )
 }

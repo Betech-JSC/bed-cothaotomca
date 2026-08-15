@@ -22,7 +22,7 @@ const Footer = () => {
   return (
     <footer className="relative z-10 bg-[#142A68] pt-16 md:pt-8 xl:pt-16 pb-6 mt-12 md:mt-20">
       {isShowWave && (
-        <div className="absolute top-0 left-0 w-full -translate-y-[90%] pointer-events-none z-10">
+        <div className="hidden lg:block absolute top-0 left-0 w-full -translate-y-[90%] pointer-events-none z-10">
           <img
             src="/images/footer/bg-wave.png"
             alt="background wave"
