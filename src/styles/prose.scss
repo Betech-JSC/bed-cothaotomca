@@ -226,17 +226,21 @@
 
   // --- Video / Iframe Embeds (Google Maps, Youtube...) ---
   iframe, video {
-    display: block;
-    width: 100%;
-    max-width: 800px;
-    height: 400px;
-    max-height: 80vh;
-    border: none;
-    margin: 1.25rem auto;
-    border-radius: 8px;
+    display: block !important;
+    width: 100% !important;
+    max-width: 800px !important;
+    height: 400px !important;
+    min-height: 400px !important;
+    max-height: 400px !important;
+    border: none !important;
+    margin: 1.5rem auto !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
 
     @media (max-width: 640px) {
-      height: 300px;
+      height: 350px !important;
+      min-height: 350px !important;
+      max-height: 350px !important;
     }
   }
 

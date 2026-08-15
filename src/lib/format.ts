@@ -76,10 +76,23 @@ export function formatRichTextContent(content: string | undefined | null): strin
     return `<img${p1}src="${fullSrc}"${p3}>`;
   });
 
+  // Format iframe/Google Maps embeds to default 800x400 responsive dimensions FIRST
+  const formatIframeTag = (str: string) => {
+    return str.replace(/<iframe([^>]*?)>/gi, (match, attrs) => {
+      // Strip existing width, height, and style attributes from raw CMS HTML
+      let cleaned = attrs
+        .replace(/\s*(width|height)=["'][^"']*["']/gi, '')
+        .replace(/\s*style=["'][^"']*["']/gi, '');
+      return `<iframe${cleaned} width="100%" height="400" style="max-width: 800px !important; width: 100% !important; height: 400px !important; min-height: 400px !important; max-height: 400px !important; border-radius: 24px !important; display: block !important; margin: 1.5rem auto !important; border: none !important;">`;
+    });
+  };
+
+  processed = formatIframeTag(processed);
+
   const figures: string[] = [];
   // Tạm thời ẩn các khối figure đã tồn tại
   processed = processed.replace(/<figure[^>]*?>[\s\S]*?<\/figure>/gi, (match) => {
-    figures.push(match);
+    figures.push(formatIframeTag(match));
     return `__FIGURE_PLACEHOLDER_${figures.length - 1}__`;
   });
   
@@ -94,18 +107,6 @@ export function formatRichTextContent(content: string | undefined | null): strin
       return `<figure class="image"><img${p1}data-caption="${caption}"${p3}><figcaption>${decodedCaption}</figcaption></figure>`;
     }
   );
-  
-  // Format iframe/Google Maps embeds to default 800x400 responsive dimensions
-  processed = processed.replace(/<iframe([^>]*?)>/gi, (match, attrs) => {
-    let newAttrs = attrs;
-    if (!/width=/i.test(newAttrs)) {
-      newAttrs += ' width="100%"';
-    }
-    if (!/height=/i.test(newAttrs)) {
-      newAttrs += ' height="400"';
-    }
-    return `<iframe${newAttrs}>`;
-  });
 
   // Khôi phục lại các khối figure ban đầu
   processed = processed.replace(/__FIGURE_PLACEHOLDER_(\d+)__/g, (match, index) => {

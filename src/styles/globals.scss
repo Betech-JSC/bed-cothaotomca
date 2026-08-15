@@ -58,3 +58,29 @@ footer {
     height: 0;
   }
 }
+
+/* Force 800x400 max dimensions & 24px border radius for any iframe inside rich text content */
+.prose-content iframe,
+.prose-content figure iframe,
+.prose-content p iframe {
+  display: block !important;
+  width: 100% !important;
+  max-width: 800px !important;
+  height: 400px !important;
+  min-height: 400px !important;
+  max-height: 400px !important;
+  border-radius: 24px !important;
+  border: none !important;
+  margin: 1.5rem auto !important;
+  overflow: hidden !important;
+}
+
+@media (max-width: 640px) {
+  .prose-content iframe,
+  .prose-content figure iframe,
+  .prose-content p iframe {
+    height: 350px !important;
+    min-height: 350px !important;
+    max-height: 350px !important;
+  }
+}
