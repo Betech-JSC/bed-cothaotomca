@@ -44,3 +44,14 @@ export function isDefaultVariant(variant?: string): boolean {
   const v = variant.toLowerCase().trim();
   return v === 'mặc định' || v === 'standard' || v === 'default' || v.includes('mặc định');
 }
+
+export function cleanVariantName(variant?: string): string {
+  if (!variant) return '';
+  let v = variant.trim();
+  v = v.replace(/^Size:\s*/i, '');
+  v = v.replace(/^Size\s+Size\s+/i, 'Size ');
+  v = v.replace(/^Kích thước\s+Size\s+/i, 'Size ');
+  v = v.replace(/^Phân loại\s+Size\s+/i, 'Size ');
+  return v;
+}
+

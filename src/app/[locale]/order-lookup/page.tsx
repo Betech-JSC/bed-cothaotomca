@@ -10,6 +10,7 @@ import {
   requestCancelOrderApi,
   OrderApiError,
 } from "@/services/orderService";
+import { getGeneralSettings } from "@/services/generalSettingService";
 
 interface OrderDetailData {
   order_code: string;
@@ -65,6 +66,15 @@ export default function OrderLookupPage() {
   const searchParams = useSearchParams();
   const [orderCode, setOrderCode] = useState(searchParams.get("code") || "");
   const [phone, setPhone] = useState(searchParams.get("phone") || "");
+  const [hotline, setHotline] = useState("0987 654 321");
+
+  useEffect(() => {
+    getGeneralSettings()
+      .then((s) => {
+        if (s?.hotline) setHotline(s.hotline);
+      })
+      .catch(() => {});
+  }, []);
 
   const [order, setOrder] = useState<OrderDetailData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -211,6 +221,7 @@ export default function OrderLookupPage() {
             Chờ xử lý / Đóng gói
           </span>
         );
+      case "confirmed":
       case "synced":
       case "paid":
       case "completed":
@@ -381,7 +392,7 @@ export default function OrderLookupPage() {
                         </p>
                       ) : (
                         <p className="text-xs text-rose-600 mt-1 font-medium">
-                          Quá 15 phút hoặc đơn hàng đã được kho tiếp nhận xử lý. Không thể tự hủy trực tiếp.
+                          Đơn hàng đã được xác nhận hoặc quá 15 phút. Không thể tự hủy trực tiếp.
                         </p>
                       )}
                     </div>
@@ -525,31 +536,55 @@ export default function OrderLookupPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
             <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 relative">
               <h3 className="text-xl font-bold text-gray-900">
-                {isOnlinePaid ? "Gửi yêu cầu hủy đơn hàng" : "Xác nhận hủy đơn hàng"}
+                {isOnlinePaid ? "Yêu cầu hủy đơn & Hoàn tiền" : "Xác nhận hủy đơn hàng"}
               </h3>
 
-              <p className="text-sm text-gray-600">
-                {isOnlinePaid
-                  ? "Đơn hàng của bạn đã thanh toán Online. Sau khi gửi yêu cầu, bộ phận CSKH sẽ tiến hành đối soát và liên hệ hoàn tiền cho bạn."
-                  : "Bạn có chắc chắn muốn hủy đơn hàng này không? Thao tác này sẽ hủy phiếu tạm và nhả lại tồn kho ngay lập tức."}
-              </p>
+              {isOnlinePaid ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Đơn hàng của bạn đã được thanh toán Online. Quý khách vui lòng gọi trực tiếp tới Hotline CSKH để bộ phận vận hành hỗ trợ kiểm tra tài khoản, xác nhận hủy và làm thủ tục chuyển khoản hoàn tiền ngay lập tức!
+                  </p>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Lý do hủy {isOnlinePaid && <span className="text-rose-500">*</span>}
-                </label>
-                <textarea
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder={
-                    isOnlinePaid
-                      ? "Vui lòng ghi rõ lý do hủy và thông tin tài khoản nhận lại tiền..."
-                      : "Nhập lý do hủy (không bắt buộc)..."
-                  }
-                  rows={3}
-                  className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-rose-500"
-                />
-              </div>
+                  <a
+                    href={`tel:${hotline.replace(/\s/g, "")}`}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 text-base transition-all"
+                  >
+                    <span>📞 Gọi Hotline: {hotline}</span>
+                  </a>
+
+                  <div className="pt-2 border-t border-gray-100">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Hoặc để lại lý do hủy đơn:
+                    </label>
+                    <textarea
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      placeholder="Ghi rõ lý do hủy hoặc thông tin tài khoản nhận lại tiền..."
+                      rows={2}
+                      className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600">
+                    Bạn có chắc chắn muốn hủy đơn hàng này không? Thao tác này sẽ hủy phiếu tạm trên KiotViet và nhả lại tồn kho ngay lập tức.
+                  </p>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Lý do hủy
+                    </label>
+                    <textarea
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      placeholder="Nhập lý do hủy (không bắt buộc)..."
+                      rows={3}
+                      className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-rose-500"
+                    />
+                  </div>
+                </>
+              )}
 
               {modalError && (
                 <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg">
@@ -575,7 +610,7 @@ export default function OrderLookupPage() {
                   {actionLoading ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <span>Xác nhận</span>
+                    <span>{isOnlinePaid ? "Gửi Yêu Cầu Hủy" : "Xác nhận Hủy"}</span>
                   )}
                 </button>
               </div>

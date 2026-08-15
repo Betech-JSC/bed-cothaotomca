@@ -108,7 +108,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                   </div>
                   {!isDefaultVariant(item.variant) && (
                     <p className="text-[11px] text-gray-500 font-semibold uppercase">
-                      Size: {item.variant}
+                      {cleanVariantName(item.variant)}
                     </p>
                   )}
 

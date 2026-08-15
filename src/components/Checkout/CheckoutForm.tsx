@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
-import { formatPrice, isDefaultVariant } from "@/lib/format";
+import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
 import {
   calcOrderTotal,
   calculateShippingFee,
@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import MobileCartFlow from "../Header/MobileCartFlow";
 import { checkOperatingHours } from "@/lib/operatingHours";
+import WardSelectCombobox from "./WardSelectCombobox";
 
 export interface CheckoutOrderItem {
   productId: number;
@@ -383,11 +384,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     // Validate custom delivery inputs
     if (deliveryType === "delivery") {
       const errs: Record<string, string> = {};
+      if (!selectedWard.trim() && !selectedWardId) {
+        errs["delivery.ward"] = "* Vui lòng chọn Phường / Xã (Khu vực giao).";
+      }
       if (!streetAddress.trim()) {
         errs["delivery.address"] = "Vui lòng nhập số nhà và tên đường.";
-      }
-      if (!selectedDistrict) {
-        errs["delivery.district"] = "Vui lòng chọn Quận/Huyện giao hàng.";
       }
       if (Object.keys(errs).length > 0) {
         setFieldErrors(errs);
@@ -477,7 +478,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           : order
             ? [
               description.trim(),
-              order.variant !== order.title ? `Size: ${order.variant}` : "",
+              order.variant !== order.title ? order.variant : "",
             ]
               .filter(Boolean)
               .join(" | ") || undefined
@@ -698,42 +699,30 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     </select>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-serif font-semibold text-primary block">Phường / Xã (Khu vực giao) *</label>
-                    {availableWards.length > 0 ? (
-                      <select
-                        value={selectedWardId}
-                        onChange={(e) => {
-                          const wId = e.target.value;
-                          const wObj = availableWards.find((w) => w.id === wId);
-                          if (wObj) {
-                            setSelectedWardId(wObj.id);
-                            setSelectedWard(wObj.name);
-                            if (wObj.district) setSelectedDistrict(wObj.district);
-                          } else {
-                            setSelectedWardId("");
-                            setSelectedWard("");
-                          }
-                        }}
-                        className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif cursor-pointer"
-                      >
-                        <option value="">-- Chọn Phường / Xã --</option>
-                        {availableWards.map((w) => (
-                          <option key={w.id} value={w.id}>
-                            {w.name} {w.district ? `(${w.district})` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        value={selectedWard}
-                        onChange={(e) => setSelectedWard(e.target.value)}
-                        className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
-                        placeholder="VD: Phường 14, Phường Bến Nghé..."
-                      />
-                    )}
-                  </div>
+                  <WardSelectCombobox
+                    wards={availableWards}
+                    selectedWardId={selectedWardId}
+                    selectedWardName={selectedWard}
+                    onSelectWard={(wObj) => {
+                      if (wObj) {
+                        setSelectedWardId(wObj.id);
+                        setSelectedWard(wObj.name);
+                        if (wObj.district) setSelectedDistrict(wObj.district);
+                      } else {
+                        setSelectedWardId("");
+                        setSelectedWard("");
+                      }
+                      if (fieldErrors["delivery.ward"]) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next["delivery.ward"];
+                          return next;
+                        });
+                      }
+                    }}
+                    hasError={!!fieldError("delivery.ward")}
+                    errorMessage={fieldError("delivery.ward") || "* Vui lòng chọn Phường / Xã (Khu vực giao)."}
+                  />
                 </div>
 
                 {/* Số nhà, tên đường */}
@@ -976,7 +965,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
                         {!isDefaultVariant(item.variant) && (
                           <p className="body-2 text-gray-500 font-medium">
-                            Size: {item.variant}
+                            {cleanVariantName(item.variant)}
                           </p>
                         )}
 
@@ -1045,7 +1034,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
                     {!isDefaultVariant(order.variant) && (
                       <p className="body-2 text-gray-500 font-medium">
-                        Size: {order.variant}
+                        {cleanVariantName(order.variant)}
                       </p>
                     )}
 

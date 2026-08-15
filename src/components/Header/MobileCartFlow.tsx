@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice, isDefaultVariant } from "@/lib/format";
+import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
 import { useBranches } from "@/contexts/BranchContext";
 import {
   calcOrderTotal,
@@ -439,7 +439,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         </div>
                         {!isDefaultVariant(item.variant) && (
                           <p className="text-sm text-gray-500 font-semibold uppercase">
-                            Size: {item.variant}
+                            {cleanVariantName(item.variant)}
                           </p>
                         )}
 
@@ -615,7 +615,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                               <span className="body-2 text-primary font-bold whitespace-nowrap">{formatPrice(item.unitPrice)}</span>
                             </div>
                             <p className="text-[10px] text-gray-500 font-semibold uppercase">
-                              {isDefaultVariant(item.variant) ? `Số lượng: ${item.quantity}` : `Size: ${item.variant} x${item.quantity}`}
+                              {isDefaultVariant(item.variant) ? `Số lượng: ${item.quantity}` : `${item.variant} x${item.quantity}`}
                             </p>
                           </div>
                         </div>

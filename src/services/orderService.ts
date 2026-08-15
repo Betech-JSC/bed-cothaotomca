@@ -254,6 +254,7 @@ export interface AdministrativeWard {
   name: string;
   district?: string;
   province?: string;
+  old_ward?: string;
 }
 
 export interface AdministrativeProvince {

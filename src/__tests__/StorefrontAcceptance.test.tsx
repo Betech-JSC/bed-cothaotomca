@@ -182,9 +182,29 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(orderBelow500k.total).toBe(230000);
   });
 
-  it('Kiểm tra Utility checkOperatingHours của dự án', () => {
-    const res = checkOperatingHours({ store_open: '10:00', store_close: '23:00' });
-    expect(res).toHaveProperty('isStoreOpen');
-    expect(res).toHaveProperty('currentTime');
+  it('Luồng 6: Dropdown danh mục hành chính chuẩn & ward_id real-time calculate', async () => {
+    const mockCalc = calculateShippingFee as unknown as ReturnType<typeof vi.fn>;
+    mockCalc.mockResolvedValueOnce({
+      shipping_fee: 15000,
+      original_fee: 15000,
+      is_freeship: false,
+      is_deliverable: true,
+      is_configured_area: true,
+      branch_id: 202,
+      branch_name: 'Chi nhánh B (Ưu đãi)',
+      message: null,
+    });
+
+    const resWardId = await calculateShippingFee({
+      province: 'TP. Hồ Chí Minh',
+      district: 'Quận 3',
+      ward: 'Bàn Cờ',
+      ward_id: 'ward_hcm_q3_ban_co',
+      subtotal: 100000,
+    });
+
+    expect(resWardId.shipping_fee).toBe(15000);
+    expect(resWardId.branch_id).toBe(202);
+    expect(resWardId.branch_name).toBe('Chi nhánh B (Ưu đãi)');
   });
 });

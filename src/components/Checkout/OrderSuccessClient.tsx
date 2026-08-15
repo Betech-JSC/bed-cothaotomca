@@ -147,7 +147,7 @@ export default function OrderSuccessClient({
       </h1>
 
       {/* Message Description */}
-      <div className="space-y-2 text-center max-w-xl mx-auto">
+      <div className="space-y-2 text-center max-w-2xl mx-auto">
         <p className="text-gray-700 text-sm md:text-base leading-relaxed">
           {isPickup ? (
             <>
@@ -159,8 +159,9 @@ export default function OrderSuccessClient({
             </>
           )}
         </p>
-        <p className="text-gray-500 text-xs md:text-sm leading-relaxed">
-          Nếu quá thời gian trên chưa nhận được {isPickup ? "món" : "đơn hàng"}, vui lòng liên hệ ngay hotline <strong className="text-[#142A68]">{hotline}</strong> để được hỗ trợ xử lý nhanh nhất!
+        <p className="text-gray-500 text-xs md:text-sm leading-relaxed max-w-xl mx-auto">
+          Nếu quá thời gian trên chưa nhận được {isPickup ? "món" : "đơn hàng"}, vui lòng liên hệ ngay hotline{" "}
+          <strong className="text-[#142A68] whitespace-nowrap">{hotline}</strong> để được hỗ trợ xử lý nhanh nhất!
         </p>
       </div>
 
@@ -180,17 +181,17 @@ export default function OrderSuccessClient({
               </strong>
             </div>
             <div>
-              <span className="text-gray-400 block mb-0.5">{t("email")}</span>
-              <strong className="text-[#142A68] text-sm font-semibold">
-                {order.customer?.email || "-"}
+              <span className="text-gray-400 block mb-0.5">{t("phone")}</span>
+              <strong className="text-[#142A68] font-mono text-sm font-semibold">
+                {order.delivery?.contact_number || order.customer?.phone || ""}
               </strong>
             </div>
             <div>
               <span className="text-gray-400 block mb-0.5">
-                {isPickup ? t("pickup_address") : t("delivery_address")}
+                {isPickup ? t("pickup_location") : t("delivery_address")}
               </span>
-              <strong className="text-[#142A68] text-sm leading-relaxed font-semibold block">
-                {order.delivery?.address || "-"}
+              <strong className="text-[#142A68] text-xs md:text-sm font-medium block leading-snug">
+                {order.delivery?.address || ""}
               </strong>
             </div>
           </div>
@@ -198,32 +199,62 @@ export default function OrderSuccessClient({
           {/* Right Column */}
           <div className="space-y-4">
             <div>
-              <span className="text-gray-400 block mb-0.5">{t("phone")}</span>
-              <strong className="text-[#142A68] text-sm md:text-base font-semibold">
-                {order.delivery?.contact_number || order.customer?.phone}
+              <span className="text-gray-400 block mb-0.5">{t("payment_method")}</span>
+              <strong className="text-[#142A68] font-semibold">
+                {order.payment?.method === "CASH" ? "COD (Tiền mặt khi nhận hàng)" : (order.payment?.method === "CARD" ? "Thẻ (Visa/Master/ATM)" : "Chuyển khoản Ngân hàng")}
               </strong>
             </div>
             <div>
-              <span className="text-gray-400 block mb-0.5">{t("payment_method")}</span>
-              <strong className="text-[#142A68] text-sm font-semibold">
-                {paymentMethodText}
+              <span className="text-gray-400 block mb-0.5">{t("shipping_fee")}</span>
+              <strong className="text-[#142A68] font-semibold">
+                {isPickup || !order.delivery?.price || parseFloat(order.delivery.price) === 0
+                  ? t("free")
+                  : `${new Intl.NumberFormat("vi-VN").format(parseFloat(order.delivery.price))} đ`}
+              </strong>
+            </div>
+            <div>
+              <span className="text-gray-400 block mb-0.5">{t("total_payment")}</span>
+              <strong className="text-emerald-600 text-base md:text-lg font-bold">
+                {new Intl.NumberFormat("vi-VN").format(parseFloat(order.total))} đ
               </strong>
             </div>
           </div>
         </div>
 
-        {/* Items List */}
-        <div className="border-t border-gray-100 pt-6 space-y-4">
-          {order.items?.map((item: any, idx: number) => {
-            const itemPrice = parseFloat(item.price) || 0;
-            const displayPrice = formatPrice(itemPrice);
+        {/* Order Code Banner */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs md:text-sm">
+          <div>
+            <span className="text-amber-800 block font-medium">
+              Mã đơn hàng: <strong className="font-mono font-bold text-amber-900">{order.order_code}</strong>
+            </span>
+            <span className="text-amber-700 text-xs mt-0.5 block">
+              Dùng mã này + SĐT để tra cứu đơn hàng trực tiếp trên website.
+            </span>
+          </div>
+          <a
+            href={`/order-lookup?code=${order.order_code}&phone=${order.customer?.phone || ""}`}
+            className="inline-flex items-center justify-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium text-xs transition-colors shrink-0"
+          >
+            Tra cứu đơn hàng
+          </a>
+        </div>
+      </div>
+
+      {/* Item List */}
+      <div className="mt-8 border border-gray-100 rounded-2xl p-5 md:p-6">
+        <h2 className="text-lg md:text-xl font-bold font-display text-[#142A68] border-b border-gray-100 pb-3 mb-4">
+          {t("ordered_items")}
+        </h2>
+        <div className="divide-y divide-gray-100">
+          {order.items.map((item: any, index: number) => {
+            const displayPrice = new Intl.NumberFormat("vi-VN").format(parseFloat(item.price)) + " đ";
             const displayImage = item.image || "/cover.jpg";
 
             return (
-              <div key={idx} className="flex items-center justify-between gap-4 py-1">
+              <div key={index} className="py-3 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   {/* Thumbnail */}
-                  <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-gray-100 shrink-0">
+                  <div className="w-12 h-12 relative rounded-lg bg-gray-100 overflow-hidden shrink-0">
                     <Image
                       src={displayImage}
                       alt={item.product_name}
@@ -239,7 +270,7 @@ export default function OrderSuccessClient({
                     </strong>
                     {item.variant_size && (
                       <span className="text-gray-400 text-xs block mt-1 font-medium">
-                        Size {item.variant_size}
+                        {item.variant_size}
                       </span>
                     )}
                   </div>
