@@ -59,10 +59,11 @@ footer {
   }
 }
 
-/* Force 800x400 max dimensions & 24px border radius for any iframe inside rich text content */
+/* Force 800x400 dimensions & 24px border radius for any iframe inside rich text content */
 .prose-content iframe,
 .prose-content figure iframe,
-.prose-content p iframe {
+.prose-content p iframe,
+.prose-content li iframe {
   display: block !important;
   width: 100% !important;
   max-width: 800px !important;
@@ -75,10 +76,24 @@ footer {
   overflow: hidden !important;
 }
 
-@media (max-width: 640px) {
+@media (min-width: 800px) {
   .prose-content iframe,
   .prose-content figure iframe,
-  .prose-content p iframe {
+  .prose-content p iframe,
+  .prose-content li iframe {
+    min-width: 800px !important;
+    width: 800px !important;
+  }
+}
+
+@media (max-width: 799px) {
+  .prose-content iframe,
+  .prose-content figure iframe,
+  .prose-content p iframe,
+  .prose-content li iframe {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
     height: 350px !important;
     min-height: 350px !important;
     max-height: 350px !important;

@@ -83,7 +83,7 @@ export function formatRichTextContent(content: string | undefined | null): strin
       let cleaned = attrs
         .replace(/\s*(width|height)=["'][^"']*["']/gi, '')
         .replace(/\s*style=["'][^"']*["']/gi, '');
-      return `<iframe${cleaned} width="100%" height="400" style="max-width: 800px !important; width: 100% !important; height: 400px !important; min-height: 400px !important; max-height: 400px !important; border-radius: 24px !important; display: block !important; margin: 1.5rem auto !important; border: none !important;">`;
+      return `<iframe${cleaned} width="100%" height="400" style="min-width: 800px !important; max-width: 800px !important; width: 800px !important; height: 400px !important; min-height: 400px !important; max-height: 400px !important; border-radius: 24px !important; display: block !important; margin: 1.5rem auto !important; border: none !important;">`;
     });
   };
 
