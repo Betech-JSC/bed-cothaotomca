@@ -47,3 +47,14 @@ footer {
 .bg-linear-branch {
   background: linear-gradient(180deg, rgba(13, 45, 137, 0) 0%, rgba(13, 45, 137, 0.822115) 51.92%, #09246E 100%);
 }
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}

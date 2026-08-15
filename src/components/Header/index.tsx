@@ -393,7 +393,7 @@ const MobileMenu = ({
     <nav aria-label="Mobile main navigation" className="w-full xl:hidden">
       <div className="flex w-full items-center justify-between py-1 relative">
         <Logo width={100} height={60} className="h-20" />
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
           <button
             onClick={onToggleSearch}
             className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
@@ -407,22 +407,22 @@ const MobileMenu = ({
             onClick={onToggle}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
-            className="text-yellow duration-300 ease-in-out"
+            className="text-yellow duration-300 ease-in-out flex items-center justify-center"
           >
             <span className="sr-only">
               {open ? "Close menu" : "Open menu"}
             </span>
-            <div className="flex h-6 w-6 flex-col items-center justify-center gap-1">
+            <div className="relative flex h-6 w-6 items-center justify-center">
               <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${open ? "translate-y-1.5 rotate-45" : ""
+                className={`bg-yellow absolute h-0.5 w-6 rounded-full transition-all duration-300 ${open ? "rotate-45 translate-y-0" : "-translate-y-2"
                   }`}
               />
               <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-opacity duration-200 ${open ? "opacity-0" : "opacity-100"
+                className={`bg-yellow absolute h-0.5 w-6 rounded-full transition-all duration-300 ${open ? "opacity-0 scale-0" : "opacity-100 scale-100"
                   }`}
               />
               <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${open ? "-translate-y-1.5 -rotate-45" : ""
+                className={`bg-yellow absolute h-0.5 w-6 rounded-full transition-all duration-300 ${open ? "-rotate-45 translate-y-0" : "translate-y-2"
                   }`}
               />
             </div>

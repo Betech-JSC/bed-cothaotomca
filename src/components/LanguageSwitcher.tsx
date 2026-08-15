@@ -15,11 +15,11 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 shrink-0">
       <button
         type="button"
         onClick={handleToggle}
-        className={`relative size-6 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "vi" ? "border-white" : "border-transparent"}`}
+        className={`relative size-6 shrink-0 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "vi" ? "border-white" : "border-transparent"}`}
         aria-label="Chuyển sang tiếng Việt"
       >
         <Image
@@ -32,7 +32,7 @@ export default function LanguageSwitcher() {
       <button
         type="button"
         onClick={handleToggle}
-        className={`relative size-6 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "en" ? "border-white" : "border-transparent"}`}
+        className={`relative size-6 shrink-0 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "en" ? "border-white" : "border-transparent"}`}
         aria-label="Switch to English"
       >
         <Image

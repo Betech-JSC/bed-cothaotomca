@@ -131,7 +131,9 @@ export default function ProductFilter({
         </div>
         <div className="hidden lg:block">
           <AnimateOnScroll animate="slideup" delay={200}>
-            <FilterContent />
+            <div className="lg:max-h-[calc(100vh-110px)] lg:overflow-y-auto no-scrollbar">
+              <FilterContent />
+            </div>
           </AnimateOnScroll>
         </div>
       </div>
