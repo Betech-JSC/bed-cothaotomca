@@ -59,9 +59,9 @@ const config = {
         'progress-bar': 'progress-bar 500ms ease-out forwards',
       },
       fontFamily: {
-        display: ["TomCaSerif", "sans-serif"],
-        sans: ["Roobert", "sans-serif"],
-        serif: ["Roboto", "sans-serif"],
+        display: ["TomCaSerif", "Roboto", "sans-serif"],
+        sans: ["Roboto", "sans-serif"],
+        serif: ["Roboto", "serif"],
       },
     },
   },

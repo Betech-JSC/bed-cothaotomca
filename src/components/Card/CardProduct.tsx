@@ -10,13 +10,15 @@ interface CardProductProps {
   item: {
     id: number;
     title: string;
+    custom_name?: string;
     slug: string;
-    price?: number;
+    price?: number | string;
+    min_price?: number | string;
     variants?: any[];
     category: {
       title: string;
       id: string;
-      slug: string;
+      slug: string; // Added slug back
     };
     image: {
       url: string;
@@ -31,26 +33,30 @@ interface CardProductProps {
 const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const t = useTranslations();
   const imageSrc = item.image?.url || '/cover.jpg';
-  const variants = item.variants ?? [];
-  const unitPrice =
-    variants.length > 0
-      ? parseFloat(String(variants[0]?.price)) || 0
-      : parseFloat(String(item.price ?? 0)) || 0;
-  const showPrice = unitPrice > 0;
-  const categorySlug = item.category.slug || item.category.id || 'san-pham';
+
+  const getPrice = () => {
+    const vPrice = parseFloat(String(item.variants?.[0]?.price || 0));
+    if (vPrice > 0) return vPrice;
+
+    const itemPrice = parseFloat(String(item.price || 0));
+    if (itemPrice > 0) return itemPrice;
+
+    const minPrice = parseFloat(String(item.min_price || 0));
+    if (minPrice > 0) return minPrice;
+
+    return 0;
+  };
+
+  const price = getPrice();
 
   return (
     <div className="group rounded-[24px] relative overflow-hidden bg-white">
+      {/* Image */}
       <Link
-        href={{ pathname: '/product/[category]/[slug]', params: { category: categorySlug, slug: item.slug } }}
+        href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
         className="block"
       >
         <div className="aspect-w-1 aspect-h-1 relative overflow-hidden">
-          {isHot ? (
-            <span className="absolute top-3 left-3 z-10 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-yellow">
-              Hot
-            </span>
-          ) : null}
           <Image
             src={imageSrc}
             alt={item.image?.alt || item.title}
@@ -63,18 +69,19 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
 
       <div className="pt-2.5 pb-3 md:pt-3 md:pb-4 px-2 md:px-4 text-center">
         <Link
-          href={{ pathname: '/product/[category]/[slug]', params: { category: categorySlug, slug: item.slug } }}
+          href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
           className="block"
         >
-          <h3 className={`title-1 max-md:text-[16px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 min-h-[36px] md:min-h-[44px] whitespace-pre-line`}>
-            {item.title}
+          <h3 className={`title-1 max-md:text-[22px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 max-md:min-h-[48px] min-h-[44px] whitespace-pre-line`}>
+            {item.custom_name || item.title}
           </h3>
+
         </Link>
         <div className="body-2 text-gray-900 line-clamp-2 min-h-[32px] md:min-h-[36px] mt-1 mb-2">{item.description}</div>
         <div className="flex items-center justify-center gap-1.5">
-          {variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
+          {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
           <span className="title-2 text-secondary">
-            {formatPrice(unitPrice)}
+            {formatPrice(price)}
           </span>
         </div>
       </div>
@@ -83,3 +90,4 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
 };
 
 export default CardProduct;
+

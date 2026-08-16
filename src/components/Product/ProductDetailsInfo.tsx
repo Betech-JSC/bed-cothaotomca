@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatRichTextContent } from "@/lib/format";
 import BoxMessage from "@/components/Icons/BoxMessage";
 import SocialShare from "@/components/SocialShare";
 import ProductInfoAccordion from "@/components/Product/ProductInfoAccordion";
 import { useTranslations } from "next-intl";
 import SliderProductImages from "@/components/Product/SliderProductImages";
-import { useRouter } from "@/i18n/routing";
+// import { useRouter } from "@/i18n/routing";
 import type { ProductDetailView } from "@/services/productService";
 
 import { useCart } from "@/contexts/CartContext";
@@ -18,7 +18,7 @@ interface ProductDetailsInfoProps {
 
 const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
   const t = useTranslations();
-  const router = useRouter();
+  // const router = useRouter();
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
@@ -45,6 +45,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
     }, 2000);
   };
 
+
   return (
     <div className="relative top-0 md:space-y-8 space-y-6 xl:space-y-12">
       <div className="space-y-4 md:space-y-6">
@@ -60,8 +61,8 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
         </div>
 
         <div
-          className="body-1 text-gray-900"
-          dangerouslySetInnerHTML={{ __html: productData.description }}
+          className="prose-content max-w-full"
+          dangerouslySetInnerHTML={{ __html: formatRichTextContent(productData.description) }}
         />
 
         {productData.sizes.length > 1 ? (
@@ -94,8 +95,15 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
         ) : null}
 
         {selectedSize.price > 0 ? (
-          <div className="title-1 text-secondary">
-            {formatPrice(selectedSize.price)}
+          <div className="flex items-baseline gap-3">
+            <div className="title-1 text-secondary">
+              {formatPrice(selectedSize.price)}
+            </div>
+            {selectedSize.original_price && selectedSize.original_price > selectedSize.price ? (
+              <div className="text-gray-400 line-through text-lg font-medium">
+                {formatPrice(selectedSize.original_price)}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -139,21 +147,36 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                     : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
                 }`}
               >
-                <BoxMessage />
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
                 <span>{hasCode ? "Thêm vào giỏ hàng" : "Tạm hết hàng"}</span>
               </button>
             );
           })()}
 
-
-          <a
-            href="https://m.me/cothaotomca"
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-            className="btn btn-secondary flex items-center justify-center"
-          >
-            <span>{t("product.contact")}</span>
-          </a>
+          {(() => {
+            const hasCode = Boolean(selectedSize?.code);
+            return (
+              <button
+                type="button"
+                disabled={!hasCode}
+                onClick={() => {
+                  if (hasCode) {
+                    handleAddToCart();
+                    window.location.href = "/checkout";
+                  }
+                }}
+                className={`btn flex items-center justify-center gap-2 ${
+                  hasCode
+                    ? "btn-secondary font-bold"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
+                }`}
+              >
+                <span>Mua ngay</span>
+              </button>
+            );
+          })()}
         </div>
 
         {isAdded && (

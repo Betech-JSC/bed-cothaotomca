@@ -13,12 +13,13 @@ import AnimateOnScroll from '../Animated/animated-appear';
 
 interface SectionSliderPostProps {
   items: any[];
+  classCustom?: string;
 }
 
-const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
+const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items, classCustom = '' }) => {
   const t = useTranslations();
   return (
-    <section className="md:pt-16 pt-12 xl:pt-[100px] lg:pb-[140px] pb-20 xl:pb-[160px]">
+    <section className={` ${classCustom ? classCustom : 'md:pt-16 pt-12 xl:pt-[100px] lg:pb-[140px] pb-20 xl:pb-[250px]'}`}>
       <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
         <AnimateOnScroll animate="slideup" delay={0}>
           <h2 className="display-3 text-center text-primary">{t('blog.title')}</h2>
@@ -35,7 +36,7 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items }) => {
             pagination={{
               clickable: true,
             }}
-            loop
+            loop={items.length > 1}
             centeredSlides={true}
             breakpoints={{
               320: {

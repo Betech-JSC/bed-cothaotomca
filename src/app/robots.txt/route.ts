@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import { getSeoSettings } from '@/services/seoService';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 60; // Revalidate every minute
+export const revalidate = 0; // Disable cache
 
 export async function GET() {
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
   
   let seo = null;
   try {
@@ -20,7 +20,7 @@ export async function GET() {
     return new NextResponse(seo.robots_txt, {
       headers: { 
         'Content-Type': 'text/plain',
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30'
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
       },
     });
   }
@@ -36,12 +36,32 @@ Disallow: /_next/
 Disallow: /admin/
 Disallow: /private/
 Disallow: /*?*sort=*
-Disallow: /*?*filter=*${sitemapUrl}`;
+Disallow: /*?*filter=*
+
+# AI Search & Assistant Crawlers (AEO Enabled)
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Block Aggressive Scrapers
+User-agent: Bytespider
+Disallow: /${sitemapUrl}`;
 
   return new NextResponse(defaultRobots, {
     headers: { 
       'Content-Type': 'text/plain',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=59'
+      'Cache-Control': 'no-store, no-cache, must-revalidate'
     },
   });
 }

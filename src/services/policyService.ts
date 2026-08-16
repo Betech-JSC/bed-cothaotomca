@@ -6,6 +6,12 @@ export interface PolicyTranslation {
   content: string;
   locale: string;
   policy_id: number;
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string;
+  meta_robots?: string | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
 }
 
 export interface Policy {
@@ -15,6 +21,12 @@ export interface Policy {
   slug: string;
   image: string | null;
   translations: PolicyTranslation[];
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string;
+  meta_robots?: string | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
 }
 
 export const getPolicies = async (params: { lang?: string } = {}) => {

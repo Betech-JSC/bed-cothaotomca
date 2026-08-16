@@ -20,30 +20,30 @@ const Footer = () => {
   const isShowWave = pathname === "/" || pathname === "/about";
 
   return (
-    <footer className="relative z-10 bg-white pt-16 md:pt-8 xl:pt-16 pb-6">
-      <div className="absolute inset-0">
+    <footer className="relative z-10 bg-[#142A68] pt-16 md:pt-8 xl:pt-16 pb-6 mt-12 md:mt-20">
+      {isShowWave && (
+        <div className="absolute top-0 left-0 w-full -translate-y-[90%] pointer-events-none z-10">
+          <img
+            src="/images/footer/bg-wave.png"
+            alt="background wave"
+            className="w-full h-auto block"
+          />
+        </div>
+      )}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <Image
           src="/images/footer/bg-footer.png"
           alt="background footer"
           fill
-          className="object-cover w-full h-full lg:block hidden"
+          className="object-cover object-bottom w-full h-full lg:block hidden"
         />
         <Image
           src="/images/footer/bg-footer-mobile-1.png"
           alt="background footer"
           fill
-          className="object-cover w-full h-full lg:hidden"
+          className="object-cover object-bottom w-full h-full lg:hidden"
         />
       </div>
-      {isShowWave && (
-        <div className="absolute lg:block hidden md:top-[-36px] lg:top-[-17%] left-0 z-[-1] lg:h-[20%] w-full">
-          <img
-            src="/images/footer/bg-wave.png"
-            alt="background wave"
-            className="object-cover w-full h-full"
-          />
-        </div>
-      )}
       <div className="relative z-20">
         <div className="container md:space-y-16 space-y-12 xl:space-y-20">
           <div className="grid grid-cols-12 md:gap-6 gap-y-16 xl:gap-8">

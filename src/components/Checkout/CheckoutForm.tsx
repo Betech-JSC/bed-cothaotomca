@@ -22,8 +22,9 @@ import PaymentQRScreen from "./PaymentQRScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import MobileCartFlow from "../Header/MobileCartFlow";
-import { checkOperatingHours } from "@/lib/operatingHours";
+import { checkOperatingHours, formatVietnameseDate, toISODateString } from "@/lib/operatingHours";
 import WardSelectCombobox from "./WardSelectCombobox";
+import PreOrderNoticeModal from "./PreOrderNoticeModal";
 
 export interface CheckoutOrderItem {
   productId: number;
@@ -259,9 +260,43 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return config.branches?.[0]?.id || 1;
   });
 
-  // Expected delivery time
-  const [deliverySchedule, setDeliverySchedule] = useState<"now" | "schedule">("now");
-  const [expectedDelivery, setExpectedDelivery] = useState("");
+  // Expected delivery time & date
+  const [deliverySchedule, setDeliverySchedule] = useState<"now" | "schedule">(() => {
+    return operatingStatus.defaultDeliverySchedule;
+  });
+  const [deliveryDate, setDeliveryDate] = useState<string>(() => {
+    return operatingStatus.defaultDate;
+  });
+  const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>("10:00");
+  const [showNoticeModal, setShowNoticeModal] = useState<boolean>(() => {
+    return !operatingStatus.canOrderNow && !!operatingStatus.notice;
+  });
+
+  useEffect(() => {
+    if (!operatingStatus.canOrderNow) {
+      setDeliverySchedule("schedule");
+      if (operatingStatus.defaultDate) {
+        setDeliveryDate(operatingStatus.defaultDate);
+      }
+    }
+  }, [operatingStatus.canOrderNow, operatingStatus.defaultDate]);
+
+  const availableDeliveryDates = useMemo(() => {
+    const dates: { iso: string; label: string }[] = [];
+    const refDate = new Date();
+    const startOffset = (!operatingStatus.canOrderNow && (operatingStatus.isAfterCutoff || operatingStatus.isAfterClose)) ? 1 : 0;
+
+    for (let i = startOffset; i < startOffset + 5; i++) {
+      const d = new Date(refDate);
+      d.setDate(d.getDate() + i);
+      const iso = toISODateString(d);
+      let label = formatVietnameseDate(d);
+      if (i === 0) label = `Hôm nay (${label})`;
+      else if (i === 1) label = `Ngày mai (${label})`;
+      dates.push({ iso, label });
+    }
+    return dates;
+  }, [operatingStatus]);
 
   const [itemNote] = useState("");
   const [description, setDescription] = useState("");
@@ -369,11 +404,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     setFieldErrors({});
 
     const opCheck = checkOperatingHours(config?.operating_hours);
-    if (!opCheck.isStoreOpen) {
-      setError(opCheck.message || "Vui lòng quay trở lại đặt sau vì chưa đến giờ!");
-      setLoading(false);
-      return;
-    }
 
     if (isCartCheckout && cartItems.length === 0) {
       setError("Giỏ hàng của bạn đang trống.");
@@ -404,20 +434,28 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         : `${Date.now()}-${isCartCheckout ? "cart" : order?.productId}`;
 
     let expectedDeliveryISO: string | undefined = undefined;
-    if (deliverySchedule === "schedule" && expectedDelivery) {
-      const matches = expectedDelivery.match(/^(\d{1,2}):(\d{2})/);
-      if (matches) {
-        const hours = parseInt(matches[1], 10);
-        const minutes = parseInt(matches[2], 10);
-        const date = new Date();
-        date.setHours(hours, minutes, 0, 0);
-        expectedDeliveryISO = date.toISOString();
-      } else {
-        try {
-          expectedDeliveryISO = new Date(expectedDelivery).toISOString();
-        } catch (e) {
-          expectedDeliveryISO = undefined;
-        }
+    if (deliverySchedule === "schedule" || !opCheck.canOrderNow) {
+      if (!expectedDeliveryTime) {
+        setError("Vui lòng chọn giờ nhận hàng mong muốn (khung giờ 10:00 - 23:00).");
+        setLoading(false);
+        return;
+      }
+      if (expectedDeliveryTime < "10:00" || expectedDeliveryTime > "23:00") {
+        setError("Khung giờ nhận món phải từ 10:00 đến 23:00.");
+        setLoading(false);
+        return;
+      }
+      try {
+        const [hoursStr, minutesStr] = expectedDeliveryTime.split(":");
+        const hours = parseInt(hoursStr || "10", 10);
+        const minutes = parseInt(minutesStr || "00", 10);
+
+        const targetDateStr = deliveryDate || opCheck.defaultDate;
+        const [y, m, d] = targetDateStr.split("-").map((s) => parseInt(s, 10));
+        const targetDate = new Date(y, m - 1, d, hours, minutes, 0, 0);
+        expectedDeliveryISO = targetDate.toISOString();
+      } catch (err) {
+        expectedDeliveryISO = undefined;
       }
     }
 
@@ -439,7 +477,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               price: shippingFee,
               expected_delivery: expectedDeliveryISO,
             }
-            : (deliverySchedule === "schedule" && expectedDelivery
+            : (expectedDeliveryISO
               ? {
                 expected_delivery: expectedDeliveryISO
               }
@@ -564,19 +602,30 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             className="bg-white rounded-[24px] p-6 md:p-8 space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100"
           >
             {/* Banner Khung giờ mở cửa nhận đơn */}
-            <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${operatingStatus.isStoreOpen
+            <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${operatingStatus.canOrderNow
               ? "bg-blue-50/80 border-blue-200 text-blue-900"
               : "bg-amber-50 border-amber-300 text-amber-900"
               }`}>
               <span className="text-xl leading-none mt-0.5">🕒</span>
-              <div className="text-sm space-y-1 font-serif">
-                <div className="font-bold text-base">Khung giờ mở cửa nhận đơn: 10:00 - 23:00 hàng ngày</div>
-                {!operatingStatus.isStoreOpen ? (
-                  <div className="font-semibold text-amber-800">
-                    ⚠️ {operatingStatus.message || "Vui lòng quay trở lại đặt sau vì chưa đến giờ mở cửa (10:00 - 23:00)!"}
+              <div className="text-sm space-y-1 font-serif flex-1">
+                <div className="font-bold text-base">
+                  Khung giờ mở cửa: {operatingStatus.storeOpen} - {operatingStatus.storeClose} | Nhận món: {operatingStatus.deliveryOpen} - {operatingStatus.deliveryClose}
+                </div>
+                {!operatingStatus.canOrderNow ? (
+                  <div className="font-semibold text-amber-800 flex items-center justify-between gap-2 flex-wrap pt-0.5">
+                    <span>⚠️ {operatingStatus.message || "Quán đang hỗ trợ đặt hẹn giờ nhận món trước."}</span>
+                    {operatingStatus.notice && (
+                      <button
+                        type="button"
+                        onClick={() => setShowNoticeModal(true)}
+                        className="text-xs bg-amber-200 hover:bg-amber-300 text-amber-900 px-2.5 py-1 rounded-md font-sans transition-colors cursor-pointer"
+                      >
+                        Xem chi tiết hẹn giờ
+                      </button>
+                    )}
                   </div>
                 ) : (
-                  <div className="text-blue-700 font-medium">Quán đang trong giờ phục vụ nhận đơn hàng.</div>
+                  <div className="text-blue-700 font-medium">Quán đang trong giờ phục vụ nhận đơn giao ngay.</div>
                 )}
               </div>
             </div>
@@ -827,21 +876,25 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             </div>
 
             {/* Thời gian giao/nhận mong muốn */}
-            <div className="space-y-2 pt-2">
+            {/* Thời gian giao/lấy hàng mong muốn */}
+            <div className="space-y-3 pt-2">
               <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
                 {deliveryType === "pickup" ? "Thời gian đến lấy hàng mong muốn" : "Thời gian giao hàng mong muốn"}
               </label>
+
               <div className="space-y-2">
-                <label className="flex items-center gap-3 cursor-pointer group">
+                <label className={`flex items-center gap-3 cursor-pointer group ${!operatingStatus.canOrderNow ? "opacity-50 cursor-not-allowed" : ""}`}>
                   <input
                     type="radio"
                     name="delivery_schedule"
-                    checked={deliverySchedule === "now"}
+                    disabled={!operatingStatus.canOrderNow}
+                    checked={deliverySchedule === "now" && operatingStatus.canOrderNow}
                     onChange={() => setDeliverySchedule("now")}
                     className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                   />
                   <span className="body-1 text-gray-900 group-hover:text-primary transition-colors">
                     {deliveryType === "pickup" ? "Lấy ngay (Chuẩn bị 15 - 30 phút)" : "Giao ngay (Hỏa tốc 45 - 90 phút)"}
+                    {!operatingStatus.canOrderNow && " (Tạm ngưng giao ngay)"}
                   </span>
                 </label>
 
@@ -849,33 +902,56 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   <input
                     type="radio"
                     name="delivery_schedule"
-                    checked={deliverySchedule === "schedule"}
+                    checked={deliverySchedule === "schedule" || !operatingStatus.canOrderNow}
                     onChange={() => setDeliverySchedule("schedule")}
                     className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                   />
-                  <span className="body-1 text-gray-900 group-hover:text-primary transition-colors">
-                    {deliveryType === "pickup" ? "Hẹn giờ đến lấy" : "Hẹn giờ giao"}
+                  <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-semibold">
+                    {deliveryType === "pickup" ? "Hẹn giờ đến lấy" : "Hẹn giờ giao hàng"}
                   </span>
                 </label>
               </div>
 
-              {/* Ô chọn giờ nếu Hẹn giờ được tích */}
-              {deliverySchedule === "schedule" && (
-                <div className="pt-2 animate-fade-in">
-                  <input
-                    type="time"
-                    required
-                    value={expectedDelivery}
-                    onChange={(e) => setExpectedDelivery(e.target.value)}
-                    onClick={(e) => {
-                      try {
-                        e.currentTarget.showPicker();
-                      } catch (err) {
-                        // ignore
-                      }
-                    }}
-                    className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
-                  />
+              {/* Ô chọn Ngày và Giờ nếu Hẹn giờ được tích hoặc khi không thể giao ngay */}
+              {(deliverySchedule === "schedule" || !operatingStatus.canOrderNow) && (
+                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Chọn ngày nhận hàng</label>
+                    <select
+                      value={deliveryDate}
+                      onChange={(e) => setDeliveryDate(e.target.value)}
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[12px] py-[8px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm font-sans"
+                    >
+                      {availableDeliveryDates.map((item) => (
+                        <option key={item.iso} value={item.iso}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Chọn giờ nhận hàng (10:00 - 23:00)</label>
+                    <input
+                      type="time"
+                      required
+                      min="10:00"
+                      max="23:00"
+                      value={expectedDeliveryTime}
+                      onChange={(e) => setExpectedDeliveryTime(e.target.value)}
+                      onClick={(e) => {
+                        try {
+                          e.currentTarget.showPicker();
+                        } catch (err) {
+                          // ignore
+                        }
+                      }}
+                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 font-sans sm:col-span-2">
+                    * Khung giờ phục vụ nhận món: {operatingStatus.deliveryOpen} - {operatingStatus.deliveryClose}.
+                  </p>
                 </div>
               )}
             </div>
@@ -1249,24 +1325,30 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               </label>
             </div>
 
-            {/* Nút submit dạng Pill đỏ cam (Terracotta red) */}
+            {/* Nút submit */}
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || !operatingStatus.isStoreOpen}
+              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable)}
               className="w-full bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none"
             >
               {loading
                 ? "Đang xử lý..."
-                : !operatingStatus.isStoreOpen
-                  ? "Vui lòng quay lại đặt sau (10h-23h)"
-                  : deliveryType === "delivery" && !isDeliverable
-                    ? "Khu vực chưa hỗ trợ giao"
+                : deliveryType === "delivery" && !isDeliverable
+                  ? "Khu vực chưa hỗ trợ giao"
+                  : !operatingStatus.canOrderNow
+                    ? "Đặt hẹn giờ nhận hàng"
                     : "Thanh toán"}
             </button>
           </div>
         </div>
       </div>
+
+      <PreOrderNoticeModal
+        isOpen={showNoticeModal}
+        onClose={() => setShowNoticeModal(false)}
+        notice={operatingStatus.notice}
+      />
     </>
   );
 }

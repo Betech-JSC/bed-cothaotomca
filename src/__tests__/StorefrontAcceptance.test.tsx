@@ -207,4 +207,35 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(resWardId.branch_id).toBe(202);
     expect(resWardId.branch_name).toBe('Chi nhánh B (Ưu đãi)');
   });
+
+  it('Luồng 7: checkOperatingHours xử lý chính xác 4 khung giờ: Trước 9h, 9h-22h30, 22h30-23h, Sau 23h', () => {
+    const config = { store_open: '09:00', store_close: '23:00', delivery_open: '10:00', delivery_close: '23:00', last_order_cutoff: '22:30' };
+
+    // Case 1: 08:30 (Trước 9h sáng)
+    const res0830 = checkOperatingHours(config, new Date('2026-08-16T08:30:00+07:00'));
+    expect(res0830.canOrderNow).toBe(false);
+    expect(res0830.isBeforeOpen).toBe(true);
+    expect(res0830.notice).not.toBeNull();
+    expect(res0830.defaultDate).toBe('2026-08-16');
+
+    // Case 2: 14:00 (Trong giờ nhận đơn ngay 09:00 - 22:30)
+    const res1400 = checkOperatingHours(config, new Date('2026-08-16T14:00:00+07:00'));
+    expect(res1400.canOrderNow).toBe(true);
+    expect(res1400.notice).toBeNull();
+    expect(res1400.defaultDate).toBe('2026-08-16');
+
+    // Case 3: 22:45 (Giờ cutoff 22:30 - 23:00)
+    const res2245 = checkOperatingHours(config, new Date('2026-08-16T22:45:00+07:00'));
+    expect(res2245.canOrderNow).toBe(false);
+    expect(res2245.isAfterCutoff).toBe(true);
+    expect(res2245.notice).not.toBeNull();
+    expect(res2245.defaultDate).toBe('2026-08-17');
+
+    // Case 4: 23:15 (Sau 23:00 đã đóng cửa)
+    const res2315 = checkOperatingHours(config, new Date('2026-08-16T23:15:00+07:00'));
+    expect(res2315.canOrderNow).toBe(false);
+    expect(res2315.isAfterClose).toBe(true);
+    expect(res2315.notice).not.toBeNull();
+    expect(res2315.defaultDate).toBe('2026-08-17');
+  });
 });

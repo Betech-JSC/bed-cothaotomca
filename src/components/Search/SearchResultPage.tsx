@@ -38,6 +38,7 @@ export default function SearchResultPage({
   const productsDisplay = useMemo(() => products.map(p => {
     const translation = getTranslation(p.translations, locale) as any;
     const name = translation?.custom_name || p.custom_name || translation?.name || p.name;
+
     const catTranslation = getTranslation(p.category?.translations, locale) as any;
     const categoryName = catTranslation?.title || p.category?.title || "";
     const categoryId = p.category?.id?.toString() || "";
@@ -46,6 +47,8 @@ export default function SearchResultPage({
     return {
       id: p.id,
       title: name,
+      custom_name: p.custom_name,
+
       slug: slugify(name),
       price: parseFloat(p.price as string) || 0,
       category: { id: categoryId, title: categoryName, slug: categorySlug },

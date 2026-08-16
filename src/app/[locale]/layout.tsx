@@ -12,6 +12,8 @@ import JsonLd from '@/components/SEO/JsonLd'
 import FixedSocial from '@/components/FixedSocial'
 import { getSeoSettings } from '@/services/seoService'
 import Script from 'next/script'
+import CustomScriptLoader from '@/components/SEO/CustomScriptLoader'
+import ServerScriptLoader from '@/components/SEO/ServerScriptLoader'
 
 export async function generateMetadata({
   params
@@ -34,19 +36,19 @@ export async function generateMetadata({
     seo = null
   }
 
-  const title = seo?.title || defaultTitle
-  const description = seo?.description || defaultDescription
-  let image = seo?.meta_image || seo?.metaImage || seo?.meta_image_url || defaultImage
+  const title = seo?.seo_title || seo?.title || defaultTitle
+  const description = seo?.seo_description || seo?.description || defaultDescription
+  let image = seo?.seo_og_image_url || seo?.seo_og_image || seo?.meta_image || seo?.metaImage || seo?.meta_image_url || defaultImage
   // Make image absolute when necessary
   if (image && !image.startsWith('http')) image = `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`
 
   const favicon = seo?.favicon || seo?.favicon_url || '/favicon.ico'
-  const keywords = seo?.keywords ? seo.keywords.split(',').map((k: string) => k.trim()) : undefined
+  const keywords = (seo?.seo_keywords || seo?.keywords) ? (seo.seo_keywords || seo.keywords).split(',').map((k: string) => k.trim()) : undefined
 
   return {
     metadataBase: new URL(baseUrl),
     title: {
-      template: `%s | Cô Thảo Tôm Cá`,
+      template: `%s`,
       default: title,
     },
     description,
@@ -83,21 +85,18 @@ export async function generateMetadata({
 
 export default async function LocaleLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
   const { locale } = await params
-  const messages = await getMessages()
-
-  const settings = await getGeneralSettings(locale).catch(() => null);
-  const branches = await getBranches(locale).catch(() => []);
-  // load seo settings to expose body scripts / GTM noscript per-locale
-  let seo = null
-  try {
-    const { getSeoSettings } = await import('@/services/seoService')
-    seo = await getSeoSettings(locale).catch(() => null)
-  } catch (e) {
-    seo = null
-  }
+  
+  // Parallelize layout configuration and message loading
+  const [messages, settings, branches, seo] = await Promise.all([
+    getMessages(),
+    getGeneralSettings(locale).catch(() => null),
+    getBranches(locale).catch(() => []),
+    getSeoSettings(locale).catch(() => null),
+  ]);
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
+
       <GeneralSettingsProvider settings={settings}>
         <BranchProvider branches={branches}>
           <Providers>
@@ -146,7 +145,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
 
                   {/* Raw head scripts from CMS */}
                   {(seo.head_scripts || seo.headScripts) && (
-                    <div dangerouslySetInnerHTML={{ __html: seo.head_scripts || seo.headScripts }} />
+                    <ServerScriptLoader html={seo.head_scripts || seo.headScripts} keyPrefix="head-custom" />
                   )}
                 </>
               )}
@@ -156,8 +155,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
 
               {/* Body scripts from CMS - place before footer */}
               {seo?.body_scripts && (
-                // eslint-disable-next-line react/no-danger
-                <div dangerouslySetInnerHTML={{ __html: seo.body_scripts }} />
+                <CustomScriptLoader html={seo.body_scripts} id="body-custom" position="body" />
               )}
 
               <Footer />

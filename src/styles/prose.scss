@@ -1,129 +1,304 @@
-.prose-blog {
-  h2 {
-    @apply font-display text-[20px] md:text-[24px] leading-[145%] tracking-[0.02em] mt-6 mb-3;
+// =============================================================================
+// .prose-content - Rich Text Article Content Styling
+// =============================================================================
+// Standard HTML typography styling for TinyMCE & CMS rich text content
+// =============================================================================
+
+.prose-content {
+  box-sizing: border-box;
+  line-height: 1.75;
+  font-size: 16px;
+  outline: none;
+  text-align: left;
+  word-wrap: break-word;
+  color: #1a1a1a;
+
+  // --- Paragraphs ---
+  p {
+    margin-top: 0;
+    margin-bottom: 1.25rem;
+    line-height: 1.8;
   }
 
-  h3 {
-    @apply font-display text-[18px] md:text-[22px] leading-[145%] tracking-[0.02em] mt-5 mb-2.5;
+  p:last-child {
+    margin-bottom: 0;
   }
 
-  p.ql-align-center {
-    @apply text-center;
+  // --- Headings ---
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 2rem;
+    margin-bottom: 0.85rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #111322;
   }
 
-  p,
-  ul,
-  ol {
-    @apply font-serif text-[16px] leading-[150%] text-gray-700 my-2;
+  h1:first-child, h2:first-child, h3:first-child, h4:first-child {
+    margin-top: 0;
+  }
+
+  h1 { font-size: 1.85em; }
+  h2 { font-size: 1.5em; }
+  h3 { font-size: 1.25em; }
+  h4 { font-size: 1.1em; }
+
+  // --- Lists ---
+  ul, ol {
+    padding-left: 1.5rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1.25rem;
+
+    & + ul, & + ol {
+      margin-top: -0.75rem;
+    }
   }
 
   ul {
-    @apply pl-4 list-disc my-2;
-
-    li {
-      @apply pl-0 md:pl-1 my-1;
-
-      &::marker {
-        @apply text-[14px] text-black;
-      }
-    }
+    list-style-type: disc;
   }
 
   ol {
-    @apply pl-4 list-decimal my-2;
+    list-style-type: decimal;
+  }
 
-    li {
-      @apply pl-0 md:pl-1 my-1;
+  li {
+    margin-bottom: 0.35rem;
+    line-height: 1.7;
 
-      &::marker {
-        @apply text-[14px] text-black;
+    p {
+      margin-top: 0;
+      margin-bottom: 0;
+      display: inline-block;
+    }
+  }
+
+  // --- Links ---
+  a {
+    color: #0284c7;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.15s ease;
+
+    &:hover {
+      color: #0369a1;
+    }
+  }
+
+  // --- Blockquotes ---
+  blockquote {
+    border-left: 4px solid #3b82f6;
+    margin: 1.25rem 0;
+    padding: 0.5rem 0 0.5rem 1.25rem;
+    color: #475569;
+    font-style: italic;
+    background-color: #f8fafc;
+    border-radius: 0 6px 6px 0;
+  }
+
+  // --- Code Blocks ---
+  pre {
+    background-color: #1e293b;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 1rem;
+    white-space: pre-wrap;
+    margin: 1.25rem 0;
+    overflow-x: auto;
+  }
+
+  code {
+    font-size: 85%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    background-color: #f1f5f9;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    color: #0f172a;
+  }
+
+  pre code {
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+  }
+
+  // --- Images ---
+  img {
+    @apply mx-auto w-full h-auto md:my-4 my-3 xl:my-6;
+    max-width: 100%;
+    border-radius: 8px;
+
+    &[style*="float: left"],
+
+    &[style*="float:left"],
+    &.alignleft,
+    &.align-left,
+    &.image-style-align-left {
+      float: left !important;
+      margin: 0.5rem 1.5rem 1rem 0 !important;
+      display: inline-block !important;
+    }
+
+    &[style*="float: right"],
+    &[style*="float:right"],
+    &.alignright,
+    &.align-right,
+    &.image-style-align-right {
+      float: right !important;
+      margin: 0.5rem 0 1rem 1.5rem !important;
+      display: inline-block !important;
+    }
+  }
+
+  // --- Tables (TinyMCE & Standard HTML) ---
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.25rem 0;
+
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f8fafc;
+      font-weight: 600;
+    }
+  }
+
+  // --- Figures & Captions ---
+  figure {
+    margin: 1.25rem auto;
+    max-width: 100%;
+    display: block;
+    clear: both;
+    text-align: center;
+
+    img {
+      display: inline-block;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
+      border-radius: 8px;
+    }
+
+    figcaption {
+      font-style: italic;
+      text-align: center;
+      margin-top: 0.5rem;
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    &[style*="float: left"],
+    &[style*="float:left"],
+    &.alignleft,
+    &.align-left,
+    &.image-style-align-left {
+      float: left !important;
+      margin: 0.5rem 1.5rem 1rem 0 !important;
+      clear: none !important;
+    }
+
+    &[style*="float: right"],
+    &[style*="float:right"],
+    &.alignright,
+    &.align-right,
+    &.image-style-align-right {
+      float: right !important;
+      margin: 0.5rem 0 1rem 1.5rem !important;
+      clear: none !important;
+    }
+
+    &[style*="margin-left: auto"][style*="margin-right: auto"],
+    &[style*="text-align: center"],
+    &.aligncenter,
+    &.align-center,
+    &.image-style-align-center {
+      float: none !important;
+      margin: 1.25rem auto !important;
+      display: block !important;
+      text-align: center !important;
+    }
+  }
+
+  // --- Video / Iframe Embeds (Google Maps, Youtube...) ---
+  iframe, video {
+    display: block;
+    width: 100%;
+    max-width: 800px;
+    height: 400px;
+    max-height: 80vh;
+    border: none;
+    margin: 1.25rem auto;
+    border-radius: 8px;
+
+    @media (max-width: 640px) {
+      height: 300px;
+    }
+  }
+
+  // --- Horizontal Rule ---
+  hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 2rem 0;
+  }
+
+  // --- Accordion / Collapse (TinyMCE Accordions) ---
+  details {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin: 1.25rem 0;
+    background-color: #f8fafc;
+
+    summary {
+      font-weight: 600;
+      cursor: pointer;
+      color: #0f172a;
+      outline: none;
+      user-select: none;
+    }
+
+    &[open] {
+      summary {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #e2e8f0;
       }
     }
   }
 
-  img {
-    @apply mx-auto w-full h-auto md:my-4 my-3 xl:my-6;
+  // Mobile Responsiveness for Floated Images
+  @media (max-width: 640px) {
+    figure, img {
+      &[style*="float: left"],
+      &[style*="float:left"],
+      &[style*="float: right"],
+      &[style*="float:right"],
+      &.alignleft,
+      &.align-left,
+      &.alignright,
+      &.align-right {
+        float: none !important;
+        margin: 1rem auto !important;
+        display: block !important;
+        max-width: 100% !important;
+      }
+    }
   }
 
   iframe {
     @apply w-full h-auto mx-auto border-none rounded-lg md:my-4 my-3 xl:my-6;
     aspect-ratio: 16 / 9;
   }
-}
 
-
-.prose-product {
-  h3 {
-    @apply font-display text-[16px] leading-[150%] tracking-[0.02em];
-  }
-
-  p,
-  ul,
-  ol {
-    @apply font-serif text-[16px] leading-[150%] text-gray-900 my-2;
-  }
-
-  ul {
-    @apply pl-4 list-disc;
-
-    li {
-      @apply pl-0 md:pl-1 my-0;
-
-      &::marker {
-        @apply text-[14px] text-black;
-      }
-    }
-  }
-
-  ol {
-    @apply pl-4 list-decimal;
-
-    li {
-      @apply pl-0 md:pl-1 my-0;
-
-      &::marker {
-        @apply text-[14px] text-black;
-      }
-    }
-  }
-}
-
-.prose-policy {
-  * {
-    @apply font-serif;
-  }
-
-  h3 {
-    @apply font-display text-primary text-[18px] leading-[145%] tracking-[0.02em] my-3;
-  }
-
-  p,
-  ul,
-  ol {
-    @apply font-serif text-[16px] leading-[150%] text-gray-900 my-2;
-  }
-
-  ul {
-    @apply pl-4 list-disc;
-
-    li {
-      @apply pl-0 md:pl-1 my-0;
-
-      &::marker {
-        @apply text-[14px] text-black;
-      }
-    }
-  }
-
-  ol {
-    @apply pl-4 list-decimal;
-
-    li {
-      @apply pl-0 md:pl-1 my-0;
-
-      &::marker {
-        @apply text-[14px] text-black;
-      }
-    }
+  // Clearfix
+  &::after {
+    content: "";
+    display: table;
+    clear: both;
   }
 }

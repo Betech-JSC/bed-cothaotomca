@@ -23,6 +23,9 @@ export interface BlogTranslation {
   seo_title?: string;
   seo_description?: string;
   seo_keywords?: string;
+  meta_robots?: string | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
 }
 
 export interface Blog {
@@ -42,10 +45,13 @@ export interface Blog {
   meta_title?: string;
   meta_description?: string;
   meta_keywords?: string;
+  meta_robots?: string | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
 }
 
 export const getBlogCategories = async (params: { lang?: string } = {}) => {
-  return getApi<BlogCategory>('blog-categories', { params, revalidate: 0 });
+  return getApi<BlogCategory>('blog-categories', { params });
 };
 
 export const getBlogs = async (params: { page?: number; per_page?: number; lang?: string; is_featured?: boolean | string | number; blog_category_id?: number | string } = {}) => {
@@ -58,8 +64,8 @@ export const getBlogs = async (params: { page?: number; per_page?: number; lang?
     apiParams.is_featured = params.is_featured === true ? 1 : (params.is_featured === false ? 0 : params.is_featured.toString());
   }
 
-  return getApi<Blog>('blogs', { params: apiParams, revalidate: 0 });
+  return getApi<Blog>('blogs', { params: apiParams });
 };
-export const getBlogDetail = async (slug: string, params: { lang?: string } = {}, revalidate = 0) => {
+export const getBlogDetail = async (slug: string, params: { lang?: string } = {}, revalidate?: number) => {
   return getApi<Blog>(`blogs/${slug}`, { params, revalidate });
 };

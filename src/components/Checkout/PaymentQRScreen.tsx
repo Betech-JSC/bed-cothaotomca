@@ -52,6 +52,8 @@ export default function PaymentQRScreen({
     orderData.order_code,
   );
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   // Redirect khi đã thanh toán thành công hoặc đã đồng bộ
   useEffect(() => {
@@ -70,6 +72,45 @@ export default function PaymentQRScreen({
       setTimeout(() => setCopied(false), 2000);
     } catch {
       /* ignore */
+    }
+  };
+
+  const handleDownloadQR = async () => {
+    if (countdown.isExpired || downloading) return;
+    setDownloading(true);
+    try {
+      const response = await fetch(orderData.qr_url);
+      if (!response.ok) throw new Error("Fetch QR image failed");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `QR_Thanh_Toan_${orderData.order_code}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 3000);
+    } catch (err) {
+      console.warn("Blob download failed, fallback to direct open/download link", err);
+      try {
+        const link = document.createElement("a");
+        link.href = orderData.qr_url;
+        link.target = "_blank";
+        link.download = `QR_Thanh_Toan_${orderData.order_code}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setDownloaded(true);
+        setTimeout(() => setDownloaded(false), 3000);
+      } catch (e) {
+        console.error("Failed to download QR image", e);
+      }
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -149,6 +190,50 @@ export default function PaymentQRScreen({
                 : `Hết hạn sau: ${countdown.label}`}
             </span>
           </div>
+
+          {/* Option: Lưu / Tải mã QR về máy */}
+          {!countdown.isExpired && (
+            <div className="w-full space-y-3 pt-1">
+              <button
+                type="button"
+                onClick={handleDownloadQR}
+                disabled={downloading}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary text-white font-bold hover:bg-primary/95 active:scale-[0.99] transition-all shadow-sm disabled:opacity-50 text-sm cursor-pointer"
+              >
+                {downloading ? (
+                  <>
+                    <span className="animate-spin inline-block">⟳</span>
+                    <span>Đang tải mã QR...</span>
+                  </>
+                ) : downloaded ? (
+                  <>
+                    <span className="text-green-400 font-bold text-base">✓</span>
+                    <span>Đã lưu mã QR về máy</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Lưu mã QR về máy (Mobile Banking)</span>
+                  </>
+                )}
+              </button>
+
+              {/* Mobile guidance instructions */}
+              <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-3.5 w-full text-xs text-blue-950 space-y-1.5 font-serif text-left">
+                <p className="font-bold flex items-center gap-1.5 text-blue-900">
+                  <span>💡</span>
+                  <span>Hướng dẫn thanh toán trên điện thoại:</span>
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-blue-800 font-medium pl-0.5 leading-relaxed">
+                  <li>Bấm nút <strong>"Lưu mã QR về máy"</strong> ở trên.</li>
+                  <li>Mở ứng dụng <strong>Banking</strong> (Vietcombank, MB, Techcombank...).</li>
+                  <li>Chọn <strong>Quét mã QR</strong> ➔ chọn <strong>Tải ảnh từ thư viện</strong>.</li>
+                </ol>
+              </div>
+            </div>
+          )}
 
           {/* Trạng thái polling */}
           {!countdown.isExpired && (

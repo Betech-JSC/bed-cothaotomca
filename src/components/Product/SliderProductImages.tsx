@@ -7,6 +7,7 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
+import ZoomableImage from '@/components/Common/ZoomableImage';
 
 interface SliderProductImagesProps {
   items: any[];
@@ -20,7 +21,7 @@ const SliderProductImages: React.FC<SliderProductImagesProps> = ({ items }) => {
         modules={[Pagination]}
         spaceBetween={24}
         slidesPerView={1}
-        loop
+        loop={items.length > 1}
         pagination={{
           clickable: true,
         }}
@@ -41,7 +42,7 @@ const SliderProductImages: React.FC<SliderProductImagesProps> = ({ items }) => {
           return (
             <SwiperSlide key={item.id}>
               <div className="relative aspect-w-1 aspect-h-1 rounded-[24px] overflow-hidden" >
-                <Image
+                <ZoomableImage
                   src={imageSrc}
                   alt={item.alt || item.title || "image product"}
                   fill

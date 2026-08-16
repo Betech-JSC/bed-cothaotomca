@@ -1,18 +1,17 @@
 "use client";
 
-import { useRouter, usePathname } from "@/i18n/i18n-navigation";
+import { useRouter } from "@/i18n/i18n-navigation";
 import { useLocale } from "next-intl";
 import Image from "next/image";
 
 export default function LanguageSwitcher() {
   const locale = useLocale();
   const router = useRouter();
-  const pathname = usePathname();
 
   const nextLocale = locale === "vi" ? "en" : "vi";
 
   const handleToggle = () => {
-    router.replace(pathname as any, { locale: nextLocale });
+    router.replace("/", { locale: nextLocale });
   };
 
   return (

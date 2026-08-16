@@ -85,8 +85,10 @@ export interface OperatingHoursConfig {
   store_close: string;
   delivery_open: string;
   delivery_close: string;
+  last_order_cutoff?: string;
   is_store_open: boolean;
   is_delivery_open: boolean;
+  can_order_now?: boolean;
   current_time?: string;
   message?: string | null;
 }

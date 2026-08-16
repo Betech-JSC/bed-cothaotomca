@@ -99,19 +99,19 @@ export default function ProductFilter({
       />
       <div
         className={`w-full flex-shrink-0 transition-transform duration-300 ease-in-out lg:block lg:max-w-[280px] ${isFilterOpen
-            ? "fixed top-0 right-0 bottom-0 z-[110] flex w-[85%] max-w-[360px] translate-x-0 transform flex-col bg-gray-50 shadow-xl"
-            : "translate-x-full transform max-lg:fixed max-lg:top-0 max-lg:right-0 max-lg:bottom-0 max-lg:z-[110] max-lg:flex max-lg:w-[85%] max-lg:max-w-[360px] max-lg:flex-col max-lg:bg-gray-50 max-lg:shadow-xl lg:block lg:translate-x-0 lg:bg-transparent lg:shadow-none lg:sticky lg:top-24 lg:z-30 lg:w-full"
+            ? "fixed top-0 right-0 bottom-0 z-[110] flex h-full max-h-screen w-[85%] max-w-[360px] translate-x-0 transform flex-col overflow-hidden bg-white shadow-xl"
+            : "translate-x-full transform max-lg:fixed max-lg:top-0 max-lg:right-0 max-lg:bottom-0 max-lg:z-[110] max-lg:flex max-lg:h-full max-lg:max-h-screen max-lg:w-[85%] max-lg:max-w-[360px] max-lg:flex-col max-lg:overflow-hidden max-lg:bg-white max-lg:shadow-xl lg:block lg:translate-x-0 lg:bg-transparent lg:shadow-none lg:sticky lg:top-24 lg:z-30 lg:w-full"
           } `}
       >
         {/* Mobile Header */}
         <div
-          className={`flex items-center justify-between border-b border-gray-100 bg-white px-5 py-4 transition-opacity duration-300 ease-in-out lg:hidden ${isFilterOpen ? "opacity-100" : "opacity-0"
+          className={`flex-shrink-0 flex items-center justify-between border-b border-gray-100 bg-white px-5 py-4 transition-opacity duration-300 ease-in-out lg:hidden ${isFilterOpen ? "opacity-100" : "opacity-0"
             }`}
         >
           <span className="title-2 text-primary">{t("common.filter")}</span>
           <button
             onClick={() => setIsFilterOpen(false)}
-            className="hover:text-primary text-gray-900 transition-colors"
+            className="hover:text-primary text-gray-900 transition-colors p-1"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path
@@ -126,7 +126,7 @@ export default function ProductFilter({
         </div>
 
         {/* Filter Content */}
-        <div className="lg:hidden">
+        <div className="lg:hidden flex-1 min-h-0 overflow-y-auto">
           <FilterContent />
         </div>
         <div className="hidden lg:block">
@@ -150,19 +150,19 @@ export default function ProductFilter({
       : categoriesDisplay.slice(0, 5);
 
     return (
-      <div className="h-full">
-        <div
-          className={`space-y-2 bg-white px-5 py-4 lg:p-0 ${isFilterOpen ? "h-screen flex-1 overflow-y-auto pb-20" : "overflow-hidden rounded-2xl border border-gray-100 shadow-sm"} `}
-        >
-          <div className="space-y-3 pt-4.5">
+      <div
+        className={`space-y-2 bg-white px-5 py-4 lg:p-0 ${isFilterOpen ? "pb-24" : "overflow-hidden rounded-2xl border border-gray-100 shadow-sm"} `}
+      >
+          <div className="space-y-3 pt-2 pb-4 border-b border-gray-100">
             <div className="flex items-center justify-between lg:px-3">
-              <span className="label-1 !font-display font-semibold text-gray-900 uppercase">
+              <span className="text-lg lg:text-xl font-extrabold text-primary uppercase tracking-wider !font-display">
                 {t("common.category")}
               </span>
               {category && (
                 <button
+                  type="button"
                   onClick={clearCategory}
-                  className="label-3 text-primary lg:hover:text-secondary cursor-pointer font-semibold duration-300 ease-in-out"
+                  className="inline-flex items-center gap-1 rounded-full border border-red-200/80 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 transition-all duration-200 hover:bg-red-100 cursor-pointer"
                 >
                   {t("common.clear")}
                 </button>
@@ -174,8 +174,8 @@ export default function ProductFilter({
                   key={cat.id}
                   type="button"
                   onClick={() => handleCategoryClick(cat.slug)}
-                  className={`title-3 w-full cursor-pointer py-3 text-left duration-300 ease-in-out lg:px-3 ${category === cat.slug
-                      ? "bg-secondary/5 text-secondary"
+                  className={`title-3 w-full cursor-pointer py-2.5 text-left duration-300 ease-in-out lg:px-3 ${category === cat.slug
+                      ? "bg-secondary/5 text-secondary font-semibold"
                       : "lg:hover:text-secondary text-gray-800"
                     } `}
                 >
@@ -188,7 +188,8 @@ export default function ProductFilter({
                   <button
                     type="button"
                     onClick={() => setShowAllCategories((prev) => !prev)}
-                    className="inline-flex items-center gap-1.5 text-primary title-3 font-semibold hover:text-secondary cursor-pointer transition-colors duration-200"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors duration-200 lg:hover:text-secondary cursor-pointer"
+
                   >
                     <span>
                       {showAllCategories
@@ -196,10 +197,11 @@ export default function ProductFilter({
                         : `${t("common.view_more")} (${categoriesDisplay.length - 5})`}
                     </span>
                     <svg
-                      className={`w-4 h-4 transition-transform duration-200 ${showAllCategories ? "rotate-180" : ""}`}
+                      className={`h-3.5 w-3.5 transition-transform duration-200 ${showAllCategories ? "rotate-180" : ""}`}
                       fill="none"
-                      stroke="currentColor"
                       viewBox="0 0 24 24"
+                      stroke="currentColor"
+
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -209,15 +211,16 @@ export default function ProductFilter({
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between py-3 pb-1 lg:px-3">
-              <span className="label-1 !font-display font-semibold text-gray-900 uppercase">
+          <div className="space-y-3 pt-4">
+            <div className="flex items-center justify-between py-1 lg:px-3">
+              <span className="text-lg lg:text-xl font-extrabold text-primary uppercase tracking-wider !font-display">
                 {t("common.ingredient")}
               </span>
               {selectedIngredients.length > 0 && (
                 <button
+                  type="button"
                   onClick={clearIngredients}
-                  className="label-3 text-primary lg:hover:text-secondary cursor-pointer font-semibold duration-300 ease-in-out"
+                  className="inline-flex items-center gap-1 rounded-full border border-red-200/80 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600 transition-all duration-200 hover:bg-red-100 cursor-pointer"
                 >
                   {t("common.clear")} ({selectedIngredients.length})
                 </button>
@@ -238,7 +241,8 @@ export default function ProductFilter({
                   <button
                     type="button"
                     onClick={() => setShowAllIngredients((prev) => !prev)}
-                    className="inline-flex items-center gap-1.5 text-primary title-3 font-semibold hover:text-secondary cursor-pointer transition-colors duration-200"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors duration-200 lg:hover:text-secondary cursor-pointer"
+
                   >
                     <span>
                       {showAllIngredients
@@ -246,10 +250,11 @@ export default function ProductFilter({
                         : `${t("common.view_more")} (${ingredientsDisplay.length - 5})`}
                     </span>
                     <svg
-                      className={`w-4 h-4 transition-transform duration-200 ${showAllIngredients ? "rotate-180" : ""}`}
+                      className={`h-3.5 w-3.5 transition-transform duration-200 ${showAllIngredients ? "rotate-180" : ""}`}
                       fill="none"
-                      stroke="currentColor"
                       viewBox="0 0 24 24"
+                      stroke="currentColor"
+
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -259,7 +264,6 @@ export default function ProductFilter({
             </div>
           </div>
         </div>
-      </div>
     );
   }
 }

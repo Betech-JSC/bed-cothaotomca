@@ -174,6 +174,15 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     e.preventDefault();
 
     const isPhoneChanged = formData.phone.trim().replace(/[^0-9]/g, "") !== (user.phone || "").replace(/[^0-9]/g, "");
+    if (isPhoneChanged && !otpSent) {
+      alert("Vui lòng gửi và xác thực mã OTP trước khi thay đổi số điện thoại.");
+      return;
+    }
+    if (isPhoneChanged && otp.length !== 6) {
+      alert("Mã OTP phải có 6 chữ số.");
+      return;
+    }
+
 
     setLoading(true);
     try {
@@ -184,6 +193,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
       if (isPhoneChanged) {
         payload.phone = formData.phone.trim();
+        payload.otp = otp;
+
       }
 
       const res = await updateProfile(payload);
@@ -191,6 +202,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       if (res.success) {
         localStorage.setItem("customer_address", formData.address.trim());
         alert(t("save_success") || "Đã lưu thay đổi thông tin cá nhân!");
+        setOtpSent(false);
+        setOtp("");
       } else {
         alert(res.message || "Cập nhật thông tin thất bại.");
       }
@@ -425,7 +438,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
           <div className="space-y-6 font-serif">
             <h3 className="text-primary font-display font-bold text-[20px] md:text-[22px] flex items-center gap-2.5">
               <svg width="24" height="24" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 5H17M3 10H17M3 15H17" stroke="#CD4829" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+
               </svg>
               {t("transaction_history")}
             </h3>
@@ -665,15 +679,45 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 <label className="text-sm font-semibold text-primary block">
                   {t("phone")}
                 </label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  required
-                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    required
+                    className="input-form flex-1 rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
+                  />
+                  {formData.phone.trim().replace(/[^0-9]/g, "") !== (user.phone || "").replace(/[^0-9]/g, "") && (
+                    <button
+                      type="button"
+                      disabled={sendingOtp || otpCountdown > 0}
+                      onClick={handleSendOtp}
+                      className="px-4 py-2 text-xs font-semibold text-white bg-primary rounded-[12px] hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-[44px]"
+                    >
+                      {sendingOtp ? "Đang gửi..." : otpCountdown > 0 ? `Gửi lại (${otpCountdown}s)` : "Gửi OTP"}
+                    </button>
+                  )}
+                </div>
+                {formData.phone.trim().replace(/[^0-9]/g, "") !== (user.phone || "").replace(/[^0-9]/g, "") && otpSent && (
+                  <div className="mt-2 space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-600 block">
+                      Mã xác thực OTP (Đã gửi)
+                    </label>
+                    <input
+                      type="text"
+                      name="otp"
+                      maxLength={6}
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ""))}
+                      required
+                      placeholder="Nhập 6 số OTP"
+                      className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
+                    />
+                  </div>
+                )}
               </div>
+
 
               {/* Email */}
               <div className="space-y-1.5">

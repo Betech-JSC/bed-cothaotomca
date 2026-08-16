@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import ShareFacebook from "./Icons/ShareFacebook";
-import ShareInstagram from "./Icons/ShareInstagram";
+import ShareZalo from "./Icons/ShareZalo";
 import ShareThreads from "./Icons/ShareThreads";
 import { useTranslations } from "next-intl";
 
@@ -14,10 +14,12 @@ const SocialShare = () => {
     setCurrentUrl(window.location.href);
   }, []);
 
+  const encodedUrl = encodeURIComponent(currentUrl);
+
   const shareLinks = {
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`,
-    threads: `https://www.threads.net/intent/post?text=${currentUrl}`,
-    instagram: "https://www.instagram.com", // Instagram doesn't have a direct "share URL" intent like FB
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+    zalo: `https://sp.zalo.me/share_to_zalo?url=${encodedUrl}`,
+    threads: `https://www.threads.net/intent/post?text=${encodedUrl}`,
   };
 
   return (
@@ -29,22 +31,27 @@ const SocialShare = () => {
           target="_blank"
           rel="noopener noreferrer nofollow"
           className="size-10 rounded-[8px] flex items-center justify-center bg-gray-25 text-gray-900 lg:hover:text-yellow lg:hover:bg-primary duration-300 ease-in-out"
+          title="Facebook"
         >
           <ShareFacebook />
         </a>
-        <a
-          href={shareLinks.instagram}
+        
+        {/* <a
+          href={shareLinks.zalo}
           target="_blank"
           rel="noopener noreferrer nofollow"
           className="size-10 rounded-[8px] flex items-center justify-center bg-gray-25 text-gray-900 lg:hover:text-yellow lg:hover:bg-primary duration-300 ease-in-out"
+          title="Zalo"
         >
-          <ShareInstagram />
-        </a>
+          <ShareZalo />
+        </a> */}
+
         <a
           href={shareLinks.threads}
           target="_blank"
           rel="noopener noreferrer nofollow"
           className="size-10 rounded-[8px] flex items-center justify-center bg-gray-25 text-gray-900 lg:hover:text-yellow lg:hover:bg-primary duration-300 ease-in-out"
+          title="Threads"
         >
           <ShareThreads />
         </a>

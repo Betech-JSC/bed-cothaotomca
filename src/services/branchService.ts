@@ -16,7 +16,7 @@ export interface Branch {
 export async function getBranches(lang?: string): Promise<Branch[]> {
   try {
     const params = lang ? { lang } : undefined;
-    const response = await getApi<Branch>('branches', { params });
+    const response = await getApi<Branch>('branches', { params, revalidate: 60 });
     return [...response.data].sort((a, b) => {
       const orderA = a.sort_order ?? a.id;
       const orderB = b.sort_order ?? b.id;

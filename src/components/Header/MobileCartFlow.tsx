@@ -20,7 +20,8 @@ import {
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import Chevron from "../Icons/Chevron";
-import { checkOperatingHours } from "@/lib/operatingHours";
+import { checkOperatingHours, formatVietnameseDate, toISODateString } from "@/lib/operatingHours";
+import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 
 const POPULAR_DISTRICTS = [
   // Hà Nội
@@ -66,7 +67,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [streetAddress, setStreetAddress] = useState("");
   const [selectedBranchId, setSelectedBranchId] = useState<number>(1);
   const [deliverySchedule, setDeliverySchedule] = useState<"now" | "schedule">("now");
-  const [expectedDelivery, setExpectedDelivery] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState<string>("");
+  const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>("10:00");
+  const [showNoticeModal, setShowNoticeModal] = useState<boolean>(false);
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
   const [description, setDescription] = useState("");
   const [confirmInfo, setConfirmInfo] = useState(true);
@@ -88,10 +91,39 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   // Accordion summary expanded
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
 
-  // Operating hours check (10:00 - 23:00)
+  // Operating hours check (09:00 - 23:00)
   const operatingStatus = useMemo(() => {
     return checkOperatingHours(config?.operating_hours);
   }, [config?.operating_hours]);
+
+  useEffect(() => {
+    if (operatingStatus) {
+      if (!operatingStatus.canOrderNow) {
+        setDeliverySchedule("schedule");
+        setShowNoticeModal(!!operatingStatus.notice);
+      }
+      if (operatingStatus.defaultDate) {
+        setDeliveryDate(operatingStatus.defaultDate);
+      }
+    }
+  }, [operatingStatus]);
+
+  const availableDeliveryDates = useMemo(() => {
+    const dates: { iso: string; label: string }[] = [];
+    const refDate = new Date();
+    const startOffset = (!operatingStatus.canOrderNow && (operatingStatus.isAfterCutoff || operatingStatus.isAfterClose)) ? 1 : 0;
+
+    for (let i = startOffset; i < startOffset + 5; i++) {
+      const d = new Date(refDate);
+      d.setDate(d.getDate() + i);
+      const iso = toISODateString(d);
+      let label = formatVietnameseDate(d);
+      if (i === 0) label = `Hôm nay (${label})`;
+      else if (i === 1) label = `Ngày mai (${label})`;
+      dates.push({ iso, label });
+    }
+    return dates;
+  }, [operatingStatus]);
 
   // Sync user details when loaded
   useEffect(() => {
@@ -220,11 +252,6 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     }
 
     const opCheck = checkOperatingHours(config?.operating_hours);
-    if (!opCheck.isStoreOpen) {
-      setError(opCheck.message || "Vui lòng quay trở lại đặt sau vì chưa đến giờ!");
-      setLoading(false);
-      return;
-    }
 
     if (!name.trim()) {
       setFieldErrors(prev => ({ ...prev, name: "Vui lòng nhập họ và tên." }));
@@ -267,6 +294,32 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         ? crypto.randomUUID()
         : `${Date.now()}-mobile-cart`;
 
+    let expectedDeliveryISO: string | undefined = undefined;
+    if (deliverySchedule === "schedule" || !opCheck.canOrderNow) {
+      if (!expectedDeliveryTime) {
+        setError("Vui lòng chọn giờ nhận hàng mong muốn (khung giờ 10:00 - 23:00).");
+        setLoading(false);
+        return;
+      }
+      if (expectedDeliveryTime < "10:00" || expectedDeliveryTime > "23:00") {
+        setError("Khung giờ nhận món phải từ 10:00 đến 23:00.");
+        setLoading(false);
+        return;
+      }
+      try {
+        const [hoursStr, minutesStr] = expectedDeliveryTime.split(":");
+        const hours = parseInt(hoursStr || "10", 10);
+        const minutes = parseInt(minutesStr || "00", 10);
+
+        const targetDateStr = deliveryDate || opCheck.defaultDate;
+        const [y, m, d] = targetDateStr.split("-").map((s) => parseInt(s, 10));
+        const targetDate = new Date(y, m - 1, d, hours, minutes, 0, 0);
+        expectedDeliveryISO = targetDate.toISOString();
+      } catch (err) {
+        expectedDeliveryISO = undefined;
+      }
+    }
+
     try {
       const result = await createOrder({
         idempotency_key: idempotencyKey,
@@ -283,12 +336,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               contact_number: phone.trim(),
               address: finalAddress,
               price: shipping,
-              expected_delivery:
-                deliverySchedule === "schedule" && expectedDelivery
-                  ? new Date(expectedDelivery).toISOString()
-                  : undefined,
+              expected_delivery: expectedDeliveryISO,
             }
-            : null,
+            : (expectedDeliveryISO
+              ? {
+                expected_delivery: expectedDeliveryISO
+              }
+              : null),
         items: cartItems.map((item) => ({
           product_id: item.productId,
           product_code: item.productCode,
@@ -559,19 +613,30 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           <div className="space-y-6 animate-in fade-in slide-in-from-right duration-200">
             {/* Banner Khung giờ mở cửa nhận đơn */}
             <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${
-              operatingStatus.isStoreOpen
+              operatingStatus.canOrderNow
                 ? "bg-blue-50/80 border-blue-200 text-blue-900"
                 : "bg-amber-50 border-amber-300 text-amber-900"
             }`}>
               <span className="text-xl leading-none mt-0.5">🕒</span>
-              <div className="text-sm space-y-1 font-serif">
-                <div className="font-bold text-sm">Khung giờ mở cửa nhận đơn: 10:00 - 23:00</div>
-                {!operatingStatus.isStoreOpen ? (
-                  <div className="font-semibold text-amber-800 text-xs">
-                    ⚠️ {operatingStatus.message || "Vui lòng quay trở lại đặt sau vì chưa đến giờ mở cửa (10:00 - 23:00)!"}
+              <div className="text-sm space-y-1 font-serif flex-1">
+                <div className="font-bold text-xs sm:text-sm">
+                  Giờ mở cửa: {operatingStatus.storeOpen} - {operatingStatus.storeClose} | Nhận món: {operatingStatus.deliveryOpen} - {operatingStatus.deliveryClose}
+                </div>
+                {!operatingStatus.canOrderNow ? (
+                  <div className="font-semibold text-amber-800 text-xs flex items-center justify-between gap-2 flex-wrap pt-0.5">
+                    <span>⚠️ {operatingStatus.message || "Quán đang hỗ trợ đặt hẹn giờ nhận món trước."}</span>
+                    {operatingStatus.notice && (
+                      <button
+                        type="button"
+                        onClick={() => setShowNoticeModal(true)}
+                        className="text-[11px] bg-amber-200 hover:bg-amber-300 text-amber-900 px-2 py-0.5 rounded font-sans transition-colors cursor-pointer"
+                      >
+                        Chi tiết hẹn giờ
+                      </button>
+                    )}
                   </div>
                 ) : (
-                  <div className="text-blue-700 font-medium text-xs">Quán đang mở cửa nhận đơn hàng.</div>
+                  <div className="text-blue-700 font-medium text-xs">Quán đang mở cửa nhận đơn giao ngay.</div>
                 )}
               </div>
             </div>
@@ -814,37 +879,66 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 />
               </div>
 
-              {/* Expected time */}
+              {/* Expected time & date */}
               <div className="space-y-3 pt-2 border-t border-gray-100">
                 <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Thời gian giao/nhận mong muốn</p>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className={`flex items-center gap-2 cursor-pointer ${!operatingStatus.canOrderNow ? "opacity-50 cursor-not-allowed" : ""}`}>
                     <input
                       type="radio"
                       name="expected_time"
-                      checked={deliverySchedule === "now"}
+                      disabled={!operatingStatus.canOrderNow}
+                      checked={deliverySchedule === "now" && operatingStatus.canOrderNow}
                       onChange={() => setDeliverySchedule("now")}
                       className="accent-primary"
                     />
                     <span>Giao ngay (Hỏa tốc 45 - 90 phút)</span>
+                    {!operatingStatus.canOrderNow && " (Ngưng giao ngay)"}
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="expected_time"
-                      checked={deliverySchedule === "schedule"}
+                      checked={deliverySchedule === "schedule" || !operatingStatus.canOrderNow}
                       onChange={() => setDeliverySchedule("schedule")}
                       className="accent-primary"
                     />
-                    <span>Hẹn giờ giao</span>
+                    <span className="font-semibold">Hẹn giờ giao / nhận món</span>
                   </label>
-                  {deliverySchedule === "schedule" && (
-                    <input
-                      type="datetime-local"
-                      value={expectedDelivery}
-                      onChange={(e) => setExpectedDelivery(e.target.value)}
-                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
-                    />
+
+                  {(deliverySchedule === "schedule" || !operatingStatus.canOrderNow) && (
+                    <div className="pt-2 space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">Chọn ngày nhận hàng</label>
+                        <select
+                          value={deliveryDate}
+                          onChange={(e) => setDeliveryDate(e.target.value)}
+                          className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[12px] py-[8px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm"
+                        >
+                          {availableDeliveryDates.map((item) => (
+                            <option key={item.iso} value={item.iso}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">Chọn giờ nhận hàng (10:00 - 23:00)</label>
+                        <input
+                          type="time"
+                          required
+                          min="10:00"
+                          max="23:00"
+                          value={expectedDeliveryTime}
+                          onChange={(e) => setExpectedDeliveryTime(e.target.value)}
+                          className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-base font-serif"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 font-sans">
+                        * Khung giờ phục vụ nhận món: {operatingStatus.deliveryOpen} - {operatingStatus.deliveryClose}.
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -918,14 +1012,20 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || !confirmInfo || !operatingStatus.isStoreOpen}
+              disabled={loading || !confirmInfo}
               className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50"
             >
-              {loading ? "Đang xử lý..." : !operatingStatus.isStoreOpen ? "Vui lòng quay lại đặt sau (10h-23h)" : "Thanh toán"}
+              {loading ? "Đang xử lý..." : !operatingStatus.canOrderNow ? "Đặt hẹn giờ nhận hàng" : "Thanh toán"}
             </button>
           </div>
         )}
       </div>
+
+      <PreOrderNoticeModal
+        isOpen={showNoticeModal}
+        onClose={() => setShowNoticeModal(false)}
+        notice={operatingStatus.notice}
+      />
     </div>
   );
 }

@@ -60,6 +60,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     const translation = getTranslation(item.translations, locale) as any;
     const name = translation?.custom_name || item.custom_name || translation?.name || item.name;
 
+
     // Get category from categories array (new structure) or category object (old structure)
     const productCategory = item.categories && item.categories.length > 0
       ? item.categories[0]
@@ -67,11 +68,14 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || productCategory?.title || "Tất cả";
-    const categorySlug = slugify(categoryName);
+    const categorySlug = productCategory?.slug || slugify(categoryName);
+
 
     return {
       id: item.id,
       title: name,
+      custom_name: item.custom_name,
+
       slug: item.slug || slugify(name),
       price: parseFloat(item.price as string),
       category: { title: categoryName, slug: categorySlug },
@@ -216,7 +220,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             <AnimateOnScroll animate="slideup">
               {locale == 'vi' ? (
                 <h2 className="display-2 max-md:text-[36px] text-center text-primary">
-                  {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span>{t('home.section-5.title.text3')}
+                  {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span><br className="md:hidden" />{t('home.section-5.title.text3')}
+
                 </h2>
               ) : (
                 <h2 className="display-2 max-md:text-[36px] text-center text-primary">
@@ -263,7 +268,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <div className="relative overflow-hidden aspect-w-4 aspect-h-5 rounded-[12px]">
                   <Image
                     src="/images/demo/image-category.jpg"
-                    alt="image category"
+                    alt="DANH MỤC SẢN PHẨM"
                     fill
                     className="object-cover w-full h-full"
                   />
@@ -305,7 +310,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </div>
       </section>
-      <SectionSliderPost items={postsDisplay} />
+      <SectionSliderPost classCustom='md:pt-16 pt-12 xl:pt-[100px] lg:pb-[140px] pb-20 xl:pb-[250px]' items={postsDisplay} />
+
     </main >
   )
 }

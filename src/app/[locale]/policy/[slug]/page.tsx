@@ -3,6 +3,7 @@ import { Link } from "@/i18n/routing";
 import { getPolicies } from "@/services/policyService";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
+import { formatRichTextContent } from "@/lib/format";
 
 export async function generateMetadata({
   params
@@ -35,21 +36,38 @@ export async function generateMetadata({
   const seoDescription = currentPolicy.seo_description || currentPolicy.meta_description || description;
   const seoKeywords = currentPolicy.seo_keywords || currentPolicy.meta_keywords || "";
 
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
+  const customCanonical = currentPolicy.canonical_url;
+  const canonicalUrl = customCanonical || `${baseUrl}/${locale}/policy/${slug}`;
+
+  const customOgImage = currentPolicy.og_image;
+  const policyImage = customOgImage || currentPolicy.image || "/cover.jpg";
+  const customRobots = currentPolicy.meta_robots || undefined;
+
   return {
     title: seoTitle,
     description: seoDescription,
     keywords: seoKeywords,
+    robots: customRobots,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        vi: `${baseUrl}/vi/policy/${slug}`,
+        en: `${baseUrl}/en/policy/${slug}`,
+      },
+    },
     openGraph: {
       title: seoTitle,
       description: seoDescription,
-      images: [currentPolicy.image || "/cover.jpg"],
+      url: canonicalUrl,
+      images: [policyImage],
       type: 'article' as const,
     },
     twitter: {
       card: 'summary_large_image' as const,
       title: seoTitle,
       description: seoDescription,
-      images: [currentPolicy.image || "/cover.jpg"],
+      images: [policyImage],
     }
   };
 }
@@ -93,7 +111,7 @@ export default async function PolicyPage({
       <JsonLd
         type="Article"
         data={currentPolicy}
-        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-cothaotomca.betech-digital.com').replace(/\/$/, '')}/${locale}/policy/${slug}`}
+        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')}/${locale}/policy/${slug}`}
       />
       <div className="container space-y-3">
         <Breadcrumb breadcrumbs={breadcrumbs} />
@@ -128,8 +146,8 @@ export default async function PolicyPage({
               <div className="space-y-3">
                 <h1 className="display-3 text-primary">{currentPolicy.title || currentPolicy.name}</h1>
                 <div
-                  className="prose prose-policy max-w-full"
-                  dangerouslySetInnerHTML={{ __html: currentPolicy.content }}
+                  className="prose-content max-w-full"
+                  dangerouslySetInnerHTML={{ __html: formatRichTextContent(currentPolicy.content) }}
                 />
               </div>
             </div>

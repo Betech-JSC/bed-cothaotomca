@@ -69,7 +69,7 @@ export default function SearchSuggestions({
             <ul className="py-1">
               {suggestions.map((item, index) => {
                 const categorySlug = item.category
-                  ? slugify(item.category.title)
+                  ? ((item.category as any).slug || slugify(item.category.title))
                   : "";
 
                 return (

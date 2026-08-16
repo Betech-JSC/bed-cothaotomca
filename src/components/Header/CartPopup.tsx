@@ -4,7 +4,8 @@ import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice, isDefaultVariant } from "@/lib/format";
+import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
+
 
 interface CartPopupProps {
   onClose: () => void;

@@ -15,6 +15,9 @@ export interface Translation {
   meta_title?: string;
   meta_description?: string;
   meta_keywords?: string;
+  meta_robots?: string | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
 }
 
 export interface ProductVariant {
@@ -23,6 +26,7 @@ export interface ProductVariant {
   size?: string;
   size_en?: string;
   price?: string | number;
+  campaign_price?: string | number | null;
   stock?: number;
 }
 
@@ -46,6 +50,7 @@ export interface Product {
   custom_name?: string;
   description: string;
   price: string;
+  campaign_price?: string | number | null;
   image: string | null;
   is_best_seller: boolean;
   ingredients: Ingredient[];
@@ -77,6 +82,9 @@ export interface Product {
   meta_title?: string;
   meta_description?: string;
   meta_keywords?: string;
+  meta_robots?: string | null;
+  canonical_url?: string | null;
+  og_image?: string | null;
 }
 
 /** Props cho ProductDetailsInfo — map từ GET /products/slug/{slug} */
@@ -87,7 +95,7 @@ export interface ProductDetailView {
   code?: string;
   unit?: string;
   images: { url: string; alt: string }[];
-  sizes: { id?: number; code?: string; title: string; price: number }[];
+  sizes: { id?: number; code?: string; title: string; price: number; original_price?: number }[];
   infos: { title: string; content: string }[];
   category: { title: string; slug: string };
   checkout: {
@@ -256,6 +264,7 @@ export function mapProductToCardItem(
 ): {
   id: number;
   title: string;
+  custom_name?: string;
   slug: string;
   price: number;
   category: { title: string; id: string; slug: string };
@@ -280,6 +289,7 @@ export function mapProductToCardItem(
   return {
     id: item.id,
     title: name,
+    custom_name: item.custom_name,
     slug: item.slug || slugify(name),
     price: parseFloat(String(item.price)) || 0,
     category: {
@@ -320,7 +330,7 @@ export async function getProductCatalog(
 
     const result = await getApi<Product>("products", {
       params: apiParams,
-      revalidate: options.revalidate ?? 300,
+      revalidate: options.revalidate,
     });
 
     const batch = (result.data || []).map(normalizeProduct);
@@ -376,7 +386,7 @@ export const getProducts = async (
 
   const result = await getApi<Product>("products", {
     params: apiParams,
-    revalidate: revalidate ?? 300,
+    revalidate: revalidate,
   });
 
   const data = (result.data || []).map(normalizeProduct);

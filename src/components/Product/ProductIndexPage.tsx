@@ -52,7 +52,8 @@ export default function ProductIndexPage({
     return {
       id: cat.id.toString(),
       title,
-      slug: locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title)
+      slug: cat.slug || slugify(title)
+
     }
   }), [categories, locale]);
 
@@ -69,6 +70,7 @@ export default function ProductIndexPage({
   const productsDisplay = useMemo(() => products.map(p => {
     const translation = getTranslation(p.translations, locale) as any;
     const name = translation?.custom_name || p.custom_name || translation?.name || p.name;
+
     
     // Get category from categories array (new structure) or category object (old structure)
     const productCategory = p.categories && p.categories.length > 0 
@@ -78,22 +80,28 @@ export default function ProductIndexPage({
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || productCategory?.title || "";
     const categoryId = productCategory?.id?.toString() || "";
-    const categorySlug = locale === 'vi' ? (productCategory?.slug || slugify(categoryName)) : slugify(categoryName);
+    const categorySlug = productCategory?.slug || slugify(categoryName);
     
-    // Store all category slugs for filtering (support multi-category)
+    // Store all category slugs for filtering (support both DB slug and title slug)
     const allCategorySlugs = p.categories && p.categories.length > 0
-      ? p.categories.map(cat => {
+      ? p.categories.flatMap(cat => {
           const trans = getTranslation(cat.translations, locale) as any;
           const title = trans?.title || cat.title || "";
-          return locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title);
+          const slugs = [];
+          if (cat.slug) slugs.push(cat.slug);
+          if (title) slugs.push(slugify(title));
+          return slugs;
         })
-      : [categorySlug];
+      : [categorySlug, slugify(categoryName)].filter(Boolean);
+
 
     const productSlug = p.slug || slugify(name);
 
     return {
       id: p.id,
       title: name,
+      custom_name: p.custom_name,
+
       slug: productSlug,
       price: parseFloat(p.price as string) || 0,
       category: { id: categoryId, title: categoryName, slug: categorySlug },
@@ -153,7 +161,7 @@ export default function ProductIndexPage({
   const clearIngredients = () => pushWithFilters(category, [], 1)
   const clearAll = () => pushWithFilters(null, [], 1)
   const currentCategory = useMemo(() => {
-    return categoriesDisplay.find(cat => cat.slug === category)
+    return categoriesDisplay.find(cat => cat.slug === category || slugify(cat.title) === category)
   }, [category, categoriesDisplay])
 
   const breadcrumbs = useMemo(() => {
@@ -172,10 +180,11 @@ export default function ProductIndexPage({
       // Otherwise, check if ANY of the product's categories matches the URL slug.
       const catMatch = !category || p.allCategorySlugs.includes(category)
 
-      // Ingredient match: the product must have ALL selected ingredients.
+      // Ingredient match: the product has ANY of the selected ingredients (OR logic for combos/multi-ingredients).
+
       const ingMatch =
         selectedIngredients.length === 0 ||
-        selectedIngredients.every(slug => {
+        selectedIngredients.some(slug => {
           const ingId = ingredientsDisplay.find(ing => ing.slug === slug)?.id
           return ingId && p.ingredientIds.includes(ingId)
         })
