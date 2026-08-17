@@ -292,8 +292,9 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   const tier = getTierInfo(user.points);
 
   const mapStatus = (status: string): string => {
-    if (status === "synced") return "completed";
-    if (status === "pending_payment") return "processing";
+    if (status === "synced" || status === "completed" || status === "paid") return "completed";
+    if (status === "shipping" || status === "delivering") return "shipping";
+    if (status === "cancelled" || status === "cancel_requested") return "cancelled";
     return "processing";
   };
 
@@ -541,6 +542,12 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                                   className="w-4 h-4 object-contain"
                                 />
                                 <span>{t("status_completed") || "Hoàn thành"}</span>
+                              </span>
+                            )}
+
+                            {mappedStatus === "cancelled" && (
+                              <span className="inline-flex items-center gap-1.5 text-red-600 text-[14px] font-medium py-1">
+                                <span>Đã hủy</span>
                               </span>
                             )}
                           </div>

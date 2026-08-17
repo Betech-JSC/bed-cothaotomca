@@ -221,6 +221,19 @@ export default function OrderLookupPage() {
             Chờ xử lý / Đóng gói
           </span>
         );
+      case "processing":
+        return (
+          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 border border-orange-300">
+            Đang chế biến
+          </span>
+        );
+      case "shipping":
+      case "delivering":
+        return (
+          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-sky-100 text-sky-800 border border-sky-300">
+            Đang giao hàng
+          </span>
+        );
       case "confirmed":
       case "synced":
       case "paid":
