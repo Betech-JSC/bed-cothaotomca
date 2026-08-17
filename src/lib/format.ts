@@ -82,8 +82,7 @@ export function formatRichTextContent(content: string | undefined | null): strin
       // Strip existing width, height, and style attributes from raw CMS HTML
       let cleaned = attrs
         .replace(/\s*(width|height)=["'][^"']*["']/gi, '')
-        .replace(/\s*style=["'][^"']*["']/gi, '');
-      return `<iframe${cleaned} width="100%" height="400" style="min-width: 800px !important; max-width: 800px !important; width: 800px !important; height: 400px !important; min-height: 400px !important; max-height: 400px !important; border-radius: 24px !important; display: block !important; margin: 1.5rem auto !important; border: none !important;">`;
+      return `<iframe${cleaned} width="100%" height="450" style="width: 100% !important; max-width: 100% !important; border: none !important; display: block !important; margin: 1.5rem auto !important;">`;
     });
   };
 
@@ -108,10 +107,29 @@ export function formatRichTextContent(content: string | undefined | null): strin
     }
   );
 
+  const processImgAltHover = (htmlStr: string) => {
+    return htmlStr.replace(/<img([^>]*?)alt="([^"]+)"([^>]*?)>/gi, (match, p1, altText, p3) => {
+      const decodedAlt = decodeHtmlEntities(altText).trim();
+      if (!decodedAlt) return match;
+
+      // Sync title attribute with alt if title is missing
+      let updatedImg = match;
+      if (!/title=["']/i.test(match)) {
+        updatedImg = `<img${p1}alt="${altText}" title="${altText}"${p3}>`;
+      }
+
+      const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:5px; opacity:0.85;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+      return `<span class="prose-img-hover-wrapper" data-alt="${altText}">${updatedImg}<span class="img-alt-badge">${iconSvg}Alt: ${decodedAlt}</span></span>`;
+    });
+  };
+
   // Khôi phục lại các khối figure ban đầu
   processed = processed.replace(/__FIGURE_PLACEHOLDER_(\d+)__/g, (match, index) => {
     return figures[parseInt(index, 10)];
   });
-  
+
+  // Xử lý các thẻ img (cả trong lẫn ngoài figure) duy nhất 1 lần
+  processed = processImgAltHover(processed);
+
   return processed;
 }
