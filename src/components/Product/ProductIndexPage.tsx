@@ -46,36 +46,34 @@ export default function ProductIndexPage({
       translations.find(t => t.locale.startsWith(currentLocale));
   };
 
-  const categoriesDisplay = useMemo(() => categories.map(cat => {
-    const translation = getTranslation(cat.translations, locale) as any;
-    const title = translation?.title || cat.title || "";
+  const categoriesDisplay = useMemo(() => (categories || []).map(cat => {
+    const translation = getTranslation(cat?.translations, locale) as any;
+    const title = translation?.title || cat?.title || "";
     return {
-      id: cat.id.toString(),
+      id: cat?.id?.toString() || "",
       title,
-      slug: cat.slug || slugify(title)
-
+      slug: cat?.slug || slugify(title)
     }
   }), [categories, locale]);
 
-  const ingredientsDisplay = useMemo(() => ingredients.map(ing => {
-    const translation = getTranslation(ing.translations, locale) as any;
-    const name = translation?.name || ing.name || "";
+  const ingredientsDisplay = useMemo(() => (ingredients || []).map(ing => {
+    const translation = getTranslation(ing?.translations, locale) as any;
+    const name = translation?.name || ing?.name || "";
     return {
-      id: ing.id.toString(),
+      id: ing?.id?.toString() || "",
       title: name,
       slug: slugify(name)
     }
   }), [ingredients, locale]);
 
-  const productsDisplay = useMemo(() => products.map(p => {
-    const translation = getTranslation(p.translations, locale) as any;
-    const name = translation?.custom_name || p.custom_name || translation?.name || p.name;
+  const productsDisplay = useMemo(() => (products || []).map(p => {
+    const translation = getTranslation(p?.translations, locale) as any;
+    const name = translation?.custom_name || p?.custom_name || translation?.name || p?.name || "";
 
-    
     // Get category from categories array (new structure) or category object (old structure)
-    const productCategory = p.categories && p.categories.length > 0 
+    const productCategory = p?.categories && p.categories.length > 0 
       ? p.categories[0] 
-      : p.category;
+      : p?.category;
     
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || productCategory?.title || "";
@@ -83,37 +81,36 @@ export default function ProductIndexPage({
     const categorySlug = productCategory?.slug || slugify(categoryName);
     
     // Store all category slugs for filtering (support both DB slug and title slug)
-    const allCategorySlugs = p.categories && p.categories.length > 0
+    const allCategorySlugs = p?.categories && p.categories.length > 0
       ? p.categories.flatMap(cat => {
-          const trans = getTranslation(cat.translations, locale) as any;
-          const title = trans?.title || cat.title || "";
+          const trans = getTranslation(cat?.translations, locale) as any;
+          const title = trans?.title || cat?.title || "";
           const slugs = [];
-          if (cat.slug) slugs.push(cat.slug);
+          if (cat?.slug) slugs.push(cat.slug);
           if (title) slugs.push(slugify(title));
           return slugs;
         })
       : [categorySlug, slugify(categoryName)].filter(Boolean);
 
-
-    const productSlug = p.slug || slugify(name);
+    const productSlug = p?.slug || slugify(name);
 
     return {
-      id: p.id,
+      id: p?.id || 0,
       title: name,
-      custom_name: p.custom_name,
+      custom_name: p?.custom_name,
 
       slug: productSlug,
-      price: parseFloat(p.price as string) || 0,
+      price: parseFloat(String(p?.price || 0)) || 0,
       category: { id: categoryId, title: categoryName, slug: categorySlug },
       allCategorySlugs, // Add this for multi-category filtering
-      ingredientIds: p.ingredients?.map(ing => ing.id.toString()) || [],
-      variants: p.variants,
+      ingredientIds: p?.ingredients?.map(ing => ing?.id?.toString()).filter(Boolean) as string[] || [],
+      variants: p?.variants,
       image: {
-        url: p.image || "/cover.jpg",
+        url: p?.image || "/cover.jpg",
         alt: name
       },
-      description: translation?.description || p.description || "",
-      created_at: p.created_at || '2024-03-15T00:00:00Z',
+      description: translation?.description || p?.description || "",
+      created_at: p?.created_at || '2024-03-15T00:00:00Z',
     };
   }), [products, locale]);
 

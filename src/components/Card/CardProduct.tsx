@@ -67,7 +67,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
 
       {/* Image */}
       <Link
-        href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
+        href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
         className="block"
       >
         <div className="aspect-w-1 aspect-h-1 relative overflow-hidden">
@@ -83,7 +83,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
 
       <div className="pt-2.5 pb-3 md:pt-3 md:pb-4 px-2 md:px-4 text-center">
         <Link
-          href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
+          href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
           className="block"
         >
           <h3 className={`title-1 max-md:text-[22px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 max-md:min-h-[48px] min-h-[44px] whitespace-pre-line`}>
