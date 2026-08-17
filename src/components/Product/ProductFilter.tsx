@@ -100,7 +100,7 @@ export default function ProductFilter({
       <div
         className={`w-full flex-shrink-0 transition-transform duration-300 ease-in-out lg:block lg:max-w-[280px] ${isFilterOpen
             ? "fixed top-0 right-0 bottom-0 z-[110] flex h-full max-h-screen w-[85%] max-w-[360px] translate-x-0 transform flex-col overflow-hidden bg-white shadow-xl"
-            : "translate-x-full transform max-lg:fixed max-lg:top-0 max-lg:right-0 max-lg:bottom-0 max-lg:z-[110] max-lg:flex max-lg:h-full max-lg:max-h-screen max-lg:w-[85%] max-lg:max-w-[360px] max-lg:flex-col max-lg:overflow-hidden max-lg:bg-white max-lg:shadow-xl lg:block lg:translate-x-0 lg:bg-transparent lg:shadow-none lg:sticky lg:top-24 lg:z-30 lg:w-full"
+            : "translate-x-full transform max-lg:fixed max-lg:top-0 max-lg:right-0 max-lg:bottom-0 max-lg:z-[110] max-lg:flex max-lg:h-full max-lg:max-h-screen max-lg:w-[85%] max-lg:max-w-[360px] max-lg:flex-col max-lg:overflow-hidden max-lg:bg-white max-lg:shadow-xl lg:block lg:translate-x-0 lg:bg-transparent lg:shadow-none lg:w-full"
           } `}
       >
         {/* Mobile Header */}
