@@ -1302,6 +1302,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 <div className="text-right">
                   {deliveryType === "pickup" ? (
                     <span className="text-emerald-600 font-bold">0đ (Tự đến lấy)</span>
+                  ) : !isDeliverable ? (
+                    <span className="text-red-600 font-bold text-sm">Chưa hỗ trợ giao</span>
                   ) : isFreeship ? (
                     <div className="flex items-center gap-2">
                       {originalFee > 0 && (
