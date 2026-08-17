@@ -412,16 +412,18 @@ const MobileMenu = ({
     <nav aria-label="Mobile main navigation" className="w-full xl:hidden">
       <div className="flex w-full items-center justify-between py-1 relative">
         <Logo width={100} height={60} className="h-20" />
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
           <button
             onClick={onToggleSearch}
-            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out"
+            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out shrink-0"
             aria-label="Search"
           >
             <Search />
           </button>
-          <LanguageSwitcher />
-          <div className="relative">
+          <div className="shrink-0">
+            <LanguageSwitcher />
+          </div>
+          <div className="relative shrink-0 flex items-center">
             <Link
               id="cart-toggle-btn-mobile"
               href="/checkout"
@@ -431,7 +433,7 @@ const MobileMenu = ({
             >
               <Cart />
               {totalItems > 0 && (
-                <span className="absolute -top-2 -right-2 bg-secondary text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                <span className="absolute -top-1.5 -right-1.5 bg-secondary text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center pointer-events-none z-10">
                   {totalItems}
                 </span>
               )}
@@ -445,7 +447,7 @@ const MobileMenu = ({
             onClick={onToggle}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
-            className="text-yellow duration-300 ease-in-out"
+            className="text-yellow duration-300 ease-in-out shrink-0 flex items-center justify-center"
           >
             <span className="sr-only">
               {open ? "Close menu" : "Open menu"}
@@ -469,14 +471,14 @@ const MobileMenu = ({
       </div>
 
       <div
-        className={`fixed top-[88px] left-0 z-[100] w-full h-dvh bg-gray-900/50 transition-opacity ${open ? "opacity-100" : "pointer-events-none opacity-0"
+        className={`fixed top-full left-0 z-[100] w-full h-[calc(100dvh-100%)] bg-gray-900/50 transition-opacity ${open ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
         onClick={onClose}
         aria-hidden="true"
       />
 
       <div
-        className={`bg-primary fixed top-[88px] left-0 z-[100] h-dvh w-full max-w-full p-4 space-y-8 shadow-xl transition-transform md:max-w-sm ${open ? "translate-x-0" : "-translate-x-full"
+        className={`bg-primary fixed top-full left-0 z-[100] h-[calc(100dvh-100%)] w-full max-w-full p-6 space-y-8 shadow-xl transition-transform overflow-y-auto ${open ? "translate-x-0" : "-translate-x-full"
           }`}
         role="dialog"
         aria-modal="true"
