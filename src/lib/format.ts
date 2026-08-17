@@ -36,10 +36,33 @@ export function slugify(str: string | undefined | null) {
     .replace(/[\s_-]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
+
 export function getTranslation<T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined {
   if (!translations || translations.length === 0) return undefined;
   return translations.find(t => t.locale === currentLocale) ||
     translations.find(t => t.locale.startsWith(currentLocale));
+}
+
+/**
+ * Check if a variant is the default variant
+ */
+export function isDefaultVariant(variant?: string): boolean {
+  if (!variant) return true;
+  const v = variant.toLowerCase().trim();
+  return v === 'mặc định' || v === 'standard' || v === 'default' || v.includes('mặc định');
+}
+
+/**
+ * Clean variant name strings by stripping out redundant prefixes
+ */
+export function cleanVariantName(variant?: string): string {
+  if (!variant) return '';
+  let v = variant.trim();
+  v = v.replace(/^Size:\s*/i, '');
+  v = v.replace(/^Size\s+Size\s+/i, 'Size ');
+  v = v.replace(/^Kích thước\s+Size\s+/i, 'Size ');
+  v = v.replace(/^Phân loại\s+Size\s+/i, 'Size ');
+  return v;
 }
 
 function decodeHtmlEntities(str: string): string {
