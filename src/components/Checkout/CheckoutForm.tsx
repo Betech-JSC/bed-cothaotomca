@@ -201,7 +201,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           setHotline(settings.hotline);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Trigger real-time calculation when address, subtotal or voucher changes
@@ -638,11 +638,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           >
             {/* Banner Trạng thái hoạt động */}
             <div
-              className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${
-                operatingStatus.canOrderNow
+              className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${operatingStatus.canOrderNow
                   ? "bg-emerald-50/90 border-emerald-200 text-emerald-900"
                   : "bg-amber-50 border-amber-300 text-amber-900"
-              }`}
+                }`}
             >
               <span className="text-xl leading-none mt-0.5">
                 {operatingStatus.canOrderNow ? "🟢" : "🟡"}
@@ -820,18 +819,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   </div>
                 )}
 
-                {/* Warning nếu khu vực chưa được cấu hình và bị chặn */}
-                {!isDeliverable && (
-                  <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-sm text-red-700 font-semibold space-y-1">
-                    <p className="flex items-center gap-1.5 text-red-800">
-                      <span>⚠️</span>
-                      <span>Khu vực này hiện chưa hỗ trợ giao hàng tận nơi.</span>
-                    </p>
-                    <p className="text-xs text-red-600 font-normal">
-                      Vui lòng chọn hình thức <strong>"Tự đến lấy tại chi nhánh"</strong> hoặc liên hệ Hotline để được hỗ trợ.
-                    </p>
-                  </div>
-                )}
 
                 {/* Thẻ thông báo phí tiêu chuẩn */}
                 {isDeliverable && shippingMessage && !isFreeship && (
