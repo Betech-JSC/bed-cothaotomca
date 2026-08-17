@@ -20,7 +20,7 @@ import {
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import Chevron from "../Icons/Chevron";
-import { checkOperatingHours, formatVietnameseDate, toISODateString } from "@/lib/operatingHours";
+import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, toISODateString } from "@/lib/operatingHours";
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 
 const POPULAR_DISTRICTS = [
@@ -124,6 +124,32 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     }
     return dates;
   }, [operatingStatus]);
+
+  const availableTimeSlots = useMemo(() => {
+    const refDate = new Date();
+    const todayISO = toISODateString(refDate);
+
+    let filterTime: string | undefined = undefined;
+    if (deliveryDate === todayISO) {
+      const curH = refDate.getHours();
+      const curM = refDate.getMinutes();
+      const bufferM = curH * 60 + curM + 25; // 25 min preparation buffer
+      const bH = Math.floor(bufferM / 60);
+      const bM = bufferM % 60;
+      filterTime = `${bH.toString().padStart(2, "0")}:${bM.toString().padStart(2, "0")}`;
+    }
+
+    return generate15MinTimeSlots(operatingStatus.deliveryOpen || "10:00", operatingStatus.deliveryClose || "23:00", filterTime);
+  }, [deliveryDate, operatingStatus.deliveryOpen, operatingStatus.deliveryClose]);
+
+  useEffect(() => {
+    if (availableTimeSlots.length > 0) {
+      const exists = availableTimeSlots.some((s) => s.value === expectedDeliveryTime);
+      if (!exists) {
+        setExpectedDeliveryTime(availableTimeSlots[0].value);
+      }
+    }
+  }, [availableTimeSlots, expectedDeliveryTime]);
 
   // Sync user details when loaded
   useEffect(() => {
@@ -871,42 +897,50 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   {deliveryType === "pickup" ? "Thời gian đến lấy hàng mong muốn" : "Thời gian giao hàng mong muốn"}
                 </p>
                 <div className="space-y-3">
-                  {/* Option 1: Giao ngay */}
-                  <div>
-                    <label className={`flex items-center gap-2 cursor-pointer ${!operatingStatus.canOrderNow ? "opacity-50 cursor-not-allowed" : ""}`}>
-                      <input
-                        type="radio"
-                        name="expected_time"
-                        disabled={!operatingStatus.canOrderNow}
-                        checked={deliverySchedule === "now" && operatingStatus.canOrderNow}
-                        onChange={() => setDeliverySchedule("now")}
-                        className="accent-primary"
-                      />
-                      <span className="font-medium text-sm">
-                        {deliveryType === "pickup" ? "Lấy ngay (Chuẩn bị 15 - 30 phút)" : "Giao ngay (Hỏa tốc 45 - 90 phút)"}
-                        {!operatingStatus.canOrderNow && " (Tạm ngưng giao ngay)"}
-                      </span>
-                    </label>
+                  {/* Option 1: Giao ngay (Chỉ hiển thị khi trước 22:30 / canOrderNow) */}
+                  {operatingStatus.canOrderNow && (
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="expected_time"
+                          value="now"
+                          checked={deliverySchedule === "now"}
+                          onChange={() => setDeliverySchedule("now")}
+                          className="accent-primary"
+                        />
+                        <span className="font-medium text-sm">
+                          {deliveryType === "pickup" ? "Lấy ngay (Chuẩn bị 15 - 30 phút)" : "Giao ngay (Hỏa tốc 45 - 90 phút)"}
+                        </span>
+                      </label>
 
-                    {/* Footnotes dưới Option 1 */}
-                    {operatingStatus.canOrderNow && deliverySchedule === "now" && (
-                      <p className="text-xs text-amber-700 font-medium pl-6 mt-1">
-                        * Món ăn bắt đầu được giao từ {operatingStatus.deliveryOpen || "10:00"}.
-                      </p>
-                    )}
-                    {!operatingStatus.canOrderNow && (
-                      <p className="text-xs text-amber-800 font-medium pl-6 mt-1 leading-relaxed">
-                        Bếp đã ngưng nhận đơn giao ngay sau {operatingStatus.lastOrderCutoff || "22:30"}. Quý khách vui lòng hẹn giờ nhận món từ {operatingStatus.deliveryOpen || "10:00"} ({operatingStatus.notice?.targetDateDisplay || "ngày mai"}).
-                      </p>
-                    )}
-                  </div>
+                      {/* Footnote dưới Option 1: Chỉ hiển thị khi chọn Giao ngay VÀ thời gian hiện tại trước 10:00 AM */}
+                      {deliverySchedule === "now" && operatingStatus.currentTime < (operatingStatus.deliveryOpen || "10:00") && (
+                        <p className="text-xs text-amber-700 font-medium pl-6 mt-1">
+                          * Món ăn bắt đầu được giao từ {operatingStatus.deliveryOpen || "10:00"}.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-                  {/* Option 2: Hẹn giờ */}
+                  {/* Nếu sau 22:30 (ngưng giao ngay), chỉ hiển thị thông báo chuyển qua Hẹn giờ */}
+                  {!operatingStatus.canOrderNow && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed font-medium space-y-1">
+                      <p className="font-semibold text-amber-950 flex items-center gap-1.5">
+                        <span>⏰</span>
+                        <span>Bếp đã ngưng nhận đơn giao ngay sau {operatingStatus.lastOrderCutoff || "22:30"}.</span>
+                      </p>
+                      <p>Quý khách vui lòng đặt hẹn giờ nhận món từ {operatingStatus.deliveryOpen || "10:00"} ({operatingStatus.notice?.targetDateDisplay || "ngày mai"}).</p>
+                    </div>
+                  )}
+
+                  {/* Option 2: Hẹn giờ giao hàng (Đặt trước) */}
                   <div>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
                         name="expected_time"
+                        value="schedule"
                         checked={deliverySchedule === "schedule" || !operatingStatus.canOrderNow}
                         onChange={() => setDeliverySchedule("schedule")}
                         className="accent-primary"
@@ -917,34 +951,63 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     </label>
                   </div>
 
+                  {/* Ô chọn Ngày và Giờ (UI đẹp, Step 15 phút) */}
                   {(deliverySchedule === "schedule" || !operatingStatus.canOrderNow) && (
                     <div className="pt-2 space-y-3 pl-6">
+                      {/* Chọn Ngày */}
                       <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1 block">Chọn ngày nhận hàng</label>
-                        <select
-                          value={deliveryDate}
-                          onChange={(e) => setDeliveryDate(e.target.value)}
-                          className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[12px] py-[8px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-semibold cursor-pointer"
-                        >
-                          {availableDeliveryDates.map((item) => (
-                            <option key={item.iso} value={item.iso}>
-                              {item.label}
-                            </option>
-                          ))}
-                        </select>
+                        <label className="text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                          <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 002-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span>Chọn ngày nhận hàng</span>
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={deliveryDate}
+                            onChange={(e) => setDeliveryDate(e.target.value)}
+                            className="w-full h-11 rounded-lg border border-[#B9C0D4] shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-semibold cursor-pointer appearance-none"
+                          >
+                            {availableDeliveryDates.map((item) => (
+                              <option key={item.iso} value={item.iso}>
+                                {item.label}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
+                            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
                       </div>
 
+                      {/* Chọn Giờ (Step 15 phút) */}
                       <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1 block">Chọn giờ nhận hàng (10:00 - 23:00)</label>
-                        <input
-                          type="time"
-                          required
-                          min="10:00"
-                          max="23:00"
-                          value={expectedDeliveryTime}
-                          onChange={(e) => setExpectedDeliveryTime(e.target.value)}
-                          className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-base font-serif font-semibold"
-                        />
+                        <label className="text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                          <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>Chọn giờ nhận hàng (10:00 - 23:00)</span>
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={expectedDeliveryTime}
+                            onChange={(e) => setExpectedDeliveryTime(e.target.value)}
+                            className="w-full h-11 rounded-lg border border-[#B9C0D4] shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-semibold cursor-pointer appearance-none"
+                          >
+                            {availableTimeSlots.map((slot) => (
+                              <option key={slot.value} value={slot.value}>
+                                {slot.label}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
+                            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

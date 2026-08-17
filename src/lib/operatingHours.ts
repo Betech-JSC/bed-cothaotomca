@@ -158,3 +158,44 @@ export function checkOperatingHours(operatingConfig?: {
     notice,
   };
 }
+
+/**
+ * Generate 15-minute time slots between minTime (e.g. "10:00") and maxTime (e.g. "23:00").
+ * Optionally filters out slots earlier than filterBeforeTime (HH:MM).
+ */
+export function generate15MinTimeSlots(
+  minTime = "10:00",
+  maxTime = "23:00",
+  filterBeforeTime?: string
+): { value: string; label: string }[] {
+  const slots: { value: string; label: string }[] = [];
+  const [minH, minM] = minTime.split(":").map(Number);
+  const [maxH, maxM] = maxTime.split(":").map(Number);
+
+  let currentMinutes = minH * 60 + minM;
+  const endMinutes = maxH * 60 + maxM;
+
+  let filterMinutes = -1;
+  if (filterBeforeTime) {
+    const [fH, fM] = filterBeforeTime.split(":").map(Number);
+    filterMinutes = fH * 60 + fM;
+  }
+
+  while (currentMinutes <= endMinutes) {
+    if (currentMinutes >= filterMinutes) {
+      const h = Math.floor(currentMinutes / 60);
+      const m = currentMinutes % 60;
+      const hStr = h.toString().padStart(2, "0");
+      const mStr = m.toString().padStart(2, "0");
+      const timeVal = `${hStr}:${mStr}`;
+      slots.push({
+        value: timeVal,
+        label: timeVal,
+      });
+    }
+    currentMinutes += 15;
+  }
+
+  return slots;
+}
+
