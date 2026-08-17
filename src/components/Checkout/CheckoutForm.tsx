@@ -21,6 +21,7 @@ import {
   type ShippingSettings,
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
+import { getGeneralSettings } from "@/services/generalSettingService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import MobileCartFlow from "../Header/MobileCartFlow";
@@ -190,9 +191,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   );
 
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
+  const [hotline, setHotline] = useState<string>("028 6686 1508");
 
   useEffect(() => {
     getShippingSettings().then(setShippingSettings);
+    getGeneralSettings()
+      .then((settings) => {
+        if (settings?.hotline) {
+          setHotline(settings.hotline);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Trigger real-time calculation when address, subtotal or voucher changes
@@ -1310,29 +1319,45 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </div>
               </div>
 
-              {/* Thông báo / Thanh tiến trình Freeship nằm gọn dưới dòng Vận chuyển (Ô khoanh đỏ) */}
-              {deliveryType === "delivery" && shippingSettings?.is_min_amount_enabled && shippingSettings.min_order_amount > 0 && (
-                subtotal >= shippingSettings.min_order_amount || isFreeship ? (
-                  <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-xl px-3.5 py-2 text-xs text-emerald-800 font-semibold flex items-center gap-1.5">
-                    <span>🎉</span>
-                    <span>{freeshipReason || `Miễn phí vận chuyển (Đơn hàng từ ${formatPrice(shippingSettings.min_order_amount)})`}</span>
+              {/* Thẻ Cảnh báo Chưa hỗ trợ giao hàng HOẶC Thông báo/Thanh tiến trình Freeship nằm dưới dòng Vận chuyển */}
+              {deliveryType === "delivery" && (
+                !isDeliverable ? (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs text-red-800 font-medium space-y-1.5 animate-fade-in">
+                    <p className="flex items-center gap-1.5 text-red-900 font-bold text-sm">
+                      <span>⚠️</span>
+                      <span>Khu vực này hiện chưa hỗ trợ giao hàng tận nơi.</span>
+                    </p>
+                    <p className="text-red-700 leading-relaxed">
+                      Vui lòng chọn <strong>"Tự đến lấy tại chi nhánh"</strong> hoặc liên hệ Hotline:{" "}
+                      <a href={`tel:${hotline.replace(/[^0-9+]/g, "")}`} className="font-bold underline text-red-900 hover:text-red-950">
+                        {hotline}
+                      </a>{" "}
+                      để được hỗ trợ.
+                    </p>
                   </div>
-                ) : (
-                  <div className="p-3 rounded-xl border border-amber-200/80 bg-amber-50/80 text-amber-900 space-y-1.5 text-xs font-medium">
-                    <div className="flex justify-between items-center font-semibold gap-2">
-                      <span className="flex items-center gap-1">
-                        <span>🎁</span>
-                        <span>Miễn phí vận chuyển cho đơn từ {formatPrice(shippingSettings.min_order_amount)}</span>
-                      </span>
-                      <span className="font-bold text-primary shrink-0">Cần mua thêm {formatPrice(shippingSettings.min_order_amount - subtotal)}</span>
+                ) : shippingSettings?.is_min_amount_enabled && shippingSettings.min_order_amount > 0 && (
+                  subtotal >= shippingSettings.min_order_amount || isFreeship ? (
+                    <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-xl px-3.5 py-2 text-xs text-emerald-800 font-semibold flex items-center gap-1.5">
+                      <span>🎉</span>
+                      <span>{freeshipReason || `Miễn phí vận chuyển (Đơn hàng từ ${formatPrice(shippingSettings.min_order_amount)})`}</span>
                     </div>
-                    <div className="w-full h-2 bg-amber-200/60 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary transition-all duration-500 rounded-full"
-                        style={{ width: `${Math.min(100, Math.round((subtotal / shippingSettings.min_order_amount) * 100))}%` }}
-                      />
+                  ) : (
+                    <div className="p-3 rounded-xl border border-amber-200/80 bg-amber-50/80 text-amber-900 space-y-1.5 text-xs font-medium">
+                      <div className="flex justify-between items-center font-semibold gap-2">
+                        <span className="flex items-center gap-1">
+                          <span>🎁</span>
+                          <span>Miễn phí vận chuyển cho đơn từ {formatPrice(shippingSettings.min_order_amount)}</span>
+                        </span>
+                        <span className="font-bold text-primary shrink-0">Cần mua thêm {formatPrice(shippingSettings.min_order_amount - subtotal)}</span>
+                      </div>
+                      <div className="w-full h-2 bg-amber-200/60 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-500 rounded-full"
+                          style={{ width: `${Math.min(100, Math.round((subtotal / shippingSettings.min_order_amount) * 100))}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )
                 )
               )}
 

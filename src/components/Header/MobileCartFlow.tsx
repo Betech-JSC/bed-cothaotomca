@@ -21,6 +21,7 @@ import {
   OrderApiError,
 } from "@/services/orderService";
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
+import { getGeneralSettings } from "@/services/generalSettingService";
 import { useAuth } from "@/contexts/AuthContext";
 import Chevron from "../Icons/Chevron";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, toISODateString } from "@/lib/operatingHours";
@@ -202,6 +203,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }, [branches]);
 
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
+  const [hotline, setHotline] = useState<string>("028 6686 1508");
   const [calculatedFee, setCalculatedFee] = useState<number>(0);
   const [originalFee, setOriginalFee] = useState<number>(0);
   const [isFreeship, setIsFreeship] = useState<boolean>(false);
@@ -209,6 +211,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   useEffect(() => {
     getShippingSettings().then(setShippingSettings);
+    getGeneralSettings()
+      .then((settings) => {
+        if (settings?.hotline) {
+          setHotline(settings.hotline);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Calculate totals
