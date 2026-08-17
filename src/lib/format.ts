@@ -76,10 +76,22 @@ export function formatRichTextContent(content: string | undefined | null): strin
     return `<img${p1}src="${fullSrc}"${p3}>`;
   });
 
+  // Format iframe/Google Maps embeds to default 800x400 responsive dimensions FIRST
+  const formatIframeTag = (str: string) => {
+    return str.replace(/<iframe([^>]*?)>/gi, (match, attrs) => {
+      // Strip existing width, height, and style attributes from raw CMS HTML
+      let cleaned = attrs
+        .replace(/\s*(width|height)=["'][^"']*["']/gi, '')
+      return `<iframe${cleaned} width="100%" height="450" style="width: 100% !important; max-width: 100% !important; border: none !important; display: block !important; margin: 1.5rem auto !important;">`;
+    });
+  };
+
+  processed = formatIframeTag(processed);
+
   const figures: string[] = [];
   // Tạm thời ẩn các khối figure đã tồn tại
   processed = processed.replace(/<figure[^>]*?>[\s\S]*?<\/figure>/gi, (match) => {
-    figures.push(match);
+    figures.push(formatIframeTag(match));
     return `__FIGURE_PLACEHOLDER_${figures.length - 1}__`;
   });
   
@@ -94,23 +106,30 @@ export function formatRichTextContent(content: string | undefined | null): strin
       return `<figure class="image"><img${p1}data-caption="${caption}"${p3}><figcaption>${decodedCaption}</figcaption></figure>`;
     }
   );
-  
-  // Format iframe/Google Maps embeds to default 800x400 responsive dimensions
-  processed = processed.replace(/<iframe([^>]*?)>/gi, (match, attrs) => {
-    let newAttrs = attrs;
-    if (!/width=/i.test(newAttrs)) {
-      newAttrs += ' width="100%"';
-    }
-    if (!/height=/i.test(newAttrs)) {
-      newAttrs += ' height="400"';
-    }
-    return `<iframe${newAttrs}>`;
-  });
+
+  const processImgAltHover = (htmlStr: string) => {
+    return htmlStr.replace(/<img([^>]*?)alt="([^"]+)"([^>]*?)>/gi, (match, p1, altText, p3) => {
+      const decodedAlt = decodeHtmlEntities(altText).trim();
+      if (!decodedAlt) return match;
+
+      // Sync title attribute with alt if title is missing
+      let updatedImg = match;
+      if (!/title=["']/i.test(match)) {
+        updatedImg = `<img${p1}alt="${altText}" title="${altText}"${p3}>`;
+      }
+
+      const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px; margin-right:5px; opacity:0.85;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+      return `<span class="prose-img-hover-wrapper" data-alt="${altText}">${updatedImg}<span class="img-alt-badge">${iconSvg}Alt: ${decodedAlt}</span></span>`;
+    });
+  };
 
   // Khôi phục lại các khối figure ban đầu
   processed = processed.replace(/__FIGURE_PLACEHOLDER_(\d+)__/g, (match, index) => {
     return figures[parseInt(index, 10)];
   });
-  
+
+  // Xử lý các thẻ img (cả trong lẫn ngoài figure) duy nhất 1 lần
+  processed = processImgAltHover(processed);
+
   return processed;
 }
