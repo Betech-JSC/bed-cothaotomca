@@ -659,7 +659,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   <div className="flex justify-between items-center text-base">
                     <span className="text-gray-500 font-medium">Phí ship</span>
                     <span className="text-primary font-bold font-display">
-                      {isFreeship ? "0đ" : formatPrice(shipping)}
+                      {!selectedDistrict ? "--" : isFreeship ? "0đ" : shipping > 0 ? formatPrice(shipping) : "--"}
                     </span>
                   </div>
 
