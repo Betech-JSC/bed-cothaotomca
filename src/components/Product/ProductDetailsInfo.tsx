@@ -100,9 +100,15 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
               {formatPrice(selectedSize.price)}
             </div>
             {selectedSize.original_price && selectedSize.original_price > selectedSize.price ? (
-              <div className="text-gray-400 line-through text-lg font-medium">
-                {formatPrice(selectedSize.original_price)}
-              </div>
+              <>
+                <span className="text-gray-400 line-through text-lg">
+                  {formatPrice(selectedSize.original_price)}
+                </span>
+                <span className="bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold text-xs uppercase px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                  <span>🔥</span>
+                  <span>-{Math.round(((selectedSize.original_price - selectedSize.price) / selectedSize.original_price) * 100)}% GIẢM SỐC</span>
+                </span>
+              </>
             ) : null}
           </div>
         ) : null}

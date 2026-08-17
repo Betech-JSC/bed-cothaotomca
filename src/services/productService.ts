@@ -51,6 +51,7 @@ export interface Product {
   description: string;
   price: string;
   campaign_price?: string | number | null;
+  active_campaign?: any;
   image: string | null;
   is_best_seller: boolean;
   ingredients: Ingredient[];
@@ -217,6 +218,9 @@ export function mapProductToDetailView(
   }
 
   const variants = product.variants ?? [];
+  const mainBasePrice = unitPrice;
+  const mainCampPrice = product.campaign_price ? parseFloat(String(product.campaign_price)) : null;
+
   const sizes =
     variants.length > 0
       ? variants.map((v) => {
@@ -224,14 +228,24 @@ export function mapProductToDetailView(
             locale === "en"
               ? v.size_en || v.size || labels.standard
               : v.size || v.size_en || labels.standard;
+          const baseP = parseFloat(String(v.price)) || unitPrice;
+          const campP = v.campaign_price ? parseFloat(String(v.campaign_price)) : null;
+          const isCamp = campP && campP < baseP;
           return {
             id: v.id,
             code: v.code,
             title: title || labels.standard,
-            price: parseFloat(String(v.price)) || unitPrice,
+            price: isCamp ? campP : baseP,
+            original_price: isCamp ? baseP : undefined,
           };
         })
-      : [{ id: product.id, code: product.code, title: labels.standard, price: unitPrice }];
+      : [{
+          id: product.id,
+          code: product.code,
+          title: labels.standard,
+          price: mainCampPrice && mainCampPrice < mainBasePrice ? mainCampPrice : mainBasePrice,
+          original_price: mainCampPrice && mainCampPrice < mainBasePrice ? mainBasePrice : undefined,
+        }];
 
   const infos = (product.sections ?? []).map((section) => ({
     title: section.title,
@@ -267,6 +281,8 @@ export function mapProductToCardItem(
   custom_name?: string;
   slug: string;
   price: number;
+  original_price?: number;
+  active_campaign?: any;
   category: { title: string; id: string; slug: string };
   allCategorySlugs: string[];
   ingredientIds: string[];
@@ -286,12 +302,21 @@ export function mapProductToCardItem(
   const categorySlug =
     productCategory?.slug || slugify(categoryName) || "san-pham";
 
+  const basePrice = parseFloat(String(item.price)) || 0;
+  const campPrice = item.campaign_price ? parseFloat(String(item.campaign_price)) : null;
+  const isCamp = campPrice && campPrice < basePrice;
+
   return {
     id: item.id,
     title: name,
     custom_name: item.custom_name,
     slug: item.slug || slugify(name),
-    price: parseFloat(String(item.price)) || 0,
+    price: isCamp ? campPrice : basePrice,
+    original_price: isCamp ? basePrice : undefined,
+    active_campaign: item.active_campaign || (isCamp ? {
+      name: "Chiến dịch Khuyến mãi",
+      discount_percent: Math.round(((basePrice - campPrice) / basePrice) * 100),
+    } : undefined),
     category: {
       id: String(productCategory?.id ?? ""),
       title: categoryName,
