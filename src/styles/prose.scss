@@ -123,12 +123,13 @@
 
   // --- Images ---
   img {
-    @apply mx-auto w-full h-auto md:my-4 my-3 xl:my-6;
     max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1rem auto;
     border-radius: 8px;
 
     &[style*="float: left"],
-
     &[style*="float:left"],
     &.alignleft,
     &.align-left,
@@ -146,6 +147,61 @@
       float: right !important;
       margin: 0.5rem 0 1rem 1.5rem !important;
       display: inline-block !important;
+    }
+  }
+
+  // --- Image Alt Hover Badge ---
+  .prose-img-hover-wrapper {
+    position: relative;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    vertical-align: middle;
+
+    img {
+      margin: 0 !important;
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .img-alt-badge {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #ffffff;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.35;
+      letter-spacing: 0.01em;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.12);
+      white-space: nowrap;
+      max-width: 90%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      z-index: 20;
+    }
+
+    &:hover {
+      .img-alt-badge {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+      }
     }
   }
 
@@ -224,18 +280,30 @@
   }
 
   // --- Video / Iframe Embeds (Google Maps, Youtube...) ---
-  iframe, video {
-    display: block;
-    width: 100%;
-    max-width: 800px;
-    height: 400px;
-    max-height: 80vh;
-    border: none;
-    margin: 1.25rem auto;
-    border-radius: 8px;
+  iframe, video, figure iframe, figure.media iframe, li iframe, p iframe {
+    display: block !important;
+    width: 100% !important;
+    max-width: 800px !important;
+    height: 400px !important;
+    min-height: 400px !important;
+    max-height: 400px !important;
+    border: none !important;
+    margin: 1.5rem auto !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
 
-    @media (max-width: 640px) {
-      height: 300px;
+    @media (min-width: 800px) {
+      min-width: 800px !important;
+      width: 800px !important;
+    }
+
+    @media (max-width: 799px) {
+      width: 100% !important;
+      min-width: 100% !important;
+      max-width: 100% !important;
+      height: 350px !important;
+      min-height: 350px !important;
+      max-height: 350px !important;
     }
   }
 
@@ -288,11 +356,6 @@
         max-width: 100% !important;
       }
     }
-  }
-
-  iframe {
-    @apply w-full h-auto mx-auto border-none rounded-lg md:my-4 my-3 xl:my-6;
-    aspect-ratio: 16 / 9;
   }
 
   // Clearfix
