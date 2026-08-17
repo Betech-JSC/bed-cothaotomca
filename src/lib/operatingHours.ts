@@ -101,39 +101,40 @@ export function checkOperatingHours(operatingConfig?: {
   const todayDisplay = formatVietnameseDate(today);
   const tomorrowDisplay = formatVietnameseDate(tomorrow);
 
+  const formatShortDate = (d: Date, label: string) => {
+    const dd = d.getDate().toString().padStart(2, "0");
+    const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+    return `${label} (${dd}/${mm})`;
+  };
+
+  const todayShortDisplay = formatShortDate(today, "Hôm nay");
+  const tomorrowShortDisplay = formatShortDate(tomorrow, "Ngày mai");
+
   let defaultDate = todayISO;
+  let targetDateDisplay = todayShortDisplay;
   let defaultDeliverySchedule: "now" | "schedule" = canOrderNow ? "now" : "schedule";
   let notice: PreOrderNotice | null = null;
   let message: string | null = null;
 
-  if (isBeforeOpen) {
+  if (canOrderNow) {
+    message = `Quán đang nhận đơn | Giao món từ ${deliveryOpenStr} - ${deliveryCloseStr} mỗi ngày.`;
     defaultDate = todayISO;
-    message = `Quán mở cửa từ ${storeOpenStr} đến ${storeCloseStr}. Quý khách vui lòng đặt hẹn giờ nhận món từ ${deliveryOpenStr}.`;
+    targetDateDisplay = todayShortDisplay;
+  } else {
+    if (isBeforeOpen) {
+      defaultDate = todayISO;
+      targetDateDisplay = todayShortDisplay;
+    } else {
+      defaultDate = tomorrowISO;
+      targetDateDisplay = tomorrowShortDisplay;
+    }
+
+    message = `Hiện quán đã ngưng nhận giao ngay | Bạn vẫn có thể Đặt trước (Hẹn giờ) để nhận món vào ${targetDateDisplay}.`;
     notice = {
-      title: "Thông Báo Hẹn Giờ Nhận Món",
-      message: `Quán hiện chưa mở cửa (Giờ mở cửa: ${storeOpenStr} - ${storeCloseStr}). Bạn đang đặt hẹn giờ nhận món cho ngày hôm nay.`,
-      targetDateISO: todayISO,
-      targetDateDisplay: todayDisplay,
-      slotInfo: `${deliveryOpenStr} - ${deliveryCloseStr}`,
-    };
-  } else if (isAfterCutoff) {
-    defaultDate = tomorrowISO;
-    message = `Sau ${lastOrderCutoffStr} quán ngưng nhận đơn giao ngay trong ngày. Quý khách vui lòng hẹn giờ giao cho ngày mai.`;
-    notice = {
-      title: "Thông Báo Đặt Hàng Cho Ngày Mai",
-      message: `Quán ngưng nhận đơn giao ngay trong ngày sau ${lastOrderCutoffStr} để đảm bảo chất lượng phục vụ. Đơn hàng của bạn sẽ được hẹn giao vào ngày mai.`,
-      targetDateISO: tomorrowISO,
-      targetDateDisplay: tomorrowDisplay,
-      slotInfo: `${deliveryOpenStr} - ${deliveryCloseStr}`,
-    };
-  } else if (isAfterClose) {
-    defaultDate = tomorrowISO;
-    message = `Quán đã đóng cửa (${storeOpenStr} - ${storeCloseStr}). Quý khách vui lòng đặt hẹn giờ giao cho ngày mai.`;
-    notice = {
-      title: "Quán Đã Đóng Cửa",
-      message: `Quán đã đóng cửa (Giờ hoạt động: ${storeOpenStr} - ${storeCloseStr}). Đơn hàng của bạn sẽ được hẹn giao vào ngày mai.`,
-      targetDateISO: tomorrowISO,
-      targetDateDisplay: tomorrowDisplay,
+      title: "Thông Báo Đặt Hàng Hẹn Giờ",
+      message: `Bếp đã ngưng nhận đơn giao ngay sau ${lastOrderCutoffStr}. Quý khách vui lòng hẹn giờ nhận món từ ${deliveryOpenStr} (${targetDateDisplay}).`,
+      targetDateISO: defaultDate,
+      targetDateDisplay: targetDateDisplay,
       slotInfo: `${deliveryOpenStr} - ${deliveryCloseStr}`,
     };
   }
