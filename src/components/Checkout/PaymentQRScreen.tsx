@@ -153,7 +153,7 @@ export default function PaymentQRScreen({
       <div className="lg:col-span-5 flex flex-col items-center gap-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 w-full flex flex-col items-center gap-4">
           <h2 className="headline-2 text-primary text-center">
-            Quét mã QR để thanh toán
+            {t("qr.title")}
           </h2>
 
           {/* QR Image */}
@@ -162,7 +162,7 @@ export default function PaymentQRScreen({
               <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center gap-2">
                 <span className="text-4xl">⏰</span>
                 <p className="body-2 text-gray-500 text-center px-2">
-                  Mã QR đã hết hạn
+                  {t("qr.expired")}
                 </p>
               </div>
             ) : (
@@ -186,8 +186,8 @@ export default function PaymentQRScreen({
             <span>⏱</span>
             <span>
               {countdown.isExpired
-                ? "Đã hết hạn"
-                : `Hết hạn sau: ${countdown.label}`}
+                ? t("qr.expired_tag")
+                : `${t("qr.expires_in")} ${countdown.label}`}
             </span>
           </div>
 
@@ -203,19 +203,19 @@ export default function PaymentQRScreen({
                 {downloading ? (
                   <>
                     <span className="animate-spin inline-block">⟳</span>
-                    <span>Đang tải mã QR...</span>
+                    <span>{t("qr.downloading")}</span>
                   </>
                 ) : downloaded ? (
                   <>
                     <span className="text-green-400 font-bold text-base">✓</span>
-                    <span>Đã lưu mã QR về máy</span>
+                    <span>{t("qr.downloaded")}</span>
                   </>
                 ) : (
                   <>
                     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    <span>Lưu mã QR về máy (Mobile Banking)</span>
+                    <span>{t("qr.download_btn")}</span>
                   </>
                 )}
               </button>
@@ -227,7 +227,7 @@ export default function PaymentQRScreen({
                   <span>Hướng dẫn thanh toán trên điện thoại:</span>
                 </p>
                 <ol className="list-decimal list-inside space-y-1 text-blue-800 font-medium pl-0.5 leading-relaxed">
-                  <li>Bấm nút <strong>"Lưu mã QR về máy"</strong> ở trên.</li>
+                  <li>Bấm nút <strong>"{t("qr.download_btn")}"</strong> ở trên.</li>
                   <li>Mở ứng dụng <strong>Banking</strong> (Vietcombank, MB, Techcombank...).</li>
                   <li>Chọn <strong>Quét mã QR</strong> ➔ chọn <strong>Tải ảnh từ thư viện</strong>.</li>
                 </ol>
@@ -241,14 +241,14 @@ export default function PaymentQRScreen({
               {statusData?.payment_status === "paid" ? (
                 <>
                   <span className="text-green-500">✓</span>
-                  <span className="text-green-600">Đã nhận thanh toán — đang xử lý...</span>
+                  <span className="text-green-600">{t("qr.payment_received")}</span>
                 </>
               ) : statusError ? (
                 <span className="text-red-500 text-xs">{statusError}</span>
               ) : (
                 <>
                   <span className="animate-spin inline-block">⟳</span>
-                  <span>Đang chờ xác nhận thanh toán...</span>
+                  <span>{t("qr.waiting_payment")}</span>
                 </>
               )}
             </div>
@@ -262,7 +262,7 @@ export default function PaymentQRScreen({
             onClick={onCancel}
             className="btn btn-secondary w-full"
           >
-            {countdown.isExpired ? "Đặt lại đơn hàng" : "Huỷ và quay lại"}
+            {countdown.isExpired ? t("qr.reorder") : t("qr.cancel_back")}
           </button>
         )}
 
@@ -281,20 +281,20 @@ export default function PaymentQRScreen({
       {/* Payment Info Panel */}
       <div className="lg:col-span-7 space-y-4">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
-          <h2 className="headline-2 text-primary">Thông tin chuyển khoản</h2>
+          <h2 className="headline-2 text-primary">{t("qr.bank_info_title")}</h2>
 
           <div className="space-y-3">
             {[
-              { label: "Ngân hàng", value: bankCode },
-              { label: "Số tài khoản", value: bankAccount, copyable: true },
+              { label: t("qr.bank_name"), value: bankCode },
+              { label: t("qr.account_number"), value: bankAccount, copyable: true },
               {
-                label: "Số tiền",
+                label: t("qr.amount"),
                 value: formatPrice(amount),
                 highlight: true,
                 copyable: true,
                 copyValue: String(amount),
               },
-              { label: "Nội dung CK", value: content, copyable: true, mono: true },
+              { label: t("qr.content"), value: content, copyable: true, mono: true },
             ].map((row) => (
               <div
                 key={row.label}
@@ -313,9 +313,9 @@ export default function PaymentQRScreen({
                       type="button"
                       onClick={() => handleCopy(row.copyValue ?? row.value)}
                       className="shrink-0 text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-primary hover:text-white transition-colors"
-                      title="Sao chép"
+                      title={t("qr.copy")}
                     >
-                      {copied ? "✓" : "Copy"}
+                      {copied ? "✓" : t("qr.copy")}
                     </button>
                   )}
                 </div>
@@ -337,10 +337,10 @@ export default function PaymentQRScreen({
 
           {/* Order summary */}
           <div className="border-t border-gray-100 pt-4 space-y-2 body-1 text-gray-700">
-            <p className="label-1 text-gray-500">Mã đơn hàng</p>
+            <p className="label-1 text-gray-500">{t("order_summary") || "Mã đơn hàng"}</p>
             <p className="title-2 font-mono text-primary">{orderData.order_code}</p>
             <div className="flex justify-between pt-2 headline-2 text-primary">
-              <span>Tổng thanh toán</span>
+              <span>{t("total") || "Tổng thanh toán"}</span>
               <span className="text-secondary">{formatPrice(amount)}</span>
             </div>
           </div>

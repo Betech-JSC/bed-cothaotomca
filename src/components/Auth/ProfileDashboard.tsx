@@ -547,7 +547,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                             {mappedStatus === "cancelled" && (
                               <span className="inline-flex items-center gap-1.5 text-red-600 text-[14px] font-medium py-1">
-                                <span>Đã hủy</span>
+                                <span>{t("status_cancelled") || "Đã hủy"}</span>
                               </span>
                             )}
                           </div>

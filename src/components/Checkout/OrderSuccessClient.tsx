@@ -101,7 +101,7 @@ export default function OrderSuccessClient({
         </h2>
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
           <button onClick={fetchOrder} className="btn btn-primary px-6 py-3 rounded-xl font-bold">
-            Thử lại
+            {t("retry")}
           </button>
           <Link href="/product" className="btn btn-secondary px-6 py-3 rounded-xl font-bold">
             {t("continue_shopping")}
@@ -116,6 +116,8 @@ export default function OrderSuccessClient({
   const expectedTime = formatExpectedTime(order);
   const paymentMethodText = order.payment?.method === "CASH"
     ? t("payment_cod")
+    : order.payment?.method === "CARD"
+    ? t("payment_card")
     : t("payment_transfer");
 
   return (
@@ -149,19 +151,14 @@ export default function OrderSuccessClient({
       {/* Message Description */}
       <div className="space-y-2 text-center max-w-2xl mx-auto">
         <p className="text-gray-700 text-sm md:text-base leading-relaxed">
-          {isPickup ? (
-            <>
-              Cảm ơn bạn <strong className="text-[#142A68]">{customerName}</strong> đã tin tưởng Cô Thảo Tôm Cá. Đơn hàng của bạn đang được chuẩn bị và bạn có thể đến lấy muộn nhất lúc <strong className="text-[#142A68]">{expectedTime}</strong>.
-            </>
-          ) : (
-            <>
-              Cảm ơn bạn <strong className="text-[#142A68]">{customerName}</strong> đã tin tưởng Cô Thảo Tôm Cá. Đơn hàng của bạn đang được chuẩn bị và sẽ được giao đến bạn muộn nhất <strong className="text-[#142A68]">{expectedTime}</strong>.
-            </>
-          )}
+          {isPickup
+            ? t("description_pickup", { name: customerName, time: expectedTime })
+            : t("description", { name: customerName, time: expectedTime })}
         </p>
         <p className="text-gray-500 text-xs md:text-sm leading-relaxed max-w-xl mx-auto">
-          Nếu quá thời gian trên chưa nhận được {isPickup ? "món" : "đơn hàng"}, vui lòng liên hệ ngay hotline{" "}
-          <strong className="text-[#142A68] whitespace-nowrap">{hotline}</strong> để được hỗ trợ xử lý nhanh nhất!
+          {isPickup
+            ? t("hotline_message_pickup", { hotline })
+            : t("hotline_message", { hotline })}
         </p>
       </div>
 
@@ -201,7 +198,7 @@ export default function OrderSuccessClient({
             <div>
               <span className="text-gray-400 block mb-0.5">{t("payment_method")}</span>
               <strong className="text-[#142A68] font-semibold">
-                {order.payment?.method === "CASH" ? "COD (Tiền mặt khi nhận hàng)" : (order.payment?.method === "CARD" ? "Thẻ (Visa/Master/ATM)" : "Chuyển khoản Ngân hàng")}
+                {paymentMethodText}
               </strong>
             </div>
             <div>
@@ -225,17 +222,17 @@ export default function OrderSuccessClient({
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs md:text-sm">
           <div>
             <span className="text-amber-800 block font-medium">
-              Mã đơn hàng: <strong className="font-mono font-bold text-amber-900">{order.order_code}</strong>
+              {t("order_code_label")} <strong className="font-mono font-bold text-amber-900">{order.order_code}</strong>
             </span>
             <span className="text-amber-700 text-xs mt-0.5 block">
-              Dùng mã này + SĐT để tra cứu đơn hàng trực tiếp trên website.
+              {t("lookup_tip")}
             </span>
           </div>
           <a
             href={`/order-lookup?code=${order.order_code}&phone=${order.customer?.phone || ""}`}
             className="inline-flex items-center justify-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium text-xs transition-colors shrink-0"
           >
-            Tra cứu đơn hàng
+            {t("lookup_button")}
           </a>
         </div>
       </div>
