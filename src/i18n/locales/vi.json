@@ -117,6 +117,8 @@
     "receipt_info": "Thông tin nhận hàng",
     "payment_cod": "Thanh toán khi nhận hàng (COD)",
     "payment_transfer": "Chuyển khoản qua ngân hàng (TRANSFER)",
+    "free": "Miễn phí",
+    "pickup_location": "Địa chỉ nhận hàng",
     "loading": "Đang tải thông tin đơn hàng...",
     "error_load": "Không thể tải thông tin đơn hàng. Vui lòng thử lại hoặc liên hệ hotline."
   },

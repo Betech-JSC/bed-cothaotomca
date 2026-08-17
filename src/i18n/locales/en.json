@@ -117,6 +117,8 @@
     "receipt_info": "Receipt information",
     "payment_cod": "Cash on delivery (COD)",
     "payment_transfer": "Bank transfer (TRANSFER)",
+    "free": "Free",
+    "pickup_location": "Pickup location",
     "loading": "Loading order details...",
     "error_load": "Could not load order details. Please try again or contact our hotline."
   },
