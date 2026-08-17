@@ -37,9 +37,11 @@ export default function WardSelectCombobox({
 
   // Map and sort wards alphabetically A-Z by New Ward Name
   const sortedWards = useMemo(() => {
-    return [...wards].sort((a, b) =>
-      a.name.localeCompare(b.name, "vi", { sensitivity: "base" })
-    );
+    return [...wards].sort((a, b) => {
+      const cleanA = a.name.replace(/^(Phường|Xã|Thị trấn)\s+/i, "").trim();
+      const cleanB = b.name.replace(/^(Phường|Xã|Thị trấn)\s+/i, "").trim();
+      return cleanA.localeCompare(cleanB, "vi", { sensitivity: "base" });
+    });
   }, [wards]);
 
   // Find currently selected ward object
