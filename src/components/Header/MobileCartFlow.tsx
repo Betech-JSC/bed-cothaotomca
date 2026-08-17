@@ -9,12 +9,15 @@ import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
 import { useBranches } from "@/contexts/BranchContext";
 import {
   calcOrderTotal,
+  calculateShippingFee,
   createOrder,
   getCheckoutConfig,
+  getShippingSettings,
   validateVoucher,
   type CheckoutConfig,
   type DeliveryType,
   type OrderInitiated,
+  type ShippingSettings,
   OrderApiError,
 } from "@/services/orderService";
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
@@ -198,13 +201,50 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       });
   }, [branches]);
 
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
+  const [calculatedFee, setCalculatedFee] = useState<number>(0);
+  const [originalFee, setOriginalFee] = useState<number>(0);
+  const [isFreeship, setIsFreeship] = useState<boolean>(false);
+  const [freeshipReason, setFreeshipReason] = useState<string | null>(null);
+
+  useEffect(() => {
+    getShippingSettings().then(setShippingSettings);
+  }, []);
+
   // Calculate totals
   const lineItems = useMemo(() => {
     return cartItems.map(item => ({ price: item.unitPrice, quantity: item.quantity, discount: 0 }));
   }, [cartItems]);
 
+  const rawSubtotal = useMemo(() => {
+    return lineItems.reduce((acc, curr) => acc + curr.price * curr.quantity, 0);
+  }, [lineItems]);
+
+  useEffect(() => {
+    if (deliveryType !== "delivery") {
+      setCalculatedFee(0);
+      setIsFreeship(false);
+      return;
+    }
+
+    calculateShippingFee({
+      district: selectedDistrict,
+      subtotal: rawSubtotal,
+      voucher_code: appliedVoucher?.code,
+    })
+      .then((res) => {
+        setCalculatedFee(res.shipping_fee);
+        setOriginalFee(res.original_fee);
+        setIsFreeship(res.is_freeship);
+        setFreeshipReason(res.freeship_reason || null);
+      })
+      .catch((err) => {
+        console.error("Failed to calculate shipping in mobile cart flow:", err);
+      });
+  }, [deliveryType, selectedDistrict, rawSubtotal, appliedVoucher]);
+
   const defaultShippingFee = parseFloat(config?.default_shipping_fee || "30000") || 30000;
-  const shippingFee = deliveryType === "delivery" ? defaultShippingFee : 0;
+  const shippingFee = deliveryType === "delivery" ? (isFreeship ? 0 : (calculatedFee || defaultShippingFee)) : 0;
 
   const { subtotal, shipping } = calcOrderTotal(
     lineItems,
@@ -854,6 +894,35 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     />
                     {fieldErrors.address && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.address}</p>}
                   </div>
+
+                  {/* Freeship Alert Banner & Progress Bar */}
+                  {shippingSettings?.is_min_amount_enabled && shippingSettings.min_order_amount > 0 && (
+                    <div className={`p-3.5 rounded-xl border text-sm font-medium transition-all mt-3 ${
+                      subtotal >= shippingSettings.min_order_amount
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                        : "bg-amber-50/80 border-amber-200/80 text-amber-900"
+                    }`}>
+                      {subtotal >= shippingSettings.min_order_amount ? (
+                        <div className="flex items-center gap-2 font-bold text-emerald-800">
+                          <span>🎉</span>
+                          <span>Đơn hàng đã trên {formatPrice(shippingSettings.min_order_amount)} — Được Miễn phí vận chuyển (Freeship)!</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center text-xs text-amber-900 font-semibold">
+                            <span>🎁 Freeship đơn từ {formatPrice(shippingSettings.min_order_amount)}</span>
+                            <span className="font-bold text-primary">Cần thêm {formatPrice(shippingSettings.min_order_amount - subtotal)}</span>
+                          </div>
+                          <div className="w-full h-2 bg-amber-200/60 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary transition-all duration-500 rounded-full"
+                              style={{ width: `${Math.min(100, Math.round((subtotal / shippingSettings.min_order_amount) * 100))}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4 rounded-xl bg-gray-50 p-4 border border-gray-100 mt-2">

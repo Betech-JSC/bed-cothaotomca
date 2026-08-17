@@ -10,6 +10,7 @@ import {
   calculateShippingFee,
   createOrder,
   getAdministrativeUnits,
+  getShippingSettings,
   OrderApiError,
   validateVoucher,
   type AdministrativeProvince,
@@ -17,6 +18,7 @@ import {
   type CheckoutConfig,
   type DeliveryType,
   type OrderInitiated,
+  type ShippingSettings,
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
 import { useAuth } from "@/contexts/AuthContext";
@@ -187,6 +189,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     0,
   );
 
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
+
+  useEffect(() => {
+    getShippingSettings().then(setShippingSettings);
+  }, []);
+
   // Trigger real-time calculation when address, subtotal or voucher changes
   useEffect(() => {
     if (deliveryType !== "delivery") {
@@ -194,16 +202,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       setIsFreeship(false);
       setIsDeliverable(true);
       setShippingMessage(null);
-      return;
-    }
-
-    // Do not trigger fee calculation or show undeliverable error if ward is not selected yet
-    if (!selectedWard && !selectedWardId) {
-      setShippingFee(0);
-      setIsFreeship(false);
-      setIsDeliverable(true);
-      setShippingMessage(null);
-      setAssignedBranchName(null);
       return;
     }
 
@@ -224,10 +222,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         setOriginalFee(res.original_fee);
         setIsFreeship(res.is_freeship);
         setFreeshipReason(res.freeship_reason || null);
-        setIsDeliverable(res.is_deliverable);
-        setShippingMessage(res.message || null);
-        console.log("res", res)
-        if (res.branch_id) {
+
+        const hasWard = !!selectedWard || !!selectedWardId;
+        setIsDeliverable(hasWard ? res.is_deliverable : true);
+        setShippingMessage(hasWard ? (res.message || null) : null);
+
+        if (hasWard && res.branch_id) {
           const matchedBranch = config.branches?.find(
             (b) => b.id === res.branch_id || (res.branch_name && b.branchName === res.branch_name)
           );
@@ -237,7 +237,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             setSelectedBranchId(res.branch_id);
           }
         }
-        if (res.branch_name) {
+        if (hasWard && res.branch_name) {
           setAssignedBranchName(res.branch_name);
         } else {
           setAssignedBranchName(null);
@@ -808,6 +808,35 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-900 font-medium flex items-center gap-2">
                     <span>📍</span>
                     <span>Hệ thống tự động xác định giao từ chi nhánh: <strong>{assignedBranchName}</strong></span>
+                  </div>
+                )}
+
+                {/* Freeship Alert Banner & Progress Bar */}
+                {shippingSettings?.is_min_amount_enabled && shippingSettings.min_order_amount > 0 && (
+                  <div className={`p-3.5 rounded-xl border text-sm font-medium transition-all ${
+                    subtotal >= shippingSettings.min_order_amount
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                      : "bg-amber-50/80 border-amber-200/80 text-amber-900"
+                  }`}>
+                    {subtotal >= shippingSettings.min_order_amount ? (
+                      <div className="flex items-center gap-2 font-bold text-emerald-800">
+                        <span>🎉</span>
+                        <span>Đơn hàng của bạn đã trên {formatPrice(shippingSettings.min_order_amount)} — Được Miễn phí vận chuyển (Freeship)!</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center text-xs text-amber-900 font-semibold">
+                          <span>🎁 Miễn phí vận chuyển cho đơn từ {formatPrice(shippingSettings.min_order_amount)}</span>
+                          <span className="font-bold text-primary">Cần mua thêm {formatPrice(shippingSettings.min_order_amount - subtotal)}</span>
+                        </div>
+                        <div className="w-full h-2 bg-amber-200/60 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary transition-all duration-500 rounded-full"
+                            style={{ width: `${Math.min(100, Math.round((subtotal / shippingSettings.min_order_amount) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

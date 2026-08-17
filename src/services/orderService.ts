@@ -329,6 +329,31 @@ export async function calculateShippingFee(params: {
   }
 }
 
+export interface ShippingSettings {
+  min_order_amount: number;
+  is_min_amount_enabled: boolean;
+  voucher_codes: string[];
+  is_voucher_enabled: boolean;
+  default_shipping_fee: number;
+  unconfigured_area_action: string;
+}
+
+export async function getShippingSettings(): Promise<ShippingSettings | null> {
+  try {
+    const res = await fetch(`${API_BASE}/shipping/settings`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data as ShippingSettings;
+  } catch (err) {
+    console.error("Failed to fetch shipping settings:", err);
+    return null;
+  }
+}
+
 /** Hủy đơn hàng trực tiếp (dành cho đơn COD) */
 export async function cancelOrderApi(
   orderCode: string,
