@@ -266,8 +266,8 @@ export default function PaymentQRScreen({
           </button>
         )}
 
-        {/* DEV ONLY: Simulate Payment Button */}
-        {(process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_DEV_MODE === "true") && !countdown.isExpired && (
+        {/* DEV ONLY: Simulate Payment Button (Requires explicit NEXT_PUBLIC_ENABLE_DEV_PAYMENT=true) */}
+        {process.env.NEXT_PUBLIC_ENABLE_DEV_PAYMENT === "true" && !countdown.isExpired && (
           <button
             type="button"
             onClick={handleSimulatePayment}
