@@ -310,7 +310,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </div>
       </section>
-      <SectionSliderPost classCustom='md:pt-16 pt-12 xl:pt-[100px] lg:pb-[140px] pb-20 xl:pb-[250px]' items={postsDisplay} />
+      <SectionSliderPost classCustom='md:pt-16 pt-12 xl:pt-[100px] pb-20 lg:pb-[160px] xl:pb-[280px] 2xl:pb-[380px]' items={postsDisplay} />
 
     </main >
   )
