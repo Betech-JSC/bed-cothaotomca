@@ -19,7 +19,7 @@ interface SectionSliderPostProps {
 const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items, classCustom = '' }) => {
   const t = useTranslations();
   return (
-    <section className={` ${classCustom ? classCustom : 'md:pt-16 pt-12 xl:pt-[100px] pb-20 lg:pb-[160px] xl:pb-[280px] 2xl:pb-[380px]'}`}>
+    <section className={` ${classCustom ? classCustom : 'md:pt-16 pt-12 xl:pt-[100px] pb-[90px] md:pb-[125px] lg:pb-[170px] xl:pb-[180px]'}`}>
       <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
         <AnimateOnScroll animate="slideup" delay={0}>
           <h2 className="display-3 text-center text-primary">{t('blog.title')}</h2>
