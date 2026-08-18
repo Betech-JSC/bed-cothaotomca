@@ -6,23 +6,19 @@ const config = {
   ],
   theme: {
     screens: {
-      xs: "375px",
-      sm: "640px",
       md: "768px",
       lg: "1024px",
       xl: "1280px",
       "max-xl": { max: "1279px" },
       "max-lg": { max: "1023px" },
       "max-md": { max: "767px" },
-      "max-sm": { max: "639px" },
-      "max-xs": { max: "374px" },
     },
     container: {
       center: true,
       padding: {
         DEFAULT: "1rem",
-        md: "1.5rem",
-        lg: "2rem",
+        md: "2rem",
+        lg: "2.5rem",
         xl: "2rem",
       },
     },
@@ -34,14 +30,6 @@ const config = {
         brown: "#531712",
         black: "#000000",
         white: "#FFFFFF",
-        orderCode: "#C03613",
-        orderBg: "#FEFDF5",
-        badge: {
-          shipping: "#CD4829",
-          processing: "#CD4829",
-          completed: "#4A5578",
-          error: "#BD7F15",
-        },
         gray: {
           25: "#FCFCFD",
           50: "#F9F9FB",
@@ -67,7 +55,7 @@ const config = {
         'progress-bar': 'progress-bar 500ms ease-out forwards',
       },
       fontFamily: {
-        display: ["Roboto", "sans-serif"],
+        display: ["TomCaSerif", "Roboto", "sans-serif"],
         sans: ["Roboto", "sans-serif"],
         serif: ["Roboto", "serif"],
       },
