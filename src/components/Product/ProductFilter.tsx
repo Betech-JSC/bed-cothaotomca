@@ -131,9 +131,7 @@ export default function ProductFilter({
         </div>
         <div className="hidden lg:block">
           <AnimateOnScroll animate="slideup" delay={200}>
-            <div className="lg:max-h-[calc(100vh-110px)] lg:overflow-y-auto no-scrollbar">
-              <FilterContent />
-            </div>
+            <FilterContent />
           </AnimateOnScroll>
         </div>
       </div>
@@ -155,7 +153,7 @@ export default function ProductFilter({
       <div
         className={`space-y-2 bg-white px-5 py-4 lg:p-0 ${isFilterOpen ? "pb-24" : "overflow-hidden rounded-2xl border border-gray-100 shadow-sm"} `}
       >
-          <div className="space-y-3 pt-2 pb-4 border-b border-gray-100">
+          <div className="space-y-3 pt-4 lg:pt-5 pb-4 border-b border-gray-100">
             <div className="flex items-center justify-between lg:px-3">
               <span className="text-lg lg:text-xl font-extrabold text-primary uppercase tracking-wider !font-display">
                 {t("common.category")}
