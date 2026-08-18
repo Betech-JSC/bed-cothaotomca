@@ -315,7 +315,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     if (deliveryDate === todayISO) {
       const curH = refDate.getHours();
       const curM = refDate.getMinutes();
-      const bufferM = curH * 60 + curM + 25; // 25 min preparation buffer
+      const bufferM = curH * 60 + curM + 120; // 120 min (2 hours) preparation buffer
       const bH = Math.floor(bufferM / 60);
       const bM = bufferM % 60;
       filterTime = `${bH.toString().padStart(2, "0")}:${bM.toString().padStart(2, "0")}`;
@@ -471,14 +471,31 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     let expectedDeliveryISO: string | undefined = undefined;
     if (deliverySchedule === "schedule" || !opCheck.canOrderNow) {
       if (!expectedDeliveryTime) {
-        setError("Vui lòng chọn giờ nhận hàng mong muốn (khung giờ 10:00 - 23:00).");
+        const msg = "Vui lòng chọn giờ nhận hàng mong muốn (khung giờ 10:00 - 23:00).";
+        setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
       }
       if (expectedDeliveryTime < "10:00" || expectedDeliveryTime > "23:00") {
-        setError("Khung giờ nhận món phải từ 10:00 đến 23:00.");
+        const msg = "Khung giờ nhận món phải từ 10:00 đến 23:00.";
+        setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
+      }
+      const refDate = new Date();
+      const todayISO = toISODateString(refDate);
+      if (deliveryDate === todayISO) {
+        const curH = refDate.getHours();
+        const curM = refDate.getMinutes();
+        const minBufferM = curH * 60 + curM + 120;
+        const [eH, eM] = expectedDeliveryTime.split(":").map(Number);
+        const selectedM = eH * 60 + eM;
+        if (selectedM < minBufferM) {
+          const msg = "Giờ nhận hàng phải sau thời gian hiện tại ít nhất 120 phút (2 tiếng).";
+          setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
+          setLoading(false);
+          return;
+        }
       }
       try {
         const [hoursStr, minutesStr] = expectedDeliveryTime.split(":");
@@ -487,8 +504,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
         const targetDateStr = deliveryDate || opCheck.defaultDate;
         const [y, m, d] = targetDateStr.split("-").map((s) => parseInt(s, 10));
-        const targetDate = new Date(y, m - 1, d, hours, minutes, 0, 0);
-        expectedDeliveryISO = targetDate.toISOString();
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        expectedDeliveryISO = `${y}-${pad(m)}-${pad(d)}T${pad(hours)}:${pad(minutes)}:00+07:00`;
       } catch (err) {
         expectedDeliveryISO = undefined;
       }
@@ -639,8 +656,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             {/* Banner Trạng thái hoạt động */}
             <div
               className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${operatingStatus.canOrderNow
-                  ? "bg-emerald-50/90 border-emerald-200 text-emerald-900"
-                  : "bg-amber-50 border-amber-300 text-amber-900"
+                ? "bg-emerald-50/90 border-emerald-200 text-emerald-900"
+                : "bg-amber-50 border-amber-300 text-amber-900"
                 }`}
             >
               <span className="text-xl leading-none mt-0.5">
@@ -874,14 +891,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
             {/* Lời nhắn */}
             <div className="space-y-2 pt-2 border-t border-gray-100">
-              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Lời nhắn cho Bếp</label>
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Lời nhắn cho Cô Thảo Tôm Cá</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 className="w-full rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base resize-none font-serif font-normal leading-[150%] tracking-[0%]"
-                placeholder="Lời nhắn cho Bếp Cô Thảo"
-              />
+                placeholder="Ghi chú về món ăn, gia vị, dụng cụ ăn uống..."
+              ></textarea>
             </div>
 
             {/* Thời gian giao/lấy hàng mong muốn */}
@@ -911,7 +928,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     {/* Footnote dưới Option 1: Chỉ hiển thị khi chọn Giao ngay VÀ thời gian hiện tại trước 10:00 AM */}
                     {deliverySchedule === "now" && operatingStatus.currentTime < (operatingStatus.deliveryOpen || "10:00") && (
                       <p className="text-xs text-amber-700 font-medium pl-7 mt-1">
-                        * Món ăn bắt đầu được giao từ {operatingStatus.deliveryOpen || "10:00"}.
+                        * Khách nhận món sớm nhất từ {operatingStatus.deliveryOpen || "10:00"} (Bếp mở nhận đơn từ 9:00).
                       </p>
                     )}
                   </div>
@@ -939,7 +956,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       onChange={() => setDeliverySchedule("schedule")}
                       className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                     />
-                    <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-semibold">
+                    <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-medium">
                       {deliveryType === "pickup" ? "Hẹn giờ đến lấy (Đặt trước)" : "Hẹn giờ giao hàng (Đặt trước)"}
                     </span>
                   </label>
@@ -988,8 +1005,18 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     <div className="relative">
                       <select
                         value={expectedDeliveryTime}
-                        onChange={(e) => setExpectedDeliveryTime(e.target.value)}
-                        className="w-full h-11 rounded-lg border border-[#B9C0D4] shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none"
+                        onChange={(e) => {
+                          setExpectedDeliveryTime(e.target.value);
+                          if (fieldErrors["delivery.expected_delivery"]) {
+                            setFieldErrors((prev) => {
+                              const next = { ...prev };
+                              delete next["delivery.expected_delivery"];
+                              return next;
+                            });
+                          }
+                        }}
+                        className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none ${fieldError("delivery.expected_delivery") ? "border-red-500 ring-1 ring-red-500" : "border-[#B9C0D4]"
+                          }`}
                       >
                         {availableTimeSlots.map((slot) => (
                           <option key={slot.value} value={slot.value}>
@@ -1003,6 +1030,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         </svg>
                       </div>
                     </div>
+                    {fieldError("delivery.expected_delivery") && (
+                      <p className="mt-1 text-xs text-red-500 font-semibold italic animate-fade-in">
+                        *{fieldError("delivery.expected_delivery")}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1043,7 +1075,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               </div>
             </div>
 
-            {error ? <p className="body-1 text-red-600 font-semibold pt-2">{error}</p> : null}
+            {error && !fieldErrors["delivery.expected_delivery"] ? (
+              <p className="body-1 text-red-600 font-semibold pt-2">{error}</p>
+            ) : null}
           </form>
         </div>
 
@@ -1428,7 +1462,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   ? "Khu vực chưa hỗ trợ giao"
                   : !operatingStatus.canOrderNow
                     ? "Đặt hẹn giờ nhận hàng"
-                    : "Thanh toán"}
+                    : "Đặt hàng"}
             </button>
           </div>
         </div>

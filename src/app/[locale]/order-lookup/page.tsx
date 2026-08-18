@@ -75,7 +75,7 @@ export default function OrderLookupPage() {
       .then((s) => {
         if (s?.hotline) setHotline(s.hotline);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const [order, setOrder] = useState<OrderDetailData | null>(null);
@@ -285,7 +285,7 @@ export default function OrderLookupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] pt-28 pb-16 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen pt-28 pb-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header Title */}
         <div className="text-center space-y-3">
@@ -612,7 +612,7 @@ export default function OrderLookupPage() {
                   placeholder={t("cancel_reason_placeholder")}
                   rows={3}
                   className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary shadow-xs"
-                />
+                ></textarea>
               </div>
 
               {modalError && (

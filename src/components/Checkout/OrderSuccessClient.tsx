@@ -120,8 +120,17 @@ export default function OrderSuccessClient({
     ? t("payment_card")
     : t("payment_transfer");
 
+  const subtotalNum = parseFloat(order.subtotal) || 0;
+  const shippingFeeNum = parseFloat(order.delivery?.price || order.delivery_price || 0);
+  const discountNum = parseFloat(order.discount) || 0;
+  const totalNum = parseFloat(order.total) || (subtotalNum + shippingFeeNum - discountNum);
+
+  const formatVND = (amount: number) => {
+    return `${new Intl.NumberFormat("vi-VN").format(Math.max(0, amount))} đ`;
+  };
+
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white rounded-[24px] p-6 md:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100">
+    <div className="w-full max-w-2xl mx-auto bg-white rounded-[24px] p-6 md:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100 font-sans">
 
       {/* Success Icon */}
       <div className="flex justify-center">
@@ -144,27 +153,41 @@ export default function OrderSuccessClient({
       </div>
 
       {/* Title */}
-      <h1 className="text-2xl md:text-3xl font-bold font-display text-[#142A68] mt-6 mb-4 text-center">
+      <h1 className="text-2xl md:text-3xl font-bold font-sans text-[#142A68] mt-6 mb-4 text-center">
         {t("title")}
       </h1>
 
       {/* Message Description */}
-      <div className="space-y-2 text-center max-w-2xl mx-auto">
-        <p className="text-gray-700 text-sm md:text-base leading-relaxed">
+      <div className="space-y-3 text-center max-w-2xl mx-auto">
+        <p className="text-gray-700 text-sm md:text-base leading-relaxed block font-sans">
           {isPickup
-            ? t("description_pickup", { name: customerName, time: expectedTime })
-            : t("description", { name: customerName, time: expectedTime })}
+            ? t.rich("description_pickup", {
+                name: customerName,
+                time: expectedTime,
+                strong: (chunks) => <strong className="font-bold text-gray-900">{chunks}</strong>,
+              })
+            : t.rich("description", {
+                name: customerName,
+                time: expectedTime,
+                strong: (chunks) => <strong className="font-bold text-gray-900">{chunks}</strong>,
+              })}
         </p>
-        <p className="text-gray-500 text-xs md:text-sm leading-relaxed max-w-xl mx-auto">
+        <p className="text-gray-600 text-xs md:text-sm leading-relaxed max-w-xl mx-auto block pt-1 font-sans">
           {isPickup
-            ? t("hotline_message_pickup", { hotline })
-            : t("hotline_message", { hotline })}
+            ? t.rich("hotline_message_pickup", {
+                hotline,
+                strong: (chunks) => <strong className="font-bold text-gray-900">{chunks}</strong>,
+              })
+            : t.rich("hotline_message", {
+                hotline,
+                strong: (chunks) => <strong className="font-bold text-gray-900">{chunks}</strong>,
+              })}
         </p>
       </div>
 
       {/* Receipt Info Card */}
-      <div className="mt-8 border border-gray-100 rounded-2xl p-5 md:p-6 space-y-6">
-        <h2 className="text-lg md:text-xl font-bold font-display text-[#142A68] border-b border-gray-100 pb-3">
+      <div className="mt-8 border border-gray-100 rounded-2xl p-5 md:p-6 space-y-6 font-sans">
+        <h2 className="text-lg md:text-xl font-bold font-sans text-[#142A68] border-b border-gray-100 pb-3">
           {t("receipt_info")}
         </h2>
 
@@ -172,22 +195,22 @@ export default function OrderSuccessClient({
           {/* Left Column */}
           <div className="space-y-4">
             <div>
-              <span className="text-gray-400 block mb-0.5">{t("receiver")}</span>
-              <strong className="text-[#142A68] text-sm md:text-base font-semibold">
+              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">{t("receiver")}</span>
+              <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans">
                 {order.delivery?.receiver || customerName}
               </strong>
             </div>
             <div>
-              <span className="text-gray-400 block mb-0.5">{t("phone")}</span>
-              <strong className="text-[#142A68] font-mono text-sm font-semibold">
+              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">{t("phone")}</span>
+              <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans">
                 {order.delivery?.contact_number || order.customer?.phone || ""}
               </strong>
             </div>
             <div>
-              <span className="text-gray-400 block mb-0.5">
+              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">
                 {isPickup ? t("pickup_location") : t("delivery_address")}
               </span>
-              <strong className="text-[#142A68] text-xs md:text-sm font-medium block leading-snug">
+              <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans block leading-snug">
                 {order.delivery?.address || ""}
               </strong>
             </div>
@@ -196,30 +219,30 @@ export default function OrderSuccessClient({
           {/* Right Column */}
           <div className="space-y-4">
             <div>
-              <span className="text-gray-400 block mb-0.5">{t("payment_method")}</span>
-              <strong className="text-[#142A68] font-semibold">
+              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">{t("payment_method")}</span>
+              <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans">
                 {paymentMethodText}
               </strong>
             </div>
             <div>
-              <span className="text-gray-400 block mb-0.5">{t("shipping_fee")}</span>
-              <strong className="text-[#142A68] font-semibold">
-                {isPickup || !order.delivery?.price || parseFloat(order.delivery.price) === 0
+              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">{t("shipping_fee")}</span>
+              <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans">
+                {isPickup || shippingFeeNum === 0
                   ? t("free")
-                  : `${new Intl.NumberFormat("vi-VN").format(parseFloat(order.delivery.price))} đ`}
+                  : formatVND(shippingFeeNum)}
               </strong>
             </div>
             <div>
-              <span className="text-gray-400 block mb-0.5">{t("total_payment")}</span>
-              <strong className="text-emerald-600 text-base md:text-lg font-bold">
-                {new Intl.NumberFormat("vi-VN").format(parseFloat(order.total))} đ
+              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">{t("total_payment")}</span>
+              <strong className="text-[#CD4829] text-base md:text-lg font-bold font-sans">
+                {formatVND(totalNum)}
               </strong>
             </div>
           </div>
         </div>
 
         {/* Order Code Banner */}
-        <div className="bg-orderBg border border-amber-200/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs md:text-sm">
+        <div className="bg-orderBg border border-amber-200/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs md:text-sm font-sans">
           <div>
             <span className="text-amber-800 block font-medium">
               {t("order_code_label")} <strong className="font-mono font-bold text-orderCode">{order.order_code}</strong>
@@ -238,17 +261,17 @@ export default function OrderSuccessClient({
       </div>
 
       {/* Item List */}
-      <div className="mt-8 border border-gray-100 rounded-2xl p-5 md:p-6">
-        <h2 className="text-lg md:text-xl font-bold font-display text-[#142A68] border-b border-gray-100 pb-3 mb-4">
+      <div className="mt-8 border border-gray-100 rounded-2xl p-5 md:p-6 font-sans">
+        <h2 className="text-lg md:text-xl font-bold font-sans text-[#142A68] border-b border-gray-100 pb-3 mb-4">
           {t("ordered_items")}
         </h2>
         <div className="divide-y divide-gray-100">
           {order.items.map((item: any, index: number) => {
-            const displayPrice = new Intl.NumberFormat("vi-VN").format(parseFloat(item.price)) + " đ";
+            const displayPrice = formatVND(parseFloat(item.price) || 0);
             const displayImage = item.image || "/cover.jpg";
 
             return (
-              <div key={index} className="py-3 flex items-center justify-between gap-4">
+              <div key={index} className="py-3 flex items-center justify-between gap-4 font-sans">
                 <div className="flex items-center gap-3">
                   {/* Thumbnail */}
                   <div className="w-12 h-12 relative rounded-lg bg-gray-100 overflow-hidden shrink-0">
@@ -262,18 +285,18 @@ export default function OrderSuccessClient({
                   </div>
                   {/* Item Details */}
                   <div>
-                    <strong className="text-[#142A68] text-sm md:text-base font-semibold block leading-tight">
+                    <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans block leading-tight">
                       {item.product_name}
                     </strong>
                     {item.variant_size && (
-                      <span className="text-gray-400 text-xs block mt-1 font-medium">
+                      <span className="text-gray-400 text-xs block mt-1 font-medium font-sans">
                         {item.variant_size}
                       </span>
                     )}
                   </div>
                 </div>
                 {/* Quantity and Price */}
-                <span className="text-gray-900 text-sm md:text-base font-semibold whitespace-nowrap">
+                <span className="text-gray-900 text-sm md:text-base font-bold font-sans whitespace-nowrap">
                   {item.quantity} x {displayPrice}
                 </span>
               </div>
@@ -282,32 +305,32 @@ export default function OrderSuccessClient({
         </div>
 
         {/* Pricing Breakdown Shaded Box */}
-        <div className="bg-[#EFF1F5] rounded-2xl p-5 space-y-3 mt-6">
+        <div className="bg-[#EFF1F5] rounded-2xl p-5 space-y-3 mt-6 font-sans">
           <div className="flex justify-between items-center text-xs md:text-sm">
             <span className="text-[#404968] font-medium">{t("subtotal")}</span>
             <strong className="text-[#142A68] font-bold">
-              {formatPrice(parseFloat(order.subtotal) || 0)}
+              {formatVND(subtotalNum)}
             </strong>
           </div>
 
           <div className="flex justify-between items-center text-xs md:text-sm">
             <span className="text-[#404968] font-medium">{t("shipping_fee")}</span>
             <strong className="text-[#142A68] font-bold">
-              {formatPrice(parseFloat(order.delivery?.price || order.delivery_price || 0))}
+              {isPickup || shippingFeeNum === 0 ? t("free") : formatVND(shippingFeeNum)}
             </strong>
           </div>
 
           <div className="flex justify-between items-center text-xs md:text-sm">
             <span className="text-[#404968] font-medium">{t("discount")}</span>
             <strong className="text-[#142A68] font-bold">
-              {formatPrice(parseFloat(order.discount) || 0)}
+              {discountNum === 0 ? "0 đ" : `-${formatVND(discountNum)}`}
             </strong>
           </div>
 
           <div className="flex justify-between items-center pt-3 border-t border-gray-200">
             <span className="text-[#142A68] text-sm md:text-base font-bold">{t("total_payment")}</span>
             <strong className="text-[#CD4829] text-lg md:text-xl font-bold">
-              {formatPrice(parseFloat(order.total) || 0)}
+              {formatVND(totalNum)}
             </strong>
           </div>
         </div>

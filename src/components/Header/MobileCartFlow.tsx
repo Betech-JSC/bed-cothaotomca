@@ -11,9 +11,12 @@ import {
   calcOrderTotal,
   calculateShippingFee,
   createOrder,
+  getAdministrativeUnits,
   getCheckoutConfig,
   getShippingSettings,
   validateVoucher,
+  type AdministrativeProvince,
+  type AdministrativeWard,
   type CheckoutConfig,
   type DeliveryType,
   type OrderInitiated,
@@ -26,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Chevron from "../Icons/Chevron";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, toISODateString } from "@/lib/operatingHours";
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
+import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 
 const POPULAR_DISTRICTS = [
   // Hà Nội
@@ -67,9 +71,31 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [email, setEmail] = useState("");
 
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("delivery");
+  const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>([]);
+  const [selectedProvince, setSelectedProvince] = useState("TP. Hồ Chí Minh");
   const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedWard, setSelectedWard] = useState("");
+  const [selectedWardId, setSelectedWardId] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
   const [selectedBranchId, setSelectedBranchId] = useState<number>(1);
+  const [assignedBranchName, setAssignedBranchName] = useState<string | null>(null);
+
+  // Load administrative units catalog
+  useEffect(() => {
+    getAdministrativeUnits().then((units) => {
+      if (units && units.length > 0) {
+        setAdminProvinces(units);
+      }
+    });
+  }, []);
+
+  const currentProvinceData = useMemo(() => {
+    return adminProvinces.find((p) => p.name === selectedProvince);
+  }, [adminProvinces, selectedProvince]);
+
+  const availableWards = useMemo(() => {
+    return currentProvinceData?.wards || [];
+  }, [currentProvinceData]);
   const [deliverySchedule, setDeliverySchedule] = useState<"now" | "schedule">("now");
   const [deliveryDate, setDeliveryDate] = useState<string>("");
   const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>("10:00");
@@ -137,7 +163,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     if (deliveryDate === todayISO) {
       const curH = refDate.getHours();
       const curM = refDate.getMinutes();
-      const bufferM = curH * 60 + curM + 25; // 25 min preparation buffer
+      const bufferM = curH * 60 + curM + 120; // 120 min (2 hours) preparation buffer
       const bH = Math.floor(bufferM / 60);
       const bM = bufferM % 60;
       filterTime = `${bH.toString().padStart(2, "0")}:${bM.toString().padStart(2, "0")}`;
@@ -208,6 +234,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [originalFee, setOriginalFee] = useState<number>(0);
   const [isFreeship, setIsFreeship] = useState<boolean>(false);
   const [freeshipReason, setFreeshipReason] = useState<string | null>(null);
+  const [isDeliverable, setIsDeliverable] = useState<boolean>(true);
+  const [shippingMessage, setShippingMessage] = useState<string | null>(null);
 
   useEffect(() => {
     getShippingSettings().then(setShippingSettings);
@@ -217,7 +245,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           setHotline(settings.hotline);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Calculate totals
@@ -233,11 +261,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     if (deliveryType !== "delivery") {
       setCalculatedFee(0);
       setIsFreeship(false);
+      setIsDeliverable(true);
+      setShippingMessage(null);
       return;
     }
 
     calculateShippingFee({
+      province: selectedProvince,
       district: selectedDistrict,
+      ward: selectedWard,
+      ward_id: selectedWardId,
       subtotal: rawSubtotal,
       voucher_code: appliedVoucher?.code,
     })
@@ -246,11 +279,31 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         setOriginalFee(res.original_fee);
         setIsFreeship(res.is_freeship);
         setFreeshipReason(res.freeship_reason || null);
+
+        const hasWard = !!selectedWard || !!selectedWardId;
+        setIsDeliverable(hasWard ? res.is_deliverable : true);
+        setShippingMessage(hasWard ? (res.message || null) : null);
+
+        if (hasWard && res.branch_id) {
+          const matchedBranch = config?.branches?.find(
+            (b) => b.id === res.branch_id || (res.branch_name && b.branchName === res.branch_name)
+          );
+          if (matchedBranch) {
+            setSelectedBranchId(matchedBranch.id);
+          } else {
+            setSelectedBranchId(res.branch_id);
+          }
+        }
+        if (hasWard && res.branch_name) {
+          setAssignedBranchName(res.branch_name);
+        } else {
+          setAssignedBranchName(null);
+        }
       })
       .catch((err) => {
         console.error("Failed to calculate shipping in mobile cart flow:", err);
       });
-  }, [deliveryType, selectedDistrict, rawSubtotal, appliedVoucher]);
+  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, config?.branches]);
 
   const defaultShippingFee = parseFloat(config?.default_shipping_fee || "30000") || 30000;
   const shippingFee = deliveryType === "delivery" ? (isFreeship ? 0 : (calculatedFee || defaultShippingFee)) : 0;
@@ -341,13 +394,18 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     }
 
     if (deliveryType === "delivery") {
-      if (!streetAddress.trim()) {
-        setFieldErrors(prev => ({ ...prev, address: "Vui lòng nhập địa chỉ chi tiết." }));
+      if (!selectedWard && !selectedWardId) {
+        setFieldErrors((prev) => ({ ...prev, ward: "Vui lòng chọn Phường / Xã." }));
         setLoading(false);
         return;
       }
-      if (!selectedDistrict) {
-        setFieldErrors(prev => ({ ...prev, district: "Vui lòng chọn Quận/Huyện." }));
+      if (!streetAddress.trim()) {
+        setFieldErrors((prev) => ({ ...prev, address: "Vui lòng nhập địa chỉ chi tiết." }));
+        setLoading(false);
+        return;
+      }
+      if (!isDeliverable) {
+        setError("Khu vực bạn chọn hiện chưa hỗ trợ giao hàng. Vui lòng chọn địa chỉ khác.");
         setLoading(false);
         return;
       }
@@ -359,10 +417,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       return;
     }
 
-    const finalAddress =
-      deliveryType === "delivery"
-        ? `${streetAddress.trim()}${selectedDistrict ? `, ${selectedDistrict}` : ""}`
-        : config?.branches.find(b => b.id === selectedBranchId)?.address || "";
+    let finalAddress = "";
+    if (deliveryType === "delivery") {
+      const parts = [streetAddress.trim(), selectedWard, selectedDistrict, selectedProvince].filter(Boolean);
+      finalAddress = parts.join(", ");
+    } else {
+      finalAddress = config?.branches?.find((b) => b.id === selectedBranchId)?.address || "";
+    }
 
     const idempotencyKey =
       typeof crypto !== "undefined" && crypto.randomUUID
@@ -372,14 +433,31 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     let expectedDeliveryISO: string | undefined = undefined;
     if (deliverySchedule === "schedule" || !opCheck.canOrderNow) {
       if (!expectedDeliveryTime) {
-        setError("Vui lòng chọn giờ nhận hàng mong muốn (khung giờ 10:00 - 23:00).");
+        const msg = "Vui lòng chọn giờ nhận hàng mong muốn (khung giờ 10:00 - 23:00).";
+        setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
       }
       if (expectedDeliveryTime < "10:00" || expectedDeliveryTime > "23:00") {
-        setError("Khung giờ nhận món phải từ 10:00 đến 23:00.");
+        const msg = "Khung giờ nhận món phải từ 10:00 đến 23:00.";
+        setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
+      }
+      const refDate = new Date();
+      const todayISO = toISODateString(refDate);
+      if (deliveryDate === todayISO) {
+        const curH = refDate.getHours();
+        const curM = refDate.getMinutes();
+        const minBufferM = curH * 60 + curM + 120;
+        const [eH, eM] = expectedDeliveryTime.split(":").map(Number);
+        const selectedM = eH * 60 + eM;
+        if (selectedM < minBufferM) {
+          const msg = "Giờ nhận hàng phải sau thời gian hiện tại ít nhất 120 phút (2 tiếng).";
+          setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
+          setLoading(false);
+          return;
+        }
       }
       try {
         const [hoursStr, minutesStr] = expectedDeliveryTime.split(":");
@@ -388,8 +466,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
         const targetDateStr = deliveryDate || opCheck.defaultDate;
         const [y, m, d] = targetDateStr.split("-").map((s) => parseInt(s, 10));
-        const targetDate = new Date(y, m - 1, d, hours, minutes, 0, 0);
-        expectedDeliveryISO = targetDate.toISOString();
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        expectedDeliveryISO = `${y}-${pad(m)}-${pad(d)}T${pad(hours)}:${pad(minutes)}:00+07:00`;
       } catch (err) {
         expectedDeliveryISO = undefined;
       }
@@ -412,6 +490,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               address: finalAddress,
               price: shipping,
               expected_delivery: expectedDeliveryISO,
+              branch_id: selectedBranchId || undefined,
+              province: selectedProvince || undefined,
+              district: selectedDistrict || undefined,
+              ward: selectedWard || undefined,
+              ward_id: selectedWardId || undefined,
             }
             : (expectedDeliveryISO
               ? {
@@ -716,11 +799,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           <div className="space-y-6 animate-in fade-in slide-in-from-right duration-200">
             {/* Banner Trạng thái hoạt động */}
             <div
-              className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${
-                operatingStatus.canOrderNow
-                  ? "bg-emerald-50/90 border-emerald-200 text-emerald-900"
-                  : "bg-amber-50 border-amber-300 text-amber-900"
-              }`}
+              className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${operatingStatus.canOrderNow
+                ? "bg-emerald-50/90 border-emerald-200 text-emerald-900"
+                : "bg-amber-50 border-amber-300 text-amber-900"
+                }`}
             >
               <span className="text-xl leading-none mt-0.5">
                 {operatingStatus.canOrderNow ? "🟢" : "🟡"}
@@ -744,11 +826,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               </button>
 
               <div
-                className={`grid transition-all duration-300 ease-in-out border-t border-gray-100/0 ${
-                  isSummaryExpanded
-                    ? "grid-rows-[1fr] opacity-100 pt-4 mt-3 border-gray-100"
-                    : "grid-rows-[0fr] opacity-0 pt-0 mt-0 pointer-events-none"
-                }`}
+                className={`grid transition-all duration-300 ease-in-out border-t border-gray-100/0 ${isSummaryExpanded
+                  ? "grid-rows-[1fr] opacity-100 pt-4 mt-3 border-gray-100"
+                  : "grid-rows-[0fr] opacity-0 pt-0 mt-0 pointer-events-none"
+                  }`}
               >
                 <div className="overflow-hidden">
                   <div className="space-y-4 pt-0.5">
@@ -805,7 +886,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 Thông tin liên hệ
               </h3>
 
-              {error && (
+              {error && !fieldErrors["delivery.expected_delivery"] && (
                 <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-semibold">
                   {error}
                 </div>
@@ -882,55 +963,83 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   <p className="text-sm text-gray-700 font-bold font-serif">Địa chỉ giao hàng tận nơi</p>
 
                   <div className="space-y-3">
-                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Tỉnh/Thành phố</label>
+                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Tỉnh / Thành phố *</label>
                     <select
+                      value={selectedProvince}
                       onChange={(e) => {
+                        const newProv = e.target.value;
+                        setSelectedProvince(newProv);
                         setSelectedDistrict("");
+                        setSelectedWard("");
+                        setSelectedWardId("");
                       }}
                       className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
                     >
-                      <option value="HCM">Hồ Chí Minh</option>
-                      <option value="HN">Hà Nội</option>
+                      {adminProvinces.length > 0 ? (
+                        adminProvinces.map((prov) => (
+                          <option key={prov.id} value={prov.name}>
+                            {prov.name}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+                          <option value="Hà Nội">Hà Nội</option>
+                          <option value="Bình Dương">Bình Dương</option>
+                        </>
+                      )}
                     </select>
                   </div>
 
-                  <div className="space-y-3">
-                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Quận/Huyện</label>
-                    <select
-                      value={selectedDistrict}
-                      onChange={(e) => setSelectedDistrict(e.target.value)}
-                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
-                    >
-                      <option value="">-- Chọn Quận/Huyện giao hàng --</option>
-                      <optgroup label="TP. Hồ Chí Minh">
-                        {POPULAR_DISTRICTS.filter((d) => d.group === "TP. Hồ Chí Minh").map((d) => (
-                          <option key={d.value} value={d.value}>
-                            {d.value}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Hà Nội">
-                        {POPULAR_DISTRICTS.filter((d) => d.group === "Hà Nội").map((d) => (
-                          <option key={d.value} value={d.value}>
-                            {d.value}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-                    {fieldErrors.district && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.district}</p>}
-                  </div>
+                  <WardSelectCombobox
+                    wards={availableWards}
+                    selectedWardId={selectedWardId}
+                    selectedWardName={selectedWard}
+                    onSelectWard={(wObj) => {
+                      if (wObj) {
+                        setSelectedWardId(wObj.id);
+                        setSelectedWard(wObj.name);
+                        if (wObj.district) setSelectedDistrict(wObj.district);
+                      } else {
+                        setSelectedWardId("");
+                        setSelectedWard("");
+                      }
+                      if (fieldErrors.ward) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.ward;
+                          return next;
+                        });
+                      }
+                    }}
+                    hasError={!!fieldErrors.ward}
+                    errorMessage={fieldErrors.ward || "* Vui lòng chọn Phường / Xã (Khu vực giao)."}
+                  />
 
                   <div className="space-y-3">
-                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Số nhà, tên đường, ngõ ngách...</label>
+                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Số nhà, tên đường, ngõ ngách *</label>
                     <input
                       type="text"
-                      placeholder="Số nhà, tên đường, ngõ ngách..."
+                      placeholder="VD: Số 73 Rạch Bùng Binh..."
                       value={streetAddress}
                       onChange={(e) => setStreetAddress(e.target.value)}
                       className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base font-serif font-normal leading-[150%] tracking-[0%]"
                     />
                     {fieldErrors.address && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.address}</p>}
                   </div>
+
+                  {assignedBranchName && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 font-medium flex items-center gap-2">
+                      <span>📍</span>
+                      <span>Hệ thống tự động xác định giao từ chi nhánh: <strong>{assignedBranchName}</strong></span>
+                    </div>
+                  )}
+
+                  {shippingMessage && (
+                    <p className={`text-xs font-semibold mt-1.5 ${!isDeliverable ? "text-red-600" : "text-amber-700"}`}>
+                      ℹ️ {shippingMessage}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4 rounded-xl bg-gray-50 p-4 border border-gray-100 mt-2">
@@ -959,13 +1068,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
               {/* Notes */}
               <div className="space-y-3 pt-2 border-t border-gray-100">
-                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Lời nhắn cho Bếp</label>
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Lời nhắn cho Cô Thảo Tôm Cá</label>
                 <textarea
-                  placeholder="Ví dụ: Không cay, ít hành..."
+                  placeholder="Ghi chú về món ăn, gia vị, dụng cụ ăn uống..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base resize-none h-16 font-serif font-normal leading-[150%] tracking-[0%]"
-                />
+                ></textarea>
               </div>
 
               {/* Expected time & date */}
@@ -994,7 +1103,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       {/* Footnote dưới Option 1: Chỉ hiển thị khi chọn Giao ngay VÀ thời gian hiện tại trước 10:00 AM */}
                       {deliverySchedule === "now" && operatingStatus.currentTime < (operatingStatus.deliveryOpen || "10:00") && (
                         <p className="text-xs text-amber-700 font-medium pl-6 mt-1">
-                          * Món ăn bắt đầu được giao từ {operatingStatus.deliveryOpen || "10:00"}.
+                          * Khách nhận món sớm nhất từ {operatingStatus.deliveryOpen || "10:00"} (Bếp mở nhận đơn từ 9:00).
                         </p>
                       )}
                     </div>
@@ -1022,7 +1131,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         onChange={() => setDeliverySchedule("schedule")}
                         className="accent-primary"
                       />
-                      <span className="font-semibold text-sm">
+                      <span className="font-medium text-sm">
                         {deliveryType === "pickup" ? "Hẹn giờ đến lấy (Đặt trước)" : "Hẹn giờ giao hàng (Đặt trước)"}
                       </span>
                     </label>
@@ -1070,8 +1179,18 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <div className="relative">
                           <select
                             value={expectedDeliveryTime}
-                            onChange={(e) => setExpectedDeliveryTime(e.target.value)}
-                            className="w-full h-11 rounded-lg border border-[#B9C0D4] shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-semibold cursor-pointer appearance-none"
+                            onChange={(e) => {
+                              setExpectedDeliveryTime(e.target.value);
+                              if (fieldErrors["delivery.expected_delivery"]) {
+                                setFieldErrors((prev) => {
+                                  const next = { ...prev };
+                                  delete next["delivery.expected_delivery"];
+                                  return next;
+                                });
+                              }
+                            }}
+                            className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-semibold cursor-pointer appearance-none ${fieldErrors["delivery.expected_delivery"] ? "border-red-500 ring-1 ring-red-500" : "border-[#B9C0D4]"
+                              }`}
                           >
                             {availableTimeSlots.map((slot) => (
                               <option key={slot.value} value={slot.value}>
@@ -1085,6 +1204,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             </svg>
                           </div>
                         </div>
+                        {fieldErrors["delivery.expected_delivery"] && (
+                          <p className="mt-1 text-xs text-red-500 font-semibold italic animate-fade-in">
+                            *{fieldErrors["delivery.expected_delivery"]}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1160,10 +1284,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || !confirmInfo}
-              className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50"
+              disabled={loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable)}
+              className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50 disabled:pointer-events-none"
             >
-              {loading ? "Đang xử lý..." : !operatingStatus.canOrderNow ? "Đặt hẹn giờ nhận hàng" : "Thanh toán"}
+              {loading
+                ? "Đang xử lý..."
+                : deliveryType === "delivery" && !isDeliverable
+                  ? "Khu vực chưa hỗ trợ giao"
+                  : !operatingStatus.canOrderNow
+                    ? "Đặt hẹn giờ nhận hàng"
+                    : "Đặt hàng"}
             </button>
           </div>
         )}

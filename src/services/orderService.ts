@@ -28,6 +28,11 @@ export interface CreateOrderPayload {
     address?: string;
     price?: number;
     expected_delivery?: string;
+    branch_id?: number;
+    province?: string;
+    district?: string;
+    ward?: string;
+    ward_id?: string;
   } | null;
   items: CreateOrderItem[];
   discount?: number;
