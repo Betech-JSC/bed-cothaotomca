@@ -58,8 +58,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   const productsDisplay = productsData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
-    const name = translation?.custom_name || item.custom_name || translation?.name || item.name;
-
+    const name = translation?.name || item.name;
 
     // Get category from categories array (new structure) or category object (old structure)
     const productCategory = item.categories && item.categories.length > 0
@@ -70,12 +69,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     const categoryName = catTranslation?.title || productCategory?.title || "Tất cả";
     const categorySlug = productCategory?.slug || slugify(categoryName);
 
-
     return {
       id: item.id,
       title: name,
       custom_name: item.custom_name,
-
       slug: item.slug || slugify(name),
       price: parseFloat(item.price as string),
       category: { title: categoryName, slug: categorySlug },
@@ -96,7 +93,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     return {
       id: item.id,
       title: title,
-      slug: slugify(title),
+      slug: item.slug || slugify(title),
       image: {
         url: item.image || 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop',
         alt: title
@@ -215,16 +212,15 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             className="object-cover w-full h-full md:hidden"
           />
         </div>
-        <div className="absolute md:top-12 top-[6.25rem] xl:top-[6.25rem] left-0 w-full">
+        <div className="absolute md:top-12 top-[100px] xl:top-[100px] left-0 w-full">
           <div className="container">
             <AnimateOnScroll animate="slideup">
               {locale == 'vi' ? (
-                <h2 className="display-2 max-md:text-[2.25rem] text-center text-primary">
+                <h2 className="display-2 max-md:text-[36px] text-center text-primary">
                   {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span><br className="md:hidden" />{t('home.section-5.title.text3')}
-
                 </h2>
               ) : (
-                <h2 className="display-2 max-md:text-[2.25rem] text-center text-primary">
+                <h2 className="display-2 max-md:text-[36px] text-center text-primary">
                   <span className="text-secondary">{t('home.section-5.title.text1')}</span>{t('home.section-5.title.text2')}<span className="text-secondary">{t('home.section-5.title.text3')}</span>{t('home.section-5.title.text4')}
                 </h2>
               )}
@@ -232,8 +228,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </div>
       </section>
-      <section className="relative pt-8 pb-12 md:py-20 xl:py-[6.25rem] md:bg-primary">
-        <div className="absolute top-[-12.5rem] left-0 w-full bg-linear-mobile h-full md:hidden"></div>
+      <section className="relative pt-8 pb-12 md:py-20 xl:py-[100px] md:bg-primary">
+        <div className="absolute top-[-200px] left-0 w-full bg-linear-mobile h-full md:hidden"></div>
         <div className="absolute inset-0 z-[1] max-md:mt-4">
           <Image
             src="/images/home/bg-category.png"
@@ -253,11 +249,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             <div className="grid md:grid-cols-2 gap-6 md:gap-16 xl:gap-20">
               <div className="space-y-6 md:space-y-12 xl:space-y-16 flex flex-col justify-center">
                 <AnimateOnScroll animate="slideup">
-                  <h2 className="display-3 max-md:text-[1.75rem] text-yellow uppercase max-md:text-center max-md:w-full max-md:mx-auto">{t('home.section-6.title')}</h2>
+                  <h2 className="display-3 max-md:text-[28px] text-yellow uppercase max-md:text-center max-md:w-full max-md:mx-auto">{t('home.section-6.title')}</h2>
                 </AnimateOnScroll>
-                <AnimateOnScroll animate="slideup" delay={300} className="relative rounded-[1.5rem] overflow-hidden bg-primary max-w-[35.5rem] w-full">
+                <AnimateOnScroll animate="slideup" delay={300} className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
                   {categoriesDisplay.map((itemCategory, indexCategory) => (
-                    <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[1.6875rem] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
+                    <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-[27px] px-4 title-2 text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
                       <span>{itemCategory.title}</span>
                       <span className="rotate-180"><Arrow /></span>
                     </Link>
@@ -265,7 +261,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 </AnimateOnScroll>
               </div>
               <div>
-                <div className="relative overflow-hidden aspect-w-4 aspect-h-5 rounded-[0.75rem]">
+                <div className="relative overflow-hidden aspect-w-4 aspect-h-5 rounded-[12px]">
                   <Image
                     src="/images/demo/image-category.jpg"
                     alt="DANH MỤC SẢN PHẨM"
@@ -310,8 +306,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </div>
       </section>
-      <SectionSliderPost classCustom='md:pt-16 pt-12 xl:pt-[100px] pb-20 lg:pb-[160px] xl:pb-[280px] 2xl:pb-[380px]' items={postsDisplay} />
-
+      <SectionSliderPost classCustom='md:pt-16 pt-12 xl:pt-[100px] pb-[90px] md:pb-[125px] lg:pb-[170px] xl:pb-[180px]' items={postsDisplay} />
     </main >
   )
 }

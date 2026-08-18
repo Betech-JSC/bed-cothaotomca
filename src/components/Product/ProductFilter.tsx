@@ -98,9 +98,9 @@ export default function ProductFilter({
         onClick={() => setIsFilterOpen(false)}
       />
       <div
-        className={`w-full flex-shrink-0 transition-transform duration-300 ease-in-out lg:block lg:max-w-[20rem] ${isFilterOpen
-            ? "fixed top-0 right-0 bottom-0 z-[110] flex h-full max-h-screen w-[85%] max-w-[22.5rem] translate-x-0 transform flex-col overflow-hidden bg-white shadow-xl"
-            : "translate-x-full transform max-lg:fixed max-lg:top-0 max-lg:right-0 max-lg:bottom-0 max-lg:z-[110] max-lg:flex max-lg:h-full max-lg:max-h-screen max-lg:w-[85%] max-lg:max-w-[22.5rem] max-lg:flex-col max-lg:overflow-hidden max-lg:bg-white max-lg:shadow-xl lg:block lg:translate-x-0 lg:bg-transparent lg:shadow-none lg:w-full"
+        className={`w-full flex-shrink-0 transition-transform duration-300 ease-in-out lg:block lg:max-w-[280px] ${isFilterOpen
+            ? "fixed top-0 right-0 bottom-0 z-[110] flex h-full max-h-screen w-[85%] max-w-[360px] translate-x-0 transform flex-col overflow-hidden bg-white shadow-xl"
+            : "translate-x-full transform max-lg:fixed max-lg:top-0 max-lg:right-0 max-lg:bottom-0 max-lg:z-[110] max-lg:flex max-lg:h-full max-lg:max-h-screen max-lg:w-[85%] max-lg:max-w-[360px] max-lg:flex-col max-lg:overflow-hidden max-lg:bg-white max-lg:shadow-xl lg:block lg:translate-x-0 lg:bg-transparent lg:shadow-none lg:w-full"
           } `}
       >
         {/* Mobile Header */}
@@ -153,7 +153,7 @@ export default function ProductFilter({
       <div
         className={`space-y-2 bg-white px-5 py-4 lg:p-0 ${isFilterOpen ? "pb-24" : "overflow-hidden rounded-2xl border border-gray-100 shadow-sm"} `}
       >
-          <div className="space-y-3 pt-4 lg:pt-5 pb-4 border-b border-gray-100">
+          <div className="space-y-3 pt-2 pb-4 border-b border-gray-100">
             <div className="flex items-center justify-between lg:px-3">
               <span className="text-lg lg:text-xl font-extrabold text-primary uppercase tracking-wider !font-display">
                 {t("common.category")}
@@ -189,7 +189,6 @@ export default function ProductFilter({
                     type="button"
                     onClick={() => setShowAllCategories((prev) => !prev)}
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors duration-200 lg:hover:text-secondary cursor-pointer"
-
                   >
                     <span>
                       {showAllCategories
@@ -201,7 +200,6 @@ export default function ProductFilter({
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
-
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -242,7 +240,6 @@ export default function ProductFilter({
                     type="button"
                     onClick={() => setShowAllIngredients((prev) => !prev)}
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors duration-200 lg:hover:text-secondary cursor-pointer"
-
                   >
                     <span>
                       {showAllIngredients
@@ -254,7 +251,6 @@ export default function ProductFilter({
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
-
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
