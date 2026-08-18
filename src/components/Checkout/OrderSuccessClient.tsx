@@ -177,10 +177,12 @@ export default function OrderSuccessClient({
             ? t.rich("hotline_message_pickup", {
                 hotline,
                 strong: (chunks) => <strong className="font-bold text-gray-900">{chunks}</strong>,
+                br: () => <br />,
               })
             : t.rich("hotline_message", {
                 hotline,
                 strong: (chunks) => <strong className="font-bold text-gray-900">{chunks}</strong>,
+                br: () => <br />,
               })}
         </p>
       </div>
