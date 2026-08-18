@@ -418,30 +418,39 @@ const MobileMenu = ({
   }, [open]);
 
   return (
-    <nav aria-label="Mobile main navigation" className="w-full xl:hidden">
+    <nav aria-label="Mobile main navigation" className="w-full xl:hidden relative">
       <div className="flex w-full items-center justify-between py-1 relative">
         <Logo width={75} height={48} className="h-12" />
-        <div className="w-[9rem] h-[2.5rem] flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          {/* 1. Search */}
           <button
             onClick={onToggleSearch}
-            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out shrink-0"
+            className="text-yellow hover:text-secondary duration-300 ease-in-out shrink-0 cursor-pointer p-1"
             aria-label="Search"
           >
             <Search />
           </button>
+
+          {/* 2. Account Profile */}
           <Link
             href="/profile"
-            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out shrink-0 flex items-center justify-center"
+            className="text-yellow hover:text-secondary duration-300 ease-in-out shrink-0 flex items-center justify-center cursor-pointer p-1"
             aria-label="Tài khoản"
           >
             <UserCircle size={24} />
           </Link>
+
+          {/* 3. Language Switcher */}
+          <div className="shrink-0 flex items-center">
+            <LanguageSwitcher />
+          </div>
+
+          {/* 4. Cart Toggle */}
           <div className="relative shrink-0 flex items-center">
-            <Link
+            <button
               id="cart-toggle-btn-mobile"
-              href="/checkout"
-              onClick={() => setIsCartOpen(false)}
-              className="text-yellow hover:text-secondary duration-300 ease-in-out relative flex items-center justify-center w-6 h-6 cursor-pointer"
+              onClick={toggleCart}
+              className="text-yellow hover:text-secondary duration-300 ease-in-out relative flex items-center justify-center w-6 h-6 cursor-pointer p-1"
               aria-label="Cart"
             >
               <Cart />
@@ -450,56 +459,60 @@ const MobileMenu = ({
                   {totalItems}
                 </span>
               )}
-            </Link>
-            <div className="xl:hidden">
-              <MobileCartFlow onClose={() => setIsCartOpen(false)} />
-            </div>
+            </button>
+            <MobileCartFlow onClose={() => setIsCartOpen(false)} />
           </div>
-          <div className="shrink-0">
-            <LanguageSwitcher />
-          </div>
+
+          {/* 5. Hamburger Menu Toggle Button */}
           <button
             type="button"
             onClick={onToggle}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
-            className="text-yellow duration-300 ease-in-out shrink-0 flex items-center justify-center"
+            className="text-yellow duration-300 ease-in-out shrink-0 flex items-center justify-center cursor-pointer p-1"
           >
             <span className="sr-only">
               {open ? "Close menu" : "Open menu"}
             </span>
             <div className="flex h-6 w-6 flex-col items-center justify-center gap-1">
               <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${open ? "translate-y-1.5 rotate-45" : ""
-                  }`}
+                className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${
+                  open ? "translate-y-1.5 rotate-45" : ""
+                }`}
               />
               <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-opacity duration-200 ${open ? "opacity-0" : "opacity-100"
-                  }`}
+                className={`bg-yellow block h-0.5 w-6 rounded-full transition-opacity duration-200 ${
+                  open ? "opacity-0" : "opacity-100"
+                }`}
               />
               <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${open ? "-translate-y-1.5 -rotate-45" : ""
-                  }`}
+                className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${
+                  open ? "-translate-y-1.5 -rotate-45" : ""
+                }`}
               />
             </div>
           </button>
         </div>
       </div>
 
+      {/* Mobile Drawer Overlay Backdrop */}
       <div
-        className={`fixed top-full left-0 z-[100] w-full h-[calc(100dvh-100%)] bg-gray-900/50 transition-opacity ${open ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
+        className={`fixed inset-x-0 bottom-0 top-[3.25rem] z-[90] bg-black/60 backdrop-blur-xs transition-opacity duration-300 ${
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
         onClick={onClose}
         aria-hidden="true"
       />
 
+      {/* Mobile Sidebar Menu Drawer */}
       <div
-        className={`bg-primary fixed top-full left-0 z-[100] h-[calc(100dvh-100%)] w-full max-w-full p-6 space-y-8 shadow-xl transition-transform overflow-y-auto ${open ? "translate-x-0" : "-translate-x-full"
-          }`}
+        className={`bg-primary fixed inset-x-0 bottom-0 top-[3.25rem] z-[100] w-full p-6 space-y-6 shadow-2xl transition-transform duration-300 ease-in-out overflow-y-auto ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
         role="dialog"
         aria-modal="true"
       >
-        <ul className="title-3 mt-4 flex flex-col gap-1">
+        <ul className="title-3 mt-2 flex flex-col gap-2">
           {navItems.map((item, index) => {
             const active = isNavActive(
               item.href as string | undefined,
@@ -517,8 +530,9 @@ const MobileMenu = ({
                 <li key={item.i18nKey}>
                   <Link
                     href={item.href ?? ("#" as any)}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${active ? "text-secondary" : "text-yellow"
-                      }`}
+                    className={`flex items-center justify-between rounded-xl px-3 py-2.5 font-display text-lg font-bold ${
+                      active ? "text-secondary" : "text-yellow hover:text-secondary"
+                    }`}
                     {...linkProps}
                     onClick={onClose}
                   >
@@ -537,12 +551,13 @@ const MobileMenu = ({
                       prev === index ? null : index,
                     )
                   }
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left font-display text-lg font-bold text-yellow hover:text-secondary cursor-pointer"
                 >
                   <span>{item.label}</span>
                   <svg
-                    className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""
-                      }`}
+                    className={`h-4 w-4 transition-transform ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
                     viewBox="0 0 20 20"
                     aria-hidden="true"
                   >
@@ -550,7 +565,7 @@ const MobileMenu = ({
                       d="M5 7.5L10 12.5L15 7.5"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="1.4"
+                      strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
@@ -558,14 +573,15 @@ const MobileMenu = ({
                 </button>
                 {hasChildren && (
                   <div
-                    className={`ml-2 overflow-hidden pl-3 text-sm transition-all ${isOpen ? "max-h-64 pt-1" : "max-h-0"
-                      }`}
+                    className={`ml-2 overflow-hidden pl-3 text-base transition-all ${
+                      isOpen ? "max-h-64 pt-1" : "max-h-0"
+                    }`}
                   >
                     {item.children!.map((child, childIndex) => (
                       <Link
                         key={child.i18nKey || childIndex}
                         href={child.href ?? ("#" as any)}
-                        className="block rounded-lg px-3 py-2 text-neutral-700 hover:bg-neutral-50"
+                        className="block rounded-lg px-3 py-2 text-yellow/90 hover:text-secondary font-medium"
                         onClick={onClose}
                       >
                         {child.label}
@@ -578,24 +594,26 @@ const MobileMenu = ({
           })}
         </ul>
 
-        <Link
-          href="/checkout"
-          onClick={() => {
-            setIsCartOpen(false);
-            onClose();
-          }}
-          className="text-yellow lg:hover:text-secondary flex items-center gap-2.5 duration-300 ease-in-out w-max cursor-pointer"
-        >
-          <div className="relative">
+        <div className="pt-4 border-t border-white/10 space-y-4">
+          <Link
+            href="/checkout"
+            onClick={() => {
+              setIsCartOpen(false);
+              onClose();
+            }}
+            className="bg-secondary hover:bg-secondary/90 text-white font-bold py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all w-full text-center cursor-pointer"
+          >
             <Cart />
-            {totalItems > 0 && (
-              <span className="absolute -top-2 -right-2 bg-secondary text-white text-[9px] font-bold rounded-full w-[13px] h-[13px] flex items-center justify-center">
-                {totalItems}
-              </span>
-            )}
-          </div>
-          <span className="text-[16px] font-sans font-bold whitespace-nowrap">Đặt hàng</span>
-        </Link>
+            <span className="text-base font-bold">Đặt hàng ngay ({totalItems})</span>
+          </Link>
+
+          <a
+            href={`tel:${hotlineClean}`}
+            className="flex items-center justify-center gap-2 text-yellow font-bold text-sm py-2 hover:text-secondary transition-colors"
+          >
+            <span>📞 Hotline: {hotline}</span>
+          </a>
+        </div>
       </div>
     </nav>
   );
