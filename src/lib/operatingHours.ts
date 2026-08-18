@@ -4,6 +4,15 @@
  * After 22:30 cutoff, immediate delivery is disabled and default date shifts to tomorrow.
  */
 
+export function getVietnamDate(date = new Date()): Date {
+  try {
+    const str = date.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" });
+    return new Date(str);
+  } catch (err) {
+    return new Date(date);
+  }
+}
+
 export function getVietnamTimeString(date = new Date()): string {
   try {
     return date.toLocaleTimeString("en-GB", {
@@ -39,6 +48,20 @@ export function toISODateString(date: Date): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+export function isTodayOutOfScheduleSlots(
+  deliveryClose = "23:00",
+  referenceDate = new Date(),
+  bufferMinutes = 120
+): boolean {
+  const vnDate = getVietnamDate(referenceDate);
+  const curH = vnDate.getHours();
+  const curM = vnDate.getMinutes();
+  const curTotalMinutes = curH * 60 + curM + bufferMinutes;
+  const [closeH, closeM] = deliveryClose.split(":").map(Number);
+  const closeTotalMinutes = closeH * 60 + (closeM || 0);
+  return curTotalMinutes > closeTotalMinutes;
+}
+
 export interface PreOrderNotice {
   title: string;
   message: string;
@@ -54,6 +77,7 @@ export interface OperatingCheckResult {
   isAfterCutoff: boolean;
   isBeforeOpen: boolean;
   isAfterClose: boolean;
+  isTodayOutOfSlots: boolean;
   currentTime: string;
   message: string | null;
   storeOpen: string;
@@ -90,9 +114,10 @@ export function checkOperatingHours(operatingConfig?: {
   const isBeforeOpen = currentTime < storeOpenStr;
   const isAfterCutoff = currentTime >= lastOrderCutoffStr && currentTime < storeCloseStr;
   const isAfterClose = currentTime >= storeCloseStr;
+  const isTodayOutOfSlots = isTodayOutOfScheduleSlots(deliveryCloseStr, referenceDate, 120);
 
-  const today = new Date(referenceDate);
-  const tomorrow = new Date(referenceDate);
+  const today = getVietnamDate(referenceDate);
+  const tomorrow = getVietnamDate(referenceDate);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   const todayISO = toISODateString(today);
@@ -118,8 +143,8 @@ export function checkOperatingHours(operatingConfig?: {
 
   if (canOrderNow) {
     message = `Quán đang nhận đơn | Giao món từ ${deliveryOpenStr} - ${deliveryCloseStr} mỗi ngày.`;
-    defaultDate = todayISO;
-    targetDateDisplay = todayShortDisplay;
+    defaultDate = isTodayOutOfSlots ? tomorrowISO : todayISO;
+    targetDateDisplay = isTodayOutOfSlots ? tomorrowShortDisplay : todayShortDisplay;
   } else {
     if (isBeforeOpen) {
       defaultDate = todayISO;
@@ -146,6 +171,7 @@ export function checkOperatingHours(operatingConfig?: {
     isAfterCutoff,
     isBeforeOpen,
     isAfterClose,
+    isTodayOutOfSlots,
     currentTime,
     message,
     storeOpen: storeOpenStr,

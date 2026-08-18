@@ -26,8 +26,7 @@ import {
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
 import { useAuth } from "@/contexts/AuthContext";
-import Chevron from "../Icons/Chevron";
-import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, toISODateString } from "@/lib/operatingHours";
+import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getVietnamDate, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 
@@ -140,8 +139,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   const availableDeliveryDates = useMemo(() => {
     const dates: { iso: string; label: string }[] = [];
-    const refDate = new Date();
-    const startOffset = (!operatingStatus.canOrderNow && (operatingStatus.isAfterCutoff || operatingStatus.isAfterClose)) ? 1 : 0;
+    const refDate = getVietnamDate();
+    const outOfSlotsToday = isTodayOutOfScheduleSlots(operatingStatus.deliveryClose || "23:00", new Date(), 120);
+    const startOffset = (!operatingStatus.canOrderNow && (operatingStatus.isAfterCutoff || operatingStatus.isAfterClose)) || outOfSlotsToday ? 1 : 0;
 
     for (let i = startOffset; i < startOffset + 5; i++) {
       const d = new Date(refDate);
@@ -156,7 +156,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }, [operatingStatus]);
 
   const availableTimeSlots = useMemo(() => {
-    const refDate = new Date();
+    const refDate = getVietnamDate();
     const todayISO = toISODateString(refDate);
 
     let filterTime: string | undefined = undefined;
@@ -172,14 +172,29 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     return generate15MinTimeSlots(operatingStatus.deliveryOpen || "10:00", operatingStatus.deliveryClose || "23:00", filterTime);
   }, [deliveryDate, operatingStatus.deliveryOpen, operatingStatus.deliveryClose]);
 
+  // Auto-shift delivery date if current selected date is invalid or out of available list
+  useEffect(() => {
+    if (availableDeliveryDates.length > 0) {
+      const isCurrentDateValid = availableDeliveryDates.some((d) => d.iso === deliveryDate);
+      if (!isCurrentDateValid) {
+        setDeliveryDate(availableDeliveryDates[0].iso);
+      }
+    }
+  }, [availableDeliveryDates, deliveryDate]);
+
   useEffect(() => {
     if (availableTimeSlots.length > 0) {
       const exists = availableTimeSlots.some((s) => s.value === expectedDeliveryTime);
       if (!exists) {
         setExpectedDeliveryTime(availableTimeSlots[0].value);
       }
+    } else {
+      // If no slots for current deliveryDate and we have other dates available, auto switch to next date
+      if (availableDeliveryDates.length > 0 && deliveryDate !== availableDeliveryDates[0].iso) {
+        setDeliveryDate(availableDeliveryDates[0].iso);
+      }
     }
-  }, [availableTimeSlots, expectedDeliveryTime]);
+  }, [availableTimeSlots, expectedDeliveryTime, availableDeliveryDates, deliveryDate]);
 
   // Sync user details when loaded
   useEffect(() => {
@@ -1179,6 +1194,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <div className="relative">
                           <select
                             value={expectedDeliveryTime}
+                            disabled={availableTimeSlots.length === 0}
                             onChange={(e) => {
                               setExpectedDeliveryTime(e.target.value);
                               if (fieldErrors["delivery.expected_delivery"]) {
@@ -1192,11 +1208,17 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-semibold cursor-pointer appearance-none ${fieldErrors["delivery.expected_delivery"] ? "border-red-500 ring-1 ring-red-500" : "border-[#B9C0D4]"
                               }`}
                           >
-                            {availableTimeSlots.map((slot) => (
-                              <option key={slot.value} value={slot.value}>
-                                {slot.label}
+                            {availableTimeSlots.length > 0 ? (
+                              availableTimeSlots.map((slot) => (
+                                <option key={slot.value} value={slot.value}>
+                                  {slot.label}
+                                </option>
+                              ))
+                            ) : (
+                              <option value="" disabled>
+                                Hôm nay đã hết khung giờ (Vui lòng chọn ngày mai)
                               </option>
-                            ))}
+                            )}
                           </select>
                           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
                             <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
