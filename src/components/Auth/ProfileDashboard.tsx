@@ -464,10 +464,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   return (
                     <div
                       key={idx}
-                      className={`border rounded-[16px] p-5 md:p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-md ${
+                      className={`border rounded-[1rem] p-5 md:p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-md ${
                         isCompleted
                           ? "bg-[#F8F9FC] border-gray-100 hover:border-gray-200"
-                          : "bg-[#FFFDF6] border-[#F5EEDC] hover:border-amber-200/80"
+                          : "bg-orderBg border-[#F5EEDC] hover:border-amber-200/80"
                       }`}
                       onClick={() => setExpandedOrderCode(expandedOrderCode === order.order_code ? null : order.order_code)}
                     >
@@ -476,10 +476,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                         <div className="flex flex-wrap items-center gap-y-3">
                           {/* 1. MÃ GIAO DỊCH */}
                           <div className="pr-4 md:pr-6">
-                            <span className="text-[14px] text-[#7D89AF] font-normal block leading-tight mb-1 uppercase">
+                            <span className="text-[0.875rem] text-[#7D89AF] font-normal block leading-tight mb-1 uppercase">
                               {t("order_code") || "MÃ GIAO DỊCH"}
                             </span>
-                            <span className="text-[18px] md:text-[20px] font-bold text-[#C03613]">
+                            <span className="text-[1.125rem] md:text-[1.25rem] font-bold text-orderCode">
                               {formattedCode}
                             </span>
                           </div>
@@ -489,10 +489,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                           {/* 2. NGÀY GIAO DỊCH */}
                           <div className="px-2 md:px-4">
-                            <span className="text-[14px] text-[#7D89AF] font-normal block leading-tight mb-1 uppercase">
+                            <span className="text-[0.875rem] text-[#7D89AF] font-normal block leading-tight mb-1 uppercase">
                               {t("order_date") || "NGÀY GIAO DỊCH"}
                             </span>
-                            <span className="text-[16px] md:text-[18px] font-semibold text-[#111322]">
+                            <span className="text-[1rem] md:text-[1.125rem] font-semibold text-[#111322]">
                               {formatDate(order.created_at)}
                             </span>
                           </div>
@@ -502,12 +502,12 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                           {/* 3. Trạng thái */}
                           <div className="pl-2 md:pl-4">
-                            <span className="text-[14px] text-[#7D89AF] font-normal block leading-tight mb-1">
+                            <span className="text-[0.875rem] text-[#7D89AF] font-normal block leading-tight mb-1">
                               {t("status") || "Trạng thái"}
                             </span>
 
                             {isShipping && (
-                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#CD4829] text-white text-[14px] font-medium shadow-sm">
+                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#CD4829] text-white text-[0.875rem] font-medium shadow-sm">
                                 <Image
                                   src="/images/fi_2769339.svg"
                                   alt="Đang giao"
@@ -520,7 +520,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                             )}
 
                             {mappedStatus === "processing" && (
-                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#CD4829] text-white text-[14px] font-medium shadow-sm">
+                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#CD4829] text-white text-[0.875rem] font-medium shadow-sm">
                                 <Image
                                   src="/images/fi_3448102.svg"
                                   alt="Đang xử lý"
@@ -533,7 +533,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                             )}
 
                             {isCompleted && (
-                              <span className="inline-flex items-center gap-1.5 text-[#4A5578] text-[14px] font-medium py-1">
+                              <span className="inline-flex items-center gap-1.5 text-[#4A5578] text-[0.875rem] font-medium py-1">
                                 <Image
                                   src="/images/check.svg"
                                   alt="Hoàn thành"
@@ -546,8 +546,14 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                             )}
 
                             {mappedStatus === "cancelled" && (
-                              <span className="inline-flex items-center gap-1.5 text-red-600 text-[14px] font-medium py-1">
+                              <span className="inline-flex items-center gap-1.5 text-red-600 text-[0.875rem] font-medium py-1">
                                 <span>{t("status_cancelled") || "Đã hủy"}</span>
+                              </span>
+                            )}
+
+                            {mappedStatus === "error" && (
+                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#BD7F15] text-white text-[0.875rem] font-medium shadow-sm">
+                                <span>{t("status_error") || "Lỗi đơn hàng"}</span>
                               </span>
                             )}
                           </div>
@@ -555,7 +561,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                         {/* Far Right: Total Amount & Expand Chevron */}
                         <div className="flex items-center gap-4 self-end md:self-auto">
-                          <div className="text-[18px] md:text-[20px] font-bold text-[#142A68]">
+                          <div className="text-[1rem] font-sans font-bold text-[#142A68]">
                             {formatPrice(order.total)}
                           </div>
                           <div className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-primary transition-colors">

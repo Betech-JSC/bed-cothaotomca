@@ -227,16 +227,16 @@ export default function OrderLookupPage() {
         );
       case "processing":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-secondary/30 text-yellow border border-secondary/40 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-[#CD4829] text-white shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
             {t("status.processing")}
           </span>
         );
       case "shipping":
       case "delivering":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-sky-500/20 text-sky-200 border border-sky-400/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-sky-300 animate-pulse"></span>
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-[#CD4829] text-white shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
             {t("status.shipping")}
           </span>
         );
@@ -245,9 +245,15 @@ export default function OrderLookupPage() {
       case "paid":
       case "completed":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-[#4A5578] text-white shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-white"></span>
             {paymentMethod === "COD" && paymentStatus !== "paid" ? t("status.confirmed") : t("status.paid")}
+          </span>
+        );
+      case "error":
+        return (
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-[#BD7F15] text-white shadow-xs flex items-center gap-1.5">
+            <span>{t("status.error") || "Lỗi đơn hàng"}</span>
           </span>
         );
       case "cancel_requested":

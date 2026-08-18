@@ -18,7 +18,7 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
   const swiperRef = useRef<SwiperType | null>(null);
 
   return (
-    <section className="h-[195px] md:h-[550px] xl:h-[706px]">
+    <section className="h-[12.1875rem] md:h-[34.375rem] xl:h-[45rem]">
       <div className="relative swiper-hero h-full group">
         <Swiper
           modules={[Navigation, Pagination]}
@@ -57,7 +57,7 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
             {/* Previous Button */}
             <button
               onClick={() => swiperRef.current?.slidePrev()}
-              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10 absolute -translate-y-1/2  z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
+              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10 size-[3.25rem] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
               aria-label="Previous slide"
             >
               <div>
@@ -68,7 +68,7 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
             {/* Next Button */}
             <button
               onClick={() => swiperRef.current?.slideNext()}
-              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-10 absolute -translate-y-1/2  z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
+              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-10 size-[3.25rem] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
               aria-label="Next slide"
             >
               <div className="-rotate-180">

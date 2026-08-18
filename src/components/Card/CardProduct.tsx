@@ -50,10 +50,10 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const price = getPrice();
 
   return (
-    <div className="group rounded-[24px] relative overflow-hidden bg-white">
+    <div className="group rounded-[0.75rem] md:rounded-[1.5rem] relative overflow-hidden bg-white">
       {/* Campaign Discount Badge */}
       {((item as any).active_campaign || ((item as any).original_price && parseFloat(String((item as any).original_price)) > price)) && (
-        <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold text-[11px] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+        <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold text-[0.6875rem] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
           <span>🔥</span>
           <span>
             {(item as any).active_campaign?.discount_percent
@@ -81,20 +81,20 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         </div>
       </Link>
 
-      <div className="pt-2.5 pb-3 md:pt-3 md:pb-4 px-2 md:px-4 text-center">
+      <div className="pt-3 pb-3.5 md:pt-4 md:pb-4 px-3 md:px-4 text-center">
         <Link
           href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
           className="block"
         >
-          <h3 className={`title-1 max-md:text-[22px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 max-md:min-h-[48px] min-h-[44px] whitespace-pre-line`}>
+          <h3 className={`text-[1rem] md:text-[1.25rem] font-sans font-bold text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 max-md:min-h-[3rem] min-h-[2.75rem] whitespace-pre-line`}>
             {item.custom_name || item.title}
           </h3>
 
         </Link>
-        <div className="body-2 text-gray-900 line-clamp-2 min-h-[32px] md:min-h-[36px] mt-1 mb-2">{item.description}</div>
+        <div className="body-2 text-gray-900 line-clamp-2 min-h-[2rem] md:min-h-[2.25rem] mt-1 mb-2">{item.description}</div>
         <div className="flex items-center justify-center gap-2">
           {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
-          <span className="title-2 text-secondary font-bold">
+          <span className="text-[1.125rem] font-sans font-bold text-secondary">
             {formatPrice(price)}
           </span>
           {(item as any).original_price && parseFloat(String((item as any).original_price)) > price && (

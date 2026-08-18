@@ -18,13 +18,11 @@ const Logo = ({
   isSticky,
   className = "",
 }: LogoProps) => {
-  const normalSize = { w: width, h: height };
-  const stickySize = {
-    w: stickyWidth ?? width,
-    h: stickyHeight ?? height,
+  const toRem = (val: number | string) => typeof val === "number" ? `${val / 16}rem` : val;
+  const currentSize = {
+    w: toRem(isSticky ? (stickyWidth ?? width) : width),
+    h: toRem(isSticky ? (stickyHeight ?? height) : height),
   };
-
-  const currentSize = isSticky ? stickySize : normalSize;
 
   return (
     <Link

@@ -219,10 +219,10 @@ export default function OrderSuccessClient({
         </div>
 
         {/* Order Code Banner */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs md:text-sm">
+        <div className="bg-orderBg border border-amber-200/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs md:text-sm">
           <div>
             <span className="text-amber-800 block font-medium">
-              {t("order_code_label")} <strong className="font-mono font-bold text-amber-900">{order.order_code}</strong>
+              {t("order_code_label")} <strong className="font-mono font-bold text-orderCode">{order.order_code}</strong>
             </span>
             <span className="text-amber-700 text-xs mt-0.5 block">
               {t("lookup_tip")}

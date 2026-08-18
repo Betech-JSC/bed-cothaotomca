@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import CartPopup from "./CartPopup";
 import MobileCartFlow from "./MobileCartFlow";
-
+import UserCircle from "../Icons/UserCircle";
 
 type LinkHref = ComponentProps<typeof Link>["href"];
 
@@ -159,17 +159,17 @@ const Header = () => {
 
   return (
     <header
-      className={`bg-primary sticky top-0 z-[100] w-full transition-[padding] duration-300 ease-in-out ${isSticky ? "lg:py-1" : "lg:py-3"
+      className={`bg-primary sticky top-0 z-[100] w-full xl:h-[6.5rem] flex items-center transition-[padding] duration-300 ease-in-out ${isSticky ? "lg:py-1" : "lg:py-3"
         }`}
       aria-label="Site header"
     >
-      <div className="container">
+      <div className="container w-full">
         <nav
-          className="relative hidden items-center justify-between xl:flex"
+          className="relative hidden items-center justify-between xl:flex w-full"
           aria-label="Main"
         >
 
-          <ul className="flex gap-4 min-w-[400px]">
+          <ul className="flex gap-4 min-w-[380px]">
             {mainNavLeft.map((itemNavLeft, indexNavLeft) => (
               <DesktopNavItem
                 key={itemNavLeft.i18nKey}
@@ -185,13 +185,13 @@ const Header = () => {
           </ul>
           <Logo
             isSticky={isSticky}
-            width={125}
-            height={80}
-            stickyWidth={112}
-            stickyHeight={56}
-            className="h-20"
+            width={81}
+            height={52}
+            stickyWidth={81}
+            stickyHeight={52}
+            className="h-[3.25rem]"
           />
-          <ul className="flex items-center justify-end gap-4 min-w-[400px]">
+          <ul className="flex items-center justify-end gap-4 min-w-[380px]">
             {mainNavRight.map((itemNavRight, indexNavRight) => (
               <DesktopNavItem
                 key={itemNavRight.i18nKey}
@@ -215,6 +215,15 @@ const Header = () => {
               </button>
             </li>
             <li>
+              <Link
+                href="/profile"
+                className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer flex items-center justify-center"
+                aria-label="Tài khoản"
+              >
+                <UserCircle size={24} />
+              </Link>
+            </li>
+            <li>
               <LanguageSwitcher />
             </li>
             <li className="relative flex items-center">
@@ -226,12 +235,12 @@ const Header = () => {
                 <div className="relative">
                   <Cart />
                   {totalItems > 0 && (
-                    <span className="absolute -top-2.5 -right-2.5 bg-secondary text-white text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center">
+                    <span className="absolute -top-2 -right-2 bg-secondary text-white text-[0.5625rem] font-bold rounded-full w-[0.8125rem] h-[0.8125rem] flex items-center justify-center">
                       {totalItems}
                     </span>
                   )}
                 </div>
-                <span className="title-3 font-display whitespace-nowrap">Đặt hàng</span>
+                <span className="text-[1rem] font-sans font-bold whitespace-nowrap">Đặt hàng</span>
               </button>
               <CartPopup onClose={() => setIsCartOpen(false)} />
             </li>
@@ -411,8 +420,8 @@ const MobileMenu = ({
   return (
     <nav aria-label="Mobile main navigation" className="w-full xl:hidden">
       <div className="flex w-full items-center justify-between py-1 relative">
-        <Logo width={100} height={60} className="h-20" />
-        <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
+        <Logo width={75} height={48} className="h-12" />
+        <div className="w-[9rem] h-[2.5rem] flex items-center justify-between shrink-0">
           <button
             onClick={onToggleSearch}
             className="text-yellow lg:hover:text-secondary duration-300 ease-in-out shrink-0"
@@ -420,9 +429,13 @@ const MobileMenu = ({
           >
             <Search />
           </button>
-          <div className="shrink-0">
-            <LanguageSwitcher />
-          </div>
+          <Link
+            href="/profile"
+            className="text-yellow lg:hover:text-secondary duration-300 ease-in-out shrink-0 flex items-center justify-center"
+            aria-label="Tài khoản"
+          >
+            <UserCircle size={24} />
+          </Link>
           <div className="relative shrink-0 flex items-center">
             <Link
               id="cart-toggle-btn-mobile"
@@ -433,7 +446,7 @@ const MobileMenu = ({
             >
               <Cart />
               {totalItems > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-secondary text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center pointer-events-none z-10">
+                <span className="absolute -top-1.5 -right-1.5 bg-secondary text-white text-[0.5rem] font-bold rounded-full w-[0.8125rem] h-[0.8125rem] flex items-center justify-center pointer-events-none z-10">
                   {totalItems}
                 </span>
               )}
@@ -441,6 +454,9 @@ const MobileMenu = ({
             <div className="xl:hidden">
               <MobileCartFlow onClose={() => setIsCartOpen(false)} />
             </div>
+          </div>
+          <div className="shrink-0">
+            <LanguageSwitcher />
           </div>
           <button
             type="button"
@@ -573,12 +589,12 @@ const MobileMenu = ({
           <div className="relative">
             <Cart />
             {totalItems > 0 && (
-              <span className="absolute -top-2.5 -right-2.5 bg-secondary text-white text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center">
+              <span className="absolute -top-2 -right-2 bg-secondary text-white text-[9px] font-bold rounded-full w-[13px] h-[13px] flex items-center justify-center">
                 {totalItems}
               </span>
             )}
           </div>
-          <span className="title-3 font-display whitespace-nowrap">Đặt hàng</span>
+          <span className="text-[16px] font-sans font-bold whitespace-nowrap">Đặt hàng</span>
         </Link>
       </div>
     </nav>

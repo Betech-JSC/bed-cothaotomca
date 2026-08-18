@@ -21,7 +21,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
   const t = useTranslations();
 
   return (
-    <section className='relative md:py-[56px] pt-[38px] pb-[60px] xl:pt-[60px] xl:pb-[300px]'>
+    <section className='relative md:py-[3.5rem] pt-[2.375rem] pb-[3.75rem] xl:pt-[3.75rem] xl:pb-[18.75rem]'>
       <div className="absolute inset-0">
         <Image
           src="/images/home/bg-hot-product.png"
@@ -33,7 +33,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
       <div className="relative">
         <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
           <AnimateOnScroll animate="slideup" delay={300}>
-            <h2 className="display-2 max-md:text-[28px] text-center text-primary uppercase">{t('home.section-4.title')}</h2>
+            <h2 className="display-2 max-md:text-[1.75rem] text-center text-primary uppercase">{t('home.section-4.title')}</h2>
           </AnimateOnScroll>
           <div className="relative swiper-hot-product">
             <Swiper
@@ -77,12 +77,12 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
                 </SwiperSlide>
               ))}
 
-              <button aria-label="Previous Product" className="swiper-btn-prev absolute left-0 xl:-left-12 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
+              <button aria-label="Previous Product" className="swiper-btn-prev absolute left-0 xl:-left-12 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 size-[3.25rem] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
                 <div>
                   <Arrow />
                 </div>
               </button>
-              <button aria-label="Next Product" className="swiper-btn-next absolute right-0 xl:-right-12 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
+              <button aria-label="Next Product" className="swiper-btn-next absolute right-0 xl:-right-12 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 size-[3.25rem] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
                 <div className="-rotate-180">
                   <Arrow />
                 </div>
@@ -90,7 +90,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
             </Swiper>
           </div>
           <div className="flex justify-center">
-            <Link href="/contact" className="btn btn-primary gap-2 max-md:!px-[72px]">
+            <Link href="/contact" className="btn btn-primary gap-2 max-md:!px-[4.5rem]">
               <Cart />
               <span>{t('button.order-now')}</span>
             </Link>
