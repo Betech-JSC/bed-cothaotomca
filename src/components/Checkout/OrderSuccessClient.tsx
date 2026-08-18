@@ -153,7 +153,7 @@ export default function OrderSuccessClient({
       </div>
 
       {/* Title */}
-      <h1 className="text-2xl md:text-3xl font-bold font-sans text-[#142A68] mt-6 mb-4 text-center">
+      <h1 className="text-2xl md:text-3xl font-bold font-display text-[#142A68] mt-6 mb-4 text-center">
         {t("title")}
       </h1>
 
@@ -189,7 +189,7 @@ export default function OrderSuccessClient({
 
       {/* Receipt Info Card */}
       <div className="mt-8 border border-gray-100 rounded-2xl p-5 md:p-6 space-y-6 font-sans">
-        <h2 className="text-lg md:text-xl font-bold font-sans text-[#142A68] border-b border-gray-100 pb-3">
+        <h2 className="text-lg md:text-xl font-bold font-display text-[#142A68] border-b border-gray-100 pb-3">
           {t("receipt_info")}
         </h2>
 
@@ -264,7 +264,7 @@ export default function OrderSuccessClient({
 
       {/* Item List */}
       <div className="mt-8 border border-gray-100 rounded-2xl p-5 md:p-6 font-sans">
-        <h2 className="text-lg md:text-xl font-bold font-sans text-[#142A68] border-b border-gray-100 pb-3 mb-4">
+        <h2 className="text-lg md:text-xl font-bold font-display text-[#142A68] border-b border-gray-100 pb-3 mb-4">
           {t("ordered_items")}
         </h2>
         <div className="divide-y divide-gray-100">

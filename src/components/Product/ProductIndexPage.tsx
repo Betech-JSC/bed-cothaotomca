@@ -198,7 +198,7 @@ export default function ProductIndexPage({
           </AnimateOnScroll>
           <div className="flex items-center max-lg:justify-between max-lg:w-full">
             <AnimateOnScroll animate="slideup" delay={0}>
-              <h1 className="text-[1.75rem] md:text-[2.25rem] font-sans font-bold text-primary text-center">
+              <h1 className="display-3 text-center text-primary">
                 {currentCategory ? currentCategory.title : t('breadcrumb.product')}
               </h1>
             </AnimateOnScroll>

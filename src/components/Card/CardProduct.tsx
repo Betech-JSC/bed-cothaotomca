@@ -86,7 +86,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
           href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
           className="block"
         >
-          <h3 className={`text-[1rem] md:text-[1.25rem] font-sans font-bold text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 max-md:min-h-[3rem] min-h-[2.75rem] whitespace-pre-line`}>
+          <h3 className={`text-[1rem] md:text-[1.25rem] font-display font-bold text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 max-md:min-h-[3rem] min-h-[2.75rem] whitespace-pre-line`}>
             {item.custom_name || item.title}
           </h3>
 
@@ -94,7 +94,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         <div className="body-2 text-gray-900 line-clamp-2 min-h-[2rem] md:min-h-[2.25rem] mt-1 mb-2">{item.description}</div>
         <div className="flex items-center justify-center gap-2">
           {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
-          <span className="text-[1.125rem] font-sans font-bold text-secondary">
+          <span className="text-[1.125rem] font-display font-bold text-secondary">
             {formatPrice(price)}
           </span>
           {(item as any).original_price && parseFloat(String((item as any).original_price)) > price && (

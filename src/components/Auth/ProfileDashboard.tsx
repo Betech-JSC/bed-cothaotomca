@@ -561,7 +561,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                         {/* Far Right: Total Amount & Expand Chevron */}
                         <div className="flex items-center gap-4 self-end md:self-auto">
-                          <div className="text-[1rem] font-sans font-bold text-[#142A68]">
+                          <div className="text-[1rem] font-display font-bold text-[#142A68]">
                             {formatPrice(order.total)}
                           </div>
                           <div className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-primary transition-colors">

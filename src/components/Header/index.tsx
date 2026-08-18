@@ -240,7 +240,7 @@ const Header = () => {
                     </span>
                   )}
                 </div>
-                <span className="text-[1rem] font-sans font-bold whitespace-nowrap">Đặt hàng</span>
+                <span className="text-[1rem] font-display font-bold whitespace-nowrap">Đặt hàng</span>
               </button>
               <CartPopup onClose={() => setIsCartOpen(false)} />
             </li>
