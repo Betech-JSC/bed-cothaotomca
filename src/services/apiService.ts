@@ -1,4 +1,8 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://cms.cothaotomca.vn/api/v1';
+function getBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || "https://cms.cothaotomca.vn/api/v1";
+  return envUrl.replace("localhost", "127.0.0.1").replace(/\/$/, "");
+}
+
 
 export type ApiKey = 'hero-banners' | 'products' | 'categories' | 'banners' | string;
 
@@ -17,9 +21,10 @@ export interface ApiSingleResponse<T> {
  */
 async function fetchWithRetry(url: string, options: RequestInit, retries = 1, backoff = 1000): Promise<Response> {
   const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
-  
+
   // If we are building, don't even try to fetch if it's causing issues.
   // This ensures the build completes. Data will be fetched at runtime.
+
   if (isBuildPhase) {
     console.log(`Bypassing fetch for ${url} during build phase.`);
     return new Response(JSON.stringify({ data: [] }), {
@@ -29,7 +34,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
   }
 
   const effectiveRetries = retries;
-  const timeoutMs = 3000; // Giảm xuống 3s cho cả build và runtime để load cực nhanh khi bị chặn
+  const timeoutMs = 3000;
 
   try {
     const controller = new AbortController();
@@ -56,7 +61,6 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      // Handle rate limit with exponential backoff and jitter
       if (response.status === 429) {
         const delay = (backoff * 2) + Math.random() * 1000;
         console.warn(`Rate limit hit (429) for ${url}. Retrying after ${Math.round(delay)}ms...`);
@@ -67,21 +71,21 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
       if (response.status >= 500) {
         const errorText = await response.text().catch(() => 'No error body');
         console.error(`Server Error (500+) for ${url}:`, errorText);
-        // Trả về dữ liệu trống ngay lập tức
         return new Response(JSON.stringify({ data: [], message: 'Server error bypassed' }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
         });
+
       }
     }
     return response;
   } catch (error: any) {
-    // Nếu timeout hoặc lỗi kết nối, trả về dữ liệu trống ngay lập tức (không retry lâu)
     console.warn(`Fetch failed for ${url}: ${error.message}. Returning empty data.`);
     return new Response(JSON.stringify({ data: [], message: 'Fetch error bypassed' }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
+
   }
 }
 
@@ -96,7 +100,7 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
   const revalidate = options.revalidate !== undefined ? options.revalidate : getDefaultRevalidate(key);
   const { params } = options;
 
-  let url = `${BASE_URL}/${key}`;
+  let url = `${getBaseUrl()}/${key}`;
 
   if (params) {
     const searchParams = new URLSearchParams();
@@ -130,7 +134,7 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
   const revalidate = options.revalidate !== undefined ? options.revalidate : getDefaultRevalidate(key);
   const { params } = options;
 
-  let url = `${BASE_URL}/${key}`;
+  let url = `${getBaseUrl()}/${key}`;
 
   if (params) {
     const searchParams = new URLSearchParams();
@@ -152,7 +156,6 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
     return response.json();
   } catch (error) {
     console.error(`Error in getSingleApi(${key}):`, error);
-    // Trả về object trống thay vì throw
     return { data: null as any };
   }
 }
@@ -161,7 +164,7 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
  * Generic API POST function
  */
 export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
-  const url = `${BASE_URL}/${key}`;
+  const url = `${getBaseUrl()}/${key}`;
 
   const response = await fetchWithRetry(url, {
     method: 'POST',
@@ -173,7 +176,19 @@ export async function postApi<T>(key: ApiKey, body: any): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to post API: ${key} - Status: ${response.status}`);
+    let errorMessage = `Failed to post API: ${key} - Status: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.errors) {
+        errorMessage = Object.values(errorData.errors).flat().join("\n");
+      }
+    } catch (_) {
+      // ignore
+    }
+    throw new Error(errorMessage);
+
   }
 
   return response.json();

@@ -58,7 +58,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   const productsDisplay = productsData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
-    const name = translation?.name || item.name;
+    const name = translation?.custom_name || item.custom_name || translation?.name || item.name;
+
 
     // Get category from categories array (new structure) or category object (old structure)
     const productCategory = item.categories && item.categories.length > 0
@@ -69,10 +70,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     const categoryName = catTranslation?.title || productCategory?.title || "Tất cả";
     const categorySlug = productCategory?.slug || slugify(categoryName);
 
+
     return {
       id: item.id,
       title: name,
       custom_name: item.custom_name,
+
       slug: item.slug || slugify(name),
       price: parseFloat(item.price as string),
       category: { title: categoryName, slug: categorySlug },
@@ -93,7 +96,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     return {
       id: item.id,
       title: title,
-      slug: item.slug || slugify(title),
+      slug: slugify(title),
       image: {
         url: item.image || 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop',
         alt: title
@@ -218,6 +221,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               {locale == 'vi' ? (
                 <h2 className="display-2 max-md:text-[36px] text-center text-primary">
                   {t('home.section-5.title.text1')}<span className="text-secondary">{t('home.section-5.title.text2')}</span><br className="md:hidden" />{t('home.section-5.title.text3')}
+
                 </h2>
               ) : (
                 <h2 className="display-2 max-md:text-[36px] text-center text-primary">
@@ -306,7 +310,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </div>
       </section>
-      <SectionSliderPost classCustom='md:pt-16 pt-12 xl:pt-[100px] pb-[65px] md:pb-[65px] xl:pb-[65px]' items={postsDisplay} />
+      <SectionSliderPost classCustom='md:pt-16 pt-12 xl:pt-[100px] lg:pb-[140px] pb-20 xl:pb-[250px]' items={postsDisplay} />
+
     </main >
   )
 }

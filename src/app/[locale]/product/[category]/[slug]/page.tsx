@@ -3,6 +3,7 @@ import Image from "next/image";
 import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
 import SliderProductRelated from "@/components/Product/SliderProductRelated";
 import ZoomableImage from "@/components/Common/ZoomableImage";
+
 import { getTranslations } from "next-intl/server";
 import { Translation } from "@/services/productService";
 import { notFound } from "next/navigation";
@@ -10,8 +11,8 @@ import { Metadata, ResolvingMetadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
 
 import { getTranslation, slugify } from "@/lib/format";
-
 export const dynamic = 'force-dynamic';
+
 
 export async function generateMetadata(
   { params }: { params: Promise<{ locale: string; category: string; slug: string }> },
@@ -19,12 +20,14 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { locale, category, slug } = await params;
   const { getProductBySlugWithFallback } = await import('@/services/productService');
-  const product = await getProductBySlugWithFallback(slug, { revalidate: 0, lang: locale });
+  const product = await getProductBySlugWithFallback(slug, { revalidate: 60, lang: locale });
+
 
   if (!product) return {};
 
   const translation = getTranslation<Translation>(product.translations, locale);
-  const productName = translation?.name || product.name || "";
+  const productName = translation?.custom_name || product.custom_name || translation?.name || product.name || "";
+
   const productDescription = translation?.description || product.description || "";
 
   // Ưu tiên lấy SEO từ bản dịch, nếu không có thì lấy SEO ở cấp root, cuối cùng mới fallback về name/description mặc định
@@ -39,6 +42,7 @@ export async function generateMetadata(
   const previousImages = (await parent).openGraph?.images || [];
   const productImage = customOgImage || product.image || (previousImages.length > 0 ? (typeof previousImages[0] === 'string' ? previousImages[0] : (previousImages[0] as any).url) : "/cover.jpg");
   const customRobots = translation?.meta_robots || product.meta_robots || undefined;
+
 
   const metadata = {
     title: seoTitle,
@@ -88,14 +92,19 @@ export default async function ProductDetailsPage({
   const { getProductBySlugWithFallback } = await import('@/services/productService');
   const product = await getProductBySlugWithFallback(slug, { revalidate: 0, lang: locale });
 
+
+
   if (!product) {
     notFound();
   }
 
   const t = await getTranslations({ locale });
 
+  const translation = getTranslation<Translation>(product.translations, locale);
+  const productName = translation?.custom_name || product.custom_name || translation?.name || product.name || "";
+
   const productData = {
-    title: product.name,
+    title: productName,
     description: product.description,
     variant_type: product.variant_type,
     image: {
@@ -106,11 +115,27 @@ export default async function ProductDetailsPage({
       ? product.images.map((img: any, idx: number) => ({ url: img.image, alt: img.alt_text || img.title || img.caption || `${product.name} ${idx + 1}` }))
       : [{ url: product.image, alt: product.name }],
     sizes: product.variants && product.variants.length > 0
-      ? product.variants.map((v: any) => ({
-        title: locale === "vi" ? v.size : (v.size_en || v.size),
-        price: v.price,
-      }))
-      : [{ title: t("product.standard"), price: parseInt(product.price) }],
+      ? product.variants.map((v: any) => {
+        const basePrice = typeof v.price === "number" ? v.price : parseFloat(v.price) || 0;
+        const campaignPrice = v.campaign_price ? parseFloat(String(v.campaign_price)) : (product.campaign_price ? parseFloat(String(product.campaign_price)) : null);
+        const finalPrice = campaignPrice && campaignPrice < basePrice ? campaignPrice : basePrice;
+        return {
+          id: v.id,
+          code: v.code || "",
+          title: locale === "vi" ? v.size : (v.size_en || v.size),
+          price: finalPrice,
+          original_price: campaignPrice && campaignPrice < basePrice ? basePrice : undefined,
+        };
+      })
+      : [{
+        id: product.id,
+        code: product.code || "",
+        title: t("product.standard"),
+        price: product.campaign_price && parseFloat(String(product.campaign_price)) < parseFloat(product.price) ? parseFloat(String(product.campaign_price)) : parseInt(product.price),
+        original_price: product.campaign_price && parseFloat(String(product.campaign_price)) < parseFloat(product.price) ? parseInt(product.price) : undefined,
+      }],
+
+
     category: {
       title: (product.categories && product.categories.length > 0 ? product.categories[0]?.title : product.category?.title) || "Sản phẩm",
       slug: (product.categories && product.categories.length > 0 ? product.categories[0]?.slug : product.category?.slug) || ""
@@ -143,7 +168,8 @@ export default async function ProductDetailsPage({
 
   const relatedProducts = product.related_products?.map((p: any) => {
     const translation = getTranslation(p.translations, locale) as any;
-    const name = translation?.name || p.name;
+    const name = translation?.custom_name || p.custom_name || translation?.name || p.name;
+
     const relatedCategory = p.categories && p.categories.length > 0 ? p.categories[0] : p.category;
     const catTranslation = getTranslation(relatedCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || relatedCategory?.title || "Sản phẩm";
@@ -158,6 +184,7 @@ export default async function ProductDetailsPage({
       slug: productSlug,
       price: parseFloat(String(p.price || 0)),
       variants: p.variants,
+
       category: { title: categoryName, slug: categorySlug },
       image: { url: p.image },
       description: translation?.description || p.description,
@@ -171,6 +198,7 @@ export default async function ProductDetailsPage({
         type="Product"
         data={product}
         url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')}/${locale}/product/${productData.category.slug}/${slug}`}
+
       />
       <section className="md:py-[56px] pt-4 pb-12 xl:py-[60px]">
         <div className="container">
@@ -179,6 +207,7 @@ export default async function ProductDetailsPage({
               <div className="md:block hidden space-y-6 md:sticky md:top-28">
                 {productData.images && productData.images.length > 0 ? <div className="relative w-full aspect-square rounded-[24px] overflow-hidden" >
                   <ZoomableImage
+
                     src={productData.image?.url || '/cover.jpg'}
                     alt={productData.title || "image product"}
                     fill
@@ -189,6 +218,7 @@ export default async function ProductDetailsPage({
                     return (
                       <div key={index} className="relative w-full aspect-square rounded-[24px] overflow-hidden" >
                         <ZoomableImage
+
                           src={image.url}
                           alt={image.alt || image.title || "image product"}
                           fill

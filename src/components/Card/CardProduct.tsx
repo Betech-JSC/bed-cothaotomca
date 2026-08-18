@@ -51,9 +51,23 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
 
   return (
     <div className="group rounded-[24px] relative overflow-hidden bg-white">
+      {/* Campaign Discount Badge */}
+      {((item as any).active_campaign || ((item as any).original_price && parseFloat(String((item as any).original_price)) > price)) && (
+        <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold text-[11px] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+          <span>🔥</span>
+          <span>
+            {(item as any).active_campaign?.discount_percent
+              ? `-${(item as any).active_campaign.discount_percent}%`
+              : (item as any).original_price
+              ? `-${Math.round((((item as any).original_price - price) / (item as any).original_price) * 100)}%`
+              : 'KHUYẾN MÃI'}
+          </span>
+        </div>
+      )}
+
       {/* Image */}
       <Link
-        href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
+        href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
         className="block"
       >
         <div className="aspect-w-1 aspect-h-1 relative overflow-hidden">
@@ -69,19 +83,25 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
 
       <div className="pt-2.5 pb-3 md:pt-3 md:pb-4 px-2 md:px-4 text-center">
         <Link
-          href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
+          href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
           className="block"
         >
           <h3 className={`title-1 max-md:text-[22px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 max-md:min-h-[48px] min-h-[44px] whitespace-pre-line`}>
             {item.custom_name || item.title}
           </h3>
+
         </Link>
         <div className="body-2 text-gray-900 line-clamp-2 min-h-[32px] md:min-h-[36px] mt-1 mb-2">{item.description}</div>
-        <div className="flex items-center justify-center gap-1.5">
+        <div className="flex items-center justify-center gap-2">
           {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
-          <span className="title-2 text-secondary">
+          <span className="title-2 text-secondary font-bold">
             {formatPrice(price)}
           </span>
+          {(item as any).original_price && parseFloat(String((item as any).original_price)) > price && (
+            <span className="text-gray-400 line-through text-sm">
+              {formatPrice(parseFloat(String((item as any).original_price)))}
+            </span>
+          )}
         </div>
       </div>
     </div>

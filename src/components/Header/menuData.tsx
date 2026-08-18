@@ -27,6 +27,12 @@ const menuData: Menu[] = [
   },
   {
     id: 4,
+    title: "Tra cứu đơn hàng",
+    path: "/order-lookup",
+    newTab: false,
+  },
+  {
+    id: 5,
     title: "Pages",
     newTab: false,
     submenu: [

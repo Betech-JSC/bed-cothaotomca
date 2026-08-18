@@ -23,9 +23,9 @@ export interface CreateOrderPayload {
   };
   delivery_type: DeliveryType;
   delivery?: {
-    receiver: string;
-    contact_number: string;
-    address: string;
+    receiver?: string;
+    contact_number?: string;
+    address?: string;
     price?: number;
     expected_delivery?: string;
   } | null;
@@ -80,10 +80,24 @@ export interface Branch {
   isActive: boolean;
 }
 
+export interface OperatingHoursConfig {
+  store_open: string;
+  store_close: string;
+  delivery_open: string;
+  delivery_close: string;
+  last_order_cutoff?: string;
+  is_store_open: boolean;
+  is_delivery_open: boolean;
+  can_order_now?: boolean;
+  current_time?: string;
+  message?: string | null;
+}
+
 export interface CheckoutConfig {
   delivery_types: { value: DeliveryType; label: string }[];
   default_shipping_fee: string;
   branches: Branch[];
+  operating_hours?: OperatingHoursConfig;
 }
 
 export class OrderApiError extends Error {
@@ -210,12 +224,18 @@ export interface ValidateVoucherResult {
     value: number;
     campaign_id: number;
     campaign_name: string;
+    prereq_price?: number;
   };
   message: string;
 }
 
-export async function validateVoucher(code: string): Promise<ValidateVoucherResult> {
-  const res = await fetch(`${API_BASE}/vouchers/validate?code=${encodeURIComponent(code)}`, {
+export async function validateVoucher(code: string, subtotal?: number): Promise<ValidateVoucherResult> {
+  const params = new URLSearchParams({ code });
+  if (subtotal !== undefined) {
+    params.append("subtotal", subtotal.toString());
+  }
+
+  const res = await fetch(`${API_BASE}/vouchers/validate?${params.toString()}`, {
     headers: { Accept: "application/json" },
     cache: "no-store",
   });
@@ -230,3 +250,153 @@ export async function validateVoucher(code: string): Promise<ValidateVoucherResu
 
   return json as ValidateVoucherResult;
 }
+
+export interface AdministrativeWard {
+  id: string;
+  name: string;
+  district?: string;
+  province?: string;
+  old_ward?: string;
+}
+
+export interface AdministrativeProvince {
+  id: string;
+  name: string;
+  wards: AdministrativeWard[];
+}
+
+export async function getAdministrativeUnits(): Promise<AdministrativeProvince[]> {
+  try {
+    const res = await fetch(`${API_BASE}/administrative-units`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data as AdministrativeProvince[];
+  } catch (err) {
+    console.error("Failed to fetch administrative units:", err);
+    return [];
+  }
+}
+
+export interface ShippingCalculationResult {
+  shipping_fee: number;
+  original_fee: number;
+  is_freeship: boolean;
+  freeship_reason?: string | null;
+  is_deliverable: boolean;
+  is_configured_area: boolean;
+  branch_id?: number | null;
+  branch_name?: string | null;
+  message?: string | null;
+}
+
+export async function calculateShippingFee(params: {
+  province?: string;
+  district?: string;
+  ward?: string;
+  ward_id?: string;
+  subtotal: number;
+  voucher_code?: string;
+}): Promise<ShippingCalculationResult> {
+  try {
+    const res = await fetch(`${API_BASE}/shipping/calculate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!res.ok) {
+      throw new Error("Không thể tính phí giao hàng.");
+    }
+
+    const json = await res.json();
+    return json.data as ShippingCalculationResult;
+  } catch (err) {
+    console.error("Failed to calculate shipping fee:", err);
+    return {
+      shipping_fee: 50000,
+      original_fee: 50000,
+      is_freeship: false,
+      is_deliverable: true,
+      is_configured_area: false,
+    };
+  }
+}
+
+export interface ShippingSettings {
+  min_order_amount: number;
+  is_min_amount_enabled: boolean;
+  voucher_codes: string[];
+  is_voucher_enabled: boolean;
+  default_shipping_fee: number;
+  unconfigured_area_action: string;
+}
+
+export async function getShippingSettings(): Promise<ShippingSettings | null> {
+  try {
+    const res = await fetch(`${API_BASE}/shipping/settings`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data as ShippingSettings;
+  } catch (err) {
+    console.error("Failed to fetch shipping settings:", err);
+    return null;
+  }
+}
+
+/** Hủy đơn hàng trực tiếp (dành cho đơn COD) */
+export async function cancelOrderApi(
+  orderCode: string,
+  phone: string,
+  reason?: string,
+): Promise<{ message: string; data: Record<string, unknown> }> {
+  const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderCode)}/cancel`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ phone, reason }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new OrderApiError(res.status, json);
+  }
+
+  return json;
+}
+
+/** Gửi yêu cầu hủy đơn hàng (dành cho đơn đã thanh toán Online) */
+export async function requestCancelOrderApi(
+  orderCode: string,
+  phone: string,
+  reason: string,
+): Promise<{ message: string; data: Record<string, unknown> }> {
+  const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderCode)}/request-cancel`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ phone, reason }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new OrderApiError(res.status, json);
+  }
+
+  return json;
+}
+

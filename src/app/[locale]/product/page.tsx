@@ -108,7 +108,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     };
   }
 
-  const bannerItem = bannerData.data[0];
+  const bannerItem = bannerData?.data?.[0];
   const banner = {
     image: {
       url: bannerItem?.image || '/images/demo/banner-product.jpg',
@@ -126,14 +126,14 @@ export default async function ProductPage({ params, searchParams }: Props) {
       <ProductIndexPage
         category={null}
         selectedIngredients={selectedIngredients}
-        products={productsData.data}
-        categories={categoriesData.data}
-        ingredients={ingredientsData.data}
+        products={productsData?.data || []}
+        categories={categoriesData?.data || []}
+        ingredients={ingredientsData?.data || []}
         locale={locale}
         pagination={{
-          currentPage: productsData.current_page || 1,
-          lastPage: productsData.last_page || 1,
-          total: productsData.total || 0,
+          currentPage: productsData?.current_page || 1,
+          lastPage: productsData?.last_page || 1,
+          total: productsData?.total || 0,
         }}
       />
     </main>

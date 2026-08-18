@@ -41,7 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         const productBase = locale === 'vi' ? '/san-pham' : '/product';
         const localeProductRoutes = productsRes.data.map((product: any) => {
           const translation = getTranslation(product.translations, locale) as any;
-          const name = translation?.name || product.name || "";
+          const name = translation?.custom_name || product.custom_name || translation?.name || product.name || "";
 
           const productCategory = product.categories && product.categories.length > 0
             ? product.categories[0]

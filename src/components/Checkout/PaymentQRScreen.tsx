@@ -52,6 +52,8 @@ export default function PaymentQRScreen({
     orderData.order_code,
   );
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   // Redirect khi đã thanh toán thành công hoặc đã đồng bộ
   useEffect(() => {
@@ -70,6 +72,45 @@ export default function PaymentQRScreen({
       setTimeout(() => setCopied(false), 2000);
     } catch {
       /* ignore */
+    }
+  };
+
+  const handleDownloadQR = async () => {
+    if (countdown.isExpired || downloading) return;
+    setDownloading(true);
+    try {
+      const response = await fetch(orderData.qr_url);
+      if (!response.ok) throw new Error("Fetch QR image failed");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `QR_Thanh_Toan_${orderData.order_code}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 3000);
+    } catch (err) {
+      console.warn("Blob download failed, fallback to direct open/download link", err);
+      try {
+        const link = document.createElement("a");
+        link.href = orderData.qr_url;
+        link.target = "_blank";
+        link.download = `QR_Thanh_Toan_${orderData.order_code}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setDownloaded(true);
+        setTimeout(() => setDownloaded(false), 3000);
+      } catch (e) {
+        console.error("Failed to download QR image", e);
+      }
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -112,7 +153,7 @@ export default function PaymentQRScreen({
       <div className="lg:col-span-5 flex flex-col items-center gap-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 w-full flex flex-col items-center gap-4">
           <h2 className="headline-2 text-primary text-center">
-            Quét mã QR để thanh toán
+            {t("qr.title")}
           </h2>
 
           {/* QR Image */}
@@ -121,7 +162,7 @@ export default function PaymentQRScreen({
               <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center gap-2">
                 <span className="text-4xl">⏰</span>
                 <p className="body-2 text-gray-500 text-center px-2">
-                  Mã QR đã hết hạn
+                  {t("qr.expired")}
                 </p>
               </div>
             ) : (
@@ -145,10 +186,54 @@ export default function PaymentQRScreen({
             <span>⏱</span>
             <span>
               {countdown.isExpired
-                ? "Đã hết hạn"
-                : `Hết hạn sau: ${countdown.label}`}
+                ? t("qr.expired_tag")
+                : `${t("qr.expires_in")} ${countdown.label}`}
             </span>
           </div>
+
+          {/* Option: Lưu / Tải mã QR về máy */}
+          {!countdown.isExpired && (
+            <div className="w-full space-y-3 pt-1">
+              <button
+                type="button"
+                onClick={handleDownloadQR}
+                disabled={downloading}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary text-white font-bold hover:bg-primary/95 active:scale-[0.99] transition-all shadow-sm disabled:opacity-50 text-sm cursor-pointer"
+              >
+                {downloading ? (
+                  <>
+                    <span className="animate-spin inline-block">⟳</span>
+                    <span>{t("qr.downloading")}</span>
+                  </>
+                ) : downloaded ? (
+                  <>
+                    <span className="text-green-400 font-bold text-base">✓</span>
+                    <span>{t("qr.downloaded")}</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>{t("qr.download_btn")}</span>
+                  </>
+                )}
+              </button>
+
+              {/* Mobile guidance instructions */}
+              <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-3.5 w-full text-xs text-blue-950 space-y-1.5 font-serif text-left">
+                <p className="font-bold flex items-center gap-1.5 text-blue-900">
+                  <span>💡</span>
+                  <span>Hướng dẫn thanh toán trên điện thoại:</span>
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-blue-800 font-medium pl-0.5 leading-relaxed">
+                  <li>Bấm nút <strong>"{t("qr.download_btn")}"</strong> ở trên.</li>
+                  <li>Mở ứng dụng <strong>Banking</strong> (Vietcombank, MB, Techcombank...).</li>
+                  <li>Chọn <strong>Quét mã QR</strong> ➔ chọn <strong>Tải ảnh từ thư viện</strong>.</li>
+                </ol>
+              </div>
+            </div>
+          )}
 
           {/* Trạng thái polling */}
           {!countdown.isExpired && (
@@ -156,14 +241,14 @@ export default function PaymentQRScreen({
               {statusData?.payment_status === "paid" ? (
                 <>
                   <span className="text-green-500">✓</span>
-                  <span className="text-green-600">Đã nhận thanh toán — đang xử lý...</span>
+                  <span className="text-green-600">{t("qr.payment_received")}</span>
                 </>
               ) : statusError ? (
                 <span className="text-red-500 text-xs">{statusError}</span>
               ) : (
                 <>
                   <span className="animate-spin inline-block">⟳</span>
-                  <span>Đang chờ xác nhận thanh toán...</span>
+                  <span>{t("qr.waiting_payment")}</span>
                 </>
               )}
             </div>
@@ -177,12 +262,12 @@ export default function PaymentQRScreen({
             onClick={onCancel}
             className="btn btn-secondary w-full"
           >
-            {countdown.isExpired ? "Đặt lại đơn hàng" : "Huỷ và quay lại"}
+            {countdown.isExpired ? t("qr.reorder") : t("qr.cancel_back")}
           </button>
         )}
 
-        {/* DEV ONLY: Simulate Payment Button */}
-        {(process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_DEV_MODE === "true") && !countdown.isExpired && (
+        {/* DEV ONLY: Simulate Payment Button (Requires explicit NEXT_PUBLIC_ENABLE_DEV_PAYMENT=true) */}
+        {process.env.NEXT_PUBLIC_ENABLE_DEV_PAYMENT === "true" && !countdown.isExpired && (
           <button
             type="button"
             onClick={handleSimulatePayment}
@@ -196,20 +281,20 @@ export default function PaymentQRScreen({
       {/* Payment Info Panel */}
       <div className="lg:col-span-7 space-y-4">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
-          <h2 className="headline-2 text-primary">Thông tin chuyển khoản</h2>
+          <h2 className="headline-2 text-primary">{t("qr.bank_info_title")}</h2>
 
           <div className="space-y-3">
             {[
-              { label: "Ngân hàng", value: bankCode },
-              { label: "Số tài khoản", value: bankAccount, copyable: true },
+              { label: t("qr.bank_name"), value: bankCode },
+              { label: t("qr.account_number"), value: bankAccount, copyable: true },
               {
-                label: "Số tiền",
+                label: t("qr.amount"),
                 value: formatPrice(amount),
                 highlight: true,
                 copyable: true,
                 copyValue: String(amount),
               },
-              { label: "Nội dung CK", value: content, copyable: true, mono: true },
+              { label: t("qr.content"), value: content, copyable: true, mono: true },
             ].map((row) => (
               <div
                 key={row.label}
@@ -228,9 +313,9 @@ export default function PaymentQRScreen({
                       type="button"
                       onClick={() => handleCopy(row.copyValue ?? row.value)}
                       className="shrink-0 text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-primary hover:text-white transition-colors"
-                      title="Sao chép"
+                      title={t("qr.copy")}
                     >
-                      {copied ? "✓" : "Copy"}
+                      {copied ? "✓" : t("qr.copy")}
                     </button>
                   )}
                 </div>
@@ -252,10 +337,10 @@ export default function PaymentQRScreen({
 
           {/* Order summary */}
           <div className="border-t border-gray-100 pt-4 space-y-2 body-1 text-gray-700">
-            <p className="label-1 text-gray-500">Mã đơn hàng</p>
+            <p className="label-1 text-gray-500">{t("order_summary") || "Mã đơn hàng"}</p>
             <p className="title-2 font-mono text-primary">{orderData.order_code}</p>
             <div className="flex justify-between pt-2 headline-2 text-primary">
-              <span>Tổng thanh toán</span>
+              <span>{t("total") || "Tổng thanh toán"}</span>
               <span className="text-secondary">{formatPrice(amount)}</span>
             </div>
           </div>
