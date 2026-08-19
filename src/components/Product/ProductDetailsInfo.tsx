@@ -6,7 +6,6 @@ import BoxMessage from "@/components/Icons/BoxMessage";
 import SocialShare from "@/components/SocialShare";
 import ProductInfoAccordion from "@/components/Product/ProductInfoAccordion";
 import { useTranslations } from "next-intl";
-import SliderProductImages from "@/components/Product/SliderProductImages";
 // import { useRouter } from "@/i18n/routing";
 import type { ProductDetailView } from "@/services/productService";
 
@@ -53,11 +52,6 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
           <h1 className="headline-1 max-md:text-[24px] text-primary whitespace-pre-line">
             {productData.title}
           </h1>
-          {productData.images.length > 0 && (
-            <div className="mb-6 md:hidden w-full">
-              <SliderProductImages items={productData.images} />
-            </div>
-          )}
         </div>
 
         <div

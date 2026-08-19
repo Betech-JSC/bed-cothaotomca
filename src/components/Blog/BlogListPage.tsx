@@ -128,6 +128,13 @@ export default function BlogListPage({
 
             <AnimateOnScroll animate="slideup" delay={0} className="w-full overflow-x-auto">
               <div className="flex items-center justify-center gap-4 flex-nowrap w-max mx-auto py-2">
+                <button
+                  onClick={() => handleCategoryChange()}
+                  className={`btn label-1 !min-w-auto px-6 py-2.5 rounded-full transition-all duration-300 ${!currentCategoryId ? 'bg-secondary text-yellow' : 'bg-white text-gray-900 border border-gray-200 lg:hover:bg-primary lg:hover:text-white'
+                    }`}
+                >
+                  {t('common.all')}
+                </button>
                 {categoriesDisplay.map((category) => (
                   <button
                     key={category.id}

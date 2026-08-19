@@ -70,8 +70,8 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
               className="!static"
             >
               {products.map((product, index) => (
-                <SwiperSlide key={product.id}>
-                  <AnimateOnScroll animate="slideup" delay={300}>
+                <SwiperSlide key={product.id} className="!h-auto flex">
+                  <AnimateOnScroll animate="slideup" delay={300} className="h-full w-full">
                     <CardProduct item={product} />
                   </AnimateOnScroll>
                 </SwiperSlide>

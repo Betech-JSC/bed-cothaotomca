@@ -50,7 +50,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const price = getPrice();
 
   return (
-    <div className="group rounded-[0.75rem] md:rounded-[1.5rem] relative overflow-hidden bg-white">
+    <div className="group rounded-[24px] relative overflow-hidden bg-white h-full flex flex-col w-full shadow-sm">
       {/* Campaign Discount Badge */}
       {((item as any).active_campaign || ((item as any).original_price && parseFloat(String((item as any).original_price)) > price)) && (
         <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold text-[0.6875rem] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
@@ -68,9 +68,9 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
       {/* Image */}
       <Link
         href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
-        className="block"
+        className="block shrink-0"
       >
-        <div className="aspect-w-1 aspect-h-1 relative overflow-hidden">
+        <div className="aspect-square w-full relative overflow-hidden">
           <Image
             src={imageSrc}
             alt={item.image?.alt || item.title}
@@ -81,18 +81,21 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         </div>
       </Link>
 
-      <div className="pt-3 pb-3.5 md:pt-4 md:pb-4 px-3 md:px-4 text-center">
-        <Link
-          href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
-          className="block"
-        >
-          <h3 className={`text-[1rem] md:text-[1.25rem] font-display font-bold text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 max-md:min-h-[3rem] min-h-[2.75rem] whitespace-pre-line`}>
-            {item.custom_name || item.title}
-          </h3>
-
-        </Link>
-        <div className="body-2 text-gray-900 line-clamp-2 min-h-[2rem] md:min-h-[2.25rem] mt-1 mb-2">{item.description}</div>
-        <div className="flex items-center justify-center gap-2">
+      <div className="pt-2.5 pb-3 md:pt-3 md:pb-4 px-2 md:px-4 text-center flex flex-col flex-1 justify-between">
+        <div>
+          <Link
+            href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
+            className="flex items-center justify-center min-h-[58px] md:min-h-[64px]"
+          >
+            <h3 className="title-1 max-md:text-[22px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 whitespace-pre-line">
+              {item.custom_name || item.title}
+            </h3>
+          </Link>
+          <div className="body-2 text-gray-900 line-clamp-2 min-h-[38px] md:min-h-[40px] mt-1 mb-2 flex items-center justify-center">
+            <span>{item.description}</span>
+          </div>
+        </div>
+        <div className="mt-auto pt-2 flex items-center justify-center gap-1.5">
           {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
           <span className="text-[1.125rem] font-display font-bold text-secondary">
             {formatPrice(price)}
