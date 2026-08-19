@@ -407,25 +407,40 @@ const MobileMenu = ({
             onClick={onToggle}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
-            className="text-yellow duration-300 ease-in-out"
+            className="text-yellow duration-300 ease-in-out cursor-pointer"
           >
             <span className="sr-only">
               {open ? "Close menu" : "Open menu"}
             </span>
-            <div className="flex h-6 w-6 flex-col items-center justify-center gap-1">
-              <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${open ? "translate-y-1.5 rotate-45" : ""
-                  }`}
-              />
-              <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-opacity duration-200 ${open ? "opacity-0" : "opacity-100"
-                  }`}
-              />
-              <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${open ? "-translate-y-1.5 -rotate-45" : ""
-                  }`}
-              />
-            </div>
+            {open ? (
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            ) : (
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            )}
           </button>
         </div>
       </div>

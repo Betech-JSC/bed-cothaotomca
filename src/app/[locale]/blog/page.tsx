@@ -14,7 +14,7 @@ export default async function BlogIndexPage({
   const { page = "1", category_id } = await searchParams;
 
   const categoriesData = await getBlogCategories({ lang: locale }).catch(() => ({ data: [] }));
-  const activeCategoryId = category_id || categoriesData.data[0]?.id?.toString();
+  const activeCategoryId = category_id;
 
   const [bannerData, featuredBlogsData, allBlogsData] = await Promise.all([
     getApi<HeroBanner>('banners', { params: { position: 'banner_news', lang: locale } }).catch(() => ({ data: [] })),
