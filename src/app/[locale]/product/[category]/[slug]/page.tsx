@@ -1,8 +1,7 @@
 import Breadcrumb from "@/components/Common/Breadcrumb";
-import Image from "next/image";
 import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
+import ProductGallery from "@/components/Product/ProductGallery";
 import SliderProductRelated from "@/components/Product/SliderProductRelated";
-import ZoomableImage from "@/components/Common/ZoomableImage";
 import { getTranslations } from "next-intl/server";
 import { Translation } from "@/services/productService";
 import { notFound } from "next/navigation";
@@ -94,17 +93,45 @@ export default async function ProductDetailsPage({
 
   const t = await getTranslations({ locale });
 
+  // Thu thập danh sách ảnh (bao gồm ảnh đại diện và ảnh gallery con)
+  const galleryImages: { url: string; alt: string }[] = [];
+  if (product.image) {
+    galleryImages.push({ url: product.image, alt: product.name });
+  }
+  if (product.images && product.images.length > 0) {
+    product.images.forEach((img: any, idx: number) => {
+      const imgUrl = img.image || img.url;
+      if (imgUrl && !galleryImages.some((i) => i.url === imgUrl)) {
+        galleryImages.push({
+          url: imgUrl,
+          alt: img.alt_text || img.title || img.caption || `${product.name} ${idx + 1}`,
+        });
+      }
+    });
+  } else if (product.gallery && product.gallery.length > 0) {
+    product.gallery.forEach((imgUrl: string, idx: number) => {
+      if (imgUrl && !galleryImages.some((i) => i.url === imgUrl)) {
+        galleryImages.push({
+          url: imgUrl,
+          alt: `${product.name} ${idx + 1}`,
+        });
+      }
+    });
+  }
+
+  if (galleryImages.length === 0) {
+    galleryImages.push({ url: product.image || "/cover.jpg", alt: product.name });
+  }
+
   const productData = {
     title: product.name,
     description: product.description,
     variant_type: product.variant_type,
     image: {
-      url: product.image,
+      url: product.image || galleryImages[0]?.url || "/cover.jpg",
       alt: product.name,
     },
-    images: product.images && product.images.length > 0
-      ? product.images.map((img: any, idx: number) => ({ url: img.image, alt: img.alt_text || img.title || img.caption || `${product.name} ${idx + 1}` }))
-      : [{ url: product.image, alt: product.name }],
+    images: galleryImages,
     sizes: product.variants && product.variants.length > 0
       ? product.variants.map((v: any) => ({
         title: locale === "vi" ? v.size : (v.size_en || v.size),
@@ -174,34 +201,22 @@ export default async function ProductDetailsPage({
       />
       <section className="md:py-[56px] pt-4 pb-12 xl:py-[60px]">
         <div className="container">
-          <div className="grid grid-cols-12 gap-4 md:gap-6 xl:gap-8">
-            <div className="col-span-full lg:col-span-6 xl:col-span-7 lg:pr-3 xl:pr-4">
-              <div className="md:block hidden space-y-6 md:sticky md:top-28">
-                {productData.images && productData.images.length > 0 ? <div className="relative w-full aspect-square rounded-[24px] overflow-hidden" >
-                  <ZoomableImage
-                    src={productData.image?.url || '/cover.jpg'}
-                    alt={productData.title || "image product"}
-                    fill
-                    className="object-cover w-full h-full"
-                  />
-                </div> : <>
-                  {productData.images.map((image: any, index: number) => {
-                    return (
-                      <div key={index} className="relative w-full aspect-square rounded-[24px] overflow-hidden" >
-                        <ZoomableImage
-                          src={image.url}
-                          alt={image.alt || image.title || "image product"}
-                          fill
-                          className="object-cover w-full h-full"
-                        />
-                      </div>
-                    );
-                  })}
-                </>}
+          {/* Breadcrumb trên Mobile */}
+          <div className="space-y-3 flex flex-col items-start mb-4 md:mb-6 lg:hidden">
+            <Breadcrumb breadcrumbs={breadcrumbs} />
+          </div>
+
+          <div className="grid grid-cols-12 gap-6 lg:gap-8 xl:gap-12">
+            {/* Cột Trái: Thư viện ảnh sản phẩm */}
+            <div className="col-span-full lg:col-span-6 xl:col-span-7">
+              <div className="space-y-6 lg:sticky lg:top-28">
+                <ProductGallery images={productData.images} title={productData.title} />
               </div>
             </div>
+
+            {/* Cột Phải: Thông tin chi tiết sản phẩm */}
             <div className="col-span-full lg:col-span-6 xl:col-span-5">
-              <div className="space-y-3 flex flex-col items-start mb-3 md:mb-8 xl:mb-12">
+              <div className="space-y-3 hidden lg:flex flex-col items-start mb-4 md:mb-6 xl:mb-8">
                 <Breadcrumb breadcrumbs={breadcrumbs} />
               </div>
               <ProductDetailsInfo productData={productData} />

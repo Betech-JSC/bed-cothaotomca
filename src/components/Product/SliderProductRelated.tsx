@@ -57,7 +57,7 @@ const SliderProductRelated: React.FC<SliderProductRelatedProps> = ({ products })
             className="!static"
           >
             {products.map((product) => (
-              <SwiperSlide key={product.id}>
+              <SwiperSlide key={product.id} className="!h-auto flex">
                 <CardProduct item={product} />
               </SwiperSlide>
             ))}

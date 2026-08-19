@@ -50,13 +50,13 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const price = getPrice();
 
   return (
-    <div className="group rounded-[24px] relative overflow-hidden bg-white">
+    <div className="group rounded-[24px] relative overflow-hidden bg-white h-full flex flex-col w-full">
       {/* Image */}
       <Link
         href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
-        className="block"
+        className="block shrink-0"
       >
-        <div className="aspect-w-1 aspect-h-1 relative overflow-hidden">
+        <div className="aspect-square w-full relative overflow-hidden">
           <Image
             src={imageSrc}
             alt={item.image?.alt || item.title}
@@ -67,17 +67,21 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         </div>
       </Link>
 
-      <div className="pt-2.5 pb-3 md:pt-3 md:pb-4 px-2 md:px-4 text-center">
-        <Link
-          href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
-          className="block"
-        >
-          <h3 className={`title-1 max-md:text-[22px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 max-md:min-h-[48px] min-h-[44px] whitespace-pre-line`}>
-            {item.custom_name || item.title}
-          </h3>
-        </Link>
-        <div className="body-2 text-gray-900 line-clamp-2 min-h-[32px] md:min-h-[36px] mt-1 mb-2">{item.description}</div>
-        <div className="flex items-center justify-center gap-1.5">
+      <div className="pt-2.5 pb-3 md:pt-3 md:pb-4 px-2 md:px-4 text-center flex flex-col flex-1 justify-between">
+        <div>
+          <Link
+            href={{ pathname: '/product/[category]/[slug]', params: { category: item.category.slug || item.category.id, slug: item.slug } }}
+            className="flex items-center justify-center min-h-[58px] md:min-h-[64px]"
+          >
+            <h3 className="title-1 max-md:text-[22px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 whitespace-pre-line">
+              {item.custom_name || item.title}
+            </h3>
+          </Link>
+          <div className="body-2 text-gray-900 line-clamp-2 min-h-[38px] md:min-h-[40px] mt-1 mb-2 flex items-center justify-center">
+            <span>{item.description}</span>
+          </div>
+        </div>
+        <div className="mt-auto pt-2 flex items-center justify-center gap-1.5">
           {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
           <span className="title-2 text-secondary">
             {formatPrice(price)}
