@@ -29,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getVietnamDate, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
+import Chevron from "@/components/Icons/Chevron";
 
 const POPULAR_DISTRICTS = [
   // Hà Nội
