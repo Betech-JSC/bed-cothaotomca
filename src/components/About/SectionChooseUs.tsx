@@ -30,7 +30,7 @@ const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
   };
 
   return (
-    <section className="relative h-[660px] md:h-[550px] xl:h-[810px]">
+    <section className="relative overflow-hidden h-[660px] md:h-[550px] xl:h-[810px]">
       {/* Custom Vertical Pagination */}
       <div className="absolute max-md:left-1/2 max-md:-translate-x-1/2 max-md:bottom-4 md:right-0 md:top-1/2 md:-translate-y-1/2 z-20 flex flex-row md:flex-col justify-center md:justify-end items-center md:items-end gap-2 md:pr-8">
         {items.map((_, index) => {

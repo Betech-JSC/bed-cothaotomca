@@ -62,57 +62,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
-  // OTP States
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCountdown, setOtpCountdown] = useState(0);
-  const [sendingOtp, setSendingOtp] = useState(false);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (otpCountdown > 0) {
-      timer = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [otpCountdown]);
-
-  const handleSendOtp = async () => {
-    const phoneTrimmed = formData.phone.trim();
-    if (!phoneTrimmed) {
-      alert("Vui lòng nhập số điện thoại.");
-      return;
-    }
-
-    setSendingOtp(true);
-    try {
-      const token = localStorage.getItem("auth_token");
-      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
-      const res = await fetch(`${BASE_URL}/auth/profile/send-otp`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ phone: phoneTrimmed }),
-      });
-
-      const body = await res.json();
-      if (res.ok) {
-        setOtpSent(true);
-        setOtpCountdown(60);
-        alert(body.message || "Mã OTP đã được gửi thành công. Hãy kiểm tra điện thoại của bạn.");
-      } else {
-        const errorMsg = body.errors?.phone?.[0] || body.message || "Gửi OTP thất bại.";
-        alert(errorMsg);
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert("Đã xảy ra lỗi kết nối khi gửi OTP. Vui lòng thử lại sau.");
-    } finally {
-      setSendingOtp(false);
-    }
-  };
 
   // Load address from localStorage on mount
   useEffect(() => {
@@ -173,37 +123,20 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const isPhoneChanged = formData.phone.trim().replace(/[^0-9]/g, "") !== (user.phone || "").replace(/[^0-9]/g, "");
-    if (isPhoneChanged && !otpSent) {
-      alert("Vui lòng gửi và xác thực mã OTP trước khi thay đổi số điện thoại.");
-      return;
-    }
-    if (isPhoneChanged && otp.length !== 6) {
-      alert("Mã OTP phải có 6 chữ số.");
-      return;
-    }
-
-
     setLoading(true);
     try {
       const payload: any = {
         name: formData.fullname.trim(),
         email: formData.email.trim() || undefined,
+        phone: formData.phone.trim() || undefined,
       };
-
-      if (isPhoneChanged) {
-        payload.phone = formData.phone.trim();
-        payload.otp = otp;
-
-      }
 
       const res = await updateProfile(payload);
 
       if (res.success) {
         localStorage.setItem("customer_address", formData.address.trim());
         alert(t("save_success") || "Đã lưu thay đổi thông tin cá nhân!");
-        setOtpSent(false);
-        setOtp("");
+        await refreshUser();
       } else {
         alert(res.message || "Cập nhật thông tin thất bại.");
       }
@@ -692,43 +625,15 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 <label className="text-sm font-semibold text-primary block">
                   {t("phone")}
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    required
-                    className="input-form flex-1 rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
-                  />
-                  {formData.phone.trim().replace(/[^0-9]/g, "") !== (user.phone || "").replace(/[^0-9]/g, "") && (
-                    <button
-                      type="button"
-                      disabled={sendingOtp || otpCountdown > 0}
-                      onClick={handleSendOtp}
-                      className="px-4 py-2 text-xs font-semibold text-white bg-primary rounded-[12px] hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-[44px]"
-                    >
-                      {sendingOtp ? "Đang gửi..." : otpCountdown > 0 ? `Gửi lại (${otpCountdown}s)` : "Gửi OTP"}
-                    </button>
-                  )}
-                </div>
-                {formData.phone.trim().replace(/[^0-9]/g, "") !== (user.phone || "").replace(/[^0-9]/g, "") && otpSent && (
-                  <div className="mt-2 space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-600 block">
-                      Mã xác thực OTP (Đã gửi)
-                    </label>
-                    <input
-                      type="text"
-                      name="otp"
-                      maxLength={6}
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ""))}
-                      required
-                      placeholder="Nhập 6 số OTP"
-                      className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
-                    />
-                  </div>
-                )}
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="0912345678"
+                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
+                />
               </div>
 
 

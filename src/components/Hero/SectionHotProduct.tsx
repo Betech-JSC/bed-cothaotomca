@@ -21,7 +21,7 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
   const t = useTranslations();
 
   return (
-    <section className='relative md:py-[3.5rem] pt-[2.375rem] pb-[3.75rem] xl:pt-[3.75rem] xl:pb-[18.75rem]'>
+    <section className='relative overflow-hidden md:py-[3.5rem] pt-[2.375rem] pb-[3.75rem] xl:pt-[3.75rem] xl:pb-[18.75rem]'>
       <div className="absolute inset-0">
         <Image
           src="/images/home/bg-hot-product.png"

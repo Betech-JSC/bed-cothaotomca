@@ -31,7 +31,7 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
   };
 
   return (
-    <section className="relative h-[660px] md:h-[550px] xl:h-[810px]">
+    <section className="relative overflow-hidden h-[660px] md:h-[550px] xl:h-[810px]">
       {/* Title overlay */}
       <div className="absolute inset-0 w-full pt-[38px] xl:pt-10 z-10 pointer-events-none">
         <div className="container">

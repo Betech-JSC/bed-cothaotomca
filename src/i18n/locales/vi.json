@@ -339,12 +339,13 @@
   },
   "signin": {
     "title": "Đăng nhập",
-    "description": "Chào mừng bạn đã quay lại. Vui lòng nhập thông tin đăng nhập của bạn",
+    "description": "Đăng nhập ngay để tích điểm và không bỏ lỡ ưu đãi độc quyền.",
     "email_phone": "Email hoặc Số điện thoại",
-    "email_phone_placeholder": "Nhập email hoặc số điện thoại...",
+    "email_phone_placeholder": "name@email.com",
     "password": "Mật khẩu",
-    "password_placeholder": "Nhập mật khẩu...",
+    "password_placeholder": "Nhập mật khẩu",
     "button": "Đăng nhập",
+    "no_account": "Chưa có tài khoản?",
     "forgot_password": "Quên mật khẩu?",
     "register_now": "Đăng ký ngay"
   },

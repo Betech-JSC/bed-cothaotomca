@@ -340,14 +340,15 @@
   },
   "signin": {
     "title": "Sign In",
-    "description": "Welcome back. Please enter your login credentials",
+    "description": "Sign in now to earn points and enjoy exclusive offers.",
     "email_phone": "Email or Phone Number",
-    "email_phone_placeholder": "Enter email or phone number...",
+    "email_phone_placeholder": "name@email.com",
     "password": "Password",
-    "password_placeholder": "Enter password...",
+    "password_placeholder": "Enter password",
     "button": "Sign In",
+    "no_account": "Don't have an account?",
     "forgot_password": "Forgot password?",
-    "register_now": "Register now"
+    "register_now": "Sign Up now"
   },
   "signup": {
     "title": "Sign Up",

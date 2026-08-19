@@ -17,10 +17,24 @@ const Footer = () => {
   const settings = useGeneralSettings();
   const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
   const hotlineClean = hotline.replace(/\s/g, "");
+  const isAuthPage = [
+    "/signin",
+    "/dang-nhap",
+    "/signup",
+    "/dang-ky",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/quen-mat-khau",
+    "/reset-password",
+    "/dat-lai-mat-khau",
+  ].some((path) => pathname === path || pathname?.includes(path));
+
   const isShowWave = pathname === "/" || pathname === "/about";
+  const noMarginTop = isShowWave || isAuthPage;
 
   return (
-    <footer className={`relative z-10 bg-[#142A68] pt-16 md:pt-8 xl:pt-16 pb-6 ${isShowWave ? "mt-0" : "mt-12 md:mt-20"}`}>
+    <footer className={`relative z-10 bg-[#142A68] overflow-x-clip pt-16 md:pt-8 xl:pt-16 pb-6 ${noMarginTop ? "mt-0" : "mt-12 md:mt-20"}`}>
       {isShowWave && (
         <div className="hidden lg:block absolute top-0 left-0 w-full -translate-y-[90%] pointer-events-none z-10">
           <img
@@ -87,17 +101,17 @@ const Footer = () => {
                 ))}
               </div>
               <div className="space-y-3">
-                <div className="flex md:flex-row flex-col md:gap-6 gap-3">
-                  <a href={`tel:${hotlineClean}`} className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out">
+                <div className="flex flex-wrap items-center md:gap-4 xl:gap-6 gap-3">
+                  <a href={`tel:${hotlineClean}`} className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1.5 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out whitespace-nowrap shrink-0">
                     <Hotline />
                     <span>{hotline}</span>
                   </a>
-                  <a href={settings?.link_facebook || '#'} target="_blank" rel="noopener noreferrer nofollow" className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out">
+                  <a href={settings?.link_facebook || '#'} target="_blank" rel="noopener noreferrer nofollow" className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1.5 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out whitespace-nowrap shrink-0">
                     <Chat />
                     <span>{t('button.message-now')}</span>
                   </a>
-                  <Link href="/order-lookup" className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out">
-                    <span>Tra cứu đơn hàng</span>
+                  <Link href="/order-lookup" className="border border-white py-2.5 px-4 rounded-full flex items-center gap-1.5 title-2 text-white w-max lg:hover:border-secondary lg:hover:text-secondary transition-all duration-300 ease-in-out whitespace-nowrap shrink-0">
+                    <span>{t('orderLookup.title')}</span>
                   </Link>
                 </div>
                 <div className="relative max-w-[130px] w-full h-[50px]">

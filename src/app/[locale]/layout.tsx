@@ -100,7 +100,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
       <GeneralSettingsProvider settings={settings}>
         <BranchProvider branches={branches}>
           <Providers>
-            <div className="isolate">
+            <div className="isolate w-full max-w-full overflow-x-hidden min-h-screen flex flex-col justify-between">
               {/* Google Tag Manager (noscript) - should appear immediately after body open */}
               {seo?.google_tag_manager_id && (
                 <noscript>

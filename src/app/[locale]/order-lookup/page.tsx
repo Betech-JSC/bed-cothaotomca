@@ -316,8 +316,8 @@ export default function OrderLookupPage() {
         {/* Search Card */}
         <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-[0_4px_25px_rgba(20,42,104,0.06)] border border-gray-100 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary" />
-          <form onSubmit={handleSearchSubmit} className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-4">
-            <div className="sm:col-span-5">
+          <form onSubmit={handleSearchSubmit} className="space-y-4 md:space-y-0 md:grid md:grid-cols-12 md:gap-4 items-end">
+            <div className="md:col-span-5">
               <label htmlFor="orderCode" className="block text-xs font-bold text-primary uppercase tracking-wider mb-2">
                 {t("order_code")}
               </label>
@@ -327,11 +327,11 @@ export default function OrderLookupPage() {
                 value={orderCode}
                 onChange={(e) => setOrderCode(e.target.value)}
                 placeholder={t("order_code_placeholder")}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-900 font-mono text-sm shadow-xs"
+                className="w-full h-[48px] px-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-900 font-mono text-sm shadow-xs"
                 required
               />
             </div>
-            <div className="sm:col-span-5">
+            <div className="md:col-span-4">
               <label htmlFor="phone" className="block text-xs font-bold text-primary uppercase tracking-wider mb-2">
                 {t("phone")}
               </label>
@@ -341,22 +341,20 @@ export default function OrderLookupPage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder={t("phone_placeholder")}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-900 text-sm shadow-xs"
+                className="w-full h-[48px] px-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-900 text-sm shadow-xs"
                 required
               />
             </div>
-            <div className="sm:col-span-2 flex items-end">
+            <div className="md:col-span-3">
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md shadow-secondary/20 hover:shadow-lg hover:shadow-secondary/30 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] cursor-pointer"
+                className="w-full h-[48px] bg-secondary hover:bg-secondary/95 text-white font-bold px-4 rounded-xl transition-all shadow-md shadow-secondary/20 hover:shadow-lg hover:shadow-secondary/30 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] cursor-pointer whitespace-nowrap"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <>
-                    <span>{t("search_button")}</span>
-                  </>
+                  <span>{t("search_button")}</span>
                 )}
               </button>
             </div>

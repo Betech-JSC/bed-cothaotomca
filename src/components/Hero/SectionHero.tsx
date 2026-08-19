@@ -18,7 +18,7 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
   const swiperRef = useRef<SwiperType | null>(null);
 
   return (
-    <section className="h-[12.1875rem] md:h-[34.375rem] xl:h-[45rem]">
+    <section className="relative overflow-hidden h-[12.1875rem] md:h-[34.375rem] xl:h-[45rem]">
       <div className="relative swiper-hero h-full group">
         <Swiper
           modules={[Navigation, Pagination]}

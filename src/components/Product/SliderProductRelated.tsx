@@ -16,7 +16,7 @@ interface SliderProductRelatedProps {
 const SliderProductRelated: React.FC<SliderProductRelatedProps> = ({ products }) => {
   const t = useTranslations();
   return (
-    <section className='bg-transparent md:py-[56px] py-[30px] xl:py-[60px]'>
+    <section className='relative overflow-hidden bg-transparent md:py-[56px] py-[30px] xl:py-[60px]'>
       <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
         <h2 className="display-3 text-center text-primary">{t('product.explore-more')}</h2>
         <div className="relative swiper-related-product">

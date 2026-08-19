@@ -26,52 +26,33 @@ export default async function SignUpPage({
   const { locale } = await params;
 
   return (
-    <main className="relative min-h-[90vh] flex items-center justify-center py-16 md:py-24 overflow-hidden">
+    <main className="relative w-full min-h-[calc(100vh-6.5rem)] flex items-center justify-center py-8 lg:py-12 px-4 overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/bg-login.jpg"
           alt="Bữa ăn hải sản ấm cúng"
           fill
-          className="object-cover"
+          className="object-cover object-center"
           priority
         />
-        {/* Dark Overlay */}
+        {/* Dark Overlay - Độ phủ đè lên ảnh */}
         <div
-          className="absolute inset-0 z-10"
-          style={{ backgroundColor: "#0000004D" }}
+          className="absolute inset-0 z-10 bg-black/30"
         />
       </div>
 
       {/* Register Card Container */}
-      <div className="relative z-20 w-full max-w-[560px] px-4 flex flex-col items-center gap-6">
-        <AnimateOnScroll animate="slideup" delay={0} className="w-full">
-          <div
-            id="register-card"
-            className="w-full rounded-[32px] pt-[40px] pr-[48px] pb-[24px] pl-[48px] shadow-2xl flex flex-col gap-5 max-md:px-6 max-md:py-8 max-md:pt-8 max-md:pb-6"
-            style={{
-              backgroundColor: "#F1EEDF",
-              minHeight: "518px",
-            }}
-          >
-            <RegisterForm />
-          </div>
-        </AnimateOnScroll>
-
-        {/* Support Hotline Pill Badge */}
-        <AnimateOnScroll animate="slideup" delay={200}>
-          <a
-            id="hotline-badge"
-            href="tel:0336298906"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-yellow hover:bg-secondary duration-300 shadow-md font-serif text-sm font-semibold tracking-[0.02em] transition-all"
-            style={{
-              backgroundColor: "#142A68",
-              color: "#F1EEDF",
-            }}
-          >
-            <span>SĐT: 0336 298 906</span>
-          </a>
-        </AnimateOnScroll>
+      <div className="relative z-20 w-full max-w-[440px] sm:max-w-[460px] flex flex-col items-center">
+        <div
+          id="register-card"
+          className="w-full rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col gap-4"
+          style={{
+            backgroundColor: "#F6F2E9",
+          }}
+        >
+          <RegisterForm />
+        </div>
       </div>
     </main>
   );
