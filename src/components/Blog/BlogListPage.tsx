@@ -126,11 +126,11 @@ export default function BlogListPage({
               </h1>
             </AnimateOnScroll>
 
-            <AnimateOnScroll animate="slideup" delay={0} className="w-full overflow-x-auto">
-              <div className="flex items-center justify-center gap-4 flex-nowrap w-max mx-auto py-2">
+            <AnimateOnScroll animate="slideup" delay={0} className="w-full">
+              <div className="flex flex-wrap items-center justify-center gap-2.5 md:gap-3.5 max-w-full mx-auto py-1">
                 <button
                   onClick={() => handleCategoryChange()}
-                  className={`btn label-1 !min-w-auto px-6 py-2.5 rounded-full transition-all duration-300 ${!currentCategoryId ? 'bg-secondary text-yellow' : 'bg-white text-gray-900 border border-gray-200 lg:hover:bg-primary lg:hover:text-white'
+                  className={`btn label-1 !min-w-auto px-4 py-2 md:px-6 md:py-2.5 rounded-full transition-all duration-300 ${!currentCategoryId ? 'bg-secondary text-yellow shadow-sm font-semibold' : 'bg-white text-gray-900 border border-gray-200 lg:hover:bg-primary lg:hover:text-white'
                     }`}
                 >
                   {t('common.all')}
@@ -139,7 +139,7 @@ export default function BlogListPage({
                   <button
                     key={category.id}
                     onClick={() => handleCategoryChange(category.slug)}
-                    className={`btn label-1 !min-w-auto px-6 py-2.5 rounded-full transition-all duration-300 ${currentCategoryId === category.id.toString() ? 'bg-secondary text-yellow' : 'bg-white text-gray-900 border border-gray-200 lg:hover:bg-primary lg:hover:text-white'
+                    className={`btn label-1 !min-w-auto px-4 py-2 md:px-6 md:py-2.5 rounded-full transition-all duration-300 ${currentCategoryId === category.id.toString() ? 'bg-secondary text-yellow shadow-sm font-semibold' : 'bg-white text-gray-900 border border-gray-200 lg:hover:bg-primary lg:hover:text-white'
                       }`}
                   >
                     {category.name}
