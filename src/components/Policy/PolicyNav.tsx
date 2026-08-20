@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Link } from "@/i18n/routing";
 import Chevron from "@/components/Icons/Chevron";
