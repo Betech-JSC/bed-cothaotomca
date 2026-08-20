@@ -229,8 +229,11 @@ export function mapProductToDetailView(
               ? v.size_en || v.size || labels.standard
               : v.size || v.size_en || labels.standard;
           const baseP = parseFloat(String(v.price)) || unitPrice;
-          const campP = v.campaign_price ? parseFloat(String(v.campaign_price)) : null;
-          const isCamp = campP && campP < baseP;
+          let campP = v.campaign_price ? parseFloat(String(v.campaign_price)) : null;
+          if (!campP && product.active_campaign && product.active_campaign.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0) {
+            campP = Math.round(baseP * (1.0 - (Number(product.active_campaign.discount_value) / 100.0)));
+          }
+          const isCamp = campP !== null && campP < baseP;
           return {
             id: v.id,
             code: v.code,

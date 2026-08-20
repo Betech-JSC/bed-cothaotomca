@@ -143,7 +143,10 @@ export default async function ProductDetailsPage({
     sizes: product.variants && product.variants.length > 0
       ? product.variants.map((v: any) => {
         const basePrice = typeof v.price === "number" ? v.price : parseFloat(v.price) || 0;
-        const campaignPrice = v.campaign_price ? parseFloat(String(v.campaign_price)) : (product.campaign_price ? parseFloat(String(product.campaign_price)) : null);
+        let campaignPrice: number | null = v.campaign_price ? parseFloat(String(v.campaign_price)) : null;
+        if (!campaignPrice && product.active_campaign && product.active_campaign.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0) {
+          campaignPrice = Math.round(basePrice * (1.0 - (Number(product.active_campaign.discount_value) / 100.0)));
+        }
         const finalPrice = campaignPrice && campaignPrice < basePrice ? campaignPrice : basePrice;
         return {
           id: v.id,
