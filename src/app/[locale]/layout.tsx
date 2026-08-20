@@ -15,6 +15,7 @@ import Script from 'next/script'
 import CustomScriptLoader from '@/components/SEO/CustomScriptLoader'
 import ServerScriptLoader from '@/components/SEO/ServerScriptLoader'
 import ScrollToTop from '@/components/Common/ScrollToTop'
+import PageProgressBar from '@/components/Common/PageProgressBar'
 
 export async function generateMetadata({
   params
@@ -152,6 +153,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
               )}
 
               <ScrollToTop />
+              <PageProgressBar />
               <Header />
               {children}
 

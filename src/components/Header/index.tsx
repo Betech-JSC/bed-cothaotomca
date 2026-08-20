@@ -10,6 +10,7 @@ import Hotline from "../Icons/Hotline";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
 import SearchSuggestions from "./SearchSuggestions";
+import { slugify } from "@/lib/format";
 
 type LinkHref = ComponentProps<typeof Link>["href"];
 
@@ -407,18 +408,10 @@ const DesktopNavItem = ({
                 onClick={() => {
                   setIsHovered(false);
                 }}
-                className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-left text-sm font-medium text-gray-800 transition-all hover:bg-amber-50/80 hover:text-primary group/item"
+                className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-left text-base font-display font-medium text-gray-800 transition-all hover:bg-amber-50/80 hover:text-primary group/item"
                 role="menuitem"
               >
                 <span>{child.label}</span>
-                <svg
-                  className="w-4 h-4 text-gray-400 group-hover/item:text-primary group-hover/item:translate-x-0.5 transition-all"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
               </Link>
             ))}
           </div>
