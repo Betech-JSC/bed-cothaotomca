@@ -2,13 +2,14 @@
 
 import { Link } from "@/i18n/i18n-navigation";
 import { useTranslations } from "next-intl";
-import { SearchProductSuggestion, SearchBlogSuggestion } from "@/hooks/useSearchSuggestions";
+import { SearchProductSuggestion, SearchBlogSuggestion, SearchPolicySuggestion } from "@/hooks/useSearchSuggestions";
 import { formatPrice } from "@/lib/format";
 import { slugify } from "@/lib/format";
 
 interface SearchSuggestionsProps {
   productSuggestions: SearchProductSuggestion[];
   blogSuggestions: SearchBlogSuggestion[];
+  policySuggestions: SearchPolicySuggestion[];
   isLoading: boolean;
   searchQuery: string;
   onSelect: () => void;
@@ -18,6 +19,7 @@ interface SearchSuggestionsProps {
 export default function SearchSuggestions({
   productSuggestions,
   blogSuggestions,
+  policySuggestions,
   isLoading,
   searchQuery,
   onSelect,
@@ -25,7 +27,7 @@ export default function SearchSuggestions({
 }: SearchSuggestionsProps) {
   const t = useTranslations();
 
-  const totalSuggestions = productSuggestions.length + blogSuggestions.length;
+  const totalSuggestions = productSuggestions.length + blogSuggestions.length + policySuggestions.length;
 
   if (!visible || (searchQuery.trim().length < 2 && totalSuggestions === 0)) {
     return null;
@@ -49,7 +51,7 @@ export default function SearchSuggestions({
 
   return (
     <div className="absolute left-0 right-0 top-full z-50 mt-1 max-w-3xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[460px] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[480px] overflow-y-auto">
         {/* Loading skeleton */}
         {isLoading && totalSuggestions === 0 && (
           <div className="p-3 space-y-2">
@@ -205,6 +207,54 @@ export default function SearchSuggestions({
                       </li>
                     );
                   })}
+                </ul>
+              </div>
+            )}
+
+            {/* Policies Section */}
+            {policySuggestions.length > 0 && (
+              <div className="border-b border-gray-100 last:border-b-0">
+                <div className="px-4 py-2 bg-amber-50/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
+                  <span>
+                    📜 {searchQuery.trim().length < 2 ? "Chính sách quy định" : t("common.policy")} ({policySuggestions.length})
+                  </span>
+                </div>
+                <ul className="divide-y divide-gray-50">
+                  {policySuggestions.map((item) => (
+                    <li key={`policy-${item.id}`}>
+                      <Link
+                        href={{
+                          pathname: "/policy/[slug]",
+                          params: {
+                            slug: item.slug,
+                          },
+                        }}
+                        onClick={onSelect}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/80 transition-colors duration-150 group"
+                      >
+                        {/* Policy Icon */}
+                        <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-amber-100/60 border border-amber-200/60 flex items-center justify-center text-primary">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                        </div>
+
+                        {/* Policy info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate leading-tight">
+                            {highlightMatch(item.title, searchQuery)}
+                          </div>
+                        </div>
+
+                        {/* Tag badge */}
+                        <div className="text-right flex-shrink-0">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100/70 text-primary font-medium">
+                            {t("common.policy")}
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}

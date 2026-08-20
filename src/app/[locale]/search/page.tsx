@@ -1,6 +1,7 @@
 import { getApi } from '@/services/apiService'
 import { Product } from '@/services/productService'
 import { getBlogs, Blog } from '@/services/blogService'
+import { getPolicies, Policy } from '@/services/policyService'
 import SearchResultPage from '@/components/Search/SearchResultPage'
 
 interface Props {
@@ -19,7 +20,7 @@ export default async function SearchPage({ params, searchParams }: Props) {
   const { locale } = await params
   const { q = '', page = '1', blog_page = '1', tab = 'products' } = await searchParams
 
-  const [productsResp, blogsResp] = await Promise.all([
+  const [productsResp, blogsResp, policiesResp] = await Promise.all([
     q
       ? getApi<Product>('products', {
         params: {
@@ -38,7 +39,13 @@ export default async function SearchPage({ params, searchParams }: Props) {
         page: parseInt(blog_page, 10) || 1,
         search: q
       }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }))
-      : Promise.resolve({ data: [] as Blog[], last_page: 1, current_page: 1, total: 0 })
+      : Promise.resolve({ data: [] as Blog[], last_page: 1, current_page: 1, total: 0 }),
+    q
+      ? getPolicies({
+        lang: locale,
+        search: q
+      }).catch(() => ({ data: [] as Policy[] }))
+      : Promise.resolve({ data: [] as Policy[] })
   ])
 
   return (
@@ -47,6 +54,7 @@ export default async function SearchPage({ params, searchParams }: Props) {
         query={q}
         products={productsResp.data || []}
         blogs={blogsResp.data || []}
+        policies={policiesResp.data || []}
         initialTab={tab}
         locale={locale}
         productPagination={{

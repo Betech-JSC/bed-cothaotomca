@@ -21,9 +21,16 @@ export interface SearchBlogSuggestion {
   created_at: string
 }
 
+export interface SearchPolicySuggestion {
+  id: number
+  title: string
+  slug: string
+}
+
 export function useSearchSuggestions(query: string, locale: string = 'vi') {
   const [productSuggestions, setProductSuggestions] = useState<SearchProductSuggestion[]>([])
   const [blogSuggestions, setBlogSuggestions] = useState<SearchBlogSuggestion[]>([])
+  const [policySuggestions, setPolicySuggestions] = useState<SearchPolicySuggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -41,7 +48,7 @@ export function useSearchSuggestions(query: string, locale: string = 'vi') {
       const searchParam = isSearch ? `search=${encodeURIComponent(query.trim())}&` : ''
 
       try {
-        const [prodRes, blogRes] = await Promise.all([
+        const [prodRes, blogRes, policyRes] = await Promise.all([
           fetch(
             `${API_URL}/products/suggestions?${searchParam}limit=4&lang=${locale}`,
             { signal: controller.signal }
@@ -49,17 +56,23 @@ export function useSearchSuggestions(query: string, locale: string = 'vi') {
           fetch(
             `${API_URL}/blogs/suggestions?${searchParam}limit=4&lang=${locale}`,
             { signal: controller.signal }
+          ).then(res => res.json()).catch(() => ({ data: [] })),
+          fetch(
+            `${API_URL}/policies/suggestions?${searchParam}limit=3&lang=${locale}`,
+            { signal: controller.signal }
           ).then(res => res.json()).catch(() => ({ data: [] }))
         ])
 
         if (!controller.signal.aborted) {
           setProductSuggestions(prodRes.data || [])
           setBlogSuggestions(blogRes.data || [])
+          setPolicySuggestions(policyRes.data || [])
         }
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           setProductSuggestions([])
           setBlogSuggestions([])
+          setPolicySuggestions([])
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -74,8 +87,9 @@ export function useSearchSuggestions(query: string, locale: string = 'vi') {
   const clearSuggestions = () => {
     setProductSuggestions([])
     setBlogSuggestions([])
+    setPolicySuggestions([])
     setIsLoading(false)
   }
 
-  return { productSuggestions, blogSuggestions, isLoading, clearSuggestions }
+  return { productSuggestions, blogSuggestions, policySuggestions, isLoading, clearSuggestions }
 }
