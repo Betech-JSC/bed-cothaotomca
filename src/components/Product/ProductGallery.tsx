@@ -93,6 +93,8 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
                 priority={idx === 0}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 650px"
                 className="object-cover w-full h-full"
+                images={safeImages}
+                initialIndex={idx}
               />
             </div>
           ))}
