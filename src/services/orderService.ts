@@ -98,11 +98,37 @@ export interface OperatingHoursConfig {
   message?: string | null;
 }
 
+export interface PromotionGiftItem {
+  id: number;
+  product_id: number;
+  product_variant_id?: number | null;
+  product_code: string;
+  product_name: string;
+  image: string;
+  original_price: number;
+  campaign_price: number;
+  is_free: boolean;
+}
+
+export interface ActivePromotion {
+  id: number;
+  name: string;
+  description?: string | null;
+  promotion_type: "order_discount" | "order_gift_discount" | "buy_x_get_y" | "same_price_discount";
+  min_order_value: number;
+  discount_type: string;
+  discount_value: number;
+  max_discount?: number | null;
+  settings?: Record<string, any>;
+  items: PromotionGiftItem[];
+}
+
 export interface CheckoutConfig {
   delivery_types: { value: DeliveryType; label: string }[];
   default_shipping_fee: string;
   branches: Branch[];
   operating_hours?: OperatingHoursConfig;
+  active_promotions?: ActivePromotion[];
 }
 
 export class OrderApiError extends Error {
@@ -227,17 +253,24 @@ export interface ValidateVoucherResult {
     id: number;
     code: string;
     value: number;
+    discount_type?: "fixed" | "percent" | "freeship";
+    max_discount?: number | null;
     campaign_id: number;
     campaign_name: string;
     prereq_price?: number;
+    is_freeship?: boolean;
   };
+  discount_amount?: number;
   message: string;
 }
 
-export async function validateVoucher(code: string, subtotal?: number): Promise<ValidateVoucherResult> {
+export async function validateVoucher(code: string, subtotal?: number, shippingFee?: number): Promise<ValidateVoucherResult> {
   const params = new URLSearchParams({ code });
   if (subtotal !== undefined) {
     params.append("subtotal", subtotal.toString());
+  }
+  if (shippingFee !== undefined) {
+    params.append("shipping_fee", shippingFee.toString());
   }
 
   const res = await fetch(`${API_BASE}/vouchers/validate?${params.toString()}`, {

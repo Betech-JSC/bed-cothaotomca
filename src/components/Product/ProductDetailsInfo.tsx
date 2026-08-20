@@ -89,20 +89,19 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
         ) : null}
 
         {selectedSize.price > 0 ? (
-          <div className="flex items-baseline gap-3">
-            <div className="title-1 text-secondary">
+          <div className="flex flex-col items-start gap-1 py-1">
+            {selectedSize.original_price && selectedSize.original_price > selectedSize.price ? (
+              <span className="inline-block bg-primary text-white text-xs font-bold px-2.5 py-0.5 rounded-[4px] tracking-wide">
+                -{Math.round(((selectedSize.original_price - selectedSize.price) / selectedSize.original_price) * 100)}%
+              </span>
+            ) : null}
+            <div className="text-2xl md:text-[28px] font-display font-bold text-secondary leading-tight">
               {formatPrice(selectedSize.price)}
             </div>
             {selectedSize.original_price && selectedSize.original_price > selectedSize.price ? (
-              <>
-                <span className="text-gray-400 line-through text-lg">
-                  {formatPrice(selectedSize.original_price)}
-                </span>
-                <span className="bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold text-xs uppercase px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
-                  <span>🔥</span>
-                  <span>-{Math.round(((selectedSize.original_price - selectedSize.price) / selectedSize.original_price) * 100)}% GIẢM SỐC</span>
-                </span>
-              </>
+              <div className="text-sm md:text-base font-semibold text-gray-400 line-through leading-tight">
+                {formatPrice(selectedSize.original_price)}
+              </div>
             ) : null}
           </div>
         ) : null}

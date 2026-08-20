@@ -1,4 +1,5 @@
 import Breadcrumb from "@/components/Common/Breadcrumb";
+import PolicyNav from "@/components/Policy/PolicyNav";
 import { Link } from "@/i18n/routing";
 import { getPolicies } from "@/services/policyService";
 import { Metadata } from "next";
@@ -117,28 +118,11 @@ export default async function PolicyPage({
         <Breadcrumb breadcrumbs={breadcrumbs} />
 
         <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8 items-start">
-          <aside className="col-span-full lg:col-span-3 h-full">
-            <div className="sticky top-24">
-              <div className="bg-white rounded-[16px] overflow-hidden shadow-sm">
-                <nav className="flex flex-col p-2 space-y-2">
-                  {processedPolicies.map((policy) => {
-                    const isActive = policy.slug === slug;
-                    return (
-                      <Link
-                        key={policy.id}
-                        href={{ pathname: '/policy/[slug]', params: { slug: policy.slug } }}
-                        className={`p-3 transition-all duration-300 rounded-[12px] ${isActive
-                          ? "bg-primary text-yellow shadow-lg"
-                          : "text-gray-900 lg:hover:text-[#142A68] lg:hover:bg-gray-50"
-                          } title-3`}
-                      >
-                        {policy.title || policy.name}
-                      </Link>
-                    )
-                  })}
-                </nav>
-              </div>
-            </div>
+          <aside className="col-span-full lg:col-span-3">
+            <PolicyNav
+              policies={processedPolicies.map(p => ({ id: p.id, slug: p.slug, title: p.title || p.name }))}
+              currentSlug={slug}
+            />
           </aside>
 
           <article className="col-span-full lg:col-span-9">

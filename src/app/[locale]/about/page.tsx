@@ -10,6 +10,51 @@ import { Link } from '@/i18n/i18n-navigation';
 import { getBlogs } from '@/services/blogService';
 import { slugify } from '@/lib/format';
 import AnimateOnScroll from '@/components/Animated/animated-appear';
+import { Metadata } from 'next';
+import { getMetaPage } from '@/services/seoService';
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const meta = await getMetaPage('about', locale).catch(() => null);
+  if (!meta) return {};
+
+  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
+  const baseUrl = rawBaseUrl.replace(/\/$/, '');
+  const canonicalUrl = meta.canonical_url || `${baseUrl}/${locale}/about`;
+
+  let robots: any = undefined;
+  if (meta.noindex || meta.nofollow) {
+    robots = {
+      index: !meta.noindex,
+      follow: !meta.nofollow,
+    };
+  }
+
+  return {
+    title: meta.seo_title || undefined,
+    description: meta.seo_description || undefined,
+    keywords: meta.seo_keywords || undefined,
+    robots,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        vi: `${baseUrl}/vi/about`,
+        en: `${baseUrl}/en/about`,
+      },
+    },
+    openGraph: {
+      title: meta.seo_title || undefined,
+      description: meta.seo_description || undefined,
+      url: canonicalUrl,
+      images: meta.og_image ? [meta.og_image] : undefined,
+      type: 'website',
+    },
+  };
+}
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

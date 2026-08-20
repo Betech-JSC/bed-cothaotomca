@@ -10,6 +10,51 @@ import { getGeneralSettings } from '@/services/generalSettingService';
 import ContactForm from '@/components/Contact/ContactForm';
 import AnimateOnScroll from '@/components/Animated/animated-appear';
 import { getBranches } from '@/services/branchService';
+import { Metadata } from 'next';
+import { getMetaPage } from '@/services/seoService';
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const meta = await getMetaPage('contact', locale).catch(() => null);
+  if (!meta) return {};
+
+  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
+  const baseUrl = rawBaseUrl.replace(/\/$/, '');
+  const canonicalUrl = meta.canonical_url || `${baseUrl}/${locale}/contact`;
+
+  let robots: any = undefined;
+  if (meta.noindex || meta.nofollow) {
+    robots = {
+      index: !meta.noindex,
+      follow: !meta.nofollow,
+    };
+  }
+
+  return {
+    title: meta.seo_title || undefined,
+    description: meta.seo_description || undefined,
+    keywords: meta.seo_keywords || undefined,
+    robots,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        vi: `${baseUrl}/vi/contact`,
+        en: `${baseUrl}/en/contact`,
+      },
+    },
+    openGraph: {
+      title: meta.seo_title || undefined,
+      description: meta.seo_description || undefined,
+      url: canonicalUrl,
+      images: meta.og_image ? [meta.og_image] : undefined,
+      type: 'website',
+    },
+  };
+}
 
 export default async function ContactPage({
   params

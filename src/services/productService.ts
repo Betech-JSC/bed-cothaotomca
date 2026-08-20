@@ -302,9 +302,27 @@ export function mapProductToCardItem(
   const categorySlug =
     productCategory?.slug || slugify(categoryName) || "san-pham";
 
-  const basePrice = parseFloat(String(item.price)) || 0;
-  const campPrice = item.campaign_price ? parseFloat(String(item.campaign_price)) : null;
-  const isCamp = campPrice && campPrice < basePrice;
+  let basePrice = parseFloat(String(item.price)) || 0;
+  let campPrice = item.campaign_price ? parseFloat(String(item.campaign_price)) : null;
+
+  // If item has variants, check lowest variant price and lowest campaign price
+  if (item.variants && item.variants.length > 0) {
+    const variantPrices = item.variants
+      .map((v) => parseFloat(String(v.price)) || 0)
+      .filter((p) => p > 0);
+    const variantCampPrices = item.variants
+      .map((v) => (v.campaign_price ? parseFloat(String(v.campaign_price)) : null))
+      .filter((p): p is number => p !== null && p > 0);
+
+    if (variantPrices.length > 0) {
+      basePrice = Math.min(...variantPrices);
+    }
+    if (variantCampPrices.length > 0) {
+      campPrice = Math.min(...variantCampPrices);
+    }
+  }
+
+  const isCamp = campPrice !== null && campPrice < basePrice;
 
   return {
     id: item.id,
@@ -315,7 +333,7 @@ export function mapProductToCardItem(
     original_price: isCamp ? basePrice : undefined,
     active_campaign: item.active_campaign || (isCamp ? {
       name: "Chiến dịch Khuyến mãi",
-      discount_percent: Math.round(((basePrice - campPrice) / basePrice) * 100),
+      discount_percent: Math.round(((basePrice - (campPrice || basePrice)) / basePrice) * 100),
     } : undefined),
     category: {
       id: String(productCategory?.id ?? ""),

@@ -3,8 +3,10 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay } from 'swiper/modules';
+import { Autoplay, EffectFade } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
+import 'swiper/css';
+import 'swiper/css/effect-fade';
 
 interface SectionChooseUsProps {
   items: any[];
@@ -21,7 +23,7 @@ const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
 
   const handlePaginationClick = useCallback((index: number) => {
     if (swiperRef.current) {
-      swiperRef.current.slideToLoop(index);
+      swiperRef.current.slideToLoop(index, 700);
     }
   }, []);
 
@@ -88,15 +90,18 @@ const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
       {/* Swiper */}
       <div className="relative swiper-choose-us h-full">
         <Swiper
-          modules={[Autoplay]}
+          modules={[Autoplay, EffectFade]}
+          effect="fade"
+          fadeEffect={{ crossFade: false }}
+          speed={700}
           spaceBetween={0}
           slidesPerView={1}
           onSwiper={(swiper) => { swiperRef.current = swiper; }}
           onSlideChange={handleSlideChange}
           className="!static h-full"
           autoplay={{
-            delay: 3000,
-            disableOnInteraction: true,
+            delay: 4000,
+            disableOnInteraction: false,
           }}
           loop={items.length > 1}
         >

@@ -29,6 +29,6 @@ export interface Policy {
   og_image?: string | null;
 }
 
-export const getPolicies = async (params: { lang?: string } = {}) => {
+export const getPolicies = async (params: { lang?: string; search?: string } = {}) => {
   return getApi<Policy>('policies', { params });
 };

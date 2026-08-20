@@ -1,14 +1,18 @@
 "use client";
 
-import { useRef, useEffect } from "react";
 import { Link } from "@/i18n/i18n-navigation";
 import { useTranslations } from "next-intl";
-import { SearchSuggestion } from "@/hooks/useSearchSuggestions";
+import { SearchProductSuggestion, SearchBlogSuggestion, SearchPolicySuggestion } from "@/hooks/useSearchSuggestions";
+import Cart from "@/components/Icons/Cart";
+import BlogIcon from "@/components/Icons/BlogIcon";
+import PolicyIcon from "@/components/Icons/PolicyIcon";
 import { formatPrice } from "@/lib/format";
 import { slugify } from "@/lib/format";
 
 interface SearchSuggestionsProps {
-  suggestions: SearchSuggestion[];
+  productSuggestions: SearchProductSuggestion[];
+  blogSuggestions: SearchBlogSuggestion[];
+  policySuggestions: SearchPolicySuggestion[];
   isLoading: boolean;
   searchQuery: string;
   onSelect: () => void;
@@ -16,7 +20,9 @@ interface SearchSuggestionsProps {
 }
 
 export default function SearchSuggestions({
-  suggestions,
+  productSuggestions,
+  blogSuggestions,
+  policySuggestions,
   isLoading,
   searchQuery,
   onSelect,
@@ -24,11 +30,13 @@ export default function SearchSuggestions({
 }: SearchSuggestionsProps) {
   const t = useTranslations();
 
-  if (!visible || (searchQuery.trim().length < 2 && suggestions.length === 0)) {
+  const totalSuggestions = productSuggestions.length + blogSuggestions.length + policySuggestions.length;
+
+  if (!visible || (searchQuery.trim().length < 2 && totalSuggestions === 0)) {
     return null;
   }
 
-  // Highlight matching text in product name
+  // Highlight matching text in name/title
   const highlightMatch = (text: string, query: string) => {
     if (!query.trim()) return text;
     const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
@@ -46,9 +54,9 @@ export default function SearchSuggestions({
 
   return (
     <div className="absolute left-0 right-0 top-full z-50 mt-1 max-w-3xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[420px] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[480px] overflow-y-auto">
         {/* Loading skeleton */}
-        {isLoading && suggestions.length === 0 && (
+        {isLoading && totalSuggestions === 0 && (
           <div className="p-3 space-y-2">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-3 p-2 animate-pulse">
@@ -63,92 +71,207 @@ export default function SearchSuggestions({
           </div>
         )}
 
-        {/* Suggestions list */}
-        {suggestions.length > 0 && (
+        {totalSuggestions > 0 && (
           <>
-            <ul className="py-1">
-              {suggestions.map((item, index) => {
-                const categorySlug = item.category
-                  ? ((item.category as any).slug || slugify(item.category.title))
-                  : "";
+            {/* Products Section */}
+            {productSuggestions.length > 0 && (
+              <div className="border-b border-gray-100 last:border-b-0">
+                <div className="px-4 py-2 bg-amber-50/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Cart className="w-3.5 h-3.5 text-primary" />
+                    <span>{searchQuery.trim().length < 2 ? "Sản phẩm nổi bật" : t("common.product")} ({productSuggestions.length})</span>
+                  </span>
+                </div>
+                <ul className="divide-y divide-gray-50">
+                  {productSuggestions.map((item) => {
+                    const categorySlug = item.category
+                      ? ((item.category as any).slug || slugify(item.category.title))
+                      : "";
 
-                return (
-                  <li key={item.id}>
-                    <Link
-                      href={{
-                        pathname: "/product/[category]/[slug]",
-                        params: {
-                          category: categorySlug || String(item.category?.id || ""),
-                          slug: item.slug,
-                        },
-                      }}
-                      onClick={onSelect}
-                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/80 transition-colors duration-150 group"
-                    >
-                      {/* Product image */}
-                      <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
-                        {item.image ? (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300">
-                            <svg
-                              className="w-6 h-6"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.5}
-                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    return (
+                      <li key={`prod-${item.id}`}>
+                        <Link
+                          href={{
+                            pathname: "/product/[category]/[slug]",
+                            params: {
+                              category: categorySlug || String(item.category?.id || ""),
+                              slug: item.slug,
+                            },
+                          }}
+                          onClick={onSelect}
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/80 transition-colors duration-150 group"
+                        >
+                          {/* Product image */}
+                          <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                               />
-                            </svg>
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
 
-                      {/* Product info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 truncate leading-tight">
-                          {highlightMatch(item.name, searchQuery)}
-                        </div>
-                        {item.category && (
-                          <div className="text-xs text-gray-500 mt-0.5 truncate">
-                            {item.category.title}
+                          {/* Product info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate leading-tight">
+                              {highlightMatch(item.name, searchQuery)}
+                            </div>
+                            {item.category && (
+                              <div className="text-xs text-gray-500 mt-0.5 truncate">
+                                {item.category.title}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
 
-                      {/* Price - "chỉ từ" format */}
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-[11px] text-gray-500 leading-none">{t("common.only_from")}</div>
-                        <div className="text-sm font-semibold text-secondary whitespace-nowrap">
-                          {formatPrice(parseFloat(String(item.min_price || item.price)) || 0)}
+                          {/* Price */}
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-[10px] text-gray-500 leading-none">{t("common.only_from")}</div>
+                            <div className="text-sm font-semibold text-secondary whitespace-nowrap">
+                              {formatPrice(parseFloat(String(item.min_price || item.price)) || 0)}
+                            </div>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {/* Blogs Section */}
+            {blogSuggestions.length > 0 && (
+              <div className="border-b border-gray-100 last:border-b-0">
+                <div className="px-4 py-2 bg-amber-50/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <BlogIcon className="w-3.5 h-3.5 text-primary" />
+                    <span>{searchQuery.trim().length < 2 ? "Bài viết mới nhất" : t("common.blog")} ({blogSuggestions.length})</span>
+                  </span>
+                </div>
+                <ul className="divide-y divide-gray-50">
+                  {blogSuggestions.map((item) => {
+                    const categorySlug = item.category
+                      ? (item.category.slug || slugify(item.category.title))
+                      : "tin-tuc";
+
+                    return (
+                      <li key={`blog-${item.id}`}>
+                        <Link
+                          href={{
+                            pathname: "/blog/category/[category]/[slug]",
+                            params: {
+                              category: categorySlug,
+                              slug: item.slug,
+                            },
+                          }}
+                          onClick={onSelect}
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/80 transition-colors duration-150 group"
+                        >
+                          {/* Blog thumbnail */}
+                          <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
+                            {item.thumbnail ? (
+                              <img
+                                src={item.thumbnail}
+                                alt={item.title}
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Blog info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate leading-tight">
+                              {highlightMatch(item.title, searchQuery)}
+                            </div>
+                            {item.category && (
+                              <div className="text-xs text-secondary mt-0.5 truncate font-medium">
+                                {item.category.title}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Tag badge */}
+                          <div className="text-right flex-shrink-0">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
+                              {t("common.blog")}
+                            </span>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {/* Policies Section */}
+            {policySuggestions.length > 0 && (
+              <div className="border-b border-gray-100 last:border-b-0">
+                <div className="px-4 py-2 bg-amber-50/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <PolicyIcon className="w-3.5 h-3.5 text-primary" />
+                    <span>{searchQuery.trim().length < 2 ? "Chính sách quy định" : t("common.policy")} ({policySuggestions.length})</span>
+                  </span>
+                </div>
+                <ul className="divide-y divide-gray-50">
+                  {policySuggestions.map((item) => (
+                    <li key={`policy-${item.id}`}>
+                      <Link
+                        href={{
+                          pathname: "/policy/[slug]",
+                          params: {
+                            slug: item.slug,
+                          },
+                        }}
+                        onClick={onSelect}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/80 transition-colors duration-150 group"
+                      >
+                        {/* Policy Icon */}
+                        <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-amber-100/60 border border-amber-200/60 flex items-center justify-center text-primary">
+                          <PolicyIcon className="w-5 h-5" />
                         </div>
-                      </div>
-                    </Link>
-                    {index < suggestions.length - 1 && (
-                      <div className="mx-4 border-b border-gray-50" />
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+
+                        {/* Policy info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate leading-tight">
+                            {highlightMatch(item.title, searchQuery)}
+                          </div>
+                        </div>
+
+                        {/* Tag badge */}
+                        <div className="text-right flex-shrink-0">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100/70 text-primary font-medium">
+                            {t("common.policy")}
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* View all link */}
-            <div className="border-t border-gray-100">
+            <div className="border-t border-gray-100 bg-gray-50/50">
               <Link
                 href={{
                   pathname: "/search",
                   query: { q: searchQuery.trim() },
                 } as any}
                 onClick={onSelect}
-                className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-primary hover:bg-amber-50/60 transition-colors duration-150"
+                className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-primary hover:bg-amber-100/60 transition-colors duration-150"
               >
                 <span>
                   {t("search.view_all_results")} &ldquo;{searchQuery.trim()}&rdquo;
@@ -162,7 +285,7 @@ export default function SearchSuggestions({
         )}
 
         {/* No results */}
-        {!isLoading && suggestions.length === 0 && searchQuery.trim().length >= 2 && (
+        {!isLoading && totalSuggestions === 0 && searchQuery.trim().length >= 2 && (
           <div className="px-4 py-6 text-center">
             <div className="text-sm text-gray-500">{t("common.no_products_found")}</div>
             <div className="text-xs text-gray-400 mt-1">{t("search.try_different_keyword")}</div>

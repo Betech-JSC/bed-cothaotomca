@@ -8,15 +8,26 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
 import SectionRelatedPosts from "@/components/Blog/SectionRelatedPosts";
+import BlogTableOfContents from "@/components/Blog/BlogTableOfContents";
 
 export const dynamic = 'force-dynamic';
 
 async function fetchBlog(slug: string, locale: string) {
-  let blogResponse = await getBlogDetail(slug, { lang: locale }, 0).catch(() => null);
+  // 1. Try fetching directly with current locale
+  let blogResponse = await getBlogDetail(slug, { lang: locale }).catch(() => null);
 
-  // Fallback for English blogs where the slug might be localized in the list but the API only accepts the original (VI) slug for the detail view
-  if (!blogResponse?.data && locale === 'en') {
-    const listResponse = await getBlogs({ lang: 'en', per_page: 100 }).catch(() => null);
+  // 2. If not found and locale is not 'vi', try with lang='vi' (using the same slug)
+  if (!blogResponse?.data && locale !== 'vi') {
+    const viResponse = await getBlogDetail(slug, { lang: 'vi' }).catch(() => null);
+    if (viResponse?.data) {
+      const reFetched = await getBlogDetail(viResponse.data.slug, { lang: locale }).catch(() => null);
+      blogResponse = reFetched?.data ? reFetched : viResponse;
+    }
+  }
+
+  // 3. Fallback: search in list for matched slug/id
+  if (!blogResponse?.data && locale !== 'vi') {
+    const listResponse = await getBlogs({ lang: locale, per_page: 100 }).catch(() => null);
     const matchedBlog = listResponse?.data?.find((b: any) => b.slug === slug);
 
     if (matchedBlog) {
@@ -120,10 +131,6 @@ export default async function BlogDetailsPage({
       url: { pathname: '/blog' },
     },
     {
-      title: categoryName,
-      url: { pathname: '/blog/category/[category]', params: { category: blog.category?.slug || category } },
-    },
-    {
       title: blogTitle,
     },
   ] as const
@@ -220,6 +227,7 @@ export default async function BlogDetailsPage({
       </section>
 
       <SectionRelatedPosts items={relatedPostsDisplay} />
+      <BlogTableOfContents />
     </main>
   )
 }

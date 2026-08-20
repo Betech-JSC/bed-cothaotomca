@@ -16,6 +16,51 @@ import { Category } from '@/services/categoryService';
 import { slugify } from '@/lib/format';
 import { getBlogs, Blog } from '@/services/blogService';
 import AnimateOnScroll from "@/components/Animated/animated-appear";
+import { Metadata } from 'next';
+import { getMetaPage } from '@/services/seoService';
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const meta = await getMetaPage('home', locale).catch(() => null);
+  if (!meta) return {};
+
+  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
+  const baseUrl = rawBaseUrl.replace(/\/$/, '');
+  const canonicalUrl = meta.canonical_url || `${baseUrl}/${locale}`;
+
+  let robots: any = undefined;
+  if (meta.noindex || meta.nofollow) {
+    robots = {
+      index: !meta.noindex,
+      follow: !meta.nofollow,
+    };
+  }
+
+  return {
+    title: meta.seo_title || undefined,
+    description: meta.seo_description || undefined,
+    keywords: meta.seo_keywords || undefined,
+    robots,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        vi: `${baseUrl}/vi`,
+        en: `${baseUrl}/en`,
+      },
+    },
+    openGraph: {
+      title: meta.seo_title || undefined,
+      description: meta.seo_description || undefined,
+      url: canonicalUrl,
+      images: meta.og_image ? [meta.og_image] : undefined,
+      type: 'website',
+    },
+  };
+}
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -75,6 +120,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       custom_name: item.custom_name,
       slug: item.slug || slugify(name),
       price: parseFloat(item.price as string),
+      campaign_price: (item as any)?.campaign_price,
+      original_price: (item as any)?.original_price,
+      active_campaign: (item as any)?.active_campaign,
       category: { title: categoryName, slug: categorySlug },
       ingredients: item.ingredients?.map(ing => slugify(ing.name)) || [],
       image: {
@@ -181,10 +229,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 </div>
               </div>
               <AnimateOnScroll animate="slideup" delay={300} className="max-w-[720px] lg:max-w-[680px] w-full space-y-3 body-1 text-gray-800">
-                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text1').replaceAll('<br/>', '<br class="hidden md:inline" />').replaceAll('<br>', '<br class="hidden md:inline" />') }}></p>
-                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text2') }}></p>
-                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text3') }}></p>
-                <strong><p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text4') }}></p></strong>
+                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text1').replaceAll('<br/>', ' ').replaceAll('<br>', ' ') }}></p>
+                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text2').replaceAll('<br/>', ' ').replaceAll('<br>', ' ') }}></p>
+                <p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text3').replaceAll('<br/>', ' ').replaceAll('<br>', ' ') }}></p>
+                <strong><p dangerouslySetInnerHTML={{ __html: t('home.section-2.description.text4').replaceAll('<br/>', ' ').replaceAll('<br>', ' ') }}></p></strong>
               </AnimateOnScroll>
               <div className="md:mt-12 mt-6 xl:mt-16">
                 <Link href="/about" className="btn btn-primary max-w-[240px]">

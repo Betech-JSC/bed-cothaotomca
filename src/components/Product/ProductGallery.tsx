@@ -23,7 +23,6 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const safeImages = images.length > 0 ? images : [{ url: '/cover.jpg', alt: title }];
-  const currentImage = safeImages[activeIndex] || safeImages[0];
 
   const handlePrev = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -62,10 +61,8 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
     const minSwipeDistance = 50;
 
     if (distance > minSwipeDistance) {
-      // Vuốt sang trái -> Ảnh tiếp theo
       handleNext();
     } else if (distance < -minSwipeDistance) {
-      // Vuốt sang phải -> Ảnh trước
       handlePrev();
     }
 
@@ -75,30 +72,42 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
 
   return (
     <div className="w-full space-y-4">
-      {/* 1. Khung Ảnh Chính (Main Image View) */}
+      {/* 1. Khung Ảnh Chính (Main Image View) với Slider Track trượt mượt mà */}
       <div
         className="relative w-full aspect-square rounded-[20px] md:rounded-[24px] overflow-hidden border border-gray-200/90 bg-white shadow-sm select-none group"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <ZoomableImage
-          src={currentImage.url || '/cover.jpg'}
-          alt={currentImage.alt || title}
-          fill
-          priority
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 650px"
-          className="object-cover w-full h-full transition-all duration-500 ease-out"
-        />
+        {/* Slider Track (Băng trượt ảnh mượt bằng GPU hardware acceleration) */}
+        <div
+          className="flex w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] will-change-transform"
+          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+        >
+          {safeImages.map((img, idx) => (
+            <div key={idx} className="relative w-full h-full flex-shrink-0">
+              <ZoomableImage
+                src={img.url || '/cover.jpg'}
+                alt={img.alt || `${title} ${idx + 1}`}
+                fill
+                priority={idx === 0}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 650px"
+                className="object-cover w-full h-full"
+                images={safeImages}
+                initialIndex={idx}
+              />
+            </div>
+          ))}
+        </div>
 
-        {/* Nút điều hướng bấm qua lại (Navigation Buttons theo chuẩn mã màu Brand) */}
+        {/* Nút điều hướng bấm qua lại */}
         {safeImages.length > 1 && (
           <>
             <button
               type="button"
               onClick={handlePrev}
               aria-label="Ảnh trước"
-              className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 z-10 size-10 md:size-12 rounded-full bg-white/95 text-primary border border-gray-200/80 shadow-md backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-primary hover:text-yellow hover:border-primary active:scale-90 cursor-pointer focus:outline-none"
+              className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 z-10 size-10 md:size-12 rounded-full bg-white/95 text-primary border border-gray-200/80 shadow-md backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-primary hover:text-yellow hover:border-primary active:scale-90 cursor-pointer focus:outline-none opacity-90 hover:opacity-100"
             >
               <div className="rotate-90">
                 <Chevron />
@@ -109,7 +118,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
               type="button"
               onClick={handleNext}
               aria-label="Ảnh tiếp theo"
-              className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 z-10 size-10 md:size-12 rounded-full bg-white/95 text-primary border border-gray-200/80 shadow-md backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-primary hover:text-yellow hover:border-primary active:scale-90 cursor-pointer focus:outline-none"
+              className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 z-10 size-10 md:size-12 rounded-full bg-white/95 text-primary border border-gray-200/80 shadow-md backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-primary hover:text-yellow hover:border-primary active:scale-90 cursor-pointer focus:outline-none opacity-90 hover:opacity-100"
             >
               <div className="-rotate-90">
                 <Chevron />

@@ -110,7 +110,17 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   // Voucher
   const [voucherCode, setVoucherCode] = useState("");
-  const [appliedVoucher, setAppliedVoucher] = useState<{ id: number; code: string; value: number; campaignId: number } | null>(null);
+  const [appliedVoucher, setAppliedVoucher] = useState<{
+    id: number;
+    code: string;
+    value: number;
+    discountType?: "fixed" | "percent" | "freeship";
+    maxDiscount?: number | null;
+    campaignId: number;
+    prereqPrice?: number;
+    isFreeship?: boolean;
+    discountAmount?: number;
+  } | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
   const [validatingVoucher, setValidatingVoucher] = useState(false);
@@ -226,19 +236,47 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           branches: branches && branches.length > 0
             ? branches.map(b => ({
               id: b.id,
-              branchName: b.title,
+              branchName: (b as any).branchName || (b as any).name || b.title || b.address || `Chi nhánh #${b.id}`,
               address: b.address,
-              contactNumber: b.phone || "",
+              contactNumber: b.phone || (b as any).contactNumber || "",
               isActive: true
             }))
             : [
               {
-                id: 1,
-                branchName: "Bếp Cô Thảo - Cầu Giấy",
-                address: "Số 12 Dịch Vọng Hậu, Quận Cầu Giấy, Hà Nội",
-                contactNumber: "024.9999.7122",
+                id: 1000021387,
+                branchName: "GV - Cô Thảo Tôm Cá",
+                address: "1073 Phan Văn Trị, Phường Gò Vấp, Thành phố Hồ Chí Minh",
+                contactNumber: "+84 779 222 173",
                 isActive: true,
-              }
+              },
+              {
+                id: 1000000211,
+                branchName: "HS - Cô Thảo Tôm Cá",
+                address: "197 Hoàng Sa, Phường Tân Định, Hồ Chí Minh - Quận 1",
+                contactNumber: "+84 867 608 971",
+                isActive: true,
+              },
+              {
+                id: 1000021173,
+                branchName: "TB - Cô Thảo Tôm Cá",
+                address: "39 Thân Nhân Trung, Phường Tân Bình, Thành phố Hồ Chí Minh",
+                contactNumber: "+84 364 612 395",
+                isActive: true,
+              },
+              {
+                id: 1333367,
+                branchName: "TDX - Cô Thảo Tôm Cá",
+                address: "42/2 Trần Đình xu, Phường Cô Giang, Hồ Chí Minh - Quận 1",
+                contactNumber: "+84 357 377 527",
+                isActive: true,
+              },
+              {
+                id: 1363270,
+                branchName: "Thủ Đức - Cô Thảo Tôm Cá",
+                address: "69A Trương Văn Thành, Phường Hiệp Phú, Hồ Chí Minh - Thành phố Thủ Đức",
+                contactNumber: "+84 901 193 964",
+                isActive: true,
+              },
             ]
         });
       });
@@ -333,16 +371,183 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   const voucherDiscount = useMemo(() => {
     if (!appliedVoucher) return 0;
-    if (appliedVoucher.code.includes("PCT")) {
-      return Math.round(subtotal * (appliedVoucher.value / 100));
+    const codeUpper = appliedVoucher.code.toUpperCase();
+    const type = appliedVoucher.discountType;
+
+    if (type === "percent" || codeUpper.includes("PCT")) {
+      const pct = appliedVoucher.value;
+      const calculated = Math.round(subtotal * (pct / 100));
+      if (appliedVoucher.maxDiscount && appliedVoucher.maxDiscount > 0) {
+        return Math.min(appliedVoucher.maxDiscount, calculated);
+      }
+      return Math.min(calculated, subtotal);
     }
-    if (appliedVoucher.code.includes("SHIP") || appliedVoucher.code.includes("FREE")) {
+    if (type === "freeship" || appliedVoucher.isFreeship || codeUpper.includes("SHIP") || codeUpper.includes("FREE")) {
       return shipping;
     }
-    return appliedVoucher.value;
+    if (codeUpper.startsWith("EVOUCHER") || codeUpper.startsWith("EVO")) {
+      return Math.min(appliedVoucher.value, subtotal + shipping);
+    }
+    return Math.min(appliedVoucher.value, subtotal);
   }, [appliedVoucher, subtotal, shipping]);
 
-  const total = Math.max(0, subtotal - voucherDiscount + shipping);
+  // Total cart items count (for buy_x_get_y check)
+  const totalCartQuantity = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  }, [cartItems]);
+
+  // Opt-out state for promotions
+  const [optOutOrderDiscount, setOptOutOrderDiscount] = useState(false);
+
+  // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn)
+  const eligibleOrderDiscountPromo = useMemo(() => {
+    return (
+      config?.active_promotions?.find(
+        (p) =>
+          p.promotion_type === "order_discount" &&
+          subtotal >= (p.min_order_value || 0)
+      ) || null
+    );
+  }, [config?.active_promotions, subtotal]);
+
+  const autoOrderDiscountAmount = useMemo(() => {
+    if (!eligibleOrderDiscountPromo || optOutOrderDiscount) return 0;
+    const type = eligibleOrderDiscountPromo.discount_type;
+    const val = eligibleOrderDiscountPromo.discount_value;
+    let disc = 0;
+    if (type === "percent") {
+      disc = Math.round(subtotal * (val / 100));
+      if (eligibleOrderDiscountPromo.max_discount && eligibleOrderDiscountPromo.max_discount > 0) {
+        disc = Math.min(disc, eligibleOrderDiscountPromo.max_discount);
+      }
+    } else if (type === "fixed") {
+      disc = val;
+      if (eligibleOrderDiscountPromo.max_discount && eligibleOrderDiscountPromo.max_discount > 0) {
+        disc = Math.min(disc, eligibleOrderDiscountPromo.max_discount);
+      }
+    }
+    return Math.min(disc, subtotal);
+  }, [eligibleOrderDiscountPromo, optOutOrderDiscount, subtotal]);
+
+  // 2. ORDER GIFT PROMOTION (Quà tặng theo giá trị đơn)
+  const eligibleOrderGiftPromo = useMemo(() => {
+    return (
+      config?.active_promotions?.find(
+        (p) =>
+          p.promotion_type === "order_gift_discount" &&
+          p.items &&
+          p.items.length > 0 &&
+          subtotal >= (p.min_order_value || 0)
+      ) || null
+    );
+  }, [config?.active_promotions, subtotal]);
+
+  const upcomingOrderGiftPromo = useMemo(() => {
+    if (eligibleOrderGiftPromo || !config?.active_promotions) return null;
+    return (
+      config.active_promotions.find(
+        (p) =>
+          p.promotion_type === "order_gift_discount" &&
+          p.items &&
+          p.items.length > 0 &&
+          subtotal < (p.min_order_value || 0)
+      ) || null
+    );
+  }, [config?.active_promotions, eligibleOrderGiftPromo, subtotal]);
+
+  const [optOutOrderGift, setOptOutOrderGift] = useState(false);
+  const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.items.length > 0) {
+      if (
+        !selectedOrderGiftId ||
+        !eligibleOrderGiftPromo.items.some((i) => i.id === selectedOrderGiftId)
+      ) {
+        setSelectedOrderGiftId(eligibleOrderGiftPromo.items[0].id);
+      }
+    } else {
+      setSelectedOrderGiftId(null);
+      setOptOutOrderGift(false);
+    }
+  }, [eligibleOrderGiftPromo]);
+
+  const selectedOrderGiftItem = useMemo(() => {
+    if (!eligibleOrderGiftPromo || !selectedOrderGiftId || optOutOrderGift) return null;
+    return (
+      eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId) || null
+    );
+  }, [eligibleOrderGiftPromo, selectedOrderGiftId, optOutOrderGift]);
+
+  // 3. BUY X GET Y PROMOTION (Mua X tặng/giảm Y)
+  const eligibleBuyXGetYPromo = useMemo(() => {
+    if (!config?.active_promotions) return null;
+    return (
+      config.active_promotions.find((p) => {
+        if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
+        const buyQty = Number(p.settings?.buy_quantity || 2);
+        return totalCartQuantity >= buyQty;
+      }) || null
+    );
+  }, [config?.active_promotions, totalCartQuantity]);
+
+  const upcomingBuyXGetYPromo = useMemo(() => {
+    if (eligibleBuyXGetYPromo || !config?.active_promotions) return null;
+    return (
+      config.active_promotions.find((p) => {
+        if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
+        const buyQty = Number(p.settings?.buy_quantity || 2);
+        return totalCartQuantity < buyQty;
+      }) || null
+    );
+  }, [config?.active_promotions, eligibleBuyXGetYPromo, totalCartQuantity]);
+
+  const [optOutBuyXGetY, setOptOutBuyXGetY] = useState(false);
+  const [selectedBuyXGetYId, setSelectedBuyXGetYId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (eligibleBuyXGetYPromo && eligibleBuyXGetYPromo.items.length > 0) {
+      if (
+        !selectedBuyXGetYId ||
+        !eligibleBuyXGetYPromo.items.some((i) => i.id === selectedBuyXGetYId)
+      ) {
+        setSelectedBuyXGetYId(eligibleBuyXGetYPromo.items[0].id);
+      }
+    } else {
+      setSelectedBuyXGetYId(null);
+      setOptOutBuyXGetY(false);
+    }
+  }, [eligibleBuyXGetYPromo]);
+
+  const selectedBuyXGetYItem = useMemo(() => {
+    if (!eligibleBuyXGetYPromo || !selectedBuyXGetYId || optOutBuyXGetY) return null;
+    return (
+      eligibleBuyXGetYPromo.items.find((i) => i.id === selectedBuyXGetYId) || null
+    );
+  }, [eligibleBuyXGetYPromo, selectedBuyXGetYId, optOutBuyXGetY]);
+
+  const buyXGetYTag = useMemo(() => {
+    if (!eligibleBuyXGetYPromo) return "🎁 Món ưu đãi";
+    const buyQty = eligibleBuyXGetYPromo.settings?.buy_quantity || 2;
+    const giftQty = eligibleBuyXGetYPromo.settings?.gift_quantity || 1;
+    const isFree = selectedBuyXGetYItem?.campaign_price === 0;
+    return isFree
+      ? `🎁 Mua ${buyQty} tặng ${giftQty}`
+      : `🎁 Mua ${buyQty} giảm ${giftQty}`;
+  }, [eligibleBuyXGetYPromo, selectedBuyXGetYItem]);
+
+  const promoItemsExtraPrice = useMemo(() => {
+    let extra = 0;
+    if (selectedOrderGiftItem && selectedOrderGiftItem.campaign_price > 0) {
+      extra += selectedOrderGiftItem.campaign_price;
+    }
+    if (selectedBuyXGetYItem && selectedBuyXGetYItem.campaign_price > 0) {
+      extra += selectedBuyXGetYItem.campaign_price;
+    }
+    return extra;
+  }, [selectedOrderGiftItem, selectedBuyXGetYItem]);
+
+  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount + shipping);
 
   // Apply Voucher
   const handleApplyVoucher = async () => {
@@ -357,13 +562,18 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     setVoucherSuccess(null);
 
     try {
-      const result = await validateVoucher(voucherCode.trim());
+      const result = await validateVoucher(voucherCode.trim(), subtotal, shipping);
       if (result.valid && result.voucher) {
         setAppliedVoucher({
           id: result.voucher.id,
           code: result.voucher.code,
           value: result.voucher.value,
+          discountType: result.voucher.discount_type,
+          maxDiscount: result.voucher.max_discount,
           campaignId: result.voucher.campaign_id,
+          prereqPrice: result.voucher.prereq_price,
+          isFreeship: result.voucher.is_freeship,
+          discountAmount: result.discount_amount,
         });
         setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công.");
       } else {
@@ -517,16 +727,51 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 expected_delivery: expectedDeliveryISO
               }
               : null),
-        items: cartItems.map((item) => ({
-          product_id: item.productId,
-          product_code: item.productCode,
-          product_name: item.title,
-          quantity: item.quantity,
-          price: item.unitPrice,
-          discount: 0,
-        })),
-        discount: voucherDiscount,
-        description: cartItems.map((item) => `${item.title} (${item.variant}) x${item.quantity}`).join(", ") || undefined,
+        items: [
+          ...cartItems.map((item) => ({
+            product_id: item.productId,
+            product_code: item.productCode,
+            product_name: item.title,
+            quantity: item.quantity,
+            price: item.unitPrice,
+            discount: 0,
+          })),
+          ...(selectedOrderGiftItem
+            ? [
+              {
+                product_id: selectedOrderGiftItem.product_id,
+                product_code: selectedOrderGiftItem.product_code,
+                product_name: `[QUÀ TẶNG] ${selectedOrderGiftItem.product_name}`,
+                quantity: 1,
+                price: selectedOrderGiftItem.campaign_price,
+                discount: 0,
+                note: `Quà tặng đơn hàng (${eligibleOrderGiftPromo?.name || "Chiến dịch"})`,
+              },
+            ]
+            : []),
+          ...(selectedBuyXGetYItem
+            ? [
+              {
+                product_id: selectedBuyXGetYItem.product_id,
+                product_code: selectedBuyXGetYItem.product_code,
+                product_name: `[ƯU ĐÃI COMBO] ${selectedBuyXGetYItem.product_name}`,
+                quantity: 1,
+                price: selectedBuyXGetYItem.campaign_price,
+                discount: 0,
+                note: `${buyXGetYTag.replace("🎁 ", "")} (${eligibleBuyXGetYPromo?.name || "Chiến dịch"})`,
+              },
+            ]
+            : []),
+        ],
+        discount: voucherDiscount + autoOrderDiscountAmount,
+        description: [
+          cartItems.map((item) => `${item.title} (${item.variant}) x${item.quantity}`).join(", "),
+          autoOrderDiscountAmount > 0 ? `🏷 KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
+          selectedOrderGiftItem ? `🎁 Tặng kèm: ${selectedOrderGiftItem.product_name} (0đ - ${eligibleOrderGiftPromo?.name || "Ưu đãi"})` : "",
+          selectedBuyXGetYItem ? `🎁 Ưu đãi combo: ${selectedBuyXGetYItem.product_name} (${selectedBuyXGetYItem.campaign_price === 0 ? "0đ" : `${selectedBuyXGetYItem.campaign_price.toLocaleString("vi-VN")}đ`} - ${buyXGetYTag.replace("🎁 ", "")})` : "",
+        ]
+          .filter(Boolean)
+          .join(" | ") || undefined,
         is_apply_voucher: !!appliedVoucher,
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
         voucher: appliedVoucher
@@ -871,6 +1116,109 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           </div>
                         </div>
                       ))}
+                      {/* Quà tặng đơn hàng (order_gift_discount) */}
+                      {selectedOrderGiftItem && (
+                        <div className="flex gap-3 py-2.5 px-3 bg-amber-50/60 rounded-xl border border-amber-200/80 items-start">
+                          {selectedOrderGiftItem.image ? (
+                            <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-amber-200 flex-shrink-0">
+                              <Image
+                                src={selectedOrderGiftItem.image}
+                                alt={selectedOrderGiftItem.product_name}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="size-12 rounded-lg bg-amber-100 flex items-center justify-center text-lg flex-shrink-0">
+                              🎁
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-2">
+                              <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">{selectedOrderGiftItem.product_name}</p>
+                              <span className="body-2 text-emerald-600 font-bold whitespace-nowrap">
+                                {selectedOrderGiftItem.campaign_price === 0 ? "0đ" : formatPrice(selectedOrderGiftItem.campaign_price)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between pt-0.5">
+                              <p className="text-[10px] text-amber-800 font-bold uppercase">
+                                🎁 Món tặng x1
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => setOptOutOrderGift(true)}
+                                className="text-[11px] text-gray-400 hover:text-red-500 font-semibold cursor-pointer"
+                              >
+                                🗑 Bỏ quà
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {eligibleOrderGiftPromo && optOutOrderGift && (
+                        <div className="flex items-center justify-between p-2.5 bg-amber-50/70 rounded-xl border border-dashed border-amber-300 text-xs text-amber-900 animate-fade-in">
+                          <span className="font-medium">🎁 Đã bỏ nhận quà ({eligibleOrderGiftPromo.name})</span>
+                          <button
+                            type="button"
+                            onClick={() => setOptOutOrderGift(false)}
+                            className="font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-0.5 rounded-full text-xs"
+                          >
+                            + Nhận lại
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Món ưu đãi Mua X tặng/giảm Y (buy_x_get_y) */}
+                      {selectedBuyXGetYItem && (
+                        <div className="flex gap-3 py-2.5 px-3 bg-purple-50/60 rounded-xl border border-purple-200/80 items-start">
+                          {selectedBuyXGetYItem.image ? (
+                            <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-purple-200 flex-shrink-0">
+                              <Image
+                                src={selectedBuyXGetYItem.image}
+                                alt={selectedBuyXGetYItem.product_name}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="size-12 rounded-lg bg-purple-100 flex items-center justify-center text-lg flex-shrink-0">
+                              🎁
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-2">
+                              <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">{selectedBuyXGetYItem.product_name}</p>
+                              <span className="body-2 text-purple-700 font-bold whitespace-nowrap">
+                                {selectedBuyXGetYItem.campaign_price === 0 ? "0đ" : formatPrice(selectedBuyXGetYItem.campaign_price)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between pt-0.5">
+                              <p className="text-[10px] text-purple-900 font-bold uppercase">
+                                {buyXGetYTag}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => setOptOutBuyXGetY(true)}
+                                className="text-[11px] text-gray-400 hover:text-red-500 font-semibold cursor-pointer"
+                              >
+                                🗑 Bỏ ưu đãi
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {eligibleBuyXGetYPromo && optOutBuyXGetY && (
+                        <div className="flex items-center justify-between p-2.5 bg-purple-50/70 rounded-xl border border-dashed border-purple-300 text-xs text-purple-900 animate-fade-in">
+                          <span className="font-medium">🎁 Đã bỏ ưu đãi ({eligibleBuyXGetYPromo.name})</span>
+                          <button
+                            type="button"
+                            onClick={() => setOptOutBuyXGetY(false)}
+                            className="font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-2.5 py-0.5 rounded-full text-xs"
+                          >
+                            + Nhận lại
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2 border-t border-gray-100 pt-3 text-xs">
@@ -882,6 +1230,33 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <span className="text-gray-500">Phí ship</span>
                         <span className="font-semibold">{formatPrice(shipping)}</span>
                       </div>
+                      {autoOrderDiscountAmount > 0 && (
+                        <div className="flex justify-between items-center text-emerald-600">
+                          <span className="flex items-center gap-1">
+                            <span>Giảm KM đơn ({eligibleOrderDiscountPromo?.name})</span>
+                            <button
+                              type="button"
+                              onClick={() => setOptOutOrderDiscount(true)}
+                              className="text-[11px] text-red-500 underline font-normal"
+                            >
+                              [Bỏ]
+                            </button>
+                          </span>
+                          <span className="font-semibold">-{formatPrice(autoOrderDiscountAmount)}</span>
+                        </div>
+                      )}
+                      {eligibleOrderDiscountPromo && optOutOrderDiscount && (
+                        <div className="flex justify-between items-center text-gray-500 text-[11px]">
+                          <span>Đã bỏ giảm KM đơn ({eligibleOrderDiscountPromo.name})</span>
+                          <button
+                            type="button"
+                            onClick={() => setOptOutOrderDiscount(false)}
+                            className="text-primary underline font-bold"
+                          >
+                            Áp dụng lại
+                          </button>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-gray-500">Giảm giá</span>
                         <span className="font-semibold">{formatPrice(voucherDiscount)}</span>
@@ -895,6 +1270,24 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 </div>
               </div>
             </div>
+
+            {upcomingOrderGiftPromo && (
+              <div className="bg-amber-50/80 rounded-[14px] p-3 border border-amber-200/70 flex items-center gap-2.5 text-xs text-amber-900 animate-fade-in">
+                <span className="text-lg">🎁</span>
+                <span>
+                  Mua thêm <strong>{(upcomingOrderGiftPromo.min_order_value - subtotal).toLocaleString("vi-VN")}đ</strong> để được tặng <strong>1 món quà miễn phí</strong> ({upcomingOrderGiftPromo.name})!
+                </span>
+              </div>
+            )}
+
+            {upcomingBuyXGetYPromo && (
+              <div className="bg-purple-50/80 rounded-[14px] p-3 border border-purple-200/70 flex items-center gap-2.5 text-xs text-purple-900 animate-fade-in">
+                <span className="text-lg">🎁</span>
+                <span>
+                  Mua thêm <strong>{Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity)} món</strong> để nhận ưu đãi (<strong>Mua {upcomingBuyXGetYPromo.settings?.buy_quantity || 2} {upcomingBuyXGetYPromo.discount_type === 'percent' && upcomingBuyXGetYPromo.discount_value === 100 ? 'tặng' : 'giảm'} {upcomingBuyXGetYPromo.settings?.gift_quantity || 1} - {upcomingBuyXGetYPromo.name}</strong>)!
+                </span>
+              </div>
+            )}
 
             {/* Checkout contact details */}
             <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-6 font-serif">
@@ -1067,8 +1460,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
                     >
                       {config?.branches.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.branchName}
+                        <option key={b.id} value={b.id} className="text-gray-900 bg-white py-1">
+                          {b.branchName || b.address || (b as any).title || `Chi nhánh #${b.id}`}
                         </option>
                       ))}
                     </select>

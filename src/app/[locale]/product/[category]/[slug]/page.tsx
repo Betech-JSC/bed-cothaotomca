@@ -183,10 +183,6 @@ export default async function ProductDetailsPage({
       title: t('breadcrumb.product'),
       href: "/product",
     },
-    ...(productData.category.slug ? [{
-      title: productData.category.title,
-      href: `/product/${productData.category.slug}`,
-    }] : []),
     {
       title: productData.title,
     },
@@ -235,14 +231,14 @@ export default async function ProductDetailsPage({
 
           <div className="grid grid-cols-12 gap-6 lg:gap-8 xl:gap-12">
             {/* Cột Trái: Thư viện ảnh sản phẩm */}
-            <div className="col-span-full lg:col-span-6 xl:col-span-7">
-              <div className="space-y-6 lg:sticky lg:top-28">
+            <div className="col-span-full lg:col-span-6">
+              <div className="space-y-6">
                 <ProductGallery images={productData.images} title={productData.title} />
               </div>
             </div>
 
             {/* Cột Phải: Thông tin chi tiết sản phẩm */}
-            <div className="col-span-full lg:col-span-6 xl:col-span-5">
+            <div className="col-span-full lg:col-span-6">
               <div className="space-y-3 hidden lg:flex flex-col items-start mb-4 md:mb-6 xl:mb-8">
                 <Breadcrumb breadcrumbs={breadcrumbs} />
               </div>
