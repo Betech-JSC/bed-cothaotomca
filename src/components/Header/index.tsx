@@ -64,7 +64,7 @@ const Header = () => {
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Search suggestions hook
-  const { suggestions, isLoading, clearSuggestions } = useSearchSuggestions(searchQuery, locale);
+  const { productSuggestions, blogSuggestions, isLoading, clearSuggestions } = useSearchSuggestions(searchQuery, locale);
 
   useEffect(() => {
     const onScroll = () => {
@@ -266,7 +266,8 @@ const Header = () => {
               </div>
             </form>
             <SearchSuggestions
-              suggestions={suggestions}
+              productSuggestions={productSuggestions}
+              blogSuggestions={blogSuggestions}
               isLoading={isLoading}
               searchQuery={searchQuery}
               onSelect={handleSuggestionSelect}

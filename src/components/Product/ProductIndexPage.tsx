@@ -283,8 +283,8 @@ export default function ProductIndexPage({
         </div>
       </div>
 
-      {/* Mobile Floating Filter Pill Button (PA 3 - Sleek & Compact) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 lg:hidden pointer-events-auto">
+      {/* Mobile Floating Filter Pill Button (Bottom Left Position) */}
+      <div className="fixed bottom-6 left-5 z-40 lg:hidden pointer-events-auto">
         <button
           onClick={() => setIsFilterOpen(true)}
           className="flex items-center justify-center gap-2 bg-primary text-yellow px-4.5 py-2.5 rounded-full shadow-2xl border border-yellow/40 font-semibold text-xs uppercase tracking-wider whitespace-nowrap active:scale-95 transition-all duration-300 backdrop-blur-md cursor-pointer"
