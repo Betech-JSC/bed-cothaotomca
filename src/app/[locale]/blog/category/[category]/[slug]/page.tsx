@@ -120,10 +120,6 @@ export default async function BlogDetailsPage({
       url: { pathname: '/blog' },
     },
     {
-      title: categoryName,
-      url: { pathname: '/blog/category/[category]', params: { category: blog.category?.slug || category } },
-    },
-    {
       title: blogTitle,
     },
   ] as const
