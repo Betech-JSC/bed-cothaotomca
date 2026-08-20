@@ -10,7 +10,7 @@ import JsonLd from "@/components/SEO/JsonLd";
 
 import { getTranslation, slugify } from "@/lib/format";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // ISR: revalidate mỗi 60 giây
 
 export async function generateMetadata(
   { params }: { params: Promise<{ locale: string; category: string; slug: string }> },
@@ -18,7 +18,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { locale, category, slug } = await params;
   const { getProductBySlugWithFallback } = await import('@/services/productService');
-  const product = await getProductBySlugWithFallback(slug, { revalidate: 0, lang: locale });
+  const product = await getProductBySlugWithFallback(slug, { revalidate: 60, lang: locale });
 
   if (!product) return {};
 
@@ -85,7 +85,7 @@ export default async function ProductDetailsPage({
   const { locale, category, slug } = await params
 
   const { getProductBySlugWithFallback } = await import('@/services/productService');
-  const product = await getProductBySlugWithFallback(slug, { revalidate: 0, lang: locale });
+  const product = await getProductBySlugWithFallback(slug, { revalidate: 60, lang: locale });
 
   if (!product) {
     notFound();

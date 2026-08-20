@@ -8,6 +8,18 @@ import {
   getProductBySlugWithFallback,
   mapProductToDetailView,
 } from "@/services/productService";
+import { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  return {
+    title: 'Thanh toán | Cô Thảo Tôm Cá',
+    robots: { index: false, follow: false },
+  }
+}
 
 interface Props {
   params: Promise<{ locale: string }>;

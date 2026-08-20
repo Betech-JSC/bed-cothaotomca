@@ -19,6 +19,8 @@ import AnimateOnScroll from "@/components/Animated/animated-appear";
 import { Metadata } from 'next';
 import { getMetaPage } from '@/services/seoService';
 
+export const revalidate = 60; // ISR: revalidate mỗi 60 giây
+
 export async function generateMetadata({
   params
 }: {

@@ -13,6 +13,8 @@ import { getBranches } from '@/services/branchService';
 import { Metadata } from 'next';
 import { getMetaPage } from '@/services/seoService';
 
+export const revalidate = 120; // ISR: revalidate mỗi 2 phút
+
 export async function generateMetadata({
   params
 }: {

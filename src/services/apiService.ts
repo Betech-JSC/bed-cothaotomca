@@ -29,7 +29,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
   }
 
   const effectiveRetries = retries;
-  const timeoutMs = 3000; // Giảm xuống 3s cho cả build và runtime để load cực nhanh khi bị chặn
+  const timeoutMs = 8000; // 8s timeout cho production — tránh timeout sớm khi server bận
 
   try {
     const controller = new AbortController();
@@ -39,7 +39,6 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
     const fetchOptions: RequestInit = { 
       ...options, 
       signal,
-      cache: 'no-store',
       headers: {
         'Accept': 'application/json',
         'Accept-Language': 'vi,en;q=0.9',
@@ -48,9 +47,6 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
         ...options.headers,
       }
     };
-
-    // Force no-store cache
-    fetchOptions.cache = 'no-store';
 
     const response = await fetch(url, fetchOptions);
     clearTimeout(timeoutId);
@@ -86,7 +82,15 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
 }
 
 function getDefaultRevalidate(key: string): number {
-  return 0; // Temporarily disable cache (no-store) for all requests
+  // ISR caching theo loại dữ liệu
+  // Static/rarely-changing: cache 1 giờ
+  if (['seo-settings', 'general-settings', 'branches', 'meta-pages'].some(k => key.includes(k))) return 3600;
+  // Semi-static: categories, ingredients, banners — cache 10 phút
+  if (['categories', 'ingredients', 'banners'].some(k => key.includes(k))) return 600;
+  // Dynamic but cacheable: products, blogs, policies — cache 60 giây
+  if (['products', 'blogs', 'policies'].some(k => key.includes(k))) return 60;
+  // Default: 60 giây ISR
+  return 60;
 }
 
 /**
