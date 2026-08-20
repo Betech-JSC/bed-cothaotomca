@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
 import SectionRelatedPosts from "@/components/Blog/SectionRelatedPosts";
+import BlogTableOfContents from "@/components/Blog/BlogTableOfContents";
 
 export const dynamic = 'force-dynamic';
 
@@ -216,6 +217,7 @@ export default async function BlogDetailsPage({
       </section>
 
       <SectionRelatedPosts items={relatedPostsDisplay} />
+      <BlogTableOfContents />
     </main>
   )
 }
