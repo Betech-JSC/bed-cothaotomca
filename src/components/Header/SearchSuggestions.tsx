@@ -72,7 +72,9 @@ export default function SearchSuggestions({
             {productSuggestions.length > 0 && (
               <div className="border-b border-gray-100 last:border-b-0">
                 <div className="px-4 py-2 bg-amber-50/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
-                  <span>🛒 {t("common.product")} ({productSuggestions.length})</span>
+                  <span>
+                    🛒 {searchQuery.trim().length < 2 ? "Sản phẩm nổi bật" : t("common.product")} ({productSuggestions.length})
+                  </span>
                 </div>
                 <ul className="divide-y divide-gray-50">
                   {productSuggestions.map((item) => {
@@ -141,7 +143,9 @@ export default function SearchSuggestions({
             {blogSuggestions.length > 0 && (
               <div className="border-b border-gray-100 last:border-b-0">
                 <div className="px-4 py-2 bg-amber-50/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
-                  <span>📰 {t("common.blog")} ({blogSuggestions.length})</span>
+                  <span>
+                    📰 {searchQuery.trim().length < 2 ? "Bài viết mới nhất" : t("common.blog")} ({blogSuggestions.length})
+                  </span>
                 </div>
                 <ul className="divide-y divide-gray-50">
                   {blogSuggestions.map((item) => {

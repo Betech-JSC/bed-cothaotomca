@@ -31,27 +31,23 @@ export function useSearchSuggestions(query: string, locale: string = 'vi') {
     // Cancel previous request
     abortRef.current?.abort()
 
-    if (query.trim().length < 2) {
-      setProductSuggestions([])
-      setBlogSuggestions([])
-      setIsLoading(false)
-      return
-    }
-
     setIsLoading(true)
+    const isSearch = query.trim().length >= 2
 
     const timer = setTimeout(async () => {
       const controller = new AbortController()
       abortRef.current = controller
 
+      const searchParam = isSearch ? `search=${encodeURIComponent(query.trim())}&` : ''
+
       try {
         const [prodRes, blogRes] = await Promise.all([
           fetch(
-            `${API_URL}/products/suggestions?search=${encodeURIComponent(query.trim())}&limit=4&lang=${locale}`,
+            `${API_URL}/products/suggestions?${searchParam}limit=4&lang=${locale}`,
             { signal: controller.signal }
           ).then(res => res.json()).catch(() => ({ data: [] })),
           fetch(
-            `${API_URL}/blogs/suggestions?search=${encodeURIComponent(query.trim())}&limit=4&lang=${locale}`,
+            `${API_URL}/blogs/suggestions?${searchParam}limit=4&lang=${locale}`,
             { signal: controller.signal }
           ).then(res => res.json()).catch(() => ({ data: [] }))
         ])
@@ -70,7 +66,7 @@ export function useSearchSuggestions(query: string, locale: string = 'vi') {
           setIsLoading(false)
         }
       }
-    }, 300) // debounce 300ms
+    }, isSearch ? 300 : 50)
 
     return () => clearTimeout(timer)
   }, [query, locale])
