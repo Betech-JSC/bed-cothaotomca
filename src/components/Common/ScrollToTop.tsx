@@ -1,0 +1,20 @@
+'use client';
+
+import { useEffect } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+
+export default function ScrollToTop() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    // Tự động cuộn lên vị trí trên cùng của trang khi đổi đường dẫn (Route Change)
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'instant',
+    });
+  }, [pathname, searchParams]);
+
+  return null;
+}

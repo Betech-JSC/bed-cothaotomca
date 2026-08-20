@@ -137,7 +137,7 @@ export default function BlogTableOfContents() {
 
           {/* Content Modal / Bottom Sheet */}
           <div
-            className={`fixed bottom-0 left-0 right-0 md:bottom-24 md:left-8 md:right-auto md:w-[380px] z-[10000] bg-white rounded-t-[28px] md:rounded-[24px] p-5 pb-6 space-y-4 shadow-2xl max-h-[75vh] flex flex-col ${
+            className={`fixed bottom-0 left-0 right-0 md:bottom-24 md:left-8 md:right-auto md:w-[380px] max-w-full z-[10000] bg-white rounded-t-[28px] md:rounded-[24px] p-5 pb-6 space-y-4 shadow-2xl max-h-[75vh] flex flex-col overflow-hidden ${
               isAnimatingOut ? 'animate-toc-slide-out' : 'animate-toc-slide-in'
             }`}
           >
@@ -168,8 +168,8 @@ export default function BlogTableOfContents() {
               </button>
             </div>
 
-            {/* Danh sách các Mục lục */}
-            <div className="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+            {/* Danh sách các Mục lục (Triệt tiêu 100% thanh cuộn ngang & dọc) */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-1 pr-1 max-w-full no-scrollbar">
               {headings.map((item, idx) => {
                 const isActive = item.id === activeId;
                 const isH3 = item.level === 3;
@@ -179,18 +179,18 @@ export default function BlogTableOfContents() {
                     key={item.id}
                     type="button"
                     onClick={() => scrollToHeading(item.id)}
-                    className={`w-full text-left transition-all duration-200 rounded-xl px-3.5 py-2.5 flex items-start gap-2.5 cursor-pointer text-sm ${
-                      isH3 ? 'ml-4 w-[calc(100%-1rem)]' : 'font-semibold'
+                    className={`w-full text-left transition-all duration-200 rounded-xl px-3 py-2 flex items-start gap-2 cursor-pointer text-sm max-w-full overflow-hidden ${
+                      isH3 ? 'pl-6 font-normal' : 'font-semibold'
                     } ${
                       isActive
                         ? 'bg-primary/10 text-primary font-bold border-l-4 border-primary pl-3'
                         : 'text-gray-700 hover:bg-gray-50 hover:text-primary'
                     }`}
                   >
-                    <span className={`text-xs mt-0.5 ${isActive ? 'text-primary' : 'text-gray-400'}`}>
+                    <span className={`text-xs mt-0.5 flex-shrink-0 ${isActive ? 'text-primary' : 'text-gray-400'}`}>
                       {isH3 ? '•' : `${idx + 1}.`}
                     </span>
-                    <span className="line-clamp-2 leading-snug">{item.text}</span>
+                    <span className="line-clamp-2 leading-snug break-words flex-1 min-w-0">{item.text}</span>
                   </button>
                 );
               })}
@@ -199,9 +199,16 @@ export default function BlogTableOfContents() {
         </div>
       )}
 
-      {/* Style Animations */}
+      {/* Style Animations & Scrollbar Hiding */}
       <style dangerouslySetInnerHTML={{
         __html: `
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
         @keyframes tocFadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
