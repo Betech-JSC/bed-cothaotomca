@@ -393,7 +393,7 @@ const DesktopNavItem = ({
 
       {item.children && item.children.length > 0 && (
         <div
-          className={`absolute top-full left-0 mt-2 w-72 rounded-2xl border border-amber-100/80 bg-white/98 p-2.5 shadow-2xl backdrop-blur-md transition-all duration-200 ${
+          className={`absolute top-full left-0 mt-2 w-80 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl transition-all duration-200 ${
             showDropdown
               ? "pointer-events-auto opacity-100 translate-y-0"
               : "pointer-events-none opacity-0 translate-y-2"
@@ -408,7 +408,7 @@ const DesktopNavItem = ({
                 onClick={() => {
                   setIsHovered(false);
                 }}
-                className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-left text-base font-display font-medium text-gray-800 transition-all hover:bg-amber-50/80 hover:text-primary group/item"
+                className="flex items-center justify-between rounded-xl px-4 py-2.5 text-left text-base font-display font-bold text-gray-900 transition-all hover:text-secondary group/item"
                 role="menuitem"
               >
                 <span>{child.label}</span>
@@ -578,20 +578,30 @@ const MobileMenu = ({
                 </button>
                 {hasChildren && (
                   <div
-                    className={`ml-3 overflow-hidden border-l border-amber-400/40 pl-3 transition-all duration-300 ${
-                      isOpen ? "max-h-96 pt-1 pb-2 opacity-100" : "max-h-0 opacity-0"
+                    className={`overflow-hidden transition-all duration-300 ${
+                      isOpen ? "max-h-[500px] pt-1 pb-2 opacity-100" : "max-h-0 opacity-0"
                     }`}
                   >
-                    {item.children!.map((child, childIndex) => (
-                      <Link
-                        key={child.i18nKey || childIndex}
-                        href={child.href ?? ("#" as any)}
-                        className="block rounded-lg px-3 py-2 text-sm font-medium text-amber-100/90 hover:text-secondary hover:bg-white/10 transition-colors"
-                        onClick={onClose}
-                      >
-                        {child.label}
-                      </Link>
-                    ))}
+                    {item.children!.map((child, childIndex) => {
+                      const isChildActive = isNavActive(
+                        typeof child.href === "string" ? child.href : undefined,
+                        pathname ?? ""
+                      );
+                      return (
+                        <Link
+                          key={child.i18nKey || childIndex}
+                          href={child.href ?? ("#" as any)}
+                          className={`flex items-center justify-between border-b border-white/10 py-3 pl-6 pr-3 text-base font-sans font-normal transition-colors ${
+                            isChildActive
+                              ? "text-secondary font-semibold"
+                              : "text-white hover:text-secondary"
+                          }`}
+                          onClick={onClose}
+                        >
+                          <span>{child.label}</span>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </li>
