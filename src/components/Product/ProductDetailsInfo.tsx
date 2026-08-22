@@ -36,8 +36,9 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
       imageUrl: productData.images[0]?.url || "/cover.jpg",
       variant: selectedSize.title,
       unitPrice: selectedSize.price,
+      originalPrice: selectedSize.original_price,
     }, quantity);
-    
+
     setIsAdded(true);
     setTimeout(() => {
       setIsAdded(false);
@@ -47,7 +48,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
 
   return (
     <div className="relative top-0 md:space-y-8 space-y-6 xl:space-y-12">
-      <div className="space-y-4 md:space-y-6">
+      <div className="space-y-4">
         <div className="space-y-3 flex flex-col items-start">
           <h1 className="headline-1 max-md:text-[24px] text-primary whitespace-pre-line">
             {productData.title}
@@ -74,11 +75,10 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                   <div
                     key={index}
                     onClick={() => setSelectedSizeIndex(index)}
-                    className={`w-max px-3 min-w-[48px] min-h[48px] flex items-center justify-center button-1 size-12 rounded-full duration-300 ease-in-out cursor-pointer ${
-                      selectedSizeIndex === index
-                        ? "bg-primary text-yellow"
-                        : "bg-white text-gray-900 lg:hover:bg-primary lg:hover:text-yellow"
-                    }`}
+                    className={`w-max px-3 min-w-[48px] min-h[48px] flex items-center justify-center button-1 size-12 rounded-full duration-300 ease-in-out cursor-pointer ${selectedSizeIndex === index
+                      ? "bg-primary text-yellow"
+                      : "bg-white text-gray-900 lg:hover:bg-primary lg:hover:text-yellow"
+                      }`}
                   >
                     <span>{size.title}</span>
                   </div>
@@ -140,11 +140,10 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                 type="button"
                 disabled={!hasCode}
                 onClick={handleAddToCart}
-                className={`btn flex items-center justify-center gap-2 ${
-                  hasCode
-                    ? "btn-primary"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
-                }`}
+                className={`btn flex items-center justify-center gap-2 ${hasCode
+                  ? "btn-primary"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
+                  }`}
               >
                 <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -166,11 +165,10 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                     window.location.href = "/checkout";
                   }
                 }}
-                className={`btn flex items-center justify-center gap-2 ${
-                  hasCode
-                    ? "btn-secondary font-bold"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
-                }`}
+                className={`btn flex items-center justify-center gap-2 ${hasCode
+                  ? "btn-secondary font-bold"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
+                  }`}
               >
                 <span>Mua ngay</span>
               </button>

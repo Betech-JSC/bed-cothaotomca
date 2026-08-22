@@ -264,6 +264,35 @@ export interface ValidateVoucherResult {
   message: string;
 }
 
+export interface PublicVoucherItem {
+  id: number;
+  code: string;
+  discount_type: "fixed" | "percent" | "freeship";
+  value: number;
+  max_discount?: number | null;
+  prereq_price?: number;
+  campaign_id?: number;
+  campaign_name?: string;
+  description?: string;
+  is_freeship?: boolean;
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+export async function getAvailableVouchers(): Promise<PublicVoucherItem[]> {
+  try {
+    const res = await fetch(`${API_BASE}/vouchers`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data || []) as PublicVoucherItem[];
+  } catch {
+    return [];
+  }
+}
+
 export async function validateVoucher(code: string, subtotal?: number, shippingFee?: number): Promise<ValidateVoucherResult> {
   const params = new URLSearchParams({ code });
   if (subtotal !== undefined) {

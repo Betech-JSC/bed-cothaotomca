@@ -27,6 +27,8 @@ export interface ProductVariant {
   size_en?: string;
   price?: string | number;
   campaign_price?: string | number | null;
+  original_price?: string | number | null;
+  active_campaign?: any;
   stock?: number;
 }
 
@@ -157,6 +159,9 @@ export function normalizeProductDetail(item: Product): Product {
     size: v.size,
     size_en: v.size_en ?? v.size,
     price: String(v.price ?? base.price),
+    campaign_price: v.campaign_price !== undefined ? v.campaign_price : null,
+    original_price: v.original_price !== undefined ? v.original_price : null,
+    active_campaign: v.active_campaign ?? null,
     stock: v.stock ?? 0,
   }));
 
@@ -230,8 +235,14 @@ export function mapProductToDetailView(
               : v.size || v.size_en || labels.standard;
           const baseP = parseFloat(String(v.price)) || unitPrice;
           let campP = v.campaign_price ? parseFloat(String(v.campaign_price)) : null;
-          if (!campP && product.active_campaign && product.active_campaign.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0) {
-            campP = Math.round(baseP * (1.0 - (Number(product.active_campaign.discount_value) / 100.0)));
+          if (!campP && product.active_campaign) {
+            if (product.active_campaign.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0) {
+              campP = Math.round(baseP * (1.0 - (Number(product.active_campaign.discount_value) / 100.0)));
+            } else if (product.active_campaign.discount_type === 'fixed' && Number(product.active_campaign.discount_value) > 0) {
+              campP = Math.max(0, baseP - Number(product.active_campaign.discount_value));
+            } else if (product.active_campaign.campaign_price) {
+              campP = Number(product.active_campaign.campaign_price);
+            }
           }
           const isCamp = campP !== null && campP < baseP;
           return {
@@ -305,38 +316,70 @@ export function mapProductToCardItem(
   const categorySlug =
     productCategory?.slug || slugify(categoryName) || "san-pham";
 
-  let basePrice = parseFloat(String(item.price)) || 0;
-  let campPrice = item.campaign_price ? parseFloat(String(item.campaign_price)) : null;
+  let lowestEffectivePrice = Infinity;
+  let matchingOriginalPrice: number | undefined = undefined;
+  let matchingDiscountPercent = 0;
 
-  // If item has variants, check lowest variant price and lowest campaign price
   if (item.variants && item.variants.length > 0) {
-    const variantPrices = item.variants
-      .map((v) => parseFloat(String(v.price)) || 0)
-      .filter((p) => p > 0);
-    const variantCampPrices = item.variants
-      .map((v) => (v.campaign_price ? parseFloat(String(v.campaign_price)) : null))
-      .filter((p): p is number => p !== null && p > 0);
+    item.variants.forEach((v) => {
+      const vBase = parseFloat(String(v.price || 0));
+      if (vBase <= 0) return;
 
-    if (variantPrices.length > 0) {
-      basePrice = Math.min(...variantPrices);
-    }
-    if (variantCampPrices.length > 0) {
-      campPrice = Math.min(...variantCampPrices);
-    }
+      let vCamp: number | null = v.campaign_price ? parseFloat(String(v.campaign_price)) : null;
+      if (!vCamp && item.active_campaign) {
+        if (item.active_campaign.discount_type === 'percent' && Number(item.active_campaign.discount_value) > 0) {
+          vCamp = Math.ceil((vBase * (1.0 - (Number(item.active_campaign.discount_value) / 100.0))) / 1000) * 1000;
+        } else if (item.active_campaign.discount_type === 'fixed' && Number(item.active_campaign.discount_value) > 0) {
+          vCamp = Math.max(0, vBase - Number(item.active_campaign.discount_value));
+        } else if (item.active_campaign.campaign_price) {
+          vCamp = Number(item.active_campaign.campaign_price);
+        }
+      }
+
+      const isDiscounted = vCamp !== null && vCamp > 0 && vCamp < vBase;
+      const vEff = isDiscounted ? vCamp : vBase;
+
+      if (vEff < lowestEffectivePrice) {
+        lowestEffectivePrice = vEff;
+        matchingOriginalPrice = isDiscounted ? vBase : undefined;
+        matchingDiscountPercent = isDiscounted ? Math.round(((vBase - vEff) / vBase) * 100) : 0;
+      } else if (vEff === lowestEffectivePrice && isDiscounted && !matchingOriginalPrice) {
+        matchingOriginalPrice = vBase;
+        matchingDiscountPercent = Math.round(((vBase - vEff) / vBase) * 100);
+      }
+    });
   }
 
-  const isCamp = campPrice !== null && campPrice < basePrice;
+  if (lowestEffectivePrice === Infinity) {
+    const basePrice = parseFloat(String(item.price || 0)) || 0;
+    let campPrice = item.campaign_price ? parseFloat(String(item.campaign_price)) : null;
+    if (!campPrice && item.active_campaign && basePrice > 0) {
+      if (item.active_campaign.discount_type === 'percent' && Number(item.active_campaign.discount_value) > 0) {
+        campPrice = Math.ceil((basePrice * (1.0 - (Number(item.active_campaign.discount_value) / 100.0))) / 1000) * 1000;
+      } else if (item.active_campaign.discount_type === 'fixed' && Number(item.active_campaign.discount_value) > 0) {
+        campPrice = Math.max(0, basePrice - Number(item.active_campaign.discount_value));
+      } else if (item.active_campaign.campaign_price) {
+        campPrice = Number(item.active_campaign.campaign_price);
+      }
+    }
+    const isCamp = campPrice !== null && campPrice > 0 && campPrice < basePrice;
+    lowestEffectivePrice = isCamp ? campPrice : basePrice;
+    matchingOriginalPrice = isCamp ? basePrice : undefined;
+    matchingDiscountPercent = isCamp ? Math.round(((basePrice - campPrice!) / basePrice) * 100) : 0;
+  }
+
+  const hasDiscount = Boolean(matchingOriginalPrice && matchingOriginalPrice > lowestEffectivePrice);
 
   return {
     id: item.id,
     title: name,
     custom_name: item.custom_name,
     slug: item.slug || slugify(name),
-    price: isCamp ? campPrice : basePrice,
-    original_price: isCamp ? basePrice : undefined,
-    active_campaign: item.active_campaign || (isCamp ? {
+    price: lowestEffectivePrice,
+    original_price: matchingOriginalPrice,
+    active_campaign: item.active_campaign || (hasDiscount ? {
       name: "Chiến dịch Khuyến mãi",
-      discount_percent: Math.round(((basePrice - (campPrice || basePrice)) / basePrice) * 100),
+      discount_percent: matchingDiscountPercent,
     } : undefined),
     category: {
       id: String(productCategory?.id ?? ""),

@@ -12,6 +12,7 @@ import {
   calculateShippingFee,
   createOrder,
   getAdministrativeUnits,
+  getAvailableVouchers,
   getCheckoutConfig,
   getShippingSettings,
   validateVoucher,
@@ -20,6 +21,7 @@ import {
   type CheckoutConfig,
   type DeliveryType,
   type OrderInitiated,
+  type PublicVoucherItem,
   type ShippingSettings,
   OrderApiError,
 } from "@/services/orderService";
@@ -30,6 +32,8 @@ import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getV
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 import Chevron from "@/components/Icons/Chevron";
+import CouponModal from "@/components/Voucher/CouponModal";
+import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
 
 const POPULAR_DISTRICTS = [
   // Hà Nội
@@ -110,6 +114,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   // Voucher
   const [voucherCode, setVoucherCode] = useState("");
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [availableVouchers, setAvailableVouchers] = useState<PublicVoucherItem[]>([]);
   const [appliedVoucher, setAppliedVoucher] = useState<{
     id: number;
     code: string;
@@ -124,6 +130,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
   const [validatingVoucher, setValidatingVoucher] = useState(false);
+
+  useEffect(() => {
+    setIsVoucherModalOpen(false);
+  }, [isCartOpen]);
+
+  useEffect(() => {
+    getAvailableVouchers().then(setAvailableVouchers).catch(() => setAvailableVouchers([]));
+  }, []);
 
   // Pending order (bank transfer QR)
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
@@ -416,12 +430,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     const val = eligibleOrderDiscountPromo.discount_value;
     let disc = 0;
     if (type === "percent") {
-      disc = Math.round(subtotal * (val / 100));
+      disc = Math.ceil((subtotal * (val / 100)) / 1000) * 1000;
       if (eligibleOrderDiscountPromo.max_discount && eligibleOrderDiscountPromo.max_discount > 0) {
         disc = Math.min(disc, eligibleOrderDiscountPromo.max_discount);
       }
     } else if (type === "fixed") {
-      disc = val;
+      disc = Math.ceil(val / 1000) * 1000;
       if (eligibleOrderDiscountPromo.max_discount && eligibleOrderDiscountPromo.max_discount > 0) {
         disc = Math.min(disc, eligibleOrderDiscountPromo.max_discount);
       }
@@ -479,20 +493,18 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     );
   }, [eligibleOrderGiftPromo, selectedOrderGiftId, optOutOrderGift]);
 
-  // 3. BUY X GET Y PROMOTION (Mua X tặng/giảm Y)
-  const eligibleBuyXGetYPromo = useMemo(() => {
-    if (!config?.active_promotions) return null;
-    return (
-      config.active_promotions.find((p) => {
-        if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
-        const buyQty = Number(p.settings?.buy_quantity || 2);
-        return totalCartQuantity >= buyQty;
-      }) || null
-    );
+  // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - Hỗ trợ nhiều chiến dịch đồng thời)
+  const eligibleBuyXGetYPromos = useMemo(() => {
+    if (!config?.active_promotions) return [];
+    return config.active_promotions.filter((p) => {
+      if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
+      const buyQty = Number(p.settings?.buy_quantity || 2);
+      return totalCartQuantity >= buyQty;
+    });
   }, [config?.active_promotions, totalCartQuantity]);
 
   const upcomingBuyXGetYPromo = useMemo(() => {
-    if (eligibleBuyXGetYPromo || !config?.active_promotions) return null;
+    if (!config?.active_promotions) return null;
     return (
       config.active_promotions.find((p) => {
         if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
@@ -500,69 +512,79 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         return totalCartQuantity < buyQty;
       }) || null
     );
-  }, [config?.active_promotions, eligibleBuyXGetYPromo, totalCartQuantity]);
+  }, [config?.active_promotions, totalCartQuantity]);
 
-  const [optOutBuyXGetY, setOptOutBuyXGetY] = useState(false);
-  const [selectedBuyXGetYId, setSelectedBuyXGetYId] = useState<number | null>(null);
+  const [optOutBuyXGetYSet, setOptOutBuyXGetYSet] = useState<Record<number, boolean>>({});
+  const [selectedBuyXGetYMap, setSelectedBuyXGetYMap] = useState<Record<number, number>>({});
 
   useEffect(() => {
-    if (eligibleBuyXGetYPromo && eligibleBuyXGetYPromo.items.length > 0) {
-      if (
-        !selectedBuyXGetYId ||
-        !eligibleBuyXGetYPromo.items.some((i) => i.id === selectedBuyXGetYId)
-      ) {
-        setSelectedBuyXGetYId(eligibleBuyXGetYPromo.items[0].id);
-      }
-    } else {
-      setSelectedBuyXGetYId(null);
-      setOptOutBuyXGetY(false);
+    if (eligibleBuyXGetYPromos.length > 0) {
+      setSelectedBuyXGetYMap((prev) => {
+        let updated = false;
+        const next = { ...prev };
+        eligibleBuyXGetYPromos.forEach((promo) => {
+          if (!next[promo.id] && promo.items.length > 0) {
+            next[promo.id] = promo.items[0].id;
+            updated = true;
+          }
+        });
+        return updated ? next : prev;
+      });
     }
-  }, [eligibleBuyXGetYPromo]);
+  }, [eligibleBuyXGetYPromos]);
 
-  const selectedBuyXGetYItem = useMemo(() => {
-    if (!eligibleBuyXGetYPromo || !selectedBuyXGetYId || optOutBuyXGetY) return null;
-    return (
-      eligibleBuyXGetYPromo.items.find((i) => i.id === selectedBuyXGetYId) || null
-    );
-  }, [eligibleBuyXGetYPromo, selectedBuyXGetYId, optOutBuyXGetY]);
-
-  const buyXGetYTag = useMemo(() => {
-    if (!eligibleBuyXGetYPromo) return "🎁 Món ưu đãi";
-    const buyQty = eligibleBuyXGetYPromo.settings?.buy_quantity || 2;
-    const giftQty = eligibleBuyXGetYPromo.settings?.gift_quantity || 1;
-    const isFree = selectedBuyXGetYItem?.campaign_price === 0;
-    return isFree
-      ? `🎁 Mua ${buyQty} tặng ${giftQty}`
-      : `🎁 Mua ${buyQty} giảm ${giftQty}`;
-  }, [eligibleBuyXGetYPromo, selectedBuyXGetYItem]);
+  const activeBuyXGetYItems = useMemo(() => {
+    return eligibleBuyXGetYPromos
+      .filter((promo) => !optOutBuyXGetYSet[promo.id])
+      .map((promo) => {
+        const selectedId = selectedBuyXGetYMap[promo.id] || promo.items[0]?.id;
+        const item = promo.items.find((i) => i.id === selectedId) || promo.items[0];
+        const buyQty = promo.settings?.buy_quantity || 2;
+        const giftQty = promo.settings?.gift_quantity || 1;
+        const isFree = item?.campaign_price === 0;
+        const tag = isFree
+          ? `🎁 Mua ${buyQty} tặng ${giftQty}`
+          : `💎 Mua ${buyQty} giảm ${giftQty}`;
+        return {
+          promo,
+          item,
+          tag,
+        };
+      })
+      .filter((x) => Boolean(x.item));
+  }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap, optOutBuyXGetYSet]);
 
   const promoItemsExtraPrice = useMemo(() => {
     let extra = 0;
     if (selectedOrderGiftItem && selectedOrderGiftItem.campaign_price > 0) {
       extra += selectedOrderGiftItem.campaign_price;
     }
-    if (selectedBuyXGetYItem && selectedBuyXGetYItem.campaign_price > 0) {
-      extra += selectedBuyXGetYItem.campaign_price;
-    }
+    activeBuyXGetYItems.forEach(({ item }) => {
+      if (item && item.campaign_price > 0) {
+        extra += item.campaign_price;
+      }
+    });
     return extra;
-  }, [selectedOrderGiftItem, selectedBuyXGetYItem]);
+  }, [selectedOrderGiftItem, activeBuyXGetYItems]);
 
   const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount + shipping);
 
   // Apply Voucher
-  const handleApplyVoucher = async () => {
-    if (!voucherCode.trim()) {
+  const handleApplyVoucher = async (codeOverride?: string) => {
+    const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
+    if (!code) {
       setVoucherError("Vui lòng nhập mã giảm giá.");
       setVoucherSuccess(null);
       return;
     }
 
+    setVoucherCode(code);
     setValidatingVoucher(true);
     setVoucherError(null);
     setVoucherSuccess(null);
 
     try {
-      const result = await validateVoucher(voucherCode.trim(), subtotal, shipping);
+      const result = await validateVoucher(code, subtotal, shipping);
       if (result.valid && result.voucher) {
         setAppliedVoucher({
           id: result.voucher.id,
@@ -576,11 +598,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           discountAmount: result.discount_amount,
         });
         setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công.");
+        return true;
       } else {
         setVoucherError(result.message || "Mã giảm giá không hợp lệ.");
+        throw new Error(result.message || "Mã giảm giá không hợp lệ.");
       }
-    } catch (err) {
-      setVoucherError("Lỗi kiểm tra mã giảm giá.");
+    } catch (err: any) {
+      const msg = err?.message || "Lỗi kiểm tra mã giảm giá.";
+      setVoucherError(msg);
+      throw new Error(msg);
     } finally {
       setValidatingVoucher(false);
     }
@@ -749,26 +775,21 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               },
             ]
             : []),
-          ...(selectedBuyXGetYItem
-            ? [
-              {
-                product_id: selectedBuyXGetYItem.product_id,
-                product_code: selectedBuyXGetYItem.product_code,
-                product_name: `[ƯU ĐÃI COMBO] ${selectedBuyXGetYItem.product_name}`,
-                quantity: 1,
-                price: selectedBuyXGetYItem.campaign_price,
-                discount: 0,
-                note: `${buyXGetYTag.replace("🎁 ", "")} (${eligibleBuyXGetYPromo?.name || "Chiến dịch"})`,
-              },
-            ]
-            : []),
+          ...(activeBuyXGetYItems.map(({ promo, item, tag }) => ({
+            product_id: item.product_id,
+            product_code: item.product_code,
+            product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
+            quantity: 1,
+            price: item.campaign_price,
+            discount: 0,
+            note: `${tag.replace("🎁 ", "").replace("💎 ", "")} (${promo.name})`,
+          }))),
         ],
         discount: voucherDiscount + autoOrderDiscountAmount,
         description: [
           cartItems.map((item) => `${item.title} (${item.variant}) x${item.quantity}`).join(", "),
           autoOrderDiscountAmount > 0 ? `🏷 KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
-          selectedOrderGiftItem ? `🎁 Tặng kèm: ${selectedOrderGiftItem.product_name} (0đ - ${eligibleOrderGiftPromo?.name || "Ưu đãi"})` : "",
-          selectedBuyXGetYItem ? `🎁 Ưu đãi combo: ${selectedBuyXGetYItem.product_name} (${selectedBuyXGetYItem.campaign_price === 0 ? "0đ" : `${selectedBuyXGetYItem.campaign_price.toLocaleString("vi-VN")}đ`} - ${buyXGetYTag.replace("🎁 ", "")})` : "",
+          ...activeBuyXGetYItems.map(({ promo, item, tag }) => `🎁 Ưu đãi combo: ${item.product_name} (${item.campaign_price === 0 ? "0đ" : `${item.campaign_price.toLocaleString("vi-VN")}đ`} - ${tag.replace("🎁 ", "").replace("💎 ", "")})`),
         ]
           .filter(Boolean)
           .join(" | ") || undefined,
@@ -906,9 +927,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           <h4 className="title-3 text-primary font-bold font-display line-clamp-1">
                             {item.title}
                           </h4>
-                          <span className="title-3 text-primary font-bold whitespace-nowrap">
-                            {formatPrice(item.unitPrice)}
-                          </span>
+                          <div className="text-right shrink-0">
+                            {item.originalPrice && item.originalPrice > item.unitPrice ? (
+                              <p className="text-xs font-semibold text-gray-400 line-through leading-tight">
+                                {formatPrice(item.originalPrice)}
+                              </p>
+                            ) : null}
+                            <span className="title-3 text-primary font-bold whitespace-nowrap leading-tight">
+                              {formatPrice(item.unitPrice)}
+                            </span>
+                          </div>
                         </div>
                         {!isDefaultVariant(item.variant) && (
                           <p className="text-sm text-gray-500 font-semibold uppercase">
@@ -959,13 +987,34 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               <>
                 {/* Voucher Code */}
                 <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
-                  <label className="body-1 text-primary font-bold block">Voucher</label>
+                  <div className="flex items-center justify-between">
+                    <label className="body-1 text-primary font-bold flex items-center gap-1.5">
+                      <span>🎟️</span>
+                      <span>Mã giảm giá</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsVoucherModalOpen(true)}
+                      className="text-xs font-bold text-secondary hover:text-secondary/80 flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <span>Chọn hoặc xem mã</span>
+                      <span className="text-sm leading-none">›</span>
+                    </button>
+                  </div>
                   <div className="flex items-center rounded-full border border-gray-200 bg-white p-1 pl-4 focus-within:border-primary transition-all">
                     <input
                       type="text"
                       placeholder="Mã Voucher"
                       value={voucherCode}
                       onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (!appliedVoucher && !validatingVoucher && voucherCode.trim()) {
+                            handleApplyVoucher();
+                          }
+                        }
+                      }}
                       readOnly={!!appliedVoucher}
                       disabled={validatingVoucher}
                       style={{ backgroundColor: "transparent" }}
@@ -975,24 +1024,54 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       <button
                         type="button"
                         onClick={handleRemoveVoucher}
-                        className="bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-full px-6 py-2.5 text-base transition-all"
+                        className="bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-full px-5 py-2 text-sm transition-all border border-red-200/60"
                       >
                         Xóa
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={handleApplyVoucher}
-                        disabled={validatingVoucher || !voucherCode.trim()}
-                        className="bg-[#142A68] hover:bg-[#142A68]/95 text-white font-bold rounded-full px-6 py-2.5 text-base transition-all disabled:opacity-50"
-                      >
-                        {validatingVoucher ? "..." : "Áp dụng"}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsVoucherModalOpen(true)}
+                          className="bg-amber-50 hover:bg-amber-100 text-primary font-bold rounded-full px-3.5 py-2 text-xs transition-all border border-amber-200 cursor-pointer whitespace-nowrap"
+                        >
+                          Chọn mã
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyVoucher()}
+                          disabled={validatingVoucher || !voucherCode.trim()}
+                          className="bg-[#142A68] hover:bg-[#142A68]/95 text-white font-bold rounded-full px-5 py-2 text-sm transition-all disabled:opacity-50 cursor-pointer"
+                        >
+                          {validatingVoucher ? "..." : "Áp dụng"}
+                        </button>
+                      </div>
                     )}
                   </div>
                   {voucherError && <p className="text-sm text-red-600 font-semibold mt-1">{voucherError}</p>}
-                  {voucherSuccess && <p className="text-sm text-green-600 font-semibold mt-1">{voucherSuccess}</p>}
+                  {voucherSuccess && (
+                    <div className="text-xs text-emerald-600 font-semibold mt-1 space-y-0.5">
+                      <p className="flex items-center gap-1">
+                        <span>✓</span> <span>{voucherSuccess}</span>
+                      </p>
+                      {appliedVoucher?.prereqPrice ? (
+                        <p className="text-[11px] text-gray-500 font-normal">
+                          * Đơn từ {appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ trở lên.
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
+
+                {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}
+                <SmartCartProgressBar
+                  subtotal={subtotal}
+                  shippingSettings={shippingSettings}
+                  isFreeship={isFreeship}
+                  freeshipReason={freeshipReason}
+                  vouchers={availableVouchers}
+                  onOpenVouchers={() => setIsVoucherModalOpen(true)}
+                />
 
                 {/* Summary Panel */}
                 <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
@@ -1006,32 +1085,6 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       {!selectedDistrict ? "--" : isFreeship ? "0đ" : shipping > 0 ? formatPrice(shipping) : "--"}
                     </span>
                   </div>
-
-                  {/* Thông báo / Thanh tiến trình Freeship nằm ngay dưới Phí ship */}
-                  {shippingSettings?.is_min_amount_enabled && shippingSettings.min_order_amount > 0 && (
-                    subtotal >= shippingSettings.min_order_amount || isFreeship ? (
-                      <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-xl px-3.5 py-2 text-xs text-emerald-800 font-semibold flex items-center gap-1.5">
-                        <span>🎉</span>
-                        <span>{freeshipReason || `Miễn phí vận chuyển (Đơn hàng từ ${formatPrice(shippingSettings.min_order_amount)})`}</span>
-                      </div>
-                    ) : (
-                      <div className="p-3 rounded-xl border border-amber-200/80 bg-amber-50/80 text-amber-900 space-y-1.5 text-xs font-medium">
-                        <div className="flex justify-between items-center font-semibold gap-2">
-                          <span className="flex items-center gap-1">
-                            <span>🎁</span>
-                            <span>Miễn phí vận chuyển cho đơn từ {formatPrice(shippingSettings.min_order_amount)}</span>
-                          </span>
-                          <span className="font-bold text-primary shrink-0">Cần mua thêm {formatPrice(shippingSettings.min_order_amount - subtotal)}</span>
-                        </div>
-                        <div className="w-full h-2 bg-amber-200/60 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary transition-all duration-500 rounded-full"
-                            style={{ width: `${Math.min(100, Math.round((subtotal / shippingSettings.min_order_amount) * 100))}%` }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  )}
                   <div className="flex justify-between items-center text-base">
                     <span className="text-gray-500 font-medium">Giảm giá</span>
                     <span className="text-primary font-bold font-display">{formatPrice(voucherDiscount)}</span>
@@ -1108,7 +1161,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start gap-2">
                               <p className="body-2 text-primary font-bold font-display line-clamp-1">{item.title}</p>
-                              <span className="body-2 text-primary font-bold whitespace-nowrap">{formatPrice(item.unitPrice)}</span>
+                              <div className="text-right shrink-0">
+                                {item.originalPrice && item.originalPrice > item.unitPrice ? (
+                                  <p className="text-[10px] font-semibold text-gray-400 line-through leading-tight">
+                                    {formatPrice(item.originalPrice)}
+                                  </p>
+                                ) : null}
+                                <span className="body-2 text-primary font-bold whitespace-nowrap leading-tight">{formatPrice(item.unitPrice)}</span>
+                              </div>
                             </div>
                             <p className="text-[10px] text-gray-500 font-semibold uppercase">
                               {isDefaultVariant(item.variant) ? `Số lượng: ${item.quantity}` : `${item.variant} x${item.quantity}`}
@@ -1149,7 +1209,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 onClick={() => setOptOutOrderGift(true)}
                                 className="text-[11px] text-gray-400 hover:text-red-500 font-semibold cursor-pointer"
                               >
-                                🗑 Bỏ quà
+                                🗑 Xoá
                               </button>
                             </div>
                           </div>
@@ -1168,14 +1228,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         </div>
                       )}
 
-                      {/* Món ưu đãi Mua X tặng/giảm Y (buy_x_get_y) */}
-                      {selectedBuyXGetYItem && (
-                        <div className="flex gap-3 py-2.5 px-3 bg-purple-50/60 rounded-xl border border-purple-200/80 items-start">
-                          {selectedBuyXGetYItem.image ? (
+                      {/* Món ưu đãi Mua X tặng/giảm Y (buy_x_get_y) - Hỗ trợ nhiều chiến dịch */}
+                      {activeBuyXGetYItems.map(({ promo, item, tag }) => (
+                        <div key={`m-buyxy-${promo.id}-${item.id}`} className="flex gap-3 py-2.5 px-3 bg-purple-50/60 rounded-xl border border-purple-200/80 items-start">
+                          {item.image ? (
                             <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-purple-200 flex-shrink-0">
                               <Image
-                                src={selectedBuyXGetYItem.image}
-                                alt={selectedBuyXGetYItem.product_name}
+                                src={item.image}
+                                alt={item.product_name}
                                 fill
                                 className="object-cover"
                               />
@@ -1187,38 +1247,43 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start gap-2">
-                              <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">{selectedBuyXGetYItem.product_name}</p>
+                              <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">{item.product_name}</p>
                               <span className="body-2 text-purple-700 font-bold whitespace-nowrap">
-                                {selectedBuyXGetYItem.campaign_price === 0 ? "0đ" : formatPrice(selectedBuyXGetYItem.campaign_price)}
+                                {item.campaign_price === 0 ? "0đ" : formatPrice(item.campaign_price)}
                               </span>
                             </div>
                             <div className="flex items-center justify-between pt-0.5">
                               <p className="text-[10px] text-purple-900 font-bold uppercase">
-                                {buyXGetYTag}
+                                {tag}
                               </p>
                               <button
                                 type="button"
-                                onClick={() => setOptOutBuyXGetY(true)}
+                                onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: true }))}
                                 className="text-[11px] text-gray-400 hover:text-red-500 font-semibold cursor-pointer"
                               >
-                                🗑 Bỏ ưu đãi
+                                🗑 Xoá
                               </button>
                             </div>
                           </div>
                         </div>
-                      )}
-                      {eligibleBuyXGetYPromo && optOutBuyXGetY && (
-                        <div className="flex items-center justify-between p-2.5 bg-purple-50/70 rounded-xl border border-dashed border-purple-300 text-xs text-purple-900 animate-fade-in">
-                          <span className="font-medium">🎁 Đã bỏ ưu đãi ({eligibleBuyXGetYPromo.name})</span>
-                          <button
-                            type="button"
-                            onClick={() => setOptOutBuyXGetY(false)}
-                            className="font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-2.5 py-0.5 rounded-full text-xs"
+                      ))}
+                      {eligibleBuyXGetYPromos
+                        .filter((promo) => optOutBuyXGetYSet[promo.id])
+                        .map((promo) => (
+                          <div
+                            key={`m-optout-${promo.id}`}
+                            className="flex items-center justify-between p-2.5 bg-purple-50/70 rounded-xl border border-dashed border-purple-300 text-xs text-purple-900 animate-fade-in"
                           >
-                            + Nhận lại
-                          </button>
-                        </div>
-                      )}
+                            <span className="font-medium">🎁 Đã bỏ ưu đãi ({promo.name})</span>
+                            <button
+                              type="button"
+                              onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: false }))}
+                              className="font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-2.5 py-0.5 rounded-full text-xs"
+                            >
+                              + Nhận lại
+                            </button>
+                          </div>
+                        ))}
                     </div>
 
                     <div className="space-y-2 border-t border-gray-100 pt-3 text-xs">
@@ -1233,13 +1298,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       {autoOrderDiscountAmount > 0 && (
                         <div className="flex justify-between items-center text-emerald-600">
                           <span className="flex items-center gap-1">
-                            <span>Giảm KM đơn ({eligibleOrderDiscountPromo?.name})</span>
+                            <span>{eligibleOrderDiscountPromo?.name}</span>
                             <button
                               type="button"
                               onClick={() => setOptOutOrderDiscount(true)}
                               className="text-[11px] text-red-500 underline font-normal"
                             >
-                              [Bỏ]
+                              [Xoá]
                             </button>
                           </span>
                           <span className="font-semibold">-{formatPrice(autoOrderDiscountAmount)}</span>
@@ -1247,7 +1312,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       )}
                       {eligibleOrderDiscountPromo && optOutOrderDiscount && (
                         <div className="flex justify-between items-center text-gray-500 text-[11px]">
-                          <span>Đã bỏ giảm KM đơn ({eligibleOrderDiscountPromo.name})</span>
+                          <span>({eligibleOrderDiscountPromo.name})</span>
                           <button
                             type="button"
                             onClick={() => setOptOutOrderDiscount(false)}
@@ -1719,6 +1784,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         isOpen={showNoticeModal}
         onClose={() => setShowNoticeModal(false)}
         notice={operatingStatus.notice}
+      />
+
+      <CouponModal
+        isOpen={isVoucherModalOpen}
+        onClose={() => setIsVoucherModalOpen(false)}
+        subtotal={subtotal}
+        shippingFee={shipping}
+        appliedVoucherCode={appliedVoucher?.code || ""}
+        onApplyVoucher={(code) => handleApplyVoucher(code)}
+        onRemoveVoucher={handleRemoveVoucher}
       />
     </div>
   );

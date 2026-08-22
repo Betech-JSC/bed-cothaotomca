@@ -122,6 +122,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
       imageUrl: productData.images[0]?.url || "/cover.jpg",
       variant: matchedSize.title,
       unitPrice,
+      originalPrice: matchedSize.original_price,
     };
   }
 

@@ -144,8 +144,14 @@ export default async function ProductDetailsPage({
       ? product.variants.map((v: any) => {
         const basePrice = typeof v.price === "number" ? v.price : parseFloat(v.price) || 0;
         let campaignPrice: number | null = v.campaign_price ? parseFloat(String(v.campaign_price)) : null;
-        if (!campaignPrice && product.active_campaign && product.active_campaign.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0) {
-          campaignPrice = Math.round(basePrice * (1.0 - (Number(product.active_campaign.discount_value) / 100.0)));
+        if (!campaignPrice && product.active_campaign) {
+          if (product.active_campaign.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0) {
+            campaignPrice = Math.round(basePrice * (1.0 - (Number(product.active_campaign.discount_value) / 100.0)));
+          } else if (product.active_campaign.discount_type === 'fixed' && Number(product.active_campaign.discount_value) > 0) {
+            campaignPrice = Math.max(0, basePrice - Number(product.active_campaign.discount_value));
+          } else if (product.active_campaign.campaign_price) {
+            campaignPrice = Number(product.active_campaign.campaign_price);
+          }
         }
         const finalPrice = campaignPrice && campaignPrice < basePrice ? campaignPrice : basePrice;
         return {

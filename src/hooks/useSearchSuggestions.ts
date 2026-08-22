@@ -8,7 +8,10 @@ export interface SearchProductSuggestion {
   slug: string
   image: string | null
   price: number | string
+  campaign_price?: number | string | null
+  original_price?: number | string | null
   min_price: number | string | null
+  min_campaign_price?: number | string | null
   category: { id: string | number; title: string; slug: string } | null
 }
 

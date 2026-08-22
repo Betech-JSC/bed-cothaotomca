@@ -132,9 +132,22 @@ export default function SearchSuggestions({
 
                           {/* Price */}
                           <div className="text-right flex-shrink-0">
-                            <div className="text-[10px] text-gray-500 leading-none">{t("common.only_from")}</div>
                             <div className="text-sm font-semibold text-secondary whitespace-nowrap">
-                              {formatPrice(parseFloat(String(item.min_price || item.price)) || 0)}
+                              {(() => {
+                                const minCamp = item.min_campaign_price !== undefined && item.min_campaign_price !== null
+                                  ? parseFloat(String(item.min_campaign_price))
+                                  : null;
+                                const camp = item.campaign_price !== undefined && item.campaign_price !== null
+                                  ? parseFloat(String(item.campaign_price))
+                                  : null;
+                                const base = parseFloat(String(item.min_price || item.price || 0)) || 0;
+                                const effectivePrice = (minCamp !== null && minCamp > 0 && minCamp < base)
+                                  ? minCamp
+                                  : (camp !== null && camp > 0 && camp < base)
+                                    ? camp
+                                    : base;
+                                return formatPrice(effectivePrice);
+                              })()}
                             </div>
                           </div>
                         </Link>

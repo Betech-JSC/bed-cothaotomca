@@ -34,67 +34,129 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const t = useTranslations();
   const imageSrc = item.image?.url || '/cover.jpg';
 
-  const getPrice = () => {
-    // 1. If explicit campaign_price exists on item
-    const campPrice = parseFloat(String((item as any).campaign_price || 0));
-    if (campPrice > 0) return campPrice;
+  const pricing = React.useMemo(() => {
+    // 0. If item already has price and original_price explicitly calculated from service
+    const directPrice = parseFloat(String(item.price || (item as any).min_price || 0));
+    const directOrigPrice = parseFloat(String((item as any).original_price || (item as any).originalPrice || 0));
 
-    // 2. If variants exist, check lowest campaign_price or lowest base price
-    if (item.variants && item.variants.length > 0) {
-      const vCampPrices = item.variants
-        .map((v) => (v.campaign_price ? parseFloat(String(v.campaign_price)) : null))
-        .filter((p): p is number => p !== null && p > 0);
-      if (vCampPrices.length > 0) return Math.min(...vCampPrices);
-
-      const vPrices = item.variants
-        .map((v) => parseFloat(String(v.price || 0)))
-        .filter((p) => p > 0);
-      if (vPrices.length > 0) return Math.min(...vPrices);
+    if (directPrice > 0 && directOrigPrice > directPrice) {
+      return {
+        price: directPrice,
+        originalPrice: directOrigPrice,
+        hasDiscount: true,
+        discountPercent: Math.round(((directOrigPrice - directPrice) / directOrigPrice) * 100),
+      };
     }
 
-    const itemPrice = parseFloat(String(item.price || 0));
-    if (itemPrice > 0) return itemPrice;
-
-    const minPrice = parseFloat(String(item.min_price || 0));
-    if (minPrice > 0) return minPrice;
-
-    return 0;
-  };
-
-  const getOriginalPrice = () => {
-    const origPrice = parseFloat(String((item as any).original_price || 0));
-    if (origPrice > 0) return origPrice;
-
+    // 1. If variants exist, find the variant with the lowest effective selling price
     if (item.variants && item.variants.length > 0) {
-      const hasCamp = item.variants.some(
-        (v) => v.campaign_price && parseFloat(String(v.campaign_price)) < parseFloat(String(v.price || 0))
-      );
-      if (hasCamp) {
-        const vPrices = item.variants
-          .map((v) => parseFloat(String(v.price || 0)))
-          .filter((p) => p > 0);
-        if (vPrices.length > 0) return Math.min(...vPrices);
+      let lowestEffectivePrice = Infinity;
+      let matchingOriginalPrice: number | undefined = undefined;
+      let matchingDiscountPercent = 0;
+
+      item.variants.forEach((v: any) => {
+        const basePrice = parseFloat(String(v.original_price || v.price || 0));
+        if (basePrice <= 0) return;
+
+        let campPrice: number | null = (v.campaign_price !== undefined && v.campaign_price !== null)
+          ? parseFloat(String(v.campaign_price))
+          : null;
+
+        if (!campPrice && v.active_campaign) {
+          campPrice = parseFloat(String(v.active_campaign.campaign_price || 0));
+        }
+
+        if (!campPrice && (item as any).active_campaign) {
+          if (
+            (item as any).active_campaign.discount_type === 'percent' &&
+            Number((item as any).active_campaign.discount_value) > 0
+          ) {
+            campPrice = Math.round(basePrice * (1.0 - Number((item as any).active_campaign.discount_value) / 100.0));
+          } else if (
+            (item as any).active_campaign.discount_type === 'fixed' &&
+            Number((item as any).active_campaign.discount_value) > 0
+          ) {
+            campPrice = Math.max(0, basePrice - Number((item as any).active_campaign.discount_value));
+          } else if ((item as any).active_campaign.campaign_price) {
+            campPrice = Number((item as any).active_campaign.campaign_price);
+          }
+        }
+
+        const isDiscounted = campPrice !== null && campPrice > 0 && campPrice < basePrice;
+        const effectivePrice = isDiscounted ? campPrice : basePrice;
+
+        if (effectivePrice < lowestEffectivePrice) {
+          lowestEffectivePrice = effectivePrice;
+          matchingOriginalPrice = isDiscounted ? basePrice : undefined;
+          matchingDiscountPercent = isDiscounted ? Math.round(((basePrice - effectivePrice) / basePrice) * 100) : 0;
+        } else if (effectivePrice === lowestEffectivePrice && isDiscounted && !matchingOriginalPrice) {
+          matchingOriginalPrice = basePrice;
+          matchingDiscountPercent = Math.round(((basePrice - effectivePrice) / basePrice) * 100);
+        }
+      });
+
+      if (lowestEffectivePrice < Infinity) {
+        const hasDiscount = Boolean(matchingOriginalPrice && matchingOriginalPrice > lowestEffectivePrice);
+        return {
+          price: lowestEffectivePrice,
+          originalPrice: matchingOriginalPrice,
+          hasDiscount,
+          discountPercent: hasDiscount ? matchingDiscountPercent : 0,
+        };
       }
     }
 
-    return 0;
-  };
+    // 2. Fallback when no variants exist
+    const basePrice = parseFloat(String((item as any).original_price || item.price || item.min_price || 0));
+    let campPrice: number | null = (item as any).campaign_price !== undefined && (item as any).campaign_price !== null
+      ? parseFloat(String((item as any).campaign_price))
+      : null;
 
-  const price = getPrice();
-  const originalPrice = getOriginalPrice();
-  const hasDiscount = originalPrice > price;
+    if (!campPrice && (item as any).active_campaign && basePrice > 0) {
+      if (
+        (item as any).active_campaign.discount_type === 'percent' &&
+        Number((item as any).active_campaign.discount_value) > 0
+      ) {
+        campPrice = Math.round(basePrice * (1.0 - Number((item as any).active_campaign.discount_value) / 100.0));
+      } else if (
+        (item as any).active_campaign.discount_type === 'fixed' &&
+        Number((item as any).active_campaign.discount_value) > 0
+      ) {
+        campPrice = Math.max(0, basePrice - Number((item as any).active_campaign.discount_value));
+      } else if ((item as any).active_campaign.campaign_price) {
+        campPrice = Number((item as any).active_campaign.campaign_price);
+      }
+    }
+
+    const isDiscounted = campPrice !== null && campPrice > 0 && campPrice < basePrice;
+    const price = isDiscounted ? campPrice : (directPrice > 0 ? directPrice : basePrice);
+    const originalPrice = isDiscounted ? basePrice : (directOrigPrice > price ? directOrigPrice : undefined);
+    const hasDiscount = Boolean(originalPrice && originalPrice > price);
+    const discountPercent = hasDiscount
+      ? Math.round(((originalPrice - price) / originalPrice) * 100)
+      : ((item as any).active_campaign?.discount_percent || 0);
+
+    return {
+      price,
+      originalPrice,
+      hasDiscount,
+      discountPercent,
+    };
+  }, [item]);
+
+  const { price, originalPrice, hasDiscount, discountPercent } = pricing;
 
   return (
     <div className="group rounded-[24px] relative overflow-hidden bg-white h-full flex flex-col w-full shadow-sm">
       {/* Campaign Discount Badge */}
-      {((item as any).active_campaign || hasDiscount) && (
+      {hasDiscount && (
         <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold text-[0.6875rem] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
           <span>🔥</span>
           <span>
-            {(item as any).active_campaign?.discount_percent
-              ? `-${(item as any).active_campaign.discount_percent}%`
-              : hasDiscount
-                ? `-${Math.round(((originalPrice - price) / originalPrice) * 100)}%`
+            {discountPercent > 0
+              ? `-${discountPercent}%`
+              : (item as any).active_campaign?.discount_percent
+                ? `-${(item as any).active_campaign.discount_percent}%`
                 : 'KHUYẾN MÃI'}
           </span>
         </div>
@@ -131,11 +193,10 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
           </div>
         </div>
         <div className="mt-auto pt-2 flex flex-wrap items-center justify-center gap-1.5">
-          {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
           <span className="title-2 text-secondary">
             {formatPrice(price)}
           </span>
-          {hasDiscount && (
+          {hasDiscount && originalPrice && (
             <span className="text-gray-400 line-through text-sm font-medium">
               {formatPrice(originalPrice)}
             </span>

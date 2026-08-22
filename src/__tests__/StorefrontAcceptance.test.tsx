@@ -9,6 +9,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import React from 'react';
 import ProductDetailsInfo from '@/components/Product/ProductDetailsInfo';
+import CardProduct from '@/components/Card/CardProduct';
+import { mapProductToCardItem, normalizeProductDetail, mapProductToDetailView } from '@/services/productService';
 import { calcOrderTotal, calculateShippingFee } from '@/services/orderService';
 import { formatPrice } from '@/lib/format';
 import { checkOperatingHours } from '@/lib/operatingHours';
@@ -237,5 +239,186 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(res2315.isAfterClose).toBe(true);
     expect(res2315.notice).not.toBeNull();
     expect(res2315.defaultDate).toBe('2026-08-17');
+  });
+
+  it('Luồng 8 CardProduct: Không hiển thị chữ "chỉ từ" và hiển thị giá thấp nhất khi có nhiều biến thể giảm giá', () => {
+    const productWithVariants: any = {
+      id: 101,
+      title: 'Lẩu Tôm Đặc Biệt',
+      custom_name: 'Lẩu Tôm Đặc Biệt',
+      slug: 'lau-tom-dac-biet',
+      price: 200000,
+      category: { id: '1', title: 'Lẩu', slug: 'lau' },
+      image: { url: '/cover.jpg', alt: 'Lẩu Tôm Đặc Biệt' },
+      description: 'Mô tả',
+      created_at: '2026-01-01',
+      variants: [
+        { id: 1, size: 'Size Nhỏ', price: 150000, campaign_price: 110000 },
+        { id: 2, size: 'Size Vừa', price: 100000, campaign_price: 60000 }, // Lowest effective price: 60,000 (orig: 100,000)
+        { id: 3, size: 'Size Lớn', price: 200000, campaign_price: 140000 },
+      ],
+    };
+
+    render(<CardProduct item={productWithVariants} />);
+
+    // 1. Không được có chữ "chỉ từ" hoặc "only_from"
+    expect(screen.queryByText(/chỉ từ/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/only from/i)).not.toBeInTheDocument();
+
+    // 2. Phải hiển thị giá thấp nhất (60.000đ)
+    expect(screen.getByText(formatPrice(60000))).toBeInTheDocument();
+
+    // 3. Phải hiển thị giá gốc gạch ngang tương ứng với biến thể thấp nhất (100.000đ)
+    expect(screen.getByText(formatPrice(100000))).toBeInTheDocument();
+
+    // 4. Phải hiển thị badge giảm giá (-40%)
+    expect(screen.getByText(/-40%/)).toBeInTheDocument();
+  });
+
+  it('Luồng 9 Helper mapProductToCardItem: Tính đúng giá thấp nhất cho sản phẩm có nhiều biến thể', () => {
+    const product: any = {
+      id: 202,
+      name: 'Lẩu Cua Cà Mau',
+      slug: 'lau-cua-ca-mau',
+      price: 300000,
+      category: { id: 1, title: 'Lẩu', slug: 'lau' },
+      variants: [
+        { id: 10, size: 'Size L', price: 300000, campaign_price: 250000 },
+        { id: 11, size: 'Size S', price: 180000, campaign_price: 120000 }, // Lowest: 120,000
+      ],
+    };
+
+    const cardProps = mapProductToCardItem(product, 'vi');
+    expect(cardProps.price).toBe(120000);
+    expect(cardProps.original_price).toBe(180000);
+    expect(cardProps.active_campaign?.discount_percent).toBe(33);
+  });
+
+  it('Luồng 10: normalizeProductDetail & mapProductToDetailView bảo toàn giá khuyến mãi giảm 20.000đ cho Cá Hồi Ngâm Tương', () => {
+    const rawBackendProduct: any = {
+      id: 45,
+      name: 'Cá Hồi Ngâm Tương',
+      slug: 'ca-hoi-ngam-tuong',
+      price: '180000.00',
+      campaign_price: 160000,
+      original_price: 180000,
+      active_campaign: {
+        id: 38,
+        name: 'Flash Sale Cá Hồi: Giảm Ngay 20.000đ',
+        discount_type: 'fixed',
+        discount_value: 20000,
+        campaign_price: 160000,
+      },
+      variants: [
+        { id: 1136, size: 'Size S: 120g (6-7 miếng)', price: '180000.00', campaign_price: 160000, original_price: 180000 },
+        { id: 1137, size: 'Size M: 240g (10-12 miếng)', price: '290000.00', campaign_price: 270000, original_price: 290000 },
+        { id: 1138, size: 'Size L: 400g (18-20 miếng)', price: '435000.00', campaign_price: 415000, original_price: 435000 },
+      ],
+    };
+
+    const normalized = normalizeProductDetail(rawBackendProduct);
+    expect(normalized.variants?.[0].campaign_price).toBe(160000);
+    expect(normalized.variants?.[1].campaign_price).toBe(270000);
+    expect(normalized.variants?.[2].campaign_price).toBe(415000);
+
+    const detailView = mapProductToDetailView(normalized, 'vi', { standard: 'Tiêu chuẩn' });
+    expect(detailView.sizes[0].price).toBe(160000);
+    expect(detailView.sizes[0].original_price).toBe(180000);
+    expect(detailView.sizes[1].price).toBe(270000);
+    expect(detailView.sizes[1].original_price).toBe(290000);
+    expect(detailView.sizes[2].price).toBe(415000);
+    expect(detailView.sizes[2].original_price).toBe(435000);
+  });
+
+  it('UX Enhancement 1: SmartCartProgressBar tính chính xác số tiền cần mua thêm để đạt Freeship và Voucher', async () => {
+    const { default: SmartCartProgressBar } = await import('@/components/Cart/SmartCartProgressBar');
+
+    // 1. Case: Chưa đạt Freeship (đơn 300k, freeship 500k) -> Cần mua thêm 200k
+    const { rerender } = render(
+      <SmartCartProgressBar
+        subtotal={300000}
+        shippingSettings={{ is_min_amount_enabled: true, min_order_amount: 500000 }}
+      />
+    );
+    expect(screen.getByText(/Mua thêm/i)).toBeInTheDocument();
+    expect(screen.getByText(formatPrice(200000))).toBeInTheDocument();
+    expect(screen.getByText(/Miễn phí vận chuyển/i)).toBeInTheDocument();
+
+    // 2. Case: Đã đạt Freeship (đơn 600k, freeship 500k) -> Hiển thị đạt ưu đãi thành công
+    rerender(
+      <SmartCartProgressBar
+        subtotal={600000}
+        shippingSettings={{ is_min_amount_enabled: true, min_order_amount: 500000 }}
+        isFreeship={true}
+      />
+    );
+    expect(screen.getByText(/Chúc mừng/i)).toBeInTheDocument();
+
+    // 3. Case: Đã đạt Freeship (đơn 200k) nhưng có voucher mốc 300k (mã GIAM30K) -> Cần mua thêm 100k
+    rerender(
+      <SmartCartProgressBar
+        subtotal={200000}
+        shippingSettings={{ is_min_amount_enabled: false, min_order_amount: 0 }}
+        vouchers={[
+          {
+            id: 1,
+            code: 'GIAM30K',
+            discount_type: 'fixed',
+            value: 30000,
+            prereq_price: 300000,
+            description: 'Giảm 30.000đ cho đơn từ 300.000đ',
+          },
+        ]}
+      />
+    );
+    expect(screen.getByText(formatPrice(100000))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Giảm ${formatPrice(30000)}`))).toBeInTheDocument();
+  });
+
+  it('UX Enhancement 2: CouponModal phân loại rõ mã đủ điều kiện và mã chưa đủ điều kiện kèm gợi ý mua thêm', async () => {
+    const { default: CouponModal } = await import('@/components/Voucher/CouponModal');
+    const mockOnApply = vi.fn();
+
+    // Mock getAvailableVouchers
+    const orderService = await import('@/services/orderService');
+    vi.spyOn(orderService, 'getAvailableVouchers').mockResolvedValue([
+      {
+        id: 1,
+        code: 'ELIGIBLE10',
+        discount_type: 'percent',
+        value: 10,
+        prereq_price: 100000,
+        description: 'Giảm 10% cho đơn từ 100.000đ',
+      },
+      {
+        id: 2,
+        code: 'INELIGIBLE50K',
+        discount_type: 'fixed',
+        value: 50000,
+        prereq_price: 500000,
+        description: 'Giảm 50.000đ cho đơn từ 500.000đ',
+      },
+    ]);
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={150000} // Eligible for code 1 (100k), ineligible for code 2 (500k - missing 350k)
+        onApplyVoucher={mockOnApply}
+      />
+    );
+
+    // Wait for elements to render
+    expect(await screen.findByText('ELIGIBLE10')).toBeInTheDocument();
+    expect(screen.getByText('INELIGIBLE50K')).toBeInTheDocument();
+
+    // Mã đủ điều kiện có nút "Áp dụng"
+    const applyButtons = screen.getAllByRole('button', { name: /Áp dụng/i });
+    expect(applyButtons.length).toBeGreaterThan(0);
+
+    // Mã chưa đủ điều kiện hiển thị rõ dòng gợi ý "Mua thêm 350.000đ để dùng mã này"
+    expect(screen.getByText(formatPrice(350000))).toBeInTheDocument();
+    expect(screen.getByText(/để dùng mã này/i)).toBeInTheDocument();
   });
 });
