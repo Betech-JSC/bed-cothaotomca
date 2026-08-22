@@ -5,6 +5,8 @@ import BlogListPage from "@/components/Blog/BlogListPage";
 import { Metadata } from 'next';
 import { getMetaPage } from '@/services/seoService';
 
+export const revalidate = 60; // ISR: revalidate mỗi 60 giây
+
 export async function generateMetadata({
   params
 }: {

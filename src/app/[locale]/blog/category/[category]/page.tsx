@@ -5,6 +5,49 @@ import BlogListPage from "@/components/Blog/BlogListPage";
 import { notFound } from "next/navigation";
 import { slugify, getTranslation } from "@/lib/format";
 import { redirect } from "@/i18n/routing";
+import { Metadata } from "next";
+
+export const revalidate = 60
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; category: string }>
+}): Promise<Metadata> {
+  const { locale, category: categorySlug } = await params
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')
+
+  let categoryName = categorySlug.replace(/-/g, ' ')
+  try {
+    const categoriesRes = await getBlogCategories({ lang: locale })
+    const matched = (categoriesRes.data || []).find((cat: any) => {
+      const t = getTranslation(cat.translations, locale) as any
+      const s = cat.slug || slugify(t?.title || cat.title || '')
+      return s === categorySlug
+    })
+    if (matched) {
+      const t = getTranslation(matched.translations, locale) as any
+      categoryName = t?.title || matched.title || categoryName
+    }
+  } catch {}
+
+  return {
+    title: `${categoryName} | Tin tức | Cô Thảo Tôm Cá`,
+    description: `Tin tức về ${categoryName} — Cô Thảo Tôm Cá chia sẻ kiến thức, mẹo hay và thông tin hữu ích.`,
+    alternates: {
+      canonical: `${baseUrl}/${locale}/blog/category/${categorySlug}`,
+      languages: {
+        vi: `${baseUrl}/vi/blog/category/${categorySlug}`,
+        en: `${baseUrl}/en/blog/category/${categorySlug}`,
+      },
+    },
+    openGraph: {
+      title: `${categoryName} | Tin tức | Cô Thảo Tôm Cá`,
+      description: `Tin tức về ${categoryName} — Cô Thảo Tôm Cá`,
+      type: 'website',
+    },
+  }
+}
 
 export default async function BlogCategoryPage({
   params,

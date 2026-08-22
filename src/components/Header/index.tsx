@@ -16,6 +16,7 @@ import { useCart } from "@/contexts/CartContext";
 import CartPopup from "./CartPopup";
 import MobileCartFlow from "./MobileCartFlow";
 import UserCircle from "../Icons/UserCircle";
+import { slugify } from "@/lib/format";
 
 type LinkHref = ComponentProps<typeof Link>["href"];
 
@@ -46,9 +47,42 @@ const Header = () => {
   const { isCartOpen, setIsCartOpen, totalItems } = useCart();
   const toggleCart = () => setIsCartOpen(!isCartOpen);
 
+  const [categories, setCategories] = useState<{ id: number; title: string; slug: string }[]>([]);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/categories?lang=${locale}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.data) {
+          setCategories(
+            data.data.map((c: any) => ({
+              id: c.id,
+              title: c.title,
+              slug: c.slug || slugify(c.title),
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [locale]);
+
+  const productChildren: NavItem[] = [
+    { label: t("common.all") + " " + t("common.product").toLowerCase(), href: `/product`, i18nKey: "all_products" },
+    ...categories.map((cat) => ({
+      label: cat.title,
+      href: { pathname: "/product/[category]", params: { category: cat.slug } } as any,
+      i18nKey: `cat_${cat.id}`,
+    })),
+  ];
+
   const mainNavLeft: NavItem[] = [
     { label: t("common.about"), href: `/about`, i18nKey: "about" },
-    { label: t("common.product"), href: `/product`, i18nKey: "product" },
+    {
+      label: t("common.product"),
+      href: `/product`,
+      i18nKey: "product",
+      children: productChildren,
+    },
     { label: t("common.policy"), href: `/policy`, i18nKey: "policy" },
   ];
 
@@ -320,13 +354,28 @@ const DesktopNavItem = ({
   const baseClasses = "relative title-3 duration-300 ease-in-out py-2";
   const activeClasses = "text-secondary";
   const inactiveClasses = "text-yellow lg:hover:text-secondary";
+  const [isHovered, setIsHovered] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 150);
+  };
+
+  const showDropdown = isOpen || isHovered;
 
   if (!item.children || item.children.length === 0) {
     const linkProps = item.isExternal
       ? { target: "_blank", rel: "noreferrer" }
       : {};
     return (
-      <li key={item.i18nKey}>
+      <li key={item.i18nKey} className="flex items-center">
         <Link
           href={item.href ?? ("#" as any)}
           className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}
@@ -339,18 +388,18 @@ const DesktopNavItem = ({
   }
 
   return (
-    <li className="relative">
-      <button
-        type="button"
-        className={`${baseClasses} flex items-center gap-1 ${isOpen || isActive ? "text-primary" : inactiveClasses
-          }`}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        onClick={onToggle}
+    <li
+      className="relative group flex items-center"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <Link
+        href={item.href ?? ("#" as any)}
+        className={`${baseClasses} inline-flex items-center gap-1.5 ${isActive || showDropdown ? activeClasses : inactiveClasses}`}
       >
         <span>{item.label}</span>
         <svg
-          className={`h-3 w-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`h-3.5 w-3.5 transition-transform duration-300 ${showDropdown ? "rotate-180 text-secondary" : ""}`}
           viewBox="0 0 20 20"
           aria-hidden="true"
         >
@@ -358,30 +407,37 @@ const DesktopNavItem = ({
             d="M5 7.5L10 12.5L15 7.5"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.4"
+            strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         </svg>
-      </button>
+      </Link>
+
       {item.children && item.children.length > 0 && (
         <div
-          className={`absolute top-full left-0 mt-3 w-56 rounded-2xl border border-neutral-100 bg-white/95 p-2 text-sm shadow-lg backdrop-blur-md ${isOpen
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0"
-            } transition-opacity duration-150`}
+          className={`absolute top-full left-0 mt-2 w-80 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl transition-all duration-200 ${
+            showDropdown
+              ? "pointer-events-auto opacity-100 translate-y-0"
+              : "pointer-events-none opacity-0 translate-y-2"
+          }`}
           role="menu"
         >
-          {item.children.map((child, childIndex) => (
-            <Link
-              key={child.i18nKey || childIndex}
-              href={child.href ?? ("#" as any)}
-              className="hover:text-primary block rounded-xl px-3 py-2.5 text-left text-neutral-700 transition-colors hover:bg-neutral-50"
-              role="menuitem"
-            >
-              {child.label}
-            </Link>
-          ))}
+          <div className="space-y-1">
+            {item.children.map((child, childIndex) => (
+              <Link
+                key={child.i18nKey || childIndex}
+                href={child.href ?? ("#" as any)}
+                onClick={() => {
+                  setIsHovered(false);
+                }}
+                className="flex items-center justify-between rounded-xl px-4 py-2.5 text-left text-base font-display font-bold text-gray-900 transition-all hover:text-secondary group/item"
+                role="menuitem"
+              >
+                <span>{child.label}</span>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </li>
@@ -553,21 +609,23 @@ const MobileMenu = ({
                       prev === index ? null : index,
                     )
                   }
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left font-display text-lg font-bold text-yellow hover:text-secondary cursor-pointer"
+                  className={`flex w-full items-center justify-between px-3 py-2.5 text-left title-3 duration-300 ease-in-out cursor-pointer ${
+                    isOpen || active ? "text-secondary font-bold" : "text-yellow"
+                  }`}
                 >
                   <span>{item.label}</span>
                   <svg
-                    className={`h-4 w-4 transition-transform ${
-                      isOpen ? "rotate-180" : ""
+                    className={`h-4 w-4 transition-transform duration-300 ${
+                      isOpen ? "rotate-180 text-secondary" : "text-yellow"
                     }`}
                     viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                     aria-hidden="true"
                   >
                     <path
                       d="M5 7.5L10 12.5L15 7.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
@@ -575,20 +633,30 @@ const MobileMenu = ({
                 </button>
                 {hasChildren && (
                   <div
-                    className={`ml-2 overflow-hidden pl-3 text-base transition-all ${
-                      isOpen ? "max-h-64 pt-1" : "max-h-0"
+                    className={`overflow-hidden transition-all duration-300 ${
+                      isOpen ? "max-h-[500px] pt-1 pb-2 opacity-100" : "max-h-0 opacity-0"
                     }`}
                   >
-                    {item.children!.map((child, childIndex) => (
-                      <Link
-                        key={child.i18nKey || childIndex}
-                        href={child.href ?? ("#" as any)}
-                        className="block rounded-lg px-3 py-2 text-yellow/90 hover:text-secondary font-medium"
-                        onClick={onClose}
-                      >
-                        {child.label}
-                      </Link>
-                    ))}
+                    {item.children!.map((child, childIndex) => {
+                      const isChildActive = isNavActive(
+                        typeof child.href === "string" ? child.href : undefined,
+                        pathname ?? ""
+                      );
+                      return (
+                        <Link
+                          key={child.i18nKey || childIndex}
+                          href={child.href ?? ("#" as any)}
+                          className={`flex items-center justify-between border-b border-white/10 py-3 pl-6 pr-3 text-base font-sans font-normal transition-colors ${
+                            isChildActive
+                              ? "text-secondary font-semibold"
+                              : "text-white hover:text-secondary"
+                          }`}
+                          onClick={onClose}
+                        >
+                          <span>{child.label}</span>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </li>

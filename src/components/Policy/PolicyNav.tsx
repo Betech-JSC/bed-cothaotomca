@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from "@/i18n/routing";
 import Chevron from "@/components/Icons/Chevron";
+import { useLocale } from 'next-intl';
 
 interface PolicyItem {
   id: number;
@@ -16,6 +17,8 @@ interface PolicyNavProps {
 }
 
 export default function PolicyNav({ policies, currentSlug }: PolicyNavProps) {
+  const locale = useLocale();
+  const isEn = locale === 'en';
   const [isOpen, setIsOpen] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
@@ -90,7 +93,7 @@ export default function PolicyNav({ policies, currentSlug }: PolicyNavProps) {
           </div>
 
           <span className="px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center gap-1.5 flex-shrink-0">
-            <span>Đổi chính sách</span>
+            <span>{isEn ? "Change policy" : "Đổi chính sách"}</span>
             <div className="rotate-180">
               <Chevron className="w-2.5 h-2.5" />
             </div>
@@ -98,32 +101,36 @@ export default function PolicyNav({ policies, currentSlug }: PolicyNavProps) {
         </button>
       </div>
 
-      {/* Mobile Bottom Sheet Modal với Animation mượt mà */}
+      {/* Mobile Bottom Sheet Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] lg:hidden select-none">
-          {/* Backdrop mờ với fade animation */}
+        <div className="fixed inset-0 lg:hidden select-none" style={{ zIndex: 99999 }}>
+          {/* Backdrop mờ */}
           <div
-            className={`fixed inset-0 bg-black/60 backdrop-blur-sm ${
-              isAnimatingOut ? 'animate-sheet-backdrop-out' : 'animate-sheet-backdrop-in'
+            className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+              isAnimatingOut ? 'opacity-0' : 'opacity-100'
             }`}
+            style={{ zIndex: 99999 }}
             onClick={handleClose}
           />
 
-          {/* Drawer trượt từ dưới lên với cubic-bezier spring curve */}
+          {/* Drawer trượt từ dưới lên */}
           <div
-            className={`fixed bottom-0 left-0 right-0 z-[10000] bg-white rounded-t-[28px] p-5 pb-8 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto ${
-              isAnimatingOut ? 'animate-sheet-slide-out' : 'animate-sheet-slide-in'
+            className={`fixed bottom-0 left-0 right-0 bg-white rounded-t-[28px] p-5 pb-8 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto transition-transform duration-300 ease-out ${
+              isAnimatingOut ? 'translate-y-full' : 'translate-y-0'
             }`}
+            style={{ zIndex: 100000 }}
           >
             {/* Thanh Kéo Handle */}
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-1 opacity-80" />
 
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <h3 className="title-2 text-primary font-bold">Chính sách & Quy định</h3>
+              <h3 className="title-2 text-primary font-bold">
+                {isEn ? "Policies & Terms" : "Chính sách & Quy định"}
+              </h3>
               <button
                 type="button"
                 onClick={handleClose}
-                aria-label="Đóng"
+                aria-label={isEn ? "Close" : "Đóng"}
                 className="size-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200 active:scale-90 transition-transform"
               >
                 ✕

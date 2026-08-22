@@ -5,7 +5,51 @@ import { Category } from '@/services/categoryService'
 import { Ingredient } from '@/services/ingredientService'
 import { HeroBanner } from '@/services/heroBannerService'
 import Banner from '@/components/Banner'
-import { slugify } from '@/lib/format'
+import { slugify, getTranslation } from '@/lib/format'
+import { Metadata } from 'next'
+
+export const revalidate = 60
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; category: string }>
+}): Promise<Metadata> {
+  const { locale, category: categorySlug } = await params
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')
+
+  // Tìm tên category từ API
+  let categoryName = categorySlug.replace(/-/g, ' ')
+  try {
+    const categoriesRes = await getApi<Category>('categories', { params: { lang: locale } })
+    const matched = categoriesRes.data?.find((cat: any) => {
+      const t = getTranslation(cat.translations, locale) as any
+      const s = cat.slug || slugify(t?.title || cat.title || '')
+      return s === categorySlug
+    })
+    if (matched) {
+      const t = getTranslation(matched.translations, locale) as any
+      categoryName = t?.title || matched.title || categoryName
+    }
+  } catch {}
+
+  return {
+    title: `${categoryName} | Sản phẩm | Cô Thảo Tôm Cá`,
+    description: `Danh mục sản phẩm ${categoryName} — Cô Thảo Tôm Cá chuyên cung cấp hải sản tươi ngon, chất lượng cao.`,
+    alternates: {
+      canonical: `${baseUrl}/${locale}/product/${categorySlug}`,
+      languages: {
+        vi: `${baseUrl}/vi/product/${categorySlug}`,
+        en: `${baseUrl}/en/product/${categorySlug}`,
+      },
+    },
+    openGraph: {
+      title: `${categoryName} | Sản phẩm | Cô Thảo Tôm Cá`,
+      description: `Danh mục sản phẩm ${categoryName} — Cô Thảo Tôm Cá`,
+      type: 'website',
+    },
+  }
+}
 
 interface Props {
   params: Promise<{

@@ -6,6 +6,8 @@ import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
 import { formatRichTextContent } from "@/lib/format";
 
+export const revalidate = 120; // ISR: revalidate mỗi 2 phút
+
 export async function generateMetadata({
   params
 }: {

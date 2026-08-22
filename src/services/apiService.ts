@@ -34,7 +34,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
   }
 
   const effectiveRetries = retries;
-  const timeoutMs = 3000;
+  const timeoutMs = 8000; // 8s timeout cho production — tránh timeout sớm khi server bận
 
   try {
     const controller = new AbortController();
@@ -54,7 +54,6 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
       }
     };
 
-    // Force no-store cache
     fetchOptions.cache = 'no-store';
 
     const response = await fetch(url, fetchOptions);
@@ -90,7 +89,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
 }
 
 function getDefaultRevalidate(key: string): number {
-  return 0; // Temporarily disable cache (no-store) for all requests
+  return 0; // Không cache dữ liệu (no-store), luôn lấy dữ liệu mới nhất
 }
 
 /**

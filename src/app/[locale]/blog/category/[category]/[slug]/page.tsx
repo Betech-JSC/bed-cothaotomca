@@ -10,7 +10,7 @@ import JsonLd from "@/components/SEO/JsonLd";
 import SectionRelatedPosts from "@/components/Blog/SectionRelatedPosts";
 import BlogTableOfContents from "@/components/Blog/BlogTableOfContents";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // ISR: revalidate mỗi 60 giây
 
 async function fetchBlog(slug: string, locale: string) {
   // 1. Try fetching directly with current locale

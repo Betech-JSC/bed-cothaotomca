@@ -1,6 +1,14 @@
 import Breadcrumb from "@/components/Common/Breadcrumb";
 import { getTranslations } from "next-intl/server";
 import OrderSuccessClient from "@/components/Checkout/OrderSuccessClient";
+import { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: 'Đặt hàng thành công | Cô Thảo Tôm Cá',
+    robots: { index: false, follow: false },
+  }
+}
 
 interface Props {
   params: Promise<{ locale: string }>;

@@ -3,6 +3,28 @@ import { Product } from '@/services/productService'
 import { getBlogs, Blog } from '@/services/blogService'
 import { getPolicies, Policy } from '@/services/policyService'
 import SearchResultPage from '@/components/Search/SearchResultPage'
+import { Metadata } from 'next'
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>
+  searchParams: Promise<{ q?: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const { q = '' } = await searchParams
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')
+
+  return {
+    title: q ? `Kết quả tìm kiếm: "${q}" | Cô Thảo Tôm Cá` : 'Tìm kiếm | Cô Thảo Tôm Cá',
+    description: q ? `Kết quả tìm kiếm cho "${q}" trên Cô Thảo Tôm Cá` : 'Tìm kiếm sản phẩm, tin tức và chính sách tại Cô Thảo Tôm Cá',
+    robots: { index: false, follow: true },
+    alternates: {
+      canonical: `${baseUrl}/${locale}/search`,
+    },
+  }
+}
 
 interface Props {
   params: Promise<{
