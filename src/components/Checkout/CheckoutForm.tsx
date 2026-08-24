@@ -32,6 +32,7 @@ import PreOrderNoticeModal from "./PreOrderNoticeModal";
 import MobileCartFlow from "@/components/Header/MobileCartFlow";
 import CouponModal from "@/components/Voucher/CouponModal";
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
+import GiftSelectorModal from "./GiftSelectorModal";
 
 export interface CheckoutOrderItem {
   productId: number;
@@ -281,6 +282,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   const [optOutOrderGift, setOptOutOrderGift] = useState(false);
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
+  const [isOrderGiftModalOpen, setIsOrderGiftModalOpen] = useState(false);
+  const [selectedBuyXGetYPromoForModal, setSelectedBuyXGetYPromoForModal] = useState<any | null>(null);
 
   useEffect(() => {
     if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.items.length > 0) {
@@ -1581,11 +1584,20 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-0.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[11px] font-bold bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full">
                           🎁 Món quà tặng theo đơn
                         </span>
                         <span className="text-xs text-gray-500 font-medium">x1</span>
+                        {eligibleOrderGiftPromo.items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsOrderGiftModalOpen(true)}
+                            className="text-[11px] font-bold text-secondary bg-orange-100/70 hover:bg-orange-200/80 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
+                          >
+                            🔄 Đổi món ({eligibleOrderGiftPromo.items.length} lựa chọn)
+                          </button>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -1647,11 +1659,20 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-0.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[11px] font-bold bg-purple-200 text-purple-900 px-2 py-0.5 rounded-full">
                           {tag}
                         </span>
                         <span className="text-xs text-gray-500 font-medium">x1</span>
+                        {promo.items && promo.items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBuyXGetYPromoForModal(promo)}
+                            className="text-[11px] font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
+                          >
+                            🔄 Đổi món ({promo.items.length} lựa chọn)
+                          </button>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -1979,6 +2000,37 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         onApplyVoucher={(code) => handleApplyVoucher(code)}
         onRemoveVoucher={handleRemoveVoucher}
       />
+
+      {/* Order Gift Selector Modal */}
+      {eligibleOrderGiftPromo && (
+        <GiftSelectorModal
+          isOpen={isOrderGiftModalOpen}
+          onClose={() => setIsOrderGiftModalOpen(false)}
+          title="Chọn món quà tặng đơn hàng"
+          subtitle={`Chương trình: ${eligibleOrderGiftPromo.name}`}
+          items={eligibleOrderGiftPromo.items || []}
+          selectedId={selectedOrderGiftId}
+          onSelect={(item) => setSelectedOrderGiftId(item.id)}
+        />
+      )}
+
+      {/* Buy X Get Y Gift Selector Modal */}
+      {selectedBuyXGetYPromoForModal && (
+        <GiftSelectorModal
+          isOpen={!!selectedBuyXGetYPromoForModal}
+          onClose={() => setSelectedBuyXGetYPromoForModal(null)}
+          title="Chọn món ưu đãi combo"
+          subtitle={`Chương trình: ${selectedBuyXGetYPromoForModal.name}`}
+          items={selectedBuyXGetYPromoForModal.items || []}
+          selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || selectedBuyXGetYPromoForModal.items?.[0]?.id}
+          onSelect={(item) => {
+            setSelectedBuyXGetYMap((prev) => ({
+              ...prev,
+              [selectedBuyXGetYPromoForModal.id]: item.id,
+            }));
+          }}
+        />
+      )}
     </>
   );
 }

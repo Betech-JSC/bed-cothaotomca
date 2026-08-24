@@ -34,6 +34,7 @@ import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 import Chevron from "@/components/Icons/Chevron";
 import CouponModal from "@/components/Voucher/CouponModal";
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
+import GiftSelectorModal from "@/components/Checkout/GiftSelectorModal";
 
 const POPULAR_DISTRICTS = [
   // Hà Nội
@@ -471,6 +472,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   const [optOutOrderGift, setOptOutOrderGift] = useState(false);
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
+  const [isOrderGiftModalOpen, setIsOrderGiftModalOpen] = useState(false);
+  const [selectedBuyXGetYPromoForModal, setSelectedBuyXGetYPromoForModal] = useState<any | null>(null);
 
   useEffect(() => {
     if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.items.length > 0) {
@@ -1201,9 +1204,20 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                               </span>
                             </div>
                             <div className="flex items-center justify-between pt-0.5">
-                              <p className="text-[10px] text-amber-800 font-bold uppercase">
-                                🎁 Món tặng x1
-                              </p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-[10px] text-amber-800 font-bold uppercase">
+                                  🎁 Món tặng x1
+                                </p>
+                                {eligibleOrderGiftPromo.items.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsOrderGiftModalOpen(true)}
+                                    className="text-[10px] font-bold text-secondary bg-orange-100/70 hover:bg-orange-200/80 px-2 py-0.2 rounded-full transition-colors cursor-pointer"
+                                  >
+                                    🔄 Đổi ({eligibleOrderGiftPromo.items.length})
+                                  </button>
+                                )}
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => setOptOutOrderGift(true)}
@@ -1253,9 +1267,20 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                               </span>
                             </div>
                             <div className="flex items-center justify-between pt-0.5">
-                              <p className="text-[10px] text-purple-900 font-bold uppercase">
-                                {tag}
-                              </p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-[10px] text-purple-900 font-bold uppercase">
+                                  {tag}
+                                </p>
+                                {promo.items && promo.items.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedBuyXGetYPromoForModal(promo)}
+                                    className="text-[10px] font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-2 py-0.2 rounded-full transition-colors cursor-pointer"
+                                  >
+                                    🔄 Đổi ({promo.items.length})
+                                  </button>
+                                )}
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: true }))}
@@ -1795,6 +1820,37 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         onApplyVoucher={(code) => handleApplyVoucher(code)}
         onRemoveVoucher={handleRemoveVoucher}
       />
+
+      {/* Order Gift Selector Modal */}
+      {eligibleOrderGiftPromo && (
+        <GiftSelectorModal
+          isOpen={isOrderGiftModalOpen}
+          onClose={() => setIsOrderGiftModalOpen(false)}
+          title="Chọn món quà tặng đơn hàng"
+          subtitle={`Chương trình: ${eligibleOrderGiftPromo.name}`}
+          items={eligibleOrderGiftPromo.items || []}
+          selectedId={selectedOrderGiftId}
+          onSelect={(item) => setSelectedOrderGiftId(item.id)}
+        />
+      )}
+
+      {/* Buy X Get Y Gift Selector Modal */}
+      {selectedBuyXGetYPromoForModal && (
+        <GiftSelectorModal
+          isOpen={!!selectedBuyXGetYPromoForModal}
+          onClose={() => setSelectedBuyXGetYPromoForModal(null)}
+          title="Chọn món ưu đãi combo"
+          subtitle={`Chương trình: ${selectedBuyXGetYPromoForModal.name}`}
+          items={selectedBuyXGetYPromoForModal.items || []}
+          selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || selectedBuyXGetYPromoForModal.items?.[0]?.id}
+          onSelect={(item) => {
+            setSelectedBuyXGetYMap((prev) => ({
+              ...prev,
+              [selectedBuyXGetYPromoForModal.id]: item.id,
+            }));
+          }}
+        />
+      )}
     </div>
   );
 }

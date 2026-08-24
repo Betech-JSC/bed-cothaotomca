@@ -1,13 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
-import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
-import CouponModal from "@/components/Voucher/CouponModal";
-import { getAvailableVouchers, getShippingSettings, PublicVoucherItem } from "@/services/orderService";
 
 interface CartPopupProps {
   onClose: () => void;
@@ -22,32 +19,11 @@ export default function CartPopup({ onClose }: CartPopupProps) {
     isCartOpen,
   } = useCart();
 
-  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-  const [vouchers, setVouchers] = useState<PublicVoucherItem[]>([]);
-  const [shippingSettings, setShippingSettings] = useState<any>(null);
-
   const popupRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setIsVoucherModalOpen(false);
-    if (isCartOpen) {
-      getAvailableVouchers().then(setVouchers).catch(() => setVouchers([]));
-      getShippingSettings().then(setShippingSettings).catch(() => setShippingSettings(null));
-    }
-  }, [isCartOpen]);
 
   // Close popup when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (isVoucherModalOpen) {
-        return;
-      }
-
-      const target = event.target as Element;
-      if (target?.closest?.('.coupon-modal-root') || target?.closest?.('[role="dialog"]')) {
-        return;
-      }
-
       if (
         popupRef.current &&
         !popupRef.current.contains(event.target as Node)
@@ -67,25 +43,22 @@ export default function CartPopup({ onClose }: CartPopupProps) {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isCartOpen, isVoucherModalOpen, onClose]);
+  }, [isCartOpen, onClose]);
 
   if (!isCartOpen) return null;
 
   return (
     <>
-      {/* Backdrop overlay tinted with theme color */}
+      {/* Backdrop overlay */}
       <div
         className="fixed inset-0 bg-black/40 z-[140] animate-in fade-in duration-200"
-        onClick={() => {
-          if (!isVoucherModalOpen) {
-            onClose();
-          }
-        }}
+        onClick={onClose}
       />
       <div
         ref={popupRef}
         className="absolute right-0 top-full mt-3 w-[calc(100vw-32px)] xs:w-[360px] sm:w-[420px] bg-white border border-gray-100 rounded-[24px] shadow-2xl z-[150] p-4 text-gray-900 animate-in fade-in slide-in-from-top-2 duration-200"
       >
+        {/* Header */}
         <div className="flex justify-between items-center border-b border-gray-100 pb-3">
           <div className="flex items-center gap-2">
             <h3 className="title-2 font-display text-primary font-bold">Giỏ hàng</h3>
@@ -116,17 +89,8 @@ export default function CartPopup({ onClose }: CartPopupProps) {
           </div>
         ) : (
           <>
-            {/* Smart Cart Progress Bar */}
-            <div className="pt-2.5 pb-1">
-              <SmartCartProgressBar
-                subtotal={subtotal}
-                shippingSettings={shippingSettings}
-                vouchers={vouchers}
-                onOpenVouchers={() => setIsVoucherModalOpen(true)}
-              />
-            </div>
-
-            <div className="max-h-[260px] overflow-y-auto pr-1 divide-y divide-gray-100">
+            {/* Cart Items List */}
+            <div className="max-h-[300px] overflow-y-auto pr-1 divide-y divide-gray-100 pt-1">
               {cartItems.map((item) => (
                 <div key={item.id} className="flex gap-3 py-3 items-start">
                   {/* Product Image */}
@@ -212,22 +176,8 @@ export default function CartPopup({ onClose }: CartPopupProps) {
               ))}
             </div>
 
+            {/* Bottom Actions */}
             <div className="border-t border-gray-100 pt-3 mt-1 space-y-3">
-              {/* Voucher Button */}
-              <button
-                type="button"
-                onClick={() => setIsVoucherModalOpen(true)}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 bg-amber-50/70 hover:bg-amber-100/80 border border-amber-200/80 rounded-xl text-xs text-primary font-semibold transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-2">
-                  <span>🎟️</span>
-                  <span>Mã giảm giá & Ưu đãi</span>
-                </div>
-                <span className="text-secondary font-bold group-hover:translate-x-0.5 transition-transform">
-                  Chọn mã ›
-                </span>
-              </button>
-
               <div className="flex justify-between items-center">
                 <span className="body-2 text-gray-600 font-semibold">Tạm tính</span>
                 <span className="text-xl font-bold text-secondary font-display">
@@ -246,14 +196,6 @@ export default function CartPopup({ onClose }: CartPopupProps) {
           </>
         )}
       </div>
-
-      {/* Coupon Modal */}
-      <CouponModal
-        isOpen={isVoucherModalOpen}
-        onClose={() => setIsVoucherModalOpen(false)}
-        subtotal={subtotal}
-        isBrowseOnly={true}
-      />
     </>
   );
 }

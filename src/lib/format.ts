@@ -87,6 +87,16 @@ export function getBackendBaseUrl(): string {
   return 'https://cms.cothaotomca.vn';
 }
 
+export function formatImageUrl(url?: string | null): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  const backendOrigin = getBackendBaseUrl();
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `${backendOrigin}${cleanPath}`;
+}
+
 export function formatRichTextContent(content: string | undefined | null): string {
   if (!content) return '';
   
