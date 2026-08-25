@@ -1,4 +1,4 @@
-import { getBlogCategories, getBlogs } from "@/services/blogService";
+import { getBlogCategories, getBlogs, Blog } from "@/services/blogService";
 import { getApi } from "@/services/apiService";
 import { HeroBanner } from "@/services/heroBannerService";
 import BlogListPage from "@/components/Blog/BlogListPage";
@@ -59,22 +59,45 @@ export default async function BlogIndexPage({
 }) {
   const { locale } = await params;
   const { page = "1", category_id } = await searchParams;
-
-  const categoriesData = await getBlogCategories({ lang: locale }).catch(() => ({ data: [] }));
+  const currentPage = Math.max(1, parseInt(page, 10) || 1);
   const activeCategoryId = category_id;
 
-  const [bannerData, featuredBlogsData, allBlogsData] = await Promise.all([
-    getApi<HeroBanner>('banners', { params: { position: 'banner_news', lang: locale } }).catch(() => ({ data: [] })),
-    getBlogs({ is_featured: true, per_page: 5, lang: locale, blog_category_id: activeCategoryId }).catch(() => ({ data: [] })),
-    getBlogs({ page: Number(page), per_page: 12, lang: locale, blog_category_id: activeCategoryId }).catch(() => ({ data: [], current_page: 1, last_page: 1, total: 0 })),
-  ]);
+  const categoriesData = await getBlogCategories({ lang: locale }).catch(() => ({ data: [] }));
 
-  let featuredBlogs = featuredBlogsData.data || [];
-  if (featuredBlogs.length === 0 && allBlogsData.data && allBlogsData.data.length > 0) {
-    featuredBlogs = allBlogsData.data.slice(0, 5);
+  let featuredBlogs: Blog[] = [];
+  let gridBlogs: Blog[] = [];
+  let totalBlogs = 0;
+  let bannerData: any;
+
+  if (currentPage === 1) {
+    const [bannerRes, featuredRes, gridRes] = await Promise.all([
+      getApi<HeroBanner>('banners', { params: { position: 'banner_news', lang: locale } }).catch(() => ({ data: [] })),
+      getBlogs({ per_page: 5, lang: locale, blog_category_id: activeCategoryId }).catch(() => ({ data: [], total: 0 })),
+      getBlogs({ offset: 5, per_page: 9, lang: locale, blog_category_id: activeCategoryId }).catch(() => ({ data: [], total: 0 })),
+    ]);
+
+    bannerData = bannerRes;
+    featuredBlogs = featuredRes.data || [];
+    totalBlogs = Number(gridRes.total ?? featuredRes.total ?? 0);
+
+    const featuredIds = new Set(featuredBlogs.map((b: Blog) => b.id));
+    gridBlogs = (gridRes.data || []).filter((b: Blog) => !featuredIds.has(b.id));
+  } else {
+    const offset = 14 + (currentPage - 2) * 12;
+    const [bannerRes, gridRes] = await Promise.all([
+      getApi<HeroBanner>('banners', { params: { position: 'banner_news', lang: locale } }).catch(() => ({ data: [] })),
+      getBlogs({ offset, per_page: 12, lang: locale, blog_category_id: activeCategoryId }).catch(() => ({ data: [], total: 0 })),
+    ]);
+
+    bannerData = bannerRes;
+    featuredBlogs = [];
+    totalBlogs = Number(gridRes.total ?? 0);
+    gridBlogs = gridRes.data || [];
   }
 
-  const bannerItem = bannerData.data[0];
+  const lastPage = totalBlogs <= 14 ? 1 : 1 + Math.ceil((totalBlogs - 14) / 12);
+
+  const bannerItem = bannerData?.data?.[0];
   const banner = {
     image: {
       url: bannerItem?.image || "/images/demo/banner-blog.jpg",
@@ -88,11 +111,11 @@ export default async function BlogIndexPage({
       banner={banner}
       categories={categoriesData.data}
       featuredBlogs={featuredBlogs}
-      allBlogs={allBlogsData.data}
+      allBlogs={gridBlogs}
       pagination={{
-        currentPage: allBlogsData.current_page || 1,
-        lastPage: allBlogsData.last_page || 1,
-        total: allBlogsData.total || 0,
+        currentPage,
+        lastPage,
+        total: totalBlogs,
       }}
       currentCategoryId={activeCategoryId}
     />

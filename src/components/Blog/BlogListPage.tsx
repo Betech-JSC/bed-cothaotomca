@@ -148,7 +148,7 @@ export default function BlogListPage({
               </div>
             </AnimateOnScroll>
 
-            {featuredBlogsDisplay.length > 0 && (
+            {pagination.currentPage === 1 && featuredBlogsDisplay.length > 0 && (
               <AnimateOnScroll animate="slideup" delay={300} className="flex flex-col items-start gap-8 md:gap-6 lg:flex-row xl:gap-8">
                 <div className="w-full lg:max-w-[500px] xl:max-w-[725px]">
                   <CardBlog isHot item={featuredBlogsDisplay[0]} />
@@ -163,13 +163,21 @@ export default function BlogListPage({
           </div>
 
           <div className="space-y-8 md:space-y-12">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 md:gap-x-4 gap-x-3 xl:gap-x-6 md:gap-y-8 gap-y-8 xl:gap-y-10">
-              {allBlogsDisplay.map((item, index) => (
-                <AnimateOnScroll animate="slideup" key={index} delay={300 + (index * 10)}>
-                  <CardBlog item={item} />
-                </AnimateOnScroll>
-              ))}
-            </div>
+            {allBlogsDisplay.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 md:gap-x-4 gap-x-3 xl:gap-x-6 md:gap-y-8 gap-y-8 xl:gap-y-10">
+                {allBlogsDisplay.map((item, index) => (
+                  <AnimateOnScroll animate="slideup" key={index} delay={300 + (index * 10)}>
+                    <CardBlog item={item} />
+                  </AnimateOnScroll>
+                ))}
+              </div>
+            ) : (
+              pagination.currentPage > 1 && (
+                <div className="text-center py-12 text-gray-500">
+                  {t('blog.no_posts') || 'Không có bài viết nào'}
+                </div>
+              )
+            )}
 
             {pagination.lastPage > 1 && (
               <div className="flex justify-center items-center gap-2 pt-8">

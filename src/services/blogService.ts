@@ -54,10 +54,11 @@ export const getBlogCategories = async (params: { lang?: string } = {}) => {
   return getApi<BlogCategory>('blog-categories', { params });
 };
 
-export const getBlogs = async (params: { page?: number; per_page?: number; lang?: string; is_featured?: boolean | string | number; blog_category_id?: number | string; search?: string } = {}) => {
+export const getBlogs = async (params: { page?: number; per_page?: number; offset?: number; lang?: string; is_featured?: boolean | string | number; blog_category_id?: number | string; search?: string } = {}) => {
   const apiParams: Record<string, string | number> = {};
   if (params.page) apiParams.page = params.page;
   if (params.per_page) apiParams.per_page = params.per_page;
+  if (params.offset !== undefined) apiParams.offset = params.offset;
   if (params.lang) apiParams.lang = params.lang;
   if (params.blog_category_id) apiParams.blog_category_id = params.blog_category_id;
   if (params.search) apiParams.search = params.search;
