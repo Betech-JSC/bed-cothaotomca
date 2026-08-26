@@ -40,11 +40,16 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
     const directOrigPrice = parseFloat(String((item as any).original_price || (item as any).originalPrice || 0));
 
     if (directPrice > 0 && directOrigPrice > directPrice) {
+      const activeCamp = (item as any).active_campaign;
+      const configuredPercent = activeCamp?.discount_type === 'percent' && Number(activeCamp.discount_value) > 0
+        ? Math.round(Number(activeCamp.discount_value))
+        : (activeCamp?.discount_percent ? Math.round(Number(activeCamp.discount_percent)) : 0);
+
       return {
         price: directPrice,
         originalPrice: directOrigPrice,
         hasDiscount: true,
-        discountPercent: Math.round(((directOrigPrice - directPrice) / directOrigPrice) * 100),
+        discountPercent: configuredPercent || Math.round(((directOrigPrice - directPrice) / directOrigPrice) * 100),
       };
     }
 
@@ -85,13 +90,21 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         const isDiscounted = campPrice !== null && campPrice > 0 && campPrice < basePrice;
         const effectivePrice = isDiscounted ? campPrice : basePrice;
 
+        const activeCamp = (v as any).active_campaign || (item as any).active_campaign;
+        const configuredPercent = activeCamp?.discount_type === 'percent' && Number(activeCamp.discount_value) > 0
+          ? Math.round(Number(activeCamp.discount_value))
+          : (activeCamp?.discount_percent ? Math.round(Number(activeCamp.discount_percent)) : 0);
+
+        const calcPercent = isDiscounted ? Math.round(((basePrice - effectivePrice) / basePrice) * 100) : 0;
+        const itemDiscountPercent = isDiscounted ? (configuredPercent || calcPercent) : 0;
+
         if (effectivePrice < lowestEffectivePrice) {
           lowestEffectivePrice = effectivePrice;
           matchingOriginalPrice = isDiscounted ? basePrice : undefined;
-          matchingDiscountPercent = isDiscounted ? Math.round(((basePrice - effectivePrice) / basePrice) * 100) : 0;
+          matchingDiscountPercent = itemDiscountPercent;
         } else if (effectivePrice === lowestEffectivePrice && isDiscounted && !matchingOriginalPrice) {
           matchingOriginalPrice = basePrice;
-          matchingDiscountPercent = Math.round(((basePrice - effectivePrice) / basePrice) * 100);
+          matchingDiscountPercent = itemDiscountPercent;
         }
       });
 
@@ -132,9 +145,15 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
     const price = isDiscounted ? campPrice : (directPrice > 0 ? directPrice : basePrice);
     const originalPrice = isDiscounted ? basePrice : (directOrigPrice > price ? directOrigPrice : undefined);
     const hasDiscount = Boolean(originalPrice && originalPrice > price);
+    
+    const fallbackActiveCamp = (item as any).active_campaign;
+    const fallbackConfiguredPercent = fallbackActiveCamp?.discount_type === 'percent' && Number(fallbackActiveCamp.discount_value) > 0
+      ? Math.round(Number(fallbackActiveCamp.discount_value))
+      : (fallbackActiveCamp?.discount_percent ? Math.round(Number(fallbackActiveCamp.discount_percent)) : 0);
+
     const discountPercent = hasDiscount
-      ? Math.round(((originalPrice - price) / originalPrice) * 100)
-      : ((item as any).active_campaign?.discount_percent || 0);
+      ? (fallbackConfiguredPercent || Math.round(((originalPrice - price) / originalPrice) * 100))
+      : (fallbackConfiguredPercent || 0);
 
     return {
       price,
@@ -150,14 +169,13 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
     <div className="group rounded-[24px] relative overflow-hidden bg-white h-full flex flex-col w-full shadow-sm">
       {/* Campaign Discount Badge */}
       {hasDiscount && (
-        <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-red-600 to-amber-500 text-white font-bold text-[0.6875rem] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
-          <span>🔥</span>
+        <div className="absolute top-3 left-3 z-10 bg-secondary text-white font-bold text-[0.6875rem] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md flex items-center">
           <span>
             {discountPercent > 0
               ? `-${discountPercent}%`
               : (item as any).active_campaign?.discount_percent
                 ? `-${(item as any).active_campaign.discount_percent}%`
-                : 'KHUYẾN MÃI'}
+                : (t("product.sale") || "PROMO")}
           </span>
         </div>
       )}

@@ -126,6 +126,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     campaignId: number;
     prereqPrice?: number;
     isFreeship?: boolean;
+    canCombineWithPromotions?: boolean;
+    canCombineWithFreeship?: boolean;
     discountAmount?: number;
   } | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
@@ -546,8 +548,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         const giftQty = promo.settings?.gift_quantity || 1;
         const isFree = item?.campaign_price === 0;
         const tag = isFree
-          ? `🎁 Mua ${buyQty} tặng ${giftQty}`
-          : `💎 Mua ${buyQty} giảm ${giftQty}`;
+          ? `Mua ${buyQty} tặng ${giftQty}`
+          : `Mua ${buyQty} giảm ${giftQty}`;
         return {
           promo,
           item,
@@ -587,7 +589,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     setVoucherSuccess(null);
 
     try {
-      const result = await validateVoucher(code, subtotal, shipping);
+      const hasCampaign = cartItems.some(i => (i.originalPrice && i.originalPrice > i.unitPrice)) || autoOrderDiscountAmount > 0;
+      const campaignDiscount = autoOrderDiscountAmount;
+      const result = await validateVoucher(code, subtotal, shipping, hasCampaign, campaignDiscount);
       if (result.valid && result.voucher) {
         setAppliedVoucher({
           id: result.voucher.id,
@@ -598,6 +602,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           campaignId: result.voucher.campaign_id,
           prereqPrice: result.voucher.prereq_price,
           isFreeship: result.voucher.is_freeship,
+          canCombineWithPromotions: result.voucher.can_combine_with_promotions,
+          canCombineWithFreeship: result.voucher.can_combine_with_freeship,
           discountAmount: result.discount_amount,
         });
         setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công.");
@@ -785,14 +791,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             quantity: 1,
             price: item.campaign_price,
             discount: 0,
-            note: `${tag.replace("🎁 ", "").replace("💎 ", "")} (${promo.name})`,
+            note: `${tag} (${promo.name})`,
           }))),
         ],
         discount: voucherDiscount + autoOrderDiscountAmount,
         description: [
           cartItems.map((item) => `${item.title} (${item.variant}) x${item.quantity}`).join(", "),
-          autoOrderDiscountAmount > 0 ? `🏷 KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
-          ...activeBuyXGetYItems.map(({ promo, item, tag }) => `🎁 Ưu đãi combo: ${item.product_name} (${item.campaign_price === 0 ? "0đ" : `${item.campaign_price.toLocaleString("vi-VN")}đ`} - ${tag.replace("🎁 ", "").replace("💎 ", "")})`),
+          autoOrderDiscountAmount > 0 ? `KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
+          ...activeBuyXGetYItems.map(({ promo, item, tag }) => `Ưu đãi combo: ${item.product_name} (${item.campaign_price === 0 ? "0đ" : `${item.campaign_price.toLocaleString("vi-VN")}đ`} - ${tag})`),
         ]
           .filter(Boolean)
           .join(" | ") || undefined,
@@ -875,12 +881,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 type="button"
                 onClick={() => setStep(1)}
                 className="text-primary hover:text-secondary text-2xl font-bold flex items-center cursor-pointer"
-                aria-label="Quay lại"
+                aria-label={t("title")}
               >
                 &#8592;
               </button>
             )}
-            <h2 className="display-3 font-display text-primary font-bold">Đặt hàng</h2>
+            <h2 className="display-3 font-display text-primary font-bold">{t("title")}</h2>
           </div>
           {!inline && (
             <button
@@ -898,18 +904,17 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           <div className="space-y-6 animate-in fade-in slide-in-from-left duration-200">
             <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-5">
               <h3 className="title-2 font-display text-primary font-bold border-b border-gray-100 pb-2">
-                Thông tin đơn hàng
+                {t("order_summary")}
               </h3>
 
               {cartItems.length === 0 ? (
-                <div className="py-8 text-center space-y-3">
-                  <div className="text-5xl">🛒</div>
-                  <p className="body-1 text-gray-500 font-medium">Giỏ hàng đang trống</p>
+                <div className="py-8 text-center space-y-2">
+                  <p className="body-1 text-gray-500 font-medium">{t("empty")}</p>
                   <button
                     onClick={onClose}
                     className="inline-block text-sm font-semibold text-secondary hover:underline"
                   >
-                    Tiếp tục mua sắm
+                    {t("continue_shopping")}
                   </button>
                 </div>
               ) : (
@@ -976,7 +981,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             onClick={() => removeFromCart(item.id)}
                             className="flex items-center gap-1 text-sm text-gray-400 hover:text-red-500 font-semibold transition-colors"
                           >
-                            🗑 Xóa
+                            {t("remove_voucher")}
                           </button>
                         </div>
                       </div>
@@ -991,23 +996,22 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 {/* Voucher Code */}
                 <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="body-1 text-primary font-bold flex items-center gap-1.5">
-                      <span>🎟️</span>
-                      <span>Mã giảm giá</span>
+                    <label className="body-1 text-primary font-bold">
+                      {t("voucher_label")}
                     </label>
                     <button
                       type="button"
                       onClick={() => setIsVoucherModalOpen(true)}
                       className="text-xs font-bold text-secondary hover:text-secondary/80 flex items-center gap-0.5 cursor-pointer"
                     >
-                      <span>Chọn hoặc xem mã</span>
+                      <span>{t("select_or_view_voucher")}</span>
                       <span className="text-sm leading-none">›</span>
                     </button>
                   </div>
                   <div className="flex items-center rounded-full border border-gray-200 bg-white p-1 pl-4 focus-within:border-primary transition-all">
                     <input
                       type="text"
-                      placeholder="Mã Voucher"
+                      placeholder={t("voucher_input_placeholder")}
                       value={voucherCode}
                       onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
                       onKeyDown={(e) => {
@@ -1029,16 +1033,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         onClick={handleRemoveVoucher}
                         className="bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-full px-5 py-2 text-sm transition-all border border-red-200/60"
                       >
-                        Xóa
+                        {t("remove_voucher")}
                       </button>
                     ) : (
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => setIsVoucherModalOpen(true)}
-                          className="bg-amber-50 hover:bg-amber-100 text-primary font-bold rounded-full px-3.5 py-2 text-xs transition-all border border-amber-200 cursor-pointer whitespace-nowrap"
+                          className="bg-yellow hover:bg-yellow/80 text-primary font-bold rounded-full px-3.5 py-2 text-xs transition-all border border-secondary/30 cursor-pointer whitespace-nowrap"
                         >
-                          Chọn mã
+                          {t("select_voucher_btn")}
                         </button>
                         <button
                           type="button"
@@ -1046,20 +1050,20 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           disabled={validatingVoucher || !voucherCode.trim()}
                           className="bg-[#142A68] hover:bg-[#142A68]/95 text-white font-bold rounded-full px-5 py-2 text-sm transition-all disabled:opacity-50 cursor-pointer"
                         >
-                          {validatingVoucher ? "..." : "Áp dụng"}
+                          {validatingVoucher ? t("checking_voucher") : t("apply_voucher")}
                         </button>
                       </div>
                     )}
                   </div>
                   {voucherError && <p className="text-sm text-red-600 font-semibold mt-1">{voucherError}</p>}
                   {voucherSuccess && (
-                    <div className="text-xs text-emerald-600 font-semibold mt-1 space-y-0.5">
+                    <div className="text-xs text-secondary font-semibold mt-1 space-y-0.5">
                       <p className="flex items-center gap-1">
                         <span>✓</span> <span>{voucherSuccess}</span>
                       </p>
                       {appliedVoucher?.prereqPrice ? (
                         <p className="text-[11px] text-gray-500 font-normal">
-                          * Đơn từ {appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ trở lên.
+                          {t("voucher_prereq_note", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })}
                         </p>
                       ) : null}
                     </div>
@@ -1079,21 +1083,21 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 {/* Summary Panel */}
                 <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
                   <div className="flex justify-between items-center text-base">
-                    <span className="text-gray-500 font-medium">Tạm tính</span>
+                    <span className="text-gray-500 font-medium">{t("subtotal")}</span>
                     <span className="text-primary font-bold font-display">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between items-center text-base">
-                    <span className="text-gray-500 font-medium">Phí ship</span>
+                    <span className="text-gray-500 font-medium">{t("shipping_fee")}</span>
                     <span className="text-primary font-bold font-display">
                       {!selectedDistrict ? "--" : isFreeship ? "0đ" : shipping > 0 ? formatPrice(shipping) : "--"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-base">
-                    <span className="text-gray-500 font-medium">Giảm giá</span>
+                    <span className="text-gray-500 font-medium">{t("voucher_label")}</span>
                     <span className="text-primary font-bold font-display">{formatPrice(voucherDiscount)}</span>
                   </div>
                   <div className="flex justify-between items-center text-base pt-2 border-t border-gray-100">
-                    <span className="text-gray-900 font-bold">Tổng thanh toán</span>
+                    <span className="text-gray-900 font-bold">{t("total")}</span>
                     <span className="text-secondary font-bold font-display text-lg">{formatPrice(total)}</span>
                   </div>
                 </div>
@@ -1104,7 +1108,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   onClick={() => setStep(2)}
                   className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2"
                 >
-                  Tiếp tục
+                  {t("checkout")}
                 </button>
               </>
             )}
@@ -1116,14 +1120,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           <div className="space-y-6 animate-in fade-in slide-in-from-right duration-200">
             {/* Banner Trạng thái hoạt động */}
             <div
-              className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${operatingStatus.canOrderNow
-                ? "bg-emerald-50/90 border-emerald-200 text-emerald-900"
-                : "bg-amber-50 border-amber-300 text-amber-900"
+              className={`p-4 rounded-xl border transition-colors ${operatingStatus.canOrderNow
+                ? "bg-yellow/60 border-secondary/30 text-brown"
+                : "bg-yellow/80 border-secondary/30 text-brown"
                 }`}
             >
-              <span className="text-xl leading-none mt-0.5">
-                {operatingStatus.canOrderNow ? "🟢" : "🟡"}
-              </span>
               <div className="text-xs sm:text-sm font-semibold flex-1 leading-relaxed font-sans">
                 {operatingStatus.message}
               </div>
@@ -1136,7 +1137,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
                 className="w-full flex justify-between items-center py-1 text-primary font-bold title-2 font-display cursor-pointer"
               >
-                <span>Tóm tắt sản phẩm</span>
+                <span>{t("order_summary")}</span>
                 <div className={`size-6 flex items-center justify-center transition-transform duration-300 ${isSummaryExpanded ? 'rotate-180 ' : 'text-gray-900'}`}>
                   <Chevron />
                 </div>
@@ -1174,16 +1175,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                               </div>
                             </div>
                             <p className="text-[10px] text-gray-500 font-semibold uppercase">
-                              {isDefaultVariant(item.variant) ? `Số lượng: ${item.quantity}` : `${item.variant} x${item.quantity}`}
+                              {isDefaultVariant(item.variant) ? `x${item.quantity}` : `${cleanVariantName(item.variant)} x${item.quantity}`}
                             </p>
                           </div>
                         </div>
                       ))}
                       {/* Quà tặng đơn hàng (order_gift_discount) */}
                       {selectedOrderGiftItem && (
-                        <div className="flex gap-3 py-2.5 px-3 bg-amber-50/60 rounded-xl border border-amber-200/80 items-start">
+                        <div className="flex gap-3 py-2.5 px-3 bg-yellow/60 rounded-xl border border-secondary/30 items-start">
                           {selectedOrderGiftItem.image ? (
-                            <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-amber-200 flex-shrink-0">
+                            <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-secondary/20 flex-shrink-0">
                               <Image
                                 src={selectedOrderGiftItem.image}
                                 alt={selectedOrderGiftItem.product_name}
@@ -1192,29 +1193,29 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                               />
                             </div>
                           ) : (
-                            <div className="size-12 rounded-lg bg-amber-100 flex items-center justify-center text-lg flex-shrink-0">
-                              🎁
+                            <div className="size-12 rounded-lg bg-yellow/80 border border-secondary/20 flex items-center justify-center text-[10px] font-bold text-brown uppercase flex-shrink-0 text-center">
+                              {t("order_gift_tag")}
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start gap-2">
                               <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">{selectedOrderGiftItem.product_name}</p>
-                              <span className="body-2 text-emerald-600 font-bold whitespace-nowrap">
+                              <span className="body-2 text-secondary font-bold whitespace-nowrap">
                                 {selectedOrderGiftItem.campaign_price === 0 ? "0đ" : formatPrice(selectedOrderGiftItem.campaign_price)}
                               </span>
                             </div>
                             <div className="flex items-center justify-between pt-0.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="text-[10px] text-amber-800 font-bold uppercase">
-                                  🎁 Món tặng x1
+                                <p className="text-[10px] text-secondary font-bold uppercase">
+                                  {t("order_gift_tag")} x1
                                 </p>
                                 {eligibleOrderGiftPromo.items.length > 1 && (
                                   <button
                                     type="button"
                                     onClick={() => setIsOrderGiftModalOpen(true)}
-                                    className="text-[10px] font-bold text-secondary bg-orange-100/70 hover:bg-orange-200/80 px-2 py-0.2 rounded-full transition-colors cursor-pointer"
+                                    className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.2 rounded-full transition-colors cursor-pointer"
                                   >
-                                    🔄 Đổi ({eligibleOrderGiftPromo.items.length})
+                                    {t("change_gift", { count: eligibleOrderGiftPromo.items.length })}
                                   </button>
                                 )}
                               </div>
@@ -1222,31 +1223,32 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 type="button"
                                 onClick={() => setOptOutOrderGift(true)}
                                 className="text-[11px] text-gray-400 hover:text-red-500 font-semibold cursor-pointer"
+                                title={t("remove_gift")}
                               >
-                                🗑 Xoá
+                                [{t("remove_voucher")}]
                               </button>
                             </div>
                           </div>
                         </div>
                       )}
                       {eligibleOrderGiftPromo && optOutOrderGift && (
-                        <div className="flex items-center justify-between p-2.5 bg-amber-50/70 rounded-xl border border-dashed border-amber-300 text-xs text-amber-900 animate-fade-in">
-                          <span className="font-medium">🎁 Đã bỏ nhận quà ({eligibleOrderGiftPromo.name})</span>
+                        <div className="flex items-center justify-between p-2.5 bg-yellow/50 rounded-xl border border-dashed border-secondary/30 text-xs text-brown animate-fade-in">
+                          <span className="font-medium">{t("reclaim_gift_eligible", { name: eligibleOrderGiftPromo.name })}</span>
                           <button
                             type="button"
                             onClick={() => setOptOutOrderGift(false)}
-                            className="font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-0.5 rounded-full text-xs"
+                            className="font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2.5 py-0.5 rounded-full text-xs cursor-pointer"
                           >
-                            + Nhận lại
+                            + {t("reclaim_gift")}
                           </button>
                         </div>
                       )}
 
                       {/* Món ưu đãi Mua X tặng/giảm Y (buy_x_get_y) - Hỗ trợ nhiều chiến dịch */}
                       {activeBuyXGetYItems.map(({ promo, item, tag }) => (
-                        <div key={`m-buyxy-${promo.id}-${item.id}`} className="flex gap-3 py-2.5 px-3 bg-purple-50/60 rounded-xl border border-purple-200/80 items-start">
+                        <div key={`m-buyxy-${promo.id}-${item.id}`} className="flex gap-3 py-2.5 px-3 bg-yellow/40 rounded-xl border border-primary/15 items-start">
                           {item.image ? (
-                            <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-purple-200 flex-shrink-0">
+                            <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-primary/20 flex-shrink-0">
                               <Image
                                 src={item.image}
                                 alt={item.product_name}
@@ -1255,29 +1257,29 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                               />
                             </div>
                           ) : (
-                            <div className="size-12 rounded-lg bg-purple-100 flex items-center justify-center text-lg flex-shrink-0">
-                              🎁
+                            <div className="size-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary uppercase flex-shrink-0 text-center">
+                              {t("combo_tag")}
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start gap-2">
                               <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">{item.product_name}</p>
-                              <span className="body-2 text-purple-700 font-bold whitespace-nowrap">
+                              <span className="body-2 text-primary font-bold whitespace-nowrap">
                                 {item.campaign_price === 0 ? "0đ" : formatPrice(item.campaign_price)}
                               </span>
                             </div>
                             <div className="flex items-center justify-between pt-0.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="text-[10px] text-purple-900 font-bold uppercase">
+                                <p className="text-[10px] text-primary font-bold uppercase">
                                   {tag}
                                 </p>
                                 {promo.items && promo.items.length > 1 && (
                                   <button
                                     type="button"
                                     onClick={() => setSelectedBuyXGetYPromoForModal(promo)}
-                                    className="text-[10px] font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-2 py-0.2 rounded-full transition-colors cursor-pointer"
+                                    className="text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.2 rounded-full transition-colors cursor-pointer"
                                   >
-                                    🔄 Đổi ({promo.items.length})
+                                    {t("change_gift", { count: promo.items.length })}
                                   </button>
                                 )}
                               </div>
@@ -1285,8 +1287,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 type="button"
                                 onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: true }))}
                                 className="text-[11px] text-gray-400 hover:text-red-500 font-semibold cursor-pointer"
+                                title={t("remove_gift")}
                               >
-                                🗑 Xoá
+                                [{t("remove_voucher")}]
                               </button>
                             </div>
                           </div>
@@ -1297,15 +1300,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         .map((promo) => (
                           <div
                             key={`m-optout-${promo.id}`}
-                            className="flex items-center justify-between p-2.5 bg-purple-50/70 rounded-xl border border-dashed border-purple-300 text-xs text-purple-900 animate-fade-in"
+                            className="flex items-center justify-between p-2.5 bg-yellow/50 rounded-xl border border-dashed border-primary/25 text-xs text-primary animate-fade-in"
                           >
-                            <span className="font-medium">🎁 Đã bỏ ưu đãi ({promo.name})</span>
+                            <span className="font-medium">{t("reclaim_combo_eligible", { name: promo.name })}</span>
                             <button
                               type="button"
                               onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: false }))}
-                              className="font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-2.5 py-0.5 rounded-full text-xs"
+                              className="font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-0.5 rounded-full text-xs"
                             >
-                              + Nhận lại
+                              + {t("reclaim_combo")}
                             </button>
                           </div>
                         ))}
@@ -1313,47 +1316,50 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
                     <div className="space-y-2 border-t border-gray-100 pt-3 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Tạm tính</span>
+                        <span className="text-gray-500">{t("subtotal")}</span>
                         <span className="font-semibold">{formatPrice(subtotal)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Phí ship</span>
+                        <span className="text-gray-500">{t("shipping_fee")}</span>
                         <span className="font-semibold">{formatPrice(shipping)}</span>
                       </div>
                       {autoOrderDiscountAmount > 0 && (
-                        <div className="flex justify-between items-center text-emerald-600">
-                          <span className="flex items-center gap-1">
+                        <div className="flex justify-between items-start gap-2 text-secondary font-semibold">
+                          <div className="flex-1 min-w-0 pr-1 leading-snug">
                             <span>{eligibleOrderDiscountPromo?.name}</span>
                             <button
                               type="button"
                               onClick={() => setOptOutOrderDiscount(true)}
-                              className="text-[11px] text-red-500 underline font-normal"
+                              className="text-[11px] text-red-500 hover:text-red-700 hover:underline font-semibold cursor-pointer ml-1.5 whitespace-nowrap inline-block"
+                              title={t("remove_gift")}
                             >
-                              [Xoá]
+                              [{t("remove_voucher")}]
                             </button>
+                          </div>
+                          <span className="font-semibold shrink-0 whitespace-nowrap text-right leading-snug">
+                            -{formatPrice(autoOrderDiscountAmount)}
                           </span>
-                          <span className="font-semibold">-{formatPrice(autoOrderDiscountAmount)}</span>
                         </div>
                       )}
                       {eligibleOrderDiscountPromo && optOutOrderDiscount && (
-                        <div className="flex justify-between items-center text-gray-500 text-[11px]">
-                          <span>({eligibleOrderDiscountPromo.name})</span>
+                        <div className="flex justify-between items-center text-gray-500 text-[11px] gap-2">
+                          <span className="flex-1 min-w-0 truncate">({eligibleOrderDiscountPromo.name})</span>
                           <button
                             type="button"
                             onClick={() => setOptOutOrderDiscount(false)}
-                            className="text-primary underline font-bold"
+                            className="text-primary hover:underline font-bold shrink-0 whitespace-nowrap"
                           >
-                            Áp dụng lại
+                            {t("reapply_voucher")}
                           </button>
                         </div>
                       )}
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Giảm giá</span>
-                        <span className="font-semibold">{formatPrice(voucherDiscount)}</span>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-gray-500 flex-1 min-w-0">{t("voucher_label")}</span>
+                        <span className="font-semibold shrink-0 whitespace-nowrap text-right">{formatPrice(voucherDiscount)}</span>
                       </div>
-                      <div className="flex justify-between text-sm font-bold border-t border-gray-100 pt-2 text-primary">
-                        <span>Tổng thanh toán</span>
-                        <span className="text-secondary">{formatPrice(total)}</span>
+                      <div className="flex justify-between items-center text-sm font-bold border-t border-gray-100 pt-2 text-primary gap-2">
+                        <span className="flex-1 min-w-0">{t("total")}</span>
+                        <span className="text-secondary shrink-0 whitespace-nowrap text-right">{formatPrice(total)}</span>
                       </div>
                     </div>
                   </div>
@@ -1362,19 +1368,28 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             </div>
 
             {upcomingOrderGiftPromo && (
-              <div className="bg-amber-50/80 rounded-[14px] p-3 border border-amber-200/70 flex items-center gap-2.5 text-xs text-amber-900 animate-fade-in">
-                <span className="text-lg">🎁</span>
+              <div className="bg-yellow/60 rounded-[14px] p-3 border border-secondary/30 flex items-center gap-2.5 text-xs text-brown animate-fade-in">
                 <span>
-                  Mua thêm <strong>{(upcomingOrderGiftPromo.min_order_value - subtotal).toLocaleString("vi-VN")}đ</strong> để được tặng <strong>1 món quà miễn phí</strong> ({upcomingOrderGiftPromo.name})!
+                  {t.rich("buy_more_gift_prompt", {
+                    amount: formatPrice(upcomingOrderGiftPromo.min_order_value - subtotal),
+                    name: upcomingOrderGiftPromo.name,
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
                 </span>
               </div>
             )}
 
             {upcomingBuyXGetYPromo && (
-              <div className="bg-purple-50/80 rounded-[14px] p-3 border border-purple-200/70 flex items-center gap-2.5 text-xs text-purple-900 animate-fade-in">
-                <span className="text-lg">🎁</span>
+              <div className="bg-primary/5 rounded-[14px] p-3 border border-primary/20 flex items-center gap-2.5 text-xs text-primary animate-fade-in">
                 <span>
-                  Mua thêm <strong>{Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity)} món</strong> để nhận ưu đãi (<strong>Mua {upcomingBuyXGetYPromo.settings?.buy_quantity || 2} {upcomingBuyXGetYPromo.discount_type === 'percent' && upcomingBuyXGetYPromo.discount_value === 100 ? 'tặng' : 'giảm'} {upcomingBuyXGetYPromo.settings?.gift_quantity || 1} - {upcomingBuyXGetYPromo.name}</strong>)!
+                  {t.rich("buy_more_combo_prompt", {
+                    quantity: Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity),
+                    buyQty: upcomingBuyXGetYPromo.settings?.buy_quantity || 2,
+                    action: upcomingBuyXGetYPromo.discount_type === 'percent' && upcomingBuyXGetYPromo.discount_value === 100 ? 'tặng' : 'giảm',
+                    giftQty: upcomingBuyXGetYPromo.settings?.gift_quantity || 1,
+                    name: upcomingBuyXGetYPromo.name,
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
                 </span>
               </div>
             )}
@@ -1382,7 +1397,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             {/* Checkout contact details */}
             <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-6 font-serif">
               <h3 className="title-2 font-display text-primary font-bold border-b border-gray-100 pb-2">
-                Thông tin liên hệ
+                {t("customer_info")}
               </h3>
 
               {error && !fieldErrors["delivery.expected_delivery"] && (
@@ -1393,10 +1408,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
               {/* Name */}
               <div className="space-y-3">
-                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Họ và tên</label>
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("name")}</label>
                 <input
                   type="text"
-                  placeholder="Họ và tên"
+                  placeholder={t("name_placeholder")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
@@ -1406,10 +1421,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
               {/* Phone */}
               <div className="space-y-3">
-                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Số điện thoại</label>
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("phone")}</label>
                 <input
                   type="tel"
-                  placeholder="Số điện thoại"
+                  placeholder={t("phone_placeholder")}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
@@ -1419,19 +1434,19 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
               {/* Email */}
               <div className="space-y-3">
-                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Email</label>
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("email_label")}</label>
                 <input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t("email_placeholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                  className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
                 />
               </div>
 
               {/* Delivery method toggle button */}
               <div className="space-y-3 pt-2 border-t border-gray-100">
-                <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Hình thức nhận hàng</p>
+                <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("delivery_type")}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -1441,7 +1456,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       : "border-gray-200 text-gray-600 bg-white"
                       }`}
                   >
-                    Giao tận nơi
+                    {t("delivery_home")}
                   </button>
                   <button
                     type="button"
@@ -1451,7 +1466,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       : "border-gray-200 text-gray-600 bg-white"
                       }`}
                   >
-                    Tự đến lấy
+                    {t("delivery_pickup")}
                   </button>
                 </div>
               </div>
@@ -1459,10 +1474,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               {/* Delivery address details selection */}
               {deliveryType === "delivery" ? (
                 <div className="space-y-4 rounded-xl bg-gray-50 p-4 border border-gray-100 mt-2">
-                  <p className="text-sm text-gray-700 font-bold font-serif">Địa chỉ giao hàng tận nơi</p>
+                  <p className="text-sm text-gray-700 font-bold font-serif">{t("delivery_home")}</p>
 
                   <div className="space-y-3">
-                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Tỉnh / Thành phố *</label>
+                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("province_label")}</label>
                     <select
                       value={selectedProvince}
                       onChange={(e) => {
@@ -1472,7 +1487,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         setSelectedWard("");
                         setSelectedWardId("");
                       }}
-                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
+                      className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
                     >
                       {adminProvinces.length > 0 ? (
                         adminProvinces.map((prov) => (
@@ -1516,38 +1531,40 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   />
 
                   <div className="space-y-3">
-                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Số nhà, tên đường, ngõ ngách *</label>
+                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("street_label")}</label>
                     <input
                       type="text"
-                      placeholder="VD: Số 73 Rạch Bùng Binh..."
+                      placeholder={t("address_placeholder")}
                       value={streetAddress}
                       onChange={(e) => setStreetAddress(e.target.value)}
-                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                      className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base font-serif font-normal leading-[150%] tracking-[0%]"
                     />
                     {fieldErrors.address && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.address}</p>}
                   </div>
 
                   {assignedBranchName && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 font-medium flex items-center gap-2">
-                      <span>📍</span>
-                      <span>Hệ thống tự động xác định giao từ chi nhánh: <strong>{assignedBranchName}</strong></span>
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-xs text-primary font-medium">
+                      {t.rich("auto_assigned_branch", {
+                        branchName: assignedBranchName,
+                        strong: (chunks) => <strong>{chunks}</strong>,
+                      })}
                     </div>
                   )}
 
                   {shippingMessage && (
-                    <p className={`text-xs font-semibold mt-1.5 ${!isDeliverable ? "text-red-600" : "text-amber-700"}`}>
-                      ℹ️ {shippingMessage}
+                    <p className={`text-xs font-semibold mt-1.5 ${!isDeliverable ? "text-red-600" : "text-secondary"}`}>
+                      {shippingMessage}
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="space-y-4 rounded-xl bg-gray-50 p-4 border border-gray-100 mt-2">
                   <div className="space-y-3">
-                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Chọn chi nhánh lấy hàng</label>
+                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("pickup_branch_label")}</label>
                     <select
                       value={selectedBranchId}
                       onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
+                      className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
                     >
                       {config?.branches.map((b) => (
                         <option key={b.id} value={b.id} className="text-gray-900 bg-white py-1">
@@ -1558,8 +1575,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   </div>
                   {config?.branches.find(b => b.id === selectedBranchId) && (
                     <div className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-1.5 shadow-sm text-sm text-gray-600 font-serif">
-                      <p>📍 Địa chỉ: {config?.branches.find(b => b.id === selectedBranchId)?.address}</p>
-                      <p>📞 Hotline: {config?.branches.find(b => b.id === selectedBranchId)?.contactNumber}</p>
+                      <p>{t("pickup_address_label")} {config?.branches.find(b => b.id === selectedBranchId)?.address}</p>
+                      <p>Hotline: {config?.branches.find(b => b.id === selectedBranchId)?.contactNumber}</p>
                     </div>
                   )}
                 </div>
@@ -1567,19 +1584,19 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
               {/* Notes */}
               <div className="space-y-3 pt-2 border-t border-gray-100">
-                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Lời nhắn cho Cô Thảo Tôm Cá</label>
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("note")}</label>
                 <textarea
-                  placeholder="Ghi chú về món ăn, gia vị, dụng cụ ăn uống..."
+                  placeholder={t("note_placeholder")}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base resize-none h-16 font-serif font-normal leading-[150%] tracking-[0%]"
+                  className="w-full rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base resize-none h-16 font-serif font-normal leading-[150%] tracking-[0%]"
                 ></textarea>
               </div>
 
               {/* Expected time & date */}
               <div className="space-y-3 pt-2 border-t border-gray-100">
                 <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
-                  {deliveryType === "pickup" ? "Thời gian đến lấy hàng mong muốn" : "Thời gian giao hàng mong muốn"}
+                  {deliveryType === "pickup" ? t("pickup_time_label") : t("delivery_time_label")}
                 </p>
                 <div className="space-y-3">
                   {/* Option 1: Giao ngay (Chỉ hiển thị khi trước 22:30 / canOrderNow) */}
@@ -1595,14 +1612,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           className="accent-primary"
                         />
                         <span className="font-medium text-sm">
-                          {deliveryType === "pickup" ? "Lấy ngay (Chuẩn bị 15 - 30 phút)" : "Giao ngay (Hỏa tốc 45 - 90 phút)"}
+                          {deliveryType === "pickup" ? t("pickup_now") : t("delivery_now")}
                         </span>
                       </label>
 
                       {/* Footnote dưới Option 1: Chỉ hiển thị khi chọn Giao ngay VÀ thời gian hiện tại trước 10:00 AM */}
                       {deliverySchedule === "now" && operatingStatus.currentTime < (operatingStatus.deliveryOpen || "10:00") && (
-                        <p className="text-xs text-amber-700 font-medium pl-6 mt-1">
-                          * Khách nhận món sớm nhất từ {operatingStatus.deliveryOpen || "10:00"} (Bếp mở nhận đơn từ 9:00).
+                        <p className="text-xs text-secondary font-medium pl-6 mt-1">
+                          {t("early_morning_note", { openTime: operatingStatus.deliveryOpen || "10:00" })}
                         </p>
                       )}
                     </div>
@@ -1610,12 +1627,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
                   {/* Nếu sau 22:30 (ngưng giao ngay), chỉ hiển thị thông báo chuyển qua Hẹn giờ */}
                   {!operatingStatus.canOrderNow && (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed font-medium space-y-1">
-                      <p className="font-semibold text-amber-950 flex items-center gap-1.5">
-                        <span>⏰</span>
-                        <span>Bếp đã ngưng nhận đơn giao ngay sau {operatingStatus.lastOrderCutoff || "22:30"}.</span>
+                    <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium space-y-1">
+                      <p className="font-semibold text-primary">
+                        {t("cutoff_notice_title", { cutoff: operatingStatus.lastOrderCutoff || "22:30" })}
                       </p>
-                      <p>Quý khách vui lòng đặt hẹn giờ nhận món từ {operatingStatus.deliveryOpen || "10:00"} ({operatingStatus.notice?.targetDateDisplay || "ngày mai"}).</p>
+                      <p>{t("cutoff_notice_desc", { openTime: operatingStatus.deliveryOpen || "10:00", targetDate: operatingStatus.notice?.targetDateDisplay || "ngày mai" })}</p>
                     </div>
                   )}
 
@@ -1631,7 +1647,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         className="accent-primary"
                       />
                       <span className="font-medium text-sm">
-                        {deliveryType === "pickup" ? "Hẹn giờ đến lấy (Đặt trước)" : "Hẹn giờ giao hàng (Đặt trước)"}
+                        {deliveryType === "pickup" ? t("schedule_pickup") : t("schedule_delivery")}
                       </span>
                     </label>
                   </div>
@@ -1723,7 +1739,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
               {/* Payment methods selection */}
               <div className="space-y-3 pt-2 border-t border-gray-100">
-                <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Hình thức thanh toán</p>
+                <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("payment_method_label")}</p>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1733,7 +1749,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       onChange={() => setPaymentMethod("COD")}
                       className="accent-primary"
                     />
-                    <span>Thanh toán khi nhận hàng (COD)</span>
+                    <span>{t("payment_cod_desc")}</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1743,7 +1759,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       onChange={() => setPaymentMethod("TRANSFER")}
                       className="accent-primary"
                     />
-                    <span>Chuyển khoản ngân hàng</span>
+                    <span>{t("payment_qr_desc")}</span>
                   </label>
                 </div>
               </div>
@@ -1781,7 +1797,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       )}
                     </div>
                   </div>
-                  <span>Tôi xác nhận thông tin giao hàng trên là chính xác</span>
+                  <span>{t("confirm_info_checkbox")}</span>
                 </label>
               </div>
             </div>
@@ -1794,12 +1810,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50 disabled:pointer-events-none"
             >
               {loading
-                ? "Đang xử lý..."
+                ? t("submitting")
                 : deliveryType === "delivery" && !isDeliverable
                   ? "Khu vực chưa hỗ trợ giao"
                   : !operatingStatus.canOrderNow
-                    ? "Đặt hẹn giờ nhận hàng"
-                    : "Đặt hàng"}
+                    ? t("schedule_pickup")
+                    : t("place_order")}
             </button>
           </div>
         )}
@@ -1826,7 +1842,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         <GiftSelectorModal
           isOpen={isOrderGiftModalOpen}
           onClose={() => setIsOrderGiftModalOpen(false)}
-          title="Chọn món quà tặng đơn hàng"
+          title={t("order_gift_tag")}
           subtitle={`Chương trình: ${eligibleOrderGiftPromo.name}`}
           items={eligibleOrderGiftPromo.items || []}
           selectedId={selectedOrderGiftId}
@@ -1839,7 +1855,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         <GiftSelectorModal
           isOpen={!!selectedBuyXGetYPromoForModal}
           onClose={() => setSelectedBuyXGetYPromoForModal(null)}
-          title="Chọn món ưu đãi combo"
+          title={t("combo_tag")}
           subtitle={`Chương trình: ${selectedBuyXGetYPromoForModal.name}`}
           items={selectedBuyXGetYPromoForModal.items || []}
           selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || selectedBuyXGetYPromoForModal.items?.[0]?.id}

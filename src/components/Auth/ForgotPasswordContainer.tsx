@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/i18n-navigation";
-import AnimateOnScroll from "@/components/Animated/animated-appear";
+import { useTranslations } from "next-intl";
 
 export default function ForgotPasswordContainer() {
+  const t = useTranslations("forgot_password");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -32,15 +33,14 @@ export default function ForgotPasswordContainer() {
       const body = await res.json();
 
       if (res.ok) {
-        setMessage(body.message || "Chúng tôi đã gửi đường dẫn đặt lại mật khẩu tới email của bạn.");
+        setMessage(body.message || t("success_default"));
         setEmail("");
       } else {
-        // Lấy lỗi validation hoặc lỗi chung từ backend
-        const errorMessage = body.errors?.email?.[0] || body.error || body.message || "Gửi yêu cầu thất bại. Vui lòng thử lại.";
+        const errorMessage = body.errors?.email?.[0] || body.error || body.message || t("error_default");
         setError(errorMessage);
       }
     } catch (err: any) {
-      setError("Đã xảy ra lỗi kết nối. Vui lòng kiểm tra mạng và thử lại.");
+      setError(t("network_error"));
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ export default function ForgotPasswordContainer() {
           className="object-cover object-center"
           priority
         />
-        {/* Dark Overlay - Độ phủ đè lên ảnh */}
+        {/* Dark Overlay */}
         <div
           className="absolute inset-0 z-10 bg-black/30"
         />
@@ -75,38 +75,38 @@ export default function ForgotPasswordContainer() {
             {/* Header Title */}
             <div className="text-center space-y-2">
               <h1 className="text-[28px] md:text-[32px] font-bold text-primary font-display leading-[120%] tracking-[0.02em]">
-                Quên Mật Khẩu
+                {t("title")}
               </h1>
               <p className="body-2 text-gray-700/80 font-serif max-w-[400px] mx-auto">
-                Nhập địa chỉ email liên kết với tài khoản của bạn. Chúng tôi sẽ gửi một liên kết để bạn đặt lại mật khẩu mới.
+                {t("description")}
               </p>
             </div>
 
             {/* Input Email */}
             <div className="space-y-1.5 text-left">
               <label className="body-2 text-primary font-semibold block font-serif">
-                Địa chỉ Email
+                {t("email_label")}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="nhập email của bạn (ví dụ: name@gmail.com)"
+                placeholder={t("email_placeholder")}
                 className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
               />
             </div>
 
             {/* Status Message */}
             {message && (
-              <div className="text-green-600 text-sm font-serif text-center bg-green-50 p-3 rounded-xl border border-green-100">
-                🎉 {message}
+              <div className="text-secondary font-bold text-sm font-serif text-center bg-yellow/60 p-3 rounded-xl border border-secondary/30">
+                {message}
               </div>
             )}
 
             {error && (
               <div className="text-red-600 text-sm font-serif text-center bg-red-50 p-3 rounded-xl border border-red-100">
-                ⚠️ {error}
+                {error}
               </div>
             )}
 
@@ -118,7 +118,7 @@ export default function ForgotPasswordContainer() {
                 loading ? "opacity-75 cursor-not-allowed" : ""
               }`}
             >
-              {loading ? "Đang gửi yêu cầu..." : "Gửi yêu cầu khôi phục"}
+              {loading ? t("submitting") : t("submit_btn")}
             </button>
 
             {/* Back to Login Link */}
@@ -127,7 +127,7 @@ export default function ForgotPasswordContainer() {
                 href="/signin"
                 className="text-primary font-bold hover:underline hover:text-secondary transition-all"
               >
-                ← Quay lại Đăng nhập
+                ← {t("back_to_login")}
               </Link>
             </div>
           </form>

@@ -181,6 +181,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     campaignId: number;
     prereqPrice?: number;
     isFreeship?: boolean;
+    canCombineWithPromotions?: boolean;
+    canCombineWithFreeship?: boolean;
     discountAmount?: number;
   } | null>(null);
   const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
@@ -356,8 +358,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         const giftQty = promo.settings?.gift_quantity || 1;
         const isFree = item?.campaign_price === 0;
         const tag = isFree
-          ? `🎁 Mua ${buyQty} tặng ${giftQty}`
-          : `💎 Mua ${buyQty} giảm ${giftQty}`;
+          ? `Mua ${buyQty} tặng ${giftQty}`
+          : `Mua ${buyQty} giảm ${giftQty}`;
         return {
           promo,
           item,
@@ -602,7 +604,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     setVoucherSuccess(null);
 
     try {
-      const res = await validateVoucher(code, subtotal, shipping);
+      const hasCampaign = cartItems.some(i => (i.originalPrice && i.originalPrice > i.unitPrice)) || autoOrderDiscountAmount > 0;
+      const campaignDiscount = autoOrderDiscountAmount;
+      const res = await validateVoucher(code, subtotal, shipping, hasCampaign, campaignDiscount);
       if (res.valid && res.voucher) {
         setAppliedVoucher({
           id: res.voucher.id,
@@ -613,6 +617,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           campaignId: res.voucher.campaign_id,
           prereqPrice: res.voucher.prereq_price,
           isFreeship: res.voucher.is_freeship,
+          canCombineWithPromotions: res.voucher.can_combine_with_promotions,
+          canCombineWithFreeship: res.voucher.can_combine_with_freeship,
           discountAmount: res.discount_amount,
         });
         setVoucherSuccess(res.message);
@@ -789,7 +795,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               quantity: 1,
               price: item.campaign_price,
               discount: 0,
-              note: `${tag.replace("🎁 ", "").replace("💎 ", "")} (${promo.name})`,
+              note: `${tag} (${promo.name})`,
             }))),
           ]
           : order
@@ -823,7 +829,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 quantity: 1,
                 price: item.campaign_price,
                 discount: 0,
-                note: `${tag.replace("🎁 ", "").replace("💎 ", "")} (${promo?.name || "Chiến dịch"})`,
+                note: `${tag} (${promo?.name || "Chiến dịch"})`,
               })),
             ]
             : [],
@@ -832,9 +838,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           ? [
             description.trim(),
             cartItems.map((item) => `${item.title} (${item.variant}) x${item.quantity}`).join(", "),
-            autoOrderDiscountAmount > 0 ? `🏷 KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
-            selectedOrderGiftItem ? `🎁 Tặng kèm: ${selectedOrderGiftItem.product_name} (0đ - ${eligibleOrderGiftPromo?.name || "Ưu đãi"})` : "",
-            ...activeBuyXGetYItems.map(({ promo, item, tag }) => `🎁 Ưu đãi combo: ${item.product_name} (${item.campaign_price === 0 ? "0đ" : `${item.campaign_price.toLocaleString("vi-VN")}đ`} - ${tag.replace("🎁 ", "").replace("💎 ", "")})`),
+            autoOrderDiscountAmount > 0 ? `KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
+            selectedOrderGiftItem ? `Tặng kèm: ${selectedOrderGiftItem.product_name} (0đ - ${eligibleOrderGiftPromo?.name || "Ưu đãi"})` : "",
+            ...activeBuyXGetYItems.map(({ promo, item, tag }) => `Ưu đãi combo: ${item.product_name} (${item.campaign_price === 0 ? "0đ" : `${item.campaign_price.toLocaleString("vi-VN")}đ`} - ${tag})`),
           ]
             .filter(Boolean)
             .join(" | ") || undefined
@@ -842,9 +848,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             ? [
               description.trim(),
               order.variant !== order.title ? order.variant : "",
-              autoOrderDiscountAmount > 0 ? `🏷 KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
-              selectedOrderGiftItem ? `🎁 Tặng kèm: ${selectedOrderGiftItem.product_name} (0đ - ${eligibleOrderGiftPromo?.name || "Ưu đãi"})` : "",
-              ...activeBuyXGetYItems.map(({ promo, item, tag }) => `🎁 Ưu đãi combo: ${item.product_name} (${item.campaign_price === 0 ? "0đ" : `${item.campaign_price.toLocaleString("vi-VN")}đ`} - ${tag.replace("🎁 ", "").replace("💎 ", "")})`),
+              autoOrderDiscountAmount > 0 ? `KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
+              selectedOrderGiftItem ? `Tặng kèm: ${selectedOrderGiftItem.product_name} (0đ - ${eligibleOrderGiftPromo?.name || "Ưu đãi"})` : "",
+              ...activeBuyXGetYItems.map(({ promo, item, tag }) => `Ưu đãi combo: ${item.product_name} (${item.campaign_price === 0 ? "0đ" : `${item.campaign_price.toLocaleString("vi-VN")}đ`} - ${tag})`),
             ]
               .filter(Boolean)
               .join(" | ") || undefined
@@ -931,14 +937,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           >
             {/* Banner Trạng thái hoạt động */}
             <div
-              className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${operatingStatus.canOrderNow
-                ? "bg-emerald-50/90 border-emerald-200 text-emerald-900"
-                : "bg-amber-50 border-amber-300 text-amber-900"
+              className={`p-4 rounded-xl border transition-colors ${operatingStatus.canOrderNow
+                ? "bg-yellow/60 border-secondary/30 text-brown"
+                : "bg-yellow/80 border-secondary/30 text-brown"
                 }`}
             >
-              <span className="text-xl leading-none mt-0.5">
-                {operatingStatus.canOrderNow ? "🟢" : "🟡"}
-              </span>
               <div className="text-sm font-semibold flex-1 leading-relaxed font-sans">
                 {operatingStatus.message}
               </div>
@@ -956,8 +959,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
-                placeholder="Họ và tên"
+                className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                placeholder={t("name_placeholder")}
               />
               {fieldError("customer.name") ? (
                 <p className="text-sm text-red-600 mt-1">{fieldError("customer.name")}</p>
@@ -966,14 +969,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
             {/* Số điện thoại */}
             <div className="space-y-2">
-              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Số điện thoại</label>
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("phone")}</label>
               <input
                 type="tel"
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
-                placeholder="Số điện thoại"
+                className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                placeholder={t("phone_placeholder")}
               />
               {fieldError("customer.phone") ? (
                 <p className="text-sm text-red-600 mt-1">{fieldError("customer.phone")}</p>
@@ -982,20 +985,20 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
             {/* Email (Optional) */}
             <div className="space-y-2">
-              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Email (Không bắt buộc)</label>
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("email_label")}</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
-                placeholder="Email"
+                className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                placeholder={t("email_placeholder")}
               />
             </div>
 
             {/* LOẠI GIAO NHẬN (Giao hàng / Tự đến lấy) */}
             <div className="space-y-2 pt-2 border-t border-gray-100">
               <label className="body-1 text-primary font-bold block">
-                Hình thức nhận hàng
+                {t("delivery_type")}
               </label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-3 cursor-pointer group">
@@ -1007,7 +1010,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                   />
                   <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-bold">
-                    Giao hàng tận nơi
+                    {t("delivery_home")}
                   </span>
                 </label>
 
@@ -1020,7 +1023,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                   />
                   <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-bold">
-                    Tự đến lấy tại chi nhánh
+                    {t("delivery_pickup")}
                   </span>
                 </label>
               </div>
@@ -1029,12 +1032,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             {/* HIỂN THỊ ĐỊA CHỈ NHẬN HÀNG TỐI ƯU HÓA CHO DELIVERY */}
             {deliveryType === "delivery" && (
               <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
-                <p className="body-1 text-gray-700 font-bold">Địa chỉ giao hàng tận nơi</p>
+                <p className="body-1 text-gray-700 font-bold">{t("delivery_home")}</p>
 
                 {/* Chọn Tỉnh/Thành & Phường/Xã (Danh mục chuẩn) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <label className="text-sm font-serif font-semibold text-primary block">Tỉnh / Thành phố *</label>
+                    <label className="text-sm font-serif font-semibold text-primary block">{t("province_label")}</label>
                     <select
                       value={selectedProvince}
                       onChange={(e) => {
@@ -1090,14 +1093,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
                 {/* Số nhà, tên đường */}
                 <div className="space-y-2">
-                  <label className="text-sm font-serif font-semibold text-primary block">Số nhà, tên đường *</label>
+                  <label className="text-sm font-serif font-semibold text-primary block">{t("street_label")}</label>
                   <input
                     type="text"
                     required
                     value={streetAddress}
                     onChange={(e) => setStreetAddress(e.target.value)}
-                    className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
-                    placeholder="VD: Số 73 Rạch Bùng Binh"
+                    className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
+                    placeholder={t("address_placeholder")}
                   />
                   {fieldError("delivery.address") ? (
                     <p className="text-sm text-red-600 mt-1">{fieldError("delivery.address")}</p>
@@ -1106,9 +1109,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
                 {/* Thông báo chi nhánh tự động được chọn & thông tin ship */}
                 {assignedBranchName && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-900 font-medium flex items-center gap-2">
-                    <span>📍</span>
-                    <span>Hệ thống tự động xác định giao từ chi nhánh: <strong>{assignedBranchName}</strong></span>
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-sm text-primary font-medium">
+                    {t.rich("auto_assigned_branch", {
+                      branchName: assignedBranchName,
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                    })}
                   </div>
                 )}
 
@@ -1116,7 +1121,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 {/* Thẻ thông báo phí tiêu chuẩn */}
                 {isDeliverable && shippingMessage && !isFreeship && (
                   <div className="text-xs text-gray-500 font-medium italic px-1">
-                    ℹ️ {shippingMessage}
+                    {shippingMessage}
                   </div>
                 )}
               </div>
@@ -1125,14 +1130,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             {/* HIỂN THỊ CHỌN CHI NHÁNH DỰA TRÊN API KIOTVIET CHO PICKUP */}
             {deliveryType === "pickup" && (
               <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
-                <p className="body-1 text-gray-700 font-bold">Chi nhánh nhận hàng</p>
+                <p className="body-1 text-gray-700 font-bold">{t("pickup_branch_title")}</p>
 
                 <div className="space-y-2">
-                  <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Chọn chi nhánh gần bạn nhất</label>
+                  <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("pickup_branch_label")}</label>
                   <select
                     value={selectedBranchId}
                     onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-                    className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base cursor-pointer font-serif leading-[150%] tracking-[0%]"
+                    className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base cursor-pointer font-serif leading-[150%] tracking-[0%]"
                   >
                     {config.branches?.map((branch) => (
                       <option key={branch.id} value={branch.id} className="text-gray-900 bg-white py-1">
@@ -1146,19 +1151,19 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 {selectedBranch && (
                   <div className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-2 shadow-sm text-sm">
                     <p className="body-1 text-primary font-bold">
-                      📍 Địa chỉ nhận hàng:
+                      {t("pickup_address_label")}
                     </p>
                     <p className="text-gray-600 leading-relaxed font-medium">
                       {selectedBranch.address}
                     </p>
                     {selectedBranch.contactNumber && (
                       <p className="text-gray-500 font-semibold">
-                        📞 Hotline: <span className="text-primary font-bold">{selectedBranch.contactNumber}</span>
+                        Hotline: <span className="text-primary font-bold">{selectedBranch.contactNumber}</span>
                       </p>
                     )}
-                    <div className="text-[14px] text-green-600 font-bold flex items-center gap-1 pt-1.5 border-t border-gray-100">
-                      <span className="inline-block size-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                      <span>Tự đến lấy giúp tiết kiệm phí vận chuyển (Miễn phí ship)</span>
+                    <div className="text-[14px] text-primary font-bold flex items-center gap-1.5 pt-1.5 border-t border-gray-100">
+                      <span className="inline-block size-1.5 rounded-full bg-secondary animate-pulse"></span>
+                      <span>{t("pickup_freeship_tip")}</span>
                     </div>
                   </div>
                 )}
@@ -1167,20 +1172,20 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
             {/* Lời nhắn */}
             <div className="space-y-2 pt-2 border-t border-gray-100">
-              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Lời nhắn cho Cô Thảo Tôm Cá</label>
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("note")}</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base resize-none font-serif font-normal leading-[150%] tracking-[0%]"
-                placeholder="Ghi chú về món ăn, gia vị, dụng cụ ăn uống..."
+                className="w-full rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base resize-none font-serif font-normal leading-[150%] tracking-[0%]"
+                placeholder={t("note_placeholder")}
               ></textarea>
             </div>
 
             {/* Thời gian giao/lấy hàng mong muốn */}
             <div className="space-y-3 pt-2">
               <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
-                {deliveryType === "pickup" ? "Thời gian đến lấy hàng mong muốn" : "Thời gian giao hàng mong muốn"}
+                {deliveryType === "pickup" ? t("pickup_time_label") : t("delivery_time_label")}
               </label>
 
               <div className="space-y-3">
@@ -1197,14 +1202,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                       />
                       <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-medium">
-                        {deliveryType === "pickup" ? "Lấy ngay (Chuẩn bị 15 - 30 phút)" : "Giao ngay (Hỏa tốc 45 - 90 phút)"}
+                        {deliveryType === "pickup" ? t("pickup_now") : t("delivery_now")}
                       </span>
                     </label>
 
                     {/* Footnote dưới Option 1: Chỉ hiển thị khi chọn Giao ngay VÀ thời gian hiện tại trước 10:00 AM */}
                     {deliverySchedule === "now" && operatingStatus.currentTime < (operatingStatus.deliveryOpen || "10:00") && (
-                      <p className="text-xs text-amber-700 font-medium pl-7 mt-1">
-                        * Khách nhận món sớm nhất từ {operatingStatus.deliveryOpen || "10:00"} (Bếp mở nhận đơn từ 9:00).
+                      <p className="text-xs text-secondary font-medium pl-7 mt-1">
+                        {t("early_morning_note", { openTime: operatingStatus.deliveryOpen || "10:00" })}
                       </p>
                     )}
                   </div>
@@ -1212,12 +1217,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
                 {/* Nếu sau 22:30 (ngưng giao ngay), chỉ hiển thị thông báo chuyển qua Hẹn giờ */}
                 {!operatingStatus.canOrderNow && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 leading-relaxed font-medium space-y-1">
-                    <p className="font-semibold text-amber-950 flex items-center gap-1.5">
-                      <span>⏰</span>
-                      <span>Bếp đã ngưng nhận đơn giao ngay sau {operatingStatus.lastOrderCutoff || "22:30"}.</span>
+                  <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium space-y-1">
+                    <p className="font-semibold text-primary">
+                      {t("cutoff_notice_title", { cutoff: operatingStatus.lastOrderCutoff || "22:30" })}
                     </p>
-                    <p>Quý khách vui lòng đặt hẹn giờ nhận món từ {operatingStatus.deliveryOpen || "10:00"} ({operatingStatus.notice?.targetDateDisplay || "ngày mai"}).</p>
+                    <p>{t("cutoff_notice_desc", { openTime: operatingStatus.deliveryOpen || "10:00", targetDate: operatingStatus.notice?.targetDateDisplay || "ngày mai" })}</p>
                   </div>
                 )}
 
@@ -1233,7 +1237,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                     />
                     <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-medium">
-                      {deliveryType === "pickup" ? "Hẹn giờ đến lấy (Đặt trước)" : "Hẹn giờ giao hàng (Đặt trước)"}
+                      {deliveryType === "pickup" ? t("schedule_pickup") : t("schedule_delivery")}
                     </span>
                   </label>
                 </div>
@@ -1326,7 +1330,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             {/* Hình thức thanh toán */}
             <div className="space-y-2 pt-2 border-t border-gray-100">
               <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
-                Hình thức thanh toán:
+                {t("payment_method_label")}
               </label>
               <div className="space-y-2">
                 <label className="flex items-center gap-3 cursor-pointer group">
@@ -1338,7 +1342,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                   />
                   <span className="body-1 text-gray-900 group-hover:text-primary transition-colors">
-                    Thanh toán khi nhận hàng (COD)
+                    {t("payment_cod_desc")}
                   </span>
                 </label>
 
@@ -1351,10 +1355,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                   />
                   <span className="body-1 text-gray-900 group-hover:text-primary transition-colors">
-                    Chuyển khoản ngân hàng (Qua mã QR)
+                    {t("payment_qr_desc")}
                   </span>
                 </label>
-
               </div>
             </div>
 
@@ -1368,7 +1371,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         <div className="lg:col-span-5">
           <div className="bg-white rounded-[24px] p-6 md:p-8 space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100">
             <h2 className="title-1 font-display text-primary border-b border-gray-100 pb-3">
-              Thông tin đơn hàng
+              {t("order_summary")}
             </h2>
 
             {/* Hộp danh sách sản phẩm */}
@@ -1376,12 +1379,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {isCartCheckout ? (
                 cartItems.length === 0 ? (
                   <div className="py-8 text-center space-y-2">
-                    <p className="body-1 text-gray-500 font-medium">Giỏ hàng của bạn đang trống</p>
+                    <p className="body-1 text-gray-500 font-medium">{t("empty")}</p>
                     <Link
                       href="/product"
                       className="inline-block text-sm font-semibold text-secondary hover:underline"
                     >
-                      Tiếp tục mua sắm
+                      {t("continue_shopping")}
                     </Link>
                   </div>
                 ) : (
@@ -1451,10 +1454,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                           <button
                             type="button"
                             onClick={() => removeFromCart(item.id)}
-                            className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-sm font-semibold cursor-pointer"
+                            className="text-gray-400 hover:text-red-500 transition-colors text-sm font-semibold cursor-pointer"
                           >
-                            <span>🗑</span>
-                            <span>Xóa</span>
+                            {t("remove_voucher")}
                           </button>
                         </div>
                       </div>
@@ -1545,10 +1547,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       <button
                         type="button"
                         onClick={() => setQuantity(1)}
-                        className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-sm font-semibold cursor-pointer"
+                        className="text-gray-400 hover:text-red-500 transition-colors text-sm font-semibold cursor-pointer"
                       >
-                        <span>🗑</span>
-                        <span>Xóa</span>
+                        {t("remove_voucher")}
                       </button>
                     </div>
                   </div>
@@ -1557,14 +1558,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
               {/* Món quà tặng đơn hàng (order_gift_discount) */}
               {selectedOrderGiftItem && (
-                <div className="flex gap-4 items-start py-3 bg-amber-50/60 rounded-2xl p-3 border border-amber-200/80 animate-fade-in shadow-xs">
+                <div className="flex gap-4 items-start py-3 bg-yellow/60 rounded-2xl p-3 border border-secondary/30 animate-fade-in shadow-xs">
                   {selectedOrderGiftItem.image ? (
-                    <div className="relative size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-amber-200">
+                    <div className="relative size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-secondary/20">
                       <Image src={selectedOrderGiftItem.image} alt={selectedOrderGiftItem.product_name} fill className="object-cover" />
                     </div>
                   ) : (
-                    <div className="size-16 flex-shrink-0 rounded-[10px] bg-amber-100 flex items-center justify-center text-xl">
-                      🎁
+                    <div className="size-16 flex-shrink-0 rounded-[10px] bg-yellow/80 border border-secondary/20 flex items-center justify-center text-xs font-bold text-brown uppercase text-center p-1">
+                      {t("order_gift_tag")}
                     </div>
                   )}
                   <div className="flex-1 min-w-0 space-y-1">
@@ -1578,35 +1579,34 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                             {formatPrice(selectedOrderGiftItem.original_price)}
                           </span>
                         )}
-                        <span className="title-3 text-emerald-600 font-bold">
+                        <span className="title-3 text-secondary font-bold">
                           {selectedOrderGiftItem.campaign_price === 0 ? "0đ" : formatPrice(selectedOrderGiftItem.campaign_price)}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-bold bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full">
-                          🎁 Món quà tặng theo đơn
+                        <span className="text-[11px] font-bold bg-secondary/15 text-secondary px-2 py-0.5 rounded-full">
+                          {t("order_gift_tag")}
                         </span>
                         <span className="text-xs text-gray-500 font-medium">x1</span>
                         {eligibleOrderGiftPromo.items.length > 1 && (
                           <button
                             type="button"
                             onClick={() => setIsOrderGiftModalOpen(true)}
-                            className="text-[11px] font-bold text-secondary bg-orange-100/70 hover:bg-orange-200/80 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
+                            className="text-[11px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
                           >
-                            🔄 Đổi món ({eligibleOrderGiftPromo.items.length} lựa chọn)
+                            {t("change_gift", { count: eligibleOrderGiftPromo.items.length })}
                           </button>
                         )}
                       </div>
                       <button
                         type="button"
                         onClick={() => setOptOutOrderGift(true)}
-                        className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold cursor-pointer"
-                        title="Bỏ món quà tặng này"
+                        className="text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold cursor-pointer"
+                        title={t("remove_gift")}
                       >
-                        <span>🗑</span>
-                        <span>Xoá</span>
+                        [{t("remove_voucher")}]
                       </button>
                     </div>
                   </div>
@@ -1615,31 +1615,30 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
               {/* Khi đã bấm bỏ quà đơn hàng nhưng vẫn đủ điều kiện -> cho phép nhận lại quà */}
               {eligibleOrderGiftPromo && optOutOrderGift && (
-                <div className="flex items-center justify-between p-3 bg-amber-50/70 rounded-xl border border-dashed border-amber-300 text-xs text-amber-900 animate-fade-in">
+                <div className="flex items-center justify-between p-3 bg-yellow/50 rounded-xl border border-dashed border-secondary/30 text-xs text-brown animate-fade-in">
                   <div className="flex items-center gap-2">
-                    <span className="text-base">🎁</span>
-                    <span className="font-medium">Bạn đủ điều kiện nhận quà tặng ({eligibleOrderGiftPromo.name})</span>
+                    <span className="font-medium">{t("reclaim_gift_eligible", { name: eligibleOrderGiftPromo.name })}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setOptOutOrderGift(false)}
-                    className="font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3 py-1 rounded-full transition-colors cursor-pointer"
+                    className="font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-3 py-1 rounded-full transition-colors cursor-pointer"
                   >
-                    + Nhận lại quà
+                    + {t("reclaim_gift")}
                   </button>
                 </div>
               )}
 
               {/* Món ưu đãi combo Mua X tặng/giảm Y (buy_x_get_y) - Hỗ trợ nhiều chiến dịch */}
               {activeBuyXGetYItems.map(({ promo, item, tag }) => (
-                <div key={`buyxy-${promo.id}-${item.id}`} className="flex gap-4 items-start py-3 bg-purple-50/60 rounded-2xl p-3 border border-purple-200/80 animate-fade-in shadow-xs">
+                <div key={`buyxy-${promo.id}-${item.id}`} className="flex gap-4 items-start py-3 bg-yellow/40 rounded-2xl p-3 border border-primary/15 animate-fade-in shadow-xs">
                   {item.image ? (
-                    <div className="relative size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-purple-200">
+                    <div className="relative size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-primary/20">
                       <Image src={item.image} alt={item.product_name} fill className="object-cover" />
                     </div>
                   ) : (
-                    <div className="size-16 flex-shrink-0 rounded-[10px] bg-purple-100 flex items-center justify-center text-xl">
-                      🎁
+                    <div className="size-16 flex-shrink-0 rounded-[10px] bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary uppercase text-center p-1">
+                      {t("combo_tag")}
                     </div>
                   )}
                   <div className="flex-1 min-w-0 space-y-1">
@@ -1653,14 +1652,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                             {formatPrice(item.original_price)}
                           </span>
                         )}
-                        <span className="title-3 text-purple-700 font-bold">
+                        <span className="title-3 text-primary font-bold">
                           {item.campaign_price === 0 ? "0đ" : formatPrice(item.campaign_price)}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-bold bg-purple-200 text-purple-900 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                           {tag}
                         </span>
                         <span className="text-xs text-gray-500 font-medium">x1</span>
@@ -1668,20 +1667,19 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                           <button
                             type="button"
                             onClick={() => setSelectedBuyXGetYPromoForModal(promo)}
-                            className="text-[11px] font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
+                            className="text-[11px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
                           >
-                            🔄 Đổi món ({promo.items.length} lựa chọn)
+                            {t("change_gift", { count: promo.items.length })}
                           </button>
                         )}
                       </div>
                       <button
                         type="button"
                         onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: true }))}
-                        className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold cursor-pointer"
-                        title="Bỏ món ưu đãi này"
+                        className="text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold cursor-pointer"
+                        title={t("remove_gift")}
                       >
-                        <span>🗑</span>
-                        <span>Xoá</span>
+                        [{t("remove_voucher")}]
                       </button>
                     </div>
                   </div>
@@ -1694,37 +1692,44 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 .map((promo) => (
                   <div
                     key={`optout-${promo.id}`}
-                    className="flex items-center justify-between p-3 bg-purple-50/70 rounded-xl border border-dashed border-purple-300 text-xs text-purple-900 animate-fade-in"
-                  >
+                    className="flex items-center justify-between p-3 bg-yellow/50 rounded-xl border border-dashed border-primary/25 text-xs text-primary animate-fade-in">
                     <div className="flex items-center gap-2">
-                      <span className="text-base">🎁</span>
-                      <span className="font-medium">Bạn đủ điều kiện nhận ưu đãi ({promo.name})</span>
+                      <span className="font-medium">{t("reclaim_combo_eligible", { name: promo.name })}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: false }))}
-                      className="font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 px-3 py-1 rounded-full transition-colors cursor-pointer"
+                      className="font-bold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1 rounded-full transition-colors cursor-pointer"
                     >
-                      + Nhận lại ưu đãi
+                      + {t("reclaim_combo")}
                     </button>
                   </div>
                 ))}
             </div>
 
             {upcomingOrderGiftPromo && (
-              <div className="bg-amber-50/80 rounded-[14px] p-3 border border-amber-200/70 flex items-center gap-2.5 text-xs text-amber-900 animate-fade-in">
-                <span className="text-lg">🎁</span>
+              <div className="bg-yellow/60 rounded-[14px] p-3 border border-secondary/30 flex items-center gap-2.5 text-xs text-brown animate-fade-in">
                 <span>
-                  Mua thêm <strong>{(upcomingOrderGiftPromo.min_order_value - subtotal).toLocaleString("vi-VN")}đ</strong> để được tặng <strong>1 món quà miễn phí</strong> ({upcomingOrderGiftPromo.name})!
+                  {t.rich("buy_more_gift_prompt", {
+                    amount: formatPrice(upcomingOrderGiftPromo.min_order_value - subtotal),
+                    name: upcomingOrderGiftPromo.name,
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
                 </span>
               </div>
             )}
 
             {upcomingBuyXGetYPromo && (
-              <div className="bg-purple-50/80 rounded-[14px] p-3 border border-purple-200/70 flex items-center gap-2.5 text-xs text-purple-900 animate-fade-in">
-                <span className="text-lg">🎁</span>
+              <div className="bg-primary/5 rounded-[14px] p-3 border border-primary/20 flex items-center gap-2.5 text-xs text-primary animate-fade-in">
                 <span>
-                  Mua thêm <strong>{Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity)} món</strong> để nhận ưu đãi (<strong>Mua {upcomingBuyXGetYPromo.settings?.buy_quantity || 2} {upcomingBuyXGetYPromo.discount_type === 'percent' && upcomingBuyXGetYPromo.discount_value === 100 ? 'tặng' : 'giảm'} {upcomingBuyXGetYPromo.settings?.gift_quantity || 1} - {upcomingBuyXGetYPromo.name}</strong>)!
+                  {t.rich("buy_more_combo_prompt", {
+                    quantity: Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity),
+                    buyQty: upcomingBuyXGetYPromo.settings?.buy_quantity || 2,
+                    action: upcomingBuyXGetYPromo.discount_type === 'percent' && upcomingBuyXGetYPromo.discount_value === 100 ? 'tặng' : 'giảm',
+                    giftQty: upcomingBuyXGetYPromo.settings?.gift_quantity || 1,
+                    name: upcomingBuyXGetYPromo.name,
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
                 </span>
               </div>
             )}
@@ -1732,16 +1737,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             {/* Hộp nhập mã giảm giá & Nút chọn mã */}
             <div className="border-t border-gray-100 pt-4 space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="body-1 font-display text-primary font-bold flex items-center gap-1.5">
-                  <span>🎟️</span>
-                  <span>Mã giảm giá (Voucher)</span>
+                <label className="body-1 font-display text-primary font-bold">
+                  {t("voucher_label")}
                 </label>
                 <button
                   type="button"
                   onClick={() => setIsVoucherModalOpen(true)}
                   className="text-xs font-bold text-secondary hover:text-secondary/80 flex items-center gap-0.5 cursor-pointer"
                 >
-                  <span>Chọn hoặc xem mã</span>
+                  <span>{t("select_or_view_voucher")}</span>
                   <span className="text-sm leading-none">›</span>
                 </button>
               </div>
@@ -1763,7 +1767,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   disabled={validatingVoucher}
                   style={{ backgroundColor: "transparent" }}
                   className="flex-1 !bg-transparent px-4 py-2 text-gray-900 focus:outline-none text-base uppercase placeholder-gray-400 font-semibold tracking-wider"
-                  placeholder="Mã Voucher"
+                  placeholder={t("voucher_input_placeholder")}
                 />
                 {appliedVoucher ? (
                   <button
@@ -1771,24 +1775,24 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     onClick={handleRemoveVoucher}
                     className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-5 py-2 rounded-full text-sm transition-all border border-red-200/60 shrink-0 cursor-pointer"
                   >
-                    Xóa
+                    {t("remove_voucher")}
                   </button>
                 ) : (
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
                       onClick={() => setIsVoucherModalOpen(true)}
-                      className="bg-amber-50 hover:bg-amber-100 text-primary font-bold px-3.5 py-2 rounded-full text-xs transition-all border border-amber-200 cursor-pointer whitespace-nowrap"
+                      className="bg-yellow/70 hover:bg-yellow text-primary font-bold px-3.5 py-2 rounded-full text-xs transition-all border border-primary/20 cursor-pointer whitespace-nowrap"
                     >
-                      Chọn mã
+                      {t("select_voucher_btn")}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleApplyVoucher()}
                       disabled={validatingVoucher || !voucherCode.trim()}
-                      className="bg-[#142A68] hover:bg-[#142A68]/95 text-white font-bold px-5 py-2 rounded-full text-sm transition-all disabled:opacity-40 shrink-0 cursor-pointer"
+                      className="bg-primary hover:bg-primary/95 text-white font-bold px-5 py-2 rounded-full text-sm transition-all disabled:opacity-40 shrink-0 cursor-pointer"
                     >
-                      {validatingVoucher ? "Đang check..." : "Áp dụng"}
+                      {validatingVoucher ? t("checking_voucher") : t("apply_voucher")}
                     </button>
                   </div>
                 )}
@@ -1797,13 +1801,13 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 <p className="text-xs text-red-600 font-semibold px-2">{voucherError}</p>
               )}
               {voucherSuccess && (
-                <div className="text-xs text-emerald-600 font-semibold px-2 space-y-0.5">
+                <div className="text-xs text-secondary font-semibold px-2 space-y-0.5">
                   <p className="flex items-center gap-1.5">
                     <span>✓</span> <span>{voucherSuccess}</span>
                   </p>
                   {appliedVoucher?.prereqPrice ? (
                     <p className="text-[11px] text-gray-500 font-normal">
-                      * Áp dụng cho đơn hàng từ {appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ trở lên.
+                      {t("voucher_prereq_note", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })}
                     </p>
                   ) : null}
                 </div>
@@ -1824,14 +1828,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             <div className="bg-gray-50 rounded-[16px] p-4 space-y-3 border border-gray-100/80">
               <div className="flex justify-between items-center text-sm font-medium">
                 <span className="text-gray-600 flex items-center gap-1.5">
-                  <span>Vận chuyển</span>
+                  <span>{t("shipping_fee")}</span>
                   {calculatingShipping && (
                     <span className="text-xs text-gray-400 animate-pulse">(Đang tính...)</span>
                   )}
                 </span>
                 <div className="text-right">
                   {deliveryType === "pickup" ? (
-                    <span className="text-emerald-600 font-bold">0đ (Tự đến lấy)</span>
+                    <span className="text-secondary font-bold">0đ ({t("delivery_pickup")})</span>
                   ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                     <span className="text-gray-500 font-bold text-base">--</span>
                   ) : isFreeship ? (
@@ -1841,7 +1845,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                           {formatPrice(originalFee)}
                         </span>
                       )}
-                      <span className="text-emerald-600 font-bold text-base">0đ</span>
+                      <span className="text-secondary font-bold text-base">0đ</span>
                     </div>
                   ) : shipping > 0 ? (
                     <span className="text-primary font-bold text-base">
@@ -1856,12 +1860,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {/* Thẻ Cảnh báo Chưa hỗ trợ giao hàng */}
               {deliveryType === "delivery" && !isDeliverable && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs text-red-800 font-medium space-y-1.5 animate-fade-in">
-                  <p className="flex items-center gap-1.5 text-red-900 font-bold text-sm">
-                    <span>⚠️</span>
-                    <span>Khu vực này hiện chưa hỗ trợ giao hàng tận nơi.</span>
+                  <p className="text-red-900 font-bold text-sm">
+                    Khu vực này hiện chưa hỗ trợ giao hàng tận nơi.
                   </p>
                   <p className="text-red-700 leading-relaxed">
-                    Vui lòng chọn <strong>"Tự đến lấy tại chi nhánh"</strong> hoặc liên hệ Hotline:{" "}
+                    Vui lòng chọn <strong>&quot;{t("delivery_pickup")}&quot;</strong> hoặc liên hệ Hotline:{" "}
                     <a href={`tel:${hotline.replace(/[^0-9+]/g, "")}`} className="font-bold underline text-red-900 hover:text-red-950">
                       {hotline}
                     </a>{" "}
@@ -1872,58 +1875,55 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
               {/* Giảm giá chiến dịch đơn hàng (order_discount) */}
               {autoOrderDiscountAmount > 0 && (
-                <div className="flex justify-between items-center text-sm font-medium text-emerald-600 border-t border-gray-200/60 pt-2.5 animate-fade-in">
-                  <span className="flex items-center gap-1.5">
+                <div className="flex justify-between items-start gap-3 text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 animate-fade-in">
+                  <div className="flex-1 min-w-0 pr-1 leading-snug">
                     <span>{eligibleOrderDiscountPromo?.name}</span>
                     <button
                       type="button"
                       onClick={() => setOptOutOrderDiscount(true)}
-                      className="text-xs text-red-500 hover:underline font-semibold cursor-pointer ml-1"
-                      title="Bỏ áp dụng giảm giá này"
+                      className="text-xs text-red-500 hover:text-red-700 hover:underline font-semibold cursor-pointer ml-1.5 whitespace-nowrap inline-block"
+                      title={t("remove_gift")}
                     >
-                      [Xoá]
+                      [{t("remove_voucher")}]
                     </button>
-                  </span>
-                  <span className="font-bold text-base">
+                  </div>
+                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right leading-snug">
                     -{formatPrice(autoOrderDiscountAmount)}
                   </span>
                 </div>
               )}
 
               {eligibleOrderDiscountPromo && optOutOrderDiscount && (
-                <div className="flex items-center justify-between py-1 text-xs text-gray-500 border-t border-gray-200/60 pt-2 animate-fade-in">
-                  <span>🏷 Đã bỏ giảm KM ({eligibleOrderDiscountPromo.name})</span>
+                <div className="flex items-center justify-between py-1 text-xs text-gray-500 border-t border-gray-200/60 pt-2 animate-fade-in gap-2">
+                  <span className="flex-1 min-w-0 leading-snug truncate">Đã bỏ giảm KM ({eligibleOrderDiscountPromo.name})</span>
                   <button
                     type="button"
                     onClick={() => setOptOutOrderDiscount(false)}
-                    className="text-primary hover:underline font-bold cursor-pointer"
+                    className="text-primary hover:underline font-bold cursor-pointer shrink-0 whitespace-nowrap"
                   >
-                    Áp dụng lại
+                    {t("reapply_voucher")}
                   </button>
                 </div>
               )}
 
               {appliedVoucher && voucherDiscount > 0 && (
-                <div className="flex justify-between items-center text-sm font-medium text-emerald-600 border-t border-gray-200/60 pt-2.5">
-                  <span>Giảm giá (Voucher)</span>
-                  <span className="font-bold text-base">
+                <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2">
+                  <span className="flex-1 min-w-0 leading-snug">{t("voucher_label")}</span>
+                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                     -{formatPrice(voucherDiscount)}
                   </span>
                 </div>
               )}
 
-              <div className="flex justify-between items-center border-t border-gray-200/80 pt-3">
-                <span className="text-gray-900 font-bold text-base">Tổng cộng</span>
-                <span className="text-xl font-display text-primary font-bold">
+              <div className="flex justify-between items-center border-t border-gray-200/80 pt-3 gap-2">
+                <span className="text-gray-900 font-bold text-base flex-1 min-w-0">{t("total")}</span>
+                <span className="text-xl font-display text-primary font-bold shrink-0 whitespace-nowrap text-right">
                   {formatPrice(total)}
                 </span>
               </div>
 
               {user && total > 0 && (
-                <div className="text-xs text-emerald-600 font-semibold text-right flex items-center justify-end gap-1.5 pt-2 border-t border-dashed border-gray-200">
-                  <svg className="h-3.5 w-3.5 shrink-0 overflow-visible" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                  </svg>
+                <div className="text-xs text-secondary font-semibold text-right flex items-center justify-end gap-1.5 pt-2 border-t border-dashed border-gray-200">
                   <span>Đơn hàng này sẽ tích lũy thêm ~{Math.floor(total / 100000)} điểm!</span>
                 </div>
               )}
@@ -1941,7 +1941,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   />
                   <div
                     className={`w-5 h-5 rounded-[6px] border flex items-center justify-center transition-all ${confirmInfo
-                      ? "bg-[#142A68] border-[#142A68] text-white"
+                      ? "bg-primary border-primary text-white"
                       : "border-gray-300 bg-white"
                       }`}
                   >
@@ -1962,7 +1962,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     )}
                   </div>
                 </div>
-                <span>Tôi xác nhận thông tin giao hàng trên là chính xác</span>
+                <span>{t("confirm_info_checkbox")}</span>
               </label>
             </div>
 
@@ -1974,12 +1974,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               className="w-full bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none"
             >
               {loading
-                ? "Đang xử lý..."
+                ? t("submitting")
                 : deliveryType === "delivery" && !isDeliverable
                   ? "Khu vực chưa hỗ trợ giao"
                   : !operatingStatus.canOrderNow
-                    ? "Đặt hẹn giờ nhận hàng"
-                    : "Đặt hàng"}
+                    ? t("schedule_pickup")
+                    : t("place_order")}
             </button>
           </div>
         </div>
@@ -2006,7 +2006,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         <GiftSelectorModal
           isOpen={isOrderGiftModalOpen}
           onClose={() => setIsOrderGiftModalOpen(false)}
-          title="Chọn món quà tặng đơn hàng"
+          title={t("order_gift_tag")}
           subtitle={`Chương trình: ${eligibleOrderGiftPromo.name}`}
           items={eligibleOrderGiftPromo.items || []}
           selectedId={selectedOrderGiftId}
@@ -2019,7 +2019,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         <GiftSelectorModal
           isOpen={!!selectedBuyXGetYPromoForModal}
           onClose={() => setSelectedBuyXGetYPromoForModal(null)}
-          title="Chọn món ưu đãi combo"
+          title={t("combo_tag")}
           subtitle={`Chương trình: ${selectedBuyXGetYPromoForModal.name}`}
           items={selectedBuyXGetYPromoForModal.items || []}
           selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || selectedBuyXGetYPromoForModal.items?.[0]?.id}

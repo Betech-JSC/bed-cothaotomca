@@ -92,7 +92,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
           <div className="flex flex-col items-start gap-1 py-1">
             {selectedSize.original_price && selectedSize.original_price > selectedSize.price ? (
               <span className="inline-block bg-primary text-white text-xs font-bold px-2.5 py-0.5 rounded-[4px] tracking-wide">
-                -{Math.round(((selectedSize.original_price - selectedSize.price) / selectedSize.original_price) * 100)}%
+                -{(selectedSize as any).discount_percent || Math.round(((selectedSize.original_price - selectedSize.price) / selectedSize.original_price) * 100)}%
               </span>
             ) : null}
             <div className="text-2xl md:text-[28px] font-display font-bold text-secondary leading-tight">
@@ -109,7 +109,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
         {/* Bộ chọn số lượng */}
         <div className="flex items-center gap-4 py-1">
           <span className="label-1 font-semibold text-gray-900 flex-shrink-0">
-            Số lượng:
+            {t("checkout.quantity")}:
           </span>
           <div className="flex items-center border border-[#B9C0D4] rounded-full overflow-hidden h-11 bg-white shadow-sm">
             <button
@@ -148,7 +148,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                 <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <span>{hasCode ? "Thêm vào giỏ hàng" : "Tạm hết hàng"}</span>
+                <span>{hasCode ? t("button.add_to_cart") : t("product.out_of_stock")}</span>
               </button>
             );
           })()}
@@ -170,18 +170,18 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                   : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
                   }`}
               >
-                <span>Mua ngay</span>
+                <span>{t("button.buy-now")}</span>
               </button>
             );
           })()}
         </div>
 
         {isAdded && (
-          <div className="text-green-600 font-semibold text-sm flex items-center gap-1.5 animate-fade-in py-1">
+          <div className="text-secondary font-semibold text-sm flex items-center gap-1.5 animate-fade-in py-1">
             <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            <span>Đã thêm vào giỏ hàng thành công!</span>
+            <span>{t("product.added_to_cart_success")}</span>
           </div>
         )}
 

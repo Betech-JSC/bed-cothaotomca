@@ -274,7 +274,7 @@ const Header = () => {
                     </span>
                   )}
                 </div>
-                <span className="text-[1rem] font-display font-bold whitespace-nowrap">Đặt hàng</span>
+                <span className="text-[1rem] font-display font-bold whitespace-nowrap">{t("button.order-now")}</span>
               </button>
               <CartPopup onClose={() => setIsCartOpen(false)} />
             </li>
@@ -461,6 +461,7 @@ const MobileMenu = ({
   onClose,
   onToggleSearch,
 }: MobileMenuProps) => {
+  const t = useTranslations();
   const [openSection, setOpenSection] = useState<number | null>(null);
   const settings = useGeneralSettings();
   const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
@@ -674,14 +675,14 @@ const MobileMenu = ({
             className="bg-secondary hover:bg-secondary/90 text-white font-bold py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all w-full text-center cursor-pointer"
           >
             <Cart />
-            <span className="text-base font-bold">Đặt hàng ngay ({totalItems})</span>
+            <span className="text-base font-bold">{t("button.order_now_count", { count: totalItems })}</span>
           </Link>
 
           <a
             href={`tel:${hotlineClean}`}
             className="flex items-center justify-center gap-2 text-yellow font-bold text-sm py-2 hover:text-secondary transition-colors"
           >
-            <span>📞 Hotline: {hotline}</span>
+            <span>Hotline: {hotline}</span>
           </a>
         </div>
       </div>

@@ -154,12 +154,20 @@ export default async function ProductDetailsPage({
           }
         }
         const finalPrice = campaignPrice && campaignPrice < basePrice ? campaignPrice : basePrice;
+        const isCamp = campaignPrice !== null && campaignPrice < basePrice;
+        const activeCamp = v.active_campaign || product.active_campaign;
+        const configuredPercent = activeCamp?.discount_type === 'percent' && Number(activeCamp.discount_value) > 0
+          ? Math.round(Number(activeCamp.discount_value))
+          : (activeCamp?.discount_percent ? Math.round(Number(activeCamp.discount_percent)) : undefined);
+        const calcPercent = isCamp && basePrice > 0 ? Math.round(((basePrice - finalPrice) / basePrice) * 100) : undefined;
+
         return {
           id: v.id,
           code: v.code || "",
           title: locale === "vi" ? v.size : (v.size_en || v.size),
           price: finalPrice,
-          original_price: campaignPrice && campaignPrice < basePrice ? basePrice : undefined,
+          original_price: isCamp ? basePrice : undefined,
+          discount_percent: isCamp ? (configuredPercent || calcPercent) : undefined,
         };
       })
       : [{
@@ -168,6 +176,11 @@ export default async function ProductDetailsPage({
         title: t("product.standard"),
         price: product.campaign_price && parseFloat(String(product.campaign_price)) < parseFloat(product.price) ? parseFloat(String(product.campaign_price)) : parseInt(product.price),
         original_price: product.campaign_price && parseFloat(String(product.campaign_price)) < parseFloat(product.price) ? parseInt(product.price) : undefined,
+        discount_percent: product.campaign_price && parseFloat(String(product.campaign_price)) < parseFloat(product.price)
+          ? (product.active_campaign?.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0
+              ? Math.round(Number(product.active_campaign.discount_value))
+              : (product.active_campaign?.discount_percent || Math.round(((parseFloat(product.price) - parseFloat(String(product.campaign_price))) / parseFloat(product.price)) * 100)))
+          : undefined,
       }],
 
 

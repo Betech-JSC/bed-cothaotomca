@@ -194,7 +194,7 @@ export default function WardSelectCombobox({
             })
           ) : (
             <div className="px-4 py-3 text-gray-500 text-center italic text-xs">
-              Không tìm thấy Phường/Xã phù hợp với "{searchQuery}"
+              Không tìm thấy Phường/Xã phù hợp với &quot;{searchQuery}&quot;
             </div>
           )}
         </div>

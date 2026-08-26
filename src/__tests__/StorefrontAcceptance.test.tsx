@@ -15,16 +15,63 @@ import { calcOrderTotal, calculateShippingFee } from '@/services/orderService';
 import { formatPrice } from '@/lib/format';
 import { checkOperatingHours } from '@/lib/operatingHours';
 
+import viMessages from '@/i18n/locales/vi.json';
+
 // Mock next-intl
 vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => {
-    const translations: Record<string, string> = {
-      'product.size': 'Kích thước',
-      'product.contact': 'Liên hệ tư vấn',
-      'product.volume': 'Dung tích',
-      'product.type': 'Loại',
+  useTranslations: (namespace?: string) => {
+    const resolveKey = (key: string) => {
+      const fullPath = namespace ? `${namespace}.${key}` : key;
+      const parts = fullPath.split('.');
+      let current: any = viMessages;
+      for (const p of parts) {
+        if (current && typeof current === 'object' && p in current) {
+          current = current[p];
+        } else {
+          return key;
+        }
+      }
+      return typeof current === 'string' ? current : key;
     };
-    return translations[key] || key;
+
+    const t: any = (key: string, values?: Record<string, any>) => {
+      let text = resolveKey(key);
+      if (values) {
+        Object.entries(values).forEach(([k, v]) => {
+          text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+        });
+      }
+      return text;
+    };
+
+    t.rich = (key: string, values?: Record<string, any>) => {
+      let text = resolveKey(key);
+      if (!values) return text;
+      Object.entries(values).forEach(([k, v]) => {
+        if (typeof v !== 'function') {
+          text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+        }
+      });
+
+      const parts = text.split(/(<strong[^>]*>.*?<\/strong>|<code[^>]*>.*?<\/code>)/g);
+      return (
+        <span>
+          {parts.map((part: string, index: number) => {
+            const strongMatch = part.match(/<strong[^>]*>(.*?)<\/strong>/);
+            if (strongMatch && values.strong) {
+              return <React.Fragment key={index}>{values.strong(strongMatch[1])}</React.Fragment>;
+            }
+            const codeMatch = part.match(/<code[^>]*>(.*?)<\/code>/);
+            if (codeMatch && values.code) {
+              return <React.Fragment key={index}>{values.code(codeMatch[1])}</React.Fragment>;
+            }
+            return <React.Fragment key={index}>{part}</React.Fragment>;
+          })}
+        </span>
+      );
+    };
+
+    return t;
   },
 }));
 
@@ -342,7 +389,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     );
     expect(screen.getByText(/Mua thêm/i)).toBeInTheDocument();
     expect(screen.getByText(formatPrice(200000))).toBeInTheDocument();
-    expect(screen.getByText(/Miễn phí vận chuyển/i)).toBeInTheDocument();
+    expect(screen.getByText(/Freeship/i)).toBeInTheDocument();
 
     // 2. Case: Đã đạt Freeship (đơn 600k, freeship 500k) -> Hiển thị đạt ưu đãi thành công
     rerender(
@@ -372,7 +419,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
       />
     );
     expect(screen.getByText(formatPrice(100000))).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`Giảm ${formatPrice(30000)}`))).toBeInTheDocument();
+    expect(screen.getByText(formatPrice(30000))).toBeInTheDocument();
   });
 
   it('UX Enhancement 2: CouponModal phân loại rõ mã đủ điều kiện và mã chưa đủ điều kiện kèm gợi ý mua thêm', async () => {
@@ -421,4 +468,31 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(screen.getByText(formatPrice(350000))).toBeInTheDocument();
     expect(screen.getByText(/để dùng mã này/i)).toBeInTheDocument();
   });
+
+  it('Luồng 13: Đồng bộ chính xác % giảm giá 12% khi giá làm tròn 55.000đ -> 49.000đ', () => {
+    const productWith12Pct: any = {
+      id: 301,
+      name: 'Món Giảm 12%',
+      slug: 'mon-giam-12',
+      price: 55000,
+      campaign_price: 49000, // 55k -> 48.4k rounded up to 49k (would be 10.9% -> 11% if reverse calculated)
+      active_campaign: {
+        id: 99,
+        name: 'Giảm 12% Món',
+        discount_type: 'percent',
+        discount_value: 12,
+        campaign_price: 49000,
+      },
+    };
+
+    const cardProps = mapProductToCardItem(productWith12Pct, 'vi');
+    expect(cardProps.price).toBe(49000);
+    expect(cardProps.original_price).toBe(55000);
+    expect(cardProps.active_campaign?.discount_percent).toBe(12);
+
+    render(<CardProduct item={cardProps} />);
+    // Badge must render -12% instead of -11%
+    expect(screen.getByText(/-12%/)).toBeInTheDocument();
+  });
 });
+

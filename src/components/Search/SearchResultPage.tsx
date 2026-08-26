@@ -397,10 +397,10 @@ export default function SearchResultPage({
                       <Link
                         key={policy.id}
                         href={{ pathname: '/policy/[slug]', params: { slug: policy.slug } }}
-                        className="block p-6 rounded-2xl bg-white border border-gray-100 hover:border-amber-200 shadow-sm hover:shadow-md transition-all duration-300 group"
+                        className="block p-6 rounded-2xl bg-white border border-gray-100 hover:border-secondary/30 shadow-sm hover:shadow-md transition-all duration-300 group"
                       >
                         <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-primary flex-shrink-0 group-hover:bg-primary group-hover:text-yellow transition-colors duration-300">
+                          <div className="w-12 h-12 rounded-xl bg-yellow/60 border border-secondary/20 flex items-center justify-center text-primary flex-shrink-0 group-hover:bg-primary group-hover:text-yellow transition-colors duration-300">
                             <PolicyIcon className="w-6 h-6" />
                           </div>
                           <div className="space-y-2 flex-1">

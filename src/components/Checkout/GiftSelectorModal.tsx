@@ -1,8 +1,7 @@
-"use client";
-
 import React from "react";
 import Image from "next/image";
 import { formatPrice } from "@/lib/format";
+import { useTranslations } from "next-intl";
 
 export interface GiftItem {
   id: number;
@@ -27,12 +26,15 @@ interface GiftSelectorModalProps {
 export default function GiftSelectorModal({
   isOpen,
   onClose,
-  title = "Chọn món quà tặng miễn phí",
+  title,
   subtitle,
   items,
   selectedId,
   onSelect,
 }: GiftSelectorModalProps) {
+  const t = useTranslations("gift_selector");
+  const modalTitle = title || t("default_title");
+
   if (!isOpen) return null;
 
   return (
@@ -51,19 +53,16 @@ export default function GiftSelectorModal({
       {/* Modal Container */}
       <div className="relative w-full max-w-md bg-white rounded-t-[28px] sm:rounded-[24px] shadow-2xl z-10 max-h-[85vh] flex flex-col overflow-hidden text-gray-900 border border-gray-100 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-amber-50/50">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🎁</span>
-            <div>
-              <h3 className="title-2 font-display text-primary font-bold leading-tight">
-                {title}
-              </h3>
-              {subtitle && (
-                <p className="text-xs text-gray-500 font-medium line-clamp-1">
-                  {subtitle}
-                </p>
-              )}
-            </div>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-yellow/40">
+          <div>
+            <h3 className="title-2 font-display text-primary font-bold leading-tight">
+              {modalTitle}
+            </h3>
+            {subtitle && (
+              <p className="text-xs text-gray-500 font-medium line-clamp-1">
+                {subtitle}
+              </p>
+            )}
           </div>
 
           <button
@@ -78,8 +77,8 @@ export default function GiftSelectorModal({
 
         {/* Gift List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-            Danh sách món quà khả dụng ({items.length})
+          <div className="title-4 font-display text-gray-500 uppercase tracking-wider font-bold">
+            {t("available_gifts", { count: items.length })}
           </div>
 
           <div className="space-y-2.5">
@@ -96,7 +95,7 @@ export default function GiftSelectorModal({
                   }}
                   className={`flex items-center gap-3.5 p-3 rounded-2xl border transition-all cursor-pointer select-none ${
                     isSelected
-                      ? "border-secondary bg-orange-50/50 shadow-xs ring-2 ring-secondary/20"
+                      ? "border-secondary bg-yellow/50 shadow-xs ring-2 ring-secondary/20"
                       : "border-gray-200/80 bg-white hover:border-secondary/40 hover:bg-gray-50/50"
                   }`}
                 >
@@ -124,15 +123,15 @@ export default function GiftSelectorModal({
                         unoptimized
                       />
                     ) : (
-                      <span className="text-xl">🎁</span>
+                      <span className="title-4 font-display font-bold text-gray-400 uppercase">{t("gift_tag")}</span>
                     )}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <h4
-                      className={`text-xs sm:text-sm font-bold line-clamp-1 ${
-                        isSelected ? "text-secondary" : "text-gray-900"
+                      className={`title-3 font-display font-bold line-clamp-1 ${
+                        isSelected ? "text-secondary" : "text-primary"
                       }`}
                     >
                       {item.product_name}
@@ -140,20 +139,20 @@ export default function GiftSelectorModal({
 
                     <div className="flex items-center gap-2 mt-0.5">
                       {item.original_price > 0 && (
-                        <span className="text-[11px] text-gray-400 line-through">
+                        <span className="body-3 font-sans text-gray-400 line-through">
                           {formatPrice(item.original_price)}
                         </span>
                       )}
-                      <span className="text-xs font-bold text-emerald-600">
-                        {isFree ? "Miễn phí (0đ)" : formatPrice(item.campaign_price)}
+                      <span className="body-2 font-sans font-bold text-secondary">
+                        {isFree ? t("free") : formatPrice(item.campaign_price)}
                       </span>
                     </div>
                   </div>
 
                   {/* Active Badge */}
                   {isSelected && (
-                    <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full shrink-0">
-                      Đang chọn
+                    <span className="body-3 font-sans font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full shrink-0">
+                      {t("selecting")}
                     </span>
                   )}
                 </div>
@@ -164,15 +163,15 @@ export default function GiftSelectorModal({
 
         {/* Footer */}
         <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-          <span className="text-xs text-gray-500">
-            * Nhấp vào món để chọn nhận quà
+          <span className="body-3 font-sans text-gray-500">
+            {t("instruction")}
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-secondary hover:bg-secondary/95 text-white font-bold text-xs rounded-full transition-all cursor-pointer shadow-xs"
+            className="px-6 py-2 bg-secondary hover:bg-secondary/95 text-white font-display title-4 font-bold rounded-full transition-all cursor-pointer shadow-xs"
           >
-            Xong
+            {t("done")}
           </button>
         </div>
       </div>

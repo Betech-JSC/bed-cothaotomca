@@ -339,13 +339,21 @@ export function mapProductToCardItem(
       const isDiscounted = vCamp !== null && vCamp > 0 && vCamp < vBase;
       const vEff = isDiscounted ? vCamp : vBase;
 
+      const activeCamp = (v as any).active_campaign || item.active_campaign;
+      const configuredPercent = activeCamp?.discount_type === 'percent' && Number(activeCamp.discount_value) > 0
+        ? Math.round(Number(activeCamp.discount_value))
+        : (activeCamp?.discount_percent ? Math.round(Number(activeCamp.discount_percent)) : 0);
+
+      const calcPercent = isDiscounted ? Math.round(((vBase - vEff) / vBase) * 100) : 0;
+      const itemPercent = isDiscounted ? (configuredPercent || calcPercent) : 0;
+
       if (vEff < lowestEffectivePrice) {
         lowestEffectivePrice = vEff;
         matchingOriginalPrice = isDiscounted ? vBase : undefined;
-        matchingDiscountPercent = isDiscounted ? Math.round(((vBase - vEff) / vBase) * 100) : 0;
+        matchingDiscountPercent = itemPercent;
       } else if (vEff === lowestEffectivePrice && isDiscounted && !matchingOriginalPrice) {
         matchingOriginalPrice = vBase;
-        matchingDiscountPercent = Math.round(((vBase - vEff) / vBase) * 100);
+        matchingDiscountPercent = itemPercent;
       }
     });
   }
@@ -365,7 +373,13 @@ export function mapProductToCardItem(
     const isCamp = campPrice !== null && campPrice > 0 && campPrice < basePrice;
     lowestEffectivePrice = isCamp ? campPrice : basePrice;
     matchingOriginalPrice = isCamp ? basePrice : undefined;
-    matchingDiscountPercent = isCamp ? Math.round(((basePrice - campPrice!) / basePrice) * 100) : 0;
+
+    const fallbackCamp = item.active_campaign;
+    const fallbackPercent = fallbackCamp?.discount_type === 'percent' && Number(fallbackCamp.discount_value) > 0
+      ? Math.round(Number(fallbackCamp.discount_value))
+      : (fallbackCamp?.discount_percent ? Math.round(Number(fallbackCamp.discount_percent)) : 0);
+
+    matchingDiscountPercent = isCamp ? (fallbackPercent || Math.round(((basePrice - campPrice!) / basePrice) * 100)) : 0;
   }
 
   const hasDiscount = Boolean(matchingOriginalPrice && matchingOriginalPrice > lowestEffectivePrice);
@@ -377,7 +391,10 @@ export function mapProductToCardItem(
     slug: item.slug || slugify(name),
     price: lowestEffectivePrice,
     original_price: matchingOriginalPrice,
-    active_campaign: item.active_campaign || (hasDiscount ? {
+    active_campaign: item.active_campaign ? {
+      ...item.active_campaign,
+      discount_percent: item.active_campaign.discount_percent || matchingDiscountPercent,
+    } : (hasDiscount ? {
       name: "Chiến dịch Khuyến mãi",
       discount_percent: matchingDiscountPercent,
     } : undefined),

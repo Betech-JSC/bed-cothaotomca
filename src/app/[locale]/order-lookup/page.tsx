@@ -212,22 +212,22 @@ export default function OrderLookupPage() {
     switch (status) {
       case "pending_payment":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-yellow/30 text-yellow border border-yellow/40 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-yellow animate-pulse"></span>
             {t("status.pending_payment")}
           </span>
         );
       case "pending_sync":
       case "pending":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-blue-300"></span>
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-primary/40 text-yellow border border-yellow/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-yellow"></span>
             {t("status.pending_sync")}
           </span>
         );
       case "processing":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-[#CD4829] text-white shadow-xs flex items-center gap-1.5">
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-secondary text-white shadow-xs flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
             {t("status.processing")}
           </span>
@@ -235,7 +235,7 @@ export default function OrderLookupPage() {
       case "shipping":
       case "delivering":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-[#CD4829] text-white shadow-xs flex items-center gap-1.5">
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-secondary text-white shadow-xs flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
             {t("status.shipping")}
           </span>
@@ -245,27 +245,27 @@ export default function OrderLookupPage() {
       case "paid":
       case "completed":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-[#4A5578] text-white shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-white"></span>
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-primary text-white shadow-xs flex items-center gap-1.5 border border-white/20">
+            <span className="w-2 h-2 rounded-full bg-yellow"></span>
             {paymentMethod === "COD" && paymentStatus !== "paid" ? t("status.confirmed") : t("status.paid")}
           </span>
         );
       case "error":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-[#BD7F15] text-white shadow-xs flex items-center gap-1.5">
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-secondary text-white shadow-xs flex items-center gap-1.5">
             <span>{t("status.error") || "Lỗi đơn hàng"}</span>
           </span>
         );
       case "cancel_requested":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-purple-300"></span>
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-yellow/20 text-yellow border border-yellow/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-yellow"></span>
             {t("status.cancel_requested")}
           </span>
         );
       case "cancelled":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30 backdrop-blur-sm shadow-xs">
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-red-900/40 text-red-200 border border-red-500/30 backdrop-blur-sm shadow-xs">
             {t("status.cancelled")}
           </span>
         );
@@ -370,8 +370,8 @@ export default function OrderLookupPage() {
           )}
 
           {successMsg && (
-            <div className="mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center gap-3">
-              <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="mt-4 p-4 rounded-xl bg-yellow/60 border border-secondary/30 text-brown text-sm flex items-center gap-3">
+              <svg className="w-5 h-5 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span>{successMsg}</span>
@@ -393,7 +393,7 @@ export default function OrderLookupPage() {
                 <div className="text-2xl sm:text-3xl font-bold font-mono tracking-wide text-white drop-shadow-xs">
                   {order.order_code}
                 </div>
-                <div className="text-xs text-blue-200/90 mt-1.5 flex items-center gap-1">
+                <div className="text-xs text-yellow/90 mt-1.5 flex items-center gap-1">
                   <svg className="w-3.5 h-3.5 text-yellow/80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -402,7 +402,7 @@ export default function OrderLookupPage() {
               </div>
               <div className="relative z-10 flex flex-col items-start sm:items-end gap-2.5">
                 <div>{renderStatusBadge(order.status, order.payment?.method, order.payment_status)}</div>
-                <div className="text-xs text-blue-100 flex items-center gap-1.5">
+                <div className="text-xs text-yellow/90 flex items-center gap-1.5">
                   <span>{t("payment_method")}:</span>
                   <span className="font-bold text-yellow px-2.5 py-0.5 rounded bg-white/10 backdrop-blur-xs border border-white/15">
                     {order.payment?.method}
@@ -530,7 +530,7 @@ export default function OrderLookupPage() {
                     <span>{t("subtotal")}:</span>
                     <span className="font-semibold text-gray-900">{formatMoney(order.subtotal)}</span>
                   </div>
-                  <div className="flex justify-between text-emerald-700 font-medium">
+                  <div className="flex justify-between text-secondary font-medium">
                     <span>{t("discount")}:</span>
                     <span>-{formatMoney(order.discount)}</span>
                   </div>
@@ -581,7 +581,7 @@ export default function OrderLookupPage() {
                     <div className="text-right">
                       <div className="font-bold text-secondary text-sm sm:text-base">{formatMoney(parseFloat(item.price) * item.quantity)}</div>
                       {parseFloat(item.discount) > 0 && (
-                        <div className="text-xs text-emerald-600 font-medium mt-0.5">-{formatMoney(item.discount)}</div>
+                        <div className="text-xs text-secondary font-medium mt-0.5">-{formatMoney(item.discount)}</div>
                       )}
                     </div>
                   </div>

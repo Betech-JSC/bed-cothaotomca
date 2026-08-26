@@ -44,7 +44,7 @@ export default function SuccessModal({
 
       {/* Modal Content */}
       <div className="relative w-full max-w-[480px] bg-primary rounded-[32px] p-8 md:p-12 shadow-2xl animate-in zoom-in-95 duration-300 text-center space-y-6">
-        <div className="mx-auto size-20 rounded-full bg-green-50 flex items-center justify-center text-green-500 mb-2">
+        <div className="mx-auto size-20 rounded-full bg-secondary/15 flex items-center justify-center text-secondary mb-2">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { PreOrderNotice } from "@/lib/operatingHours";
+import { useTranslations } from "next-intl";
 
 interface PreOrderNoticeModalProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ export default function PreOrderNoticeModal({
   onClose,
   notice,
 }: PreOrderNoticeModalProps) {
+  const t = useTranslations("preorder_notice");
+
   if (!isOpen || !notice) return null;
 
   return (
@@ -23,31 +26,28 @@ export default function PreOrderNoticeModal({
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
-          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0 text-xl">
-            ⏰
-          </div>
+        <div className="border-b border-gray-100 pb-3">
           <div>
-            <h3 className="text-lg font-bold text-gray-900 font-serif leading-tight">
+            <h3 className="title-2 font-display text-primary font-bold leading-tight">
               {notice.title}
             </h3>
-            <p className="text-xs text-gray-500 font-sans mt-0.5">
-              Khung giờ phục vụ & hẹn nhận món
+            <p className="body-3 text-gray-500 font-sans mt-0.5">
+              {t("subtitle")}
             </p>
           </div>
         </div>
 
-        <p className="text-sm text-gray-700 leading-relaxed font-sans">
+        <p className="body-2 text-gray-700 leading-relaxed font-sans">
           {notice.message}
         </p>
 
-        <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-4 space-y-2">
-          <div className="flex items-center gap-2 text-sm font-semibold text-amber-900">
-            <span>📅 Ngày nhận món dự kiến:</span>
+        <div className="bg-yellow/60 border border-secondary/20 rounded-xl p-4 space-y-2 font-sans">
+          <div className="flex items-center gap-2 text-sm font-semibold text-brown">
+            <span>{t("expected_date")}</span>
             <span className="text-primary font-bold">{notice.targetDateDisplay}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-amber-800">
-            <span>⏰ Khung giờ giao / lấy hàng:</span>
+          <div className="flex items-center gap-2 text-sm text-brown">
+            <span>{t("slot_info")}</span>
             <span className="font-semibold text-gray-900">{notice.slotInfo}</span>
           </div>
         </div>
@@ -56,9 +56,9 @@ export default function PreOrderNoticeModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 text-sm"
+            className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-display title-3 font-bold rounded-full transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
           >
-            Tôi đã hiểu, tiếp tục đặt hàng
+            {t("confirm_btn")}
           </button>
         </div>
       </div>

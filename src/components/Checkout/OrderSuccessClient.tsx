@@ -95,7 +95,6 @@ export default function OrderSuccessClient({
   if (error || !order) {
     return (
       <div className="w-full max-w-2xl bg-white rounded-[24px] p-8 md:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100 text-center space-y-6">
-        <div className="text-red-500 text-5xl">⚠️</div>
         <h2 className="text-xl md:text-2xl font-bold font-display text-primary">
           {error || t("error_load")}
         </h2>
@@ -134,7 +133,7 @@ export default function OrderSuccessClient({
 
       {/* Success Icon */}
       <div className="flex justify-center">
-        <div className="w-16 h-16 bg-[#142A68] text-white rounded-full flex items-center justify-center shadow-md animate-bounce">
+        <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center shadow-md animate-bounce">
           <svg
             className="w-8 h-8"
             fill="none"
@@ -153,7 +152,7 @@ export default function OrderSuccessClient({
       </div>
 
       {/* Title */}
-      <h1 className="text-2xl md:text-3xl font-bold font-display text-[#142A68] mt-6 mb-4 text-center">
+      <h1 className="text-2xl md:text-3xl font-bold font-display text-primary mt-6 mb-4 text-center">
         {t("title")}
       </h1>
 
@@ -189,7 +188,7 @@ export default function OrderSuccessClient({
 
       {/* Receipt Info Card */}
       <div className="mt-8 border border-gray-100 rounded-2xl p-5 md:p-6 space-y-6 font-sans">
-        <h2 className="text-lg md:text-xl font-bold font-display text-[#142A68] border-b border-gray-100 pb-3">
+        <h2 className="text-lg md:text-xl font-bold font-display text-primary border-b border-gray-100 pb-3">
           {t("receipt_info")}
         </h2>
 
@@ -197,22 +196,22 @@ export default function OrderSuccessClient({
           {/* Left Column */}
           <div className="space-y-4">
             <div>
-              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">{t("receiver")}</span>
-              <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans">
+              <span className="text-gray-500 text-xs md:text-sm font-normal block mb-1">{t("receiver")}</span>
+              <strong className="text-primary text-sm md:text-base font-bold font-sans">
                 {order.delivery?.receiver || customerName}
               </strong>
             </div>
             <div>
-              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">{t("phone")}</span>
-              <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans">
+              <span className="text-gray-500 text-xs md:text-sm font-normal block mb-1">{t("phone")}</span>
+              <strong className="text-primary text-sm md:text-base font-bold font-sans">
                 {order.delivery?.contact_number || order.customer?.phone || ""}
               </strong>
             </div>
             <div>
-              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">
+              <span className="text-gray-500 text-xs md:text-sm font-normal block mb-1">
                 {isPickup ? t("pickup_location") : t("delivery_address")}
               </span>
-              <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans block leading-snug">
+              <strong className="text-primary text-sm md:text-base font-bold font-sans block leading-snug">
                 {order.delivery?.address || ""}
               </strong>
             </div>
@@ -221,22 +220,22 @@ export default function OrderSuccessClient({
           {/* Right Column */}
           <div className="space-y-4">
             <div>
-              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">{t("payment_method")}</span>
-              <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans">
+              <span className="text-gray-500 text-xs md:text-sm font-normal block mb-1">{t("payment_method")}</span>
+              <strong className="text-primary text-sm md:text-base font-bold font-sans">
                 {paymentMethodText}
               </strong>
             </div>
             <div>
-              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">{t("shipping_fee")}</span>
-              <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans">
+              <span className="text-gray-500 text-xs md:text-sm font-normal block mb-1">{t("shipping_fee")}</span>
+              <strong className="text-primary text-sm md:text-base font-bold font-sans">
                 {isPickup || shippingFeeNum === 0
                   ? t("free")
                   : formatVND(shippingFeeNum)}
               </strong>
             </div>
             <div>
-              <span className="text-[#7D89AF] text-xs md:text-sm font-normal block mb-1">{t("total_payment")}</span>
-              <strong className="text-[#CD4829] text-base md:text-lg font-bold font-sans">
+              <span className="text-gray-500 text-xs md:text-sm font-normal block mb-1">{t("total_payment")}</span>
+              <strong className="text-secondary text-base md:text-lg font-bold font-sans">
                 {formatVND(totalNum)}
               </strong>
             </div>
@@ -244,18 +243,18 @@ export default function OrderSuccessClient({
         </div>
 
         {/* Order Code Banner */}
-        <div className="bg-orderBg border border-amber-200/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs md:text-sm font-sans">
+        <div className="bg-yellow/60 border border-secondary/20 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs md:text-sm font-sans">
           <div>
-            <span className="text-amber-800 block font-medium">
-              {t("order_code_label")} <strong className="font-mono font-bold text-orderCode">{order.order_code}</strong>
+            <span className="text-brown block font-medium">
+              {t("order_code_label")} <strong className="font-mono font-bold text-primary">{order.order_code}</strong>
             </span>
-            <span className="text-amber-700 text-xs mt-0.5 block">
+            <span className="text-brown/90 text-xs mt-0.5 block">
               {t("lookup_tip")}
             </span>
           </div>
           <a
             href={`/order-lookup?code=${order.order_code}&phone=${order.customer?.phone || ""}`}
-            className="inline-flex items-center justify-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium text-xs transition-colors shrink-0"
+            className="inline-flex items-center justify-center px-4 py-2 bg-secondary hover:bg-secondary/90 text-white rounded-lg font-medium text-xs transition-colors shrink-0"
           >
             {t("lookup_button")}
           </a>
@@ -264,7 +263,7 @@ export default function OrderSuccessClient({
 
       {/* Item List */}
       <div className="mt-8 border border-gray-100 rounded-2xl p-5 md:p-6 font-sans">
-        <h2 className="text-lg md:text-xl font-bold font-display text-[#142A68] border-b border-gray-100 pb-3 mb-4">
+        <h2 className="text-lg md:text-xl font-bold font-display text-primary border-b border-gray-100 pb-3 mb-4">
           {t("ordered_items")}
         </h2>
         <div className="divide-y divide-gray-100">
@@ -287,7 +286,7 @@ export default function OrderSuccessClient({
                   </div>
                   {/* Item Details */}
                   <div>
-                    <strong className="text-[#142A68] text-sm md:text-base font-bold font-sans block leading-tight">
+                    <strong className="text-primary text-sm md:text-base font-bold font-sans block leading-tight">
                       {item.product_name}
                     </strong>
                     {item.variant_size && (
@@ -307,31 +306,31 @@ export default function OrderSuccessClient({
         </div>
 
         {/* Pricing Breakdown Shaded Box */}
-        <div className="bg-[#EFF1F5] rounded-2xl p-5 space-y-3 mt-6 font-sans">
+        <div className="bg-gray-100 rounded-2xl p-5 space-y-3 mt-6 font-sans">
           <div className="flex justify-between items-center text-xs md:text-sm">
-            <span className="text-[#404968] font-medium">{t("subtotal")}</span>
-            <strong className="text-[#142A68] font-bold">
+            <span className="text-gray-600 font-medium">{t("subtotal")}</span>
+            <strong className="text-primary font-bold">
               {formatVND(subtotalNum)}
             </strong>
           </div>
 
           <div className="flex justify-between items-center text-xs md:text-sm">
-            <span className="text-[#404968] font-medium">{t("shipping_fee")}</span>
-            <strong className="text-[#142A68] font-bold">
+            <span className="text-gray-600 font-medium">{t("shipping_fee")}</span>
+            <strong className="text-primary font-bold">
               {isPickup || shippingFeeNum === 0 ? t("free") : formatVND(shippingFeeNum)}
             </strong>
           </div>
 
           <div className="flex justify-between items-center text-xs md:text-sm">
-            <span className="text-[#404968] font-medium">{t("discount")}</span>
-            <strong className="text-[#142A68] font-bold">
+            <span className="text-gray-600 font-medium">{t("discount")}</span>
+            <strong className="text-primary font-bold">
               {discountNum === 0 ? "0 đ" : `-${formatVND(discountNum)}`}
             </strong>
           </div>
 
           <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-            <span className="text-[#142A68] text-sm md:text-base font-bold">{t("total_payment")}</span>
-            <strong className="text-[#CD4829] text-lg md:text-xl font-bold">
+            <span className="text-primary text-sm md:text-base font-bold">{t("total_payment")}</span>
+            <strong className="text-secondary text-lg md:text-xl font-bold">
               {formatVND(totalNum)}
             </strong>
           </div>
@@ -341,7 +340,7 @@ export default function OrderSuccessClient({
       {/* Continue Shopping Button */}
       <Link
         href="/product"
-        className="w-full py-4 rounded-2xl font-bold text-white transition-all shadow-[0_4px_14px_rgba(205,72,41,0.2)] bg-[#CD4829] hover:bg-[#CD4829]/90 flex items-center justify-center mt-8 text-sm md:text-base"
+        className="w-full py-4 rounded-2xl font-bold text-white transition-all shadow-[0_4px_14px_rgba(205,72,41,0.2)] bg-secondary hover:bg-secondary/90 flex items-center justify-center mt-8 text-sm md:text-base"
       >
         {t("continue_shopping")}
       </Link>

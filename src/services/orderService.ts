@@ -259,6 +259,8 @@ export interface ValidateVoucherResult {
     campaign_name: string;
     prereq_price?: number;
     is_freeship?: boolean;
+    can_combine_with_promotions?: boolean;
+    can_combine_with_freeship?: boolean;
   };
   discount_amount?: number;
   message: string;
@@ -275,6 +277,8 @@ export interface PublicVoucherItem {
   campaign_name?: string;
   description?: string;
   is_freeship?: boolean;
+  can_combine_with_promotions?: boolean;
+  can_combine_with_freeship?: boolean;
   start_date?: string | null;
   end_date?: string | null;
 }
@@ -293,13 +297,25 @@ export async function getAvailableVouchers(): Promise<PublicVoucherItem[]> {
   }
 }
 
-export async function validateVoucher(code: string, subtotal?: number, shippingFee?: number): Promise<ValidateVoucherResult> {
+export async function validateVoucher(
+  code: string,
+  subtotal?: number,
+  shippingFee?: number,
+  hasCampaign?: boolean,
+  campaignDiscount?: number
+): Promise<ValidateVoucherResult> {
   const params = new URLSearchParams({ code });
   if (subtotal !== undefined) {
     params.append("subtotal", subtotal.toString());
   }
   if (shippingFee !== undefined) {
     params.append("shipping_fee", shippingFee.toString());
+  }
+  if (hasCampaign) {
+    params.append("has_campaign", "1");
+  }
+  if (campaignDiscount && campaignDiscount > 0) {
+    params.append("campaign_discount", campaignDiscount.toString());
   }
 
   const res = await fetch(`${API_BASE}/vouchers/validate?${params.toString()}`, {

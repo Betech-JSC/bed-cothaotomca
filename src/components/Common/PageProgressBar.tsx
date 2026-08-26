@@ -73,7 +73,7 @@ function ProgressBarInner() {
       className="fixed top-0 left-0 right-0 z-[99999] pointer-events-none h-1 bg-transparent overflow-hidden"
     >
       <div
-        className="h-full bg-gradient-to-r from-amber-400 via-yellow to-amber-600 shadow-[0_0_12px_#eab308,0_0_6px_#f59e0b] transition-all duration-300 ease-out"
+        className="h-full bg-gradient-to-r from-primary via-secondary to-primary shadow-[0_0_12px_rgba(205,72,41,0.5)] transition-all duration-300 ease-out"
         style={{
           width: `${progress}%`,
           opacity: progress > 0 && progress < 100 ? 1 : 0,

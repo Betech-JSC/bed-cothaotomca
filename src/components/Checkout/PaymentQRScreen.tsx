@@ -160,7 +160,6 @@ export default function PaymentQRScreen({
           <div className="relative w-56 h-56 rounded-xl overflow-hidden border-2 border-primary/20 shadow-md">
             {countdown.isExpired ? (
               <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center gap-2">
-                <span className="text-4xl">⏰</span>
                 <p className="body-2 text-gray-500 text-center px-2">
                   {t("qr.expired")}
                 </p>
@@ -180,7 +179,7 @@ export default function PaymentQRScreen({
           <div
             className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${countdown.secondsLeft <= 60
                 ? "bg-red-50 text-red-600"
-                : "bg-yellow/20 text-primary"
+                : "bg-yellow/70 text-primary border border-secondary/20"
               }`}
           >
             <span>⏱</span>
@@ -207,7 +206,7 @@ export default function PaymentQRScreen({
                   </>
                 ) : downloaded ? (
                   <>
-                    <span className="text-green-400 font-bold text-base">✓</span>
+                    <span className="text-secondary font-bold text-base">✓</span>
                     <span>{t("qr.downloaded")}</span>
                   </>
                 ) : (
@@ -221,15 +220,27 @@ export default function PaymentQRScreen({
               </button>
 
               {/* Mobile guidance instructions */}
-              <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-3.5 w-full text-xs text-blue-950 space-y-1.5 font-serif text-left">
-                <p className="font-bold flex items-center gap-1.5 text-blue-900">
-                  <span>💡</span>
-                  <span>Hướng dẫn thanh toán trên điện thoại:</span>
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 w-full text-xs text-primary space-y-1.5 font-serif text-left">
+                <p className="font-bold text-primary">
+                  <span>{t("qr.mobile_guide_title")}</span>
                 </p>
-                <ol className="list-decimal list-inside space-y-1 text-blue-800 font-medium pl-0.5 leading-relaxed">
-                  <li>Bấm nút <strong>"{t("qr.download_btn")}"</strong> ở trên.</li>
-                  <li>Mở ứng dụng <strong>Banking</strong> (Vietcombank, MB, Techcombank...).</li>
-                  <li>Chọn <strong>Quét mã QR</strong> ➔ chọn <strong>Tải ảnh từ thư viện</strong>.</li>
+                <ol className="list-decimal list-inside space-y-1 text-primary/90 font-medium pl-0.5 leading-relaxed">
+                  <li>
+                    {t.rich("qr.mobile_step_1", {
+                      btn: t("qr.download_btn"),
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                    })}
+                  </li>
+                  <li>
+                    {t.rich("qr.mobile_step_2", {
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                    })}
+                  </li>
+                  <li>
+                    {t.rich("qr.mobile_step_3", {
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                    })}
+                  </li>
                 </ol>
               </div>
             </div>
@@ -240,8 +251,8 @@ export default function PaymentQRScreen({
             <div className="flex items-center gap-2 text-gray-500 body-2">
               {statusData?.payment_status === "paid" ? (
                 <>
-                  <span className="text-green-500">✓</span>
-                  <span className="text-green-600">{t("qr.payment_received")}</span>
+                  <span className="text-secondary font-bold">✓</span>
+                  <span className="text-secondary font-bold">{t("qr.payment_received")}</span>
                 </>
               ) : statusError ? (
                 <span className="text-red-500 text-xs">{statusError}</span>
@@ -271,9 +282,9 @@ export default function PaymentQRScreen({
           <button
             type="button"
             onClick={handleSimulatePayment}
-            className="w-full py-2.5 px-4 rounded-xl border border-dashed border-amber-500 bg-amber-50/50 hover:bg-amber-100/50 text-amber-800 text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 mt-2"
+            className="w-full py-2.5 px-4 rounded-xl border border-dashed border-secondary/40 bg-yellow/60 hover:bg-yellow text-brown text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 mt-2"
           >
-            ⚡ Giả lập thanh toán thành công (Dev)
+            Giả lập thanh toán thành công (Dev)
           </button>
         )}
       </div>
@@ -323,15 +334,18 @@ export default function PaymentQRScreen({
             ))}
           </div>
 
-          <div className="bg-yellow/10 border border-yellow rounded-xl p-4 space-y-1">
-            <p className="label-1 text-primary">⚠️ Lưu ý quan trọng:</p>
-            <ul className="body-2 text-gray-700 list-disc list-inside space-y-1">
+          <div className="bg-yellow/60 border border-secondary/20 rounded-xl p-4 space-y-1">
+            <p className="label-1 text-primary font-bold">{t("qr.note_title")}:</p>
+            <ul className="body-2 text-brown list-disc list-inside space-y-1">
               <li>
-                Nhập <strong>đúng nội dung</strong> chuyển khoản:{" "}
-                <code className="font-mono bg-white px-1 rounded text-xs">{content}</code>
+                {t.rich("qr.note_content", {
+                  content: content,
+                  strong: (chunks) => <strong>{chunks}</strong>,
+                  code: () => <code className="font-mono bg-white px-1 rounded text-xs text-primary">{content}</code>,
+                })}
               </li>
-              <li>Chuyển khoản đúng số tiền để đơn hàng được xác nhận tự động</li>
-              <li>Đơn hàng sẽ được xử lý trong vài giây sau khi nhận tiền</li>
+              <li>{t("qr.note_amount")}</li>
+              <li>{t("qr.note_processing")}</li>
             </ul>
           </div>
 

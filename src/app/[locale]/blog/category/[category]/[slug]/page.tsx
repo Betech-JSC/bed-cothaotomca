@@ -191,11 +191,11 @@ export default async function BlogDetailsPage({
               </h1>
 
               <div className="flex justify-center items-center gap-3 w-full">
-                <span className="label-2 text-[#941417] font-semibold ">
+                <span className="label-2 text-secondary font-semibold ">
                   {categoryName}
                 </span>
-                <div className="text-[#941417]">|</div>
-                <span className="body-2 text-[#941417]">
+                <div className="text-secondary">|</div>
+                <span className="body-2 text-secondary">
                   {formatDate(blog.created_at, locale)}
                 </span>
               </div>

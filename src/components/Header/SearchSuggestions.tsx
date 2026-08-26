@@ -76,7 +76,7 @@ export default function SearchSuggestions({
             {/* Products Section */}
             {productSuggestions.length > 0 && (
               <div className="border-b border-gray-100 last:border-b-0">
-                <div className="px-4 py-2 bg-amber-50/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
+                <div className="px-4 py-2 bg-yellow/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Cart className="w-3.5 h-3.5 text-primary" />
                     <span>{searchQuery.trim().length < 2 ? "Sản phẩm nổi bật" : t("common.product")} ({productSuggestions.length})</span>
@@ -99,7 +99,7 @@ export default function SearchSuggestions({
                             },
                           }}
                           onClick={onSelect}
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/80 transition-colors duration-150 group"
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-yellow/60 transition-colors duration-150 group"
                         >
                           {/* Product image */}
                           <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
@@ -161,7 +161,7 @@ export default function SearchSuggestions({
             {/* Blogs Section */}
             {blogSuggestions.length > 0 && (
               <div className="border-b border-gray-100 last:border-b-0">
-                <div className="px-4 py-2 bg-amber-50/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
+                <div className="px-4 py-2 bg-yellow/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <BlogIcon className="w-3.5 h-3.5 text-primary" />
                     <span>{searchQuery.trim().length < 2 ? "Bài viết mới nhất" : t("common.blog")} ({blogSuggestions.length})</span>
@@ -184,7 +184,7 @@ export default function SearchSuggestions({
                             },
                           }}
                           onClick={onSelect}
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/80 transition-colors duration-150 group"
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-yellow/60 transition-colors duration-150 group"
                         >
                           {/* Blog thumbnail */}
                           <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
@@ -232,7 +232,7 @@ export default function SearchSuggestions({
             {/* Policies Section */}
             {policySuggestions.length > 0 && (
               <div className="border-b border-gray-100 last:border-b-0">
-                <div className="px-4 py-2 bg-amber-50/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
+                <div className="px-4 py-2 bg-yellow/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <PolicyIcon className="w-3.5 h-3.5 text-primary" />
                     <span>{searchQuery.trim().length < 2 ? "Chính sách quy định" : t("common.policy")} ({policySuggestions.length})</span>
@@ -249,10 +249,10 @@ export default function SearchSuggestions({
                           },
                         }}
                         onClick={onSelect}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/80 transition-colors duration-150 group"
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-yellow/60 transition-colors duration-150 group"
                       >
                         {/* Policy Icon */}
-                        <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-amber-100/60 border border-amber-200/60 flex items-center justify-center text-primary">
+                        <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-yellow/80 border border-secondary/20 flex items-center justify-center text-primary">
                           <PolicyIcon className="w-5 h-5" />
                         </div>
 
@@ -265,7 +265,7 @@ export default function SearchSuggestions({
 
                         {/* Tag badge */}
                         <div className="text-right flex-shrink-0">
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100/70 text-primary font-medium">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow/80 text-primary border border-secondary/20 font-medium">
                             {t("common.policy")}
                           </span>
                         </div>
@@ -284,7 +284,7 @@ export default function SearchSuggestions({
                   query: { q: searchQuery.trim() },
                 } as any}
                 onClick={onSelect}
-                className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-primary hover:bg-amber-100/60 transition-colors duration-150"
+                className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-primary hover:bg-yellow/60 transition-colors duration-150"
               >
                 <span>
                   {t("search.view_all_results")} &ldquo;{searchQuery.trim()}&rdquo;

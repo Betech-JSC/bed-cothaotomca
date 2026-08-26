@@ -74,19 +74,19 @@
 
   // --- Links ---
   a {
-    color: #0284c7;
+    color: #CD4829;
     text-decoration: underline;
     text-underline-offset: 3px;
     transition: color 0.15s ease;
 
     &:hover {
-      color: #0369a1;
+      color: #142A68;
     }
   }
 
   // --- Blockquotes ---
   blockquote {
-    border-left: 4px solid #3b82f6;
+    border-left: 4px solid #CD4829;
     margin: 1.25rem 0;
     padding: 0.5rem 0 0.5rem 1.25rem;
     color: #475569;

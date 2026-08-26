@@ -182,9 +182,9 @@ const RegisterForm = () => {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none text-xs font-serif"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none text-xs font-serif cursor-pointer"
             >
-              {showPassword ? "Ẩn" : "Hiện"}
+              {showPassword ? t("hide_password") : t("show_password")}
             </button>
           </div>
         </div>
@@ -214,7 +214,7 @@ const RegisterForm = () => {
           <div className="w-full border-t border-gray-300/60"></div>
         </div>
         <span className="relative bg-[#F1EEDF] px-3.5 text-xs font-semibold uppercase text-gray-500 rounded-full font-serif">
-          Hoặc
+          {t("or")}
         </span>
       </div>
 

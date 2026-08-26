@@ -48,13 +48,13 @@ export default function FloatingVoucherButton() {
           </div>
 
           {/* Clean "Ưu đãi" text matching brand visual */}
-          <span className="text-sm font-bold text-secondary tracking-wide pr-0.5">
+          <span className="font-display title-3 font-bold text-secondary tracking-wide pr-0.5">
             Ưu đãi
           </span>
 
           {/* Badge count */}
           {totalPromotions > 0 && (
-            <span className="bg-secondary text-white font-bold text-[11px] px-1.5 py-0.2 rounded-full min-w-[20px] text-center shadow-xs shrink-0">
+            <span className="bg-secondary text-white font-display font-bold text-[11px] px-1.5 py-0.2 rounded-full min-w-[20px] text-center shadow-xs shrink-0">
               {totalPromotions}
             </span>
           )}

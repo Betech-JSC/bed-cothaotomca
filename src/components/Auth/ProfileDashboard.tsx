@@ -207,17 +207,17 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     if (points >= 800) {
       return {
         name: t("diamond_member"),
-        bgBadge: "bg-blue-50 text-blue-700 border-blue-200/50",
+        bgBadge: "bg-primary/10 text-primary border-primary/20",
       };
     } else if (points >= 400) {
       return {
         name: t("gold_member"),
-        bgBadge: "bg-[#FDF9ED] text-amber-700 border-amber-200/50",
+        bgBadge: "bg-yellow text-brown border-secondary/30",
       };
     } else {
       return {
         name: t("member"),
-        bgBadge: "bg-slate-100 text-slate-700 border-slate-200/50",
+        bgBadge: "bg-gray-100 text-gray-700 border-gray-200/50",
       };
     }
   };
@@ -400,7 +400,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                       className={`border rounded-[1rem] p-5 md:p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-md ${
                         isCompleted
                           ? "bg-[#F8F9FC] border-gray-100 hover:border-gray-200"
-                          : "bg-orderBg border-[#F5EEDC] hover:border-amber-200/80"
+                          : "bg-orderBg border-[#F5EEDC] hover:border-secondary/40"
                       }`}
                       onClick={() => setExpandedOrderCode(expandedOrderCode === order.order_code ? null : order.order_code)}
                     >

@@ -37,7 +37,7 @@ export default async function OrderSuccessPage({
       <div className="container max-w-2xl mx-auto space-y-6">
         {sync_warning ? (
           <div className="px-4">
-            <p className="body-1 text-amber-700 bg-amber-50 rounded-xl p-4 border border-amber-100 text-center">
+            <p className="body-1 text-brown bg-yellow/60 rounded-xl p-4 border border-secondary/30 text-center">
               {t("orderSuccess.sync_warning")}
             </p>
           </div>

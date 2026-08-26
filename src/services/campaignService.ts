@@ -14,6 +14,8 @@ export interface PublicCampaignItem {
   discount_value?: number;
   min_order_value?: number;
   max_discount?: number | null;
+  can_combine_with_promotions?: boolean;
+  can_combine_with_freeship?: boolean;
   settings?: any;
   start_at?: string | null;
   end_at?: string | null;

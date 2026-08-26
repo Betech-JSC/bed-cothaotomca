@@ -5,18 +5,22 @@ import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
+import { useTranslations } from "next-intl";
 
 interface CartPopupProps {
   onClose: () => void;
 }
 
 export default function CartPopup({ onClose }: CartPopupProps) {
+  const t = useTranslations("cart");
+  const tCheckout = useTranslations("checkout");
   const {
     cartItems,
     updateQuantity,
     removeFromCart,
     subtotal,
     isCartOpen,
+    totalItems,
   } = useCart();
 
   const popupRef = useRef<HTMLDivElement>(null);
@@ -60,31 +64,27 @@ export default function CartPopup({ onClose }: CartPopupProps) {
       >
         {/* Header */}
         <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-          <div className="flex items-center gap-2">
-            <h3 className="title-2 font-display text-primary font-bold">Giỏ hàng</h3>
-            <span className="text-xs bg-amber-100 text-primary font-bold px-2 py-0.5 rounded-full">
-              {cartItems.length} món
-            </span>
-          </div>
+          <h3 className="title-2 font-display text-primary font-bold">
+            {t("title", { count: totalItems })}
+          </h3>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-primary transition-colors text-lg cursor-pointer"
-            aria-label="Đóng giỏ hàng"
+            aria-label={t("aria_close")}
           >
             &times;
           </button>
         </div>
 
         {cartItems.length === 0 ? (
-          <div className="py-8 text-center space-y-3">
-            <div className="text-4xl">🛒</div>
-            <p className="body-2 text-gray-500 font-medium">Giỏ hàng đang trống</p>
+          <div className="py-8 text-center space-y-2">
+            <p className="body-2 text-gray-500 font-medium">{t("empty")}</p>
             <Link
               href="/product"
               onClick={onClose}
               className="inline-block text-xs font-semibold text-secondary hover:underline"
             >
-              Tiếp tục mua sắm
+              {t("continue_shopping")}
             </Link>
           </div>
         ) : (
@@ -168,7 +168,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                           />
                         </svg>
-                        Xóa
+                        {t("delete")}
                       </button>
                     </div>
                   </div>
@@ -179,7 +179,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
             {/* Bottom Actions */}
             <div className="border-t border-gray-100 pt-3 mt-1 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="body-2 text-gray-600 font-semibold">Tạm tính</span>
+                <span className="body-2 text-gray-600 font-semibold">{t("subtotal")}</span>
                 <span className="text-xl font-bold text-secondary font-display">
                   {formatPrice(subtotal)}
                 </span>
@@ -190,7 +190,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                 onClick={onClose}
                 className="block w-full py-3 bg-secondary hover:bg-secondary/95 text-white font-bold text-center rounded-full transition-colors duration-300 shadow-md shadow-secondary/10 tracking-wider font-display"
               >
-                Thanh toán
+                {t("checkout")}
               </Link>
             </div>
           </>

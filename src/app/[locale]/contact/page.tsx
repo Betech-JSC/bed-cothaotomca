@@ -147,7 +147,7 @@ export default async function ContactPage({
                             href={item.href}
                             target="_blank"
                             rel="noopener noreferrer nofollow"
-                            className="size-10 rounded-[8px] flex items-center justify-center bg-white text-[#4C76C0] lg:hover:text-secondary lg:hover:bg-primary duration-300 ease-in-out shadow-sm"
+                            className="size-10 rounded-[8px] flex items-center justify-center bg-white text-primary lg:hover:text-secondary lg:hover:bg-yellow duration-300 ease-in-out shadow-sm"
                           >
                             {item.icon}
                           </a>
