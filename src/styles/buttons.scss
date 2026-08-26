@@ -12,7 +12,7 @@
 }
 
 .btn-white {
-  @apply text-primary bg-white lg:hover:bg-secondary lg:hover:text-yellow lg:hover:border-white;
+  @apply text-primary bg-white border border-transparent lg:hover:bg-secondary lg:hover:text-yellow lg:hover:border-white;
 }
 
 .btn-pagination {
