@@ -64,7 +64,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   const [bannerData, slideData, blogsData] = await Promise.all([
     getApi<HeroBanner>('banners', { params: { position: 'banner_intro', lang: locale } }).catch(() => ({ data: [] })),
     getApi<HeroBanner>('banners', { params: { position: 'slide_intro', lang: locale } }).catch(() => ({ data: [] })),
-    getBlogs({ is_featured: true, per_page: 10, lang: locale }).catch(() => ({ data: [] }))
+    getBlogs({ per_page: 10, lang: locale }).catch(() => ({ data: [] }))
   ]);
 
   const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
