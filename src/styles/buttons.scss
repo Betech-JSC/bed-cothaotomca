@@ -12,11 +12,12 @@
 }
 
 .btn-white {
-  @apply text-primary bg-white lg:hover:bg-secondary lg:hover:text-yellow;
+  @apply text-primary bg-white lg:hover:bg-secondary lg:hover:text-yellow lg:hover:border-white;
 }
 
 .btn-pagination {
   @apply min-w-12 h-12 xl:min-w-[75px] xl:h-[75px] flex items-center justify-center border border-black/20 bg-black/10 text-black;
+
   &:hover {
     @apply bg-black/20;
   }
