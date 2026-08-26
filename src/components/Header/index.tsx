@@ -47,11 +47,15 @@ const Header = () => {
       .then((data) => {
         if (data.data) {
           setCategories(
-            data.data.map((c: any) => ({
-              id: c.id,
-              title: c.title,
-              slug: c.slug || slugify(c.title),
-            }))
+            data.data.map((c: any) => {
+              const catTitle = c.title || "";
+              const slug = locale === 'vi' ? (c.slug || slugify(catTitle)) : (c.slug ? slugify(c.slug) : slugify(catTitle));
+              return {
+                id: c.id,
+                title: catTitle,
+                slug: slug || c.slug,
+              };
+            })
           );
         }
       })

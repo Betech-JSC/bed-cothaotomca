@@ -179,7 +179,10 @@
   "blog": {
     "title": "Góc Bếp Cô Thảo",
     "category": "Danh mục",
-    "related_posts": "Bài viết liên quan"
+    "related_posts": "Bài viết liên quan",
+    "toc_button": "Mục lục",
+    "toc_title": "Mục lục bài viết",
+    "toc_count": "{count} phần"
   },
   "contact": {
     "title": "Liên hệ",

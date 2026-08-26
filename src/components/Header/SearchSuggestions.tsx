@@ -1,7 +1,7 @@
 "use client";
 
 import { Link } from "@/i18n/i18n-navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { SearchProductSuggestion, SearchBlogSuggestion, SearchPolicySuggestion } from "@/hooks/useSearchSuggestions";
 import Cart from "@/components/Icons/Cart";
 import BlogIcon from "@/components/Icons/BlogIcon";
@@ -29,6 +29,7 @@ export default function SearchSuggestions({
   visible,
 }: SearchSuggestionsProps) {
   const t = useTranslations();
+  const locale = useLocale();
 
   const totalSuggestions = productSuggestions.length + blogSuggestions.length + policySuggestions.length;
 
@@ -84,8 +85,9 @@ export default function SearchSuggestions({
                 </div>
                 <ul className="divide-y divide-gray-50">
                   {productSuggestions.map((item) => {
+                    const catTitle = item.category ? (item.category as any).title : "";
                     const categorySlug = item.category
-                      ? ((item.category as any).slug || slugify(item.category.title))
+                      ? (locale === 'vi' ? ((item.category as any).slug || slugify(catTitle)) : (slugify(catTitle || (item.category as any).slug || "") || (item.category as any).slug))
                       : "";
 
                     return (

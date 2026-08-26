@@ -49,10 +49,11 @@ export default function ProductIndexPage({
   const categoriesDisplay = useMemo(() => categories.map(cat => {
     const translation = getTranslation(cat.translations, locale) as any;
     const title = translation?.title || cat.title || "";
+    const slug = locale === 'vi' ? (cat.slug || slugify(title)) : slugify(title || cat.slug || "");
     return {
       id: cat.id.toString(),
       title,
-      slug: cat.slug || slugify(title)
+      slug: slug || cat.slug
     }
   }), [categories, locale]);
 
@@ -78,7 +79,9 @@ export default function ProductIndexPage({
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || productCategory?.title || "";
     const categoryId = productCategory?.id?.toString() || "";
-    const categorySlug = productCategory?.slug || slugify(categoryName);
+    const categorySlug = locale === 'vi'
+      ? (productCategory?.slug || slugify(categoryName))
+      : (slugify(categoryName || productCategory?.slug || "") || productCategory?.slug);
     
     // Store all category slugs for filtering (support both DB slug and title slug)
     const allCategorySlugs = p.categories && p.categories.length > 0

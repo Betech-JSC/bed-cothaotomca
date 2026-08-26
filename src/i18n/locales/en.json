@@ -180,7 +180,10 @@
   "blog": {
     "title": "Co Thao’s Kitchen Corner",
     "category": "Category",
-    "related_posts": "Related Posts"
+    "related_posts": "Related Posts",
+    "toc_button": "Table of Contents",
+    "toc_title": "Table of Contents",
+    "toc_count": "{count} sections"
   },
   "contact": {
     "title": "Contact",

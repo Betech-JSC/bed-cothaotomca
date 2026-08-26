@@ -114,7 +114,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || productCategory?.title || "Tất cả";
-    const categorySlug = productCategory?.slug || slugify(categoryName);
+    const categorySlug = locale === 'vi'
+      ? (productCategory?.slug || slugify(categoryName))
+      : (slugify(categoryName || productCategory?.slug || "") || productCategory?.slug);
 
     return {
       id: item.id,
@@ -137,10 +139,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const categoriesDisplay = categoriesData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
     const title = translation?.title || item.title;
+    const slug = locale === 'vi' ? (item.slug || slugify(title)) : (slugify(title || item.slug || "") || item.slug);
     return {
       id: item.id,
       title: title,
-      slug: item.slug || slugify(title),
+      slug: slug,
       image: {
         url: item.image || 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop',
         alt: title
