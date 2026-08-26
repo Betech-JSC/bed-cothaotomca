@@ -842,7 +842,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   // Render SePay QR screen if order is pending bank transfer
   if (pendingOrder) {
     return (
-      <div className={inline ? "w-full p-4 flex flex-col justify-start" : "fixed inset-0 bg-[#F1EEDF] z-[160] overflow-y-auto p-4 flex flex-col justify-start"}>
+      <div className={inline ? "w-full p-4 flex flex-col justify-start" : "fixed inset-0 bg-yellow z-[160] overflow-y-auto p-4 flex flex-col justify-start"}>
         <div className="max-w-md mx-auto w-full py-6 space-y-6">
           <div className="flex justify-between items-center border-b border-gray-200 pb-3">
             <h2 className="title-1 font-display text-primary font-bold">Thanh toán</h2>
@@ -871,7 +871,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }
 
   return (
-    <div className={inline ? "w-full text-gray-900 select-none" : "fixed inset-0 bg-[#F1EEDF] z-[160] overflow-y-auto p-4 text-gray-900 select-none"}>
+    <div className={inline ? "w-full text-gray-900 select-none" : "fixed inset-0 bg-yellow z-[160] overflow-y-auto p-4 text-gray-900 select-none"}>
       <div className={inline ? "w-full space-y-6" : "max-w-md mx-auto w-full py-4 space-y-6"}>
         {/* Header bar */}
         <div className="flex justify-between items-center border-b border-gray-200 pb-3">
@@ -1048,7 +1048,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           type="button"
                           onClick={() => handleApplyVoucher()}
                           disabled={validatingVoucher || !voucherCode.trim()}
-                          className="bg-[#142A68] hover:bg-[#142A68]/95 text-white font-bold rounded-full px-5 py-2 text-sm transition-all disabled:opacity-50 cursor-pointer"
+                          className="bg-primary hover:bg-primary/95 text-white font-bold rounded-full px-5 py-2 text-sm transition-all disabled:opacity-50 cursor-pointer"
                         >
                           {validatingVoucher ? t("checking_voucher") : t("apply_voucher")}
                         </button>
@@ -1414,7 +1414,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   placeholder={t("name_placeholder")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                  className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
                 />
                 {fieldErrors.name && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.name}</p>}
               </div>
@@ -1427,7 +1427,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   placeholder={t("phone_placeholder")}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full h-11 rounded-[4px] border border-[#B9C0D4] shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                  className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
                 />
                 {fieldErrors.phone && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.phone}</p>}
               </div>
@@ -1667,7 +1667,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           <select
                             value={deliveryDate}
                             onChange={(e) => setDeliveryDate(e.target.value)}
-                            className="w-full h-11 rounded-lg border border-[#B9C0D4] shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-semibold cursor-pointer appearance-none"
+                            className="w-full h-11 rounded-lg border border-gray-300 shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-semibold cursor-pointer appearance-none"
                           >
                             {availableDeliveryDates.map((item) => (
                               <option key={item.iso} value={item.iso}>
@@ -1705,7 +1705,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 });
                               }
                             }}
-                            className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-semibold cursor-pointer appearance-none ${fieldErrors["delivery.expected_delivery"] ? "border-red-500 ring-1 ring-red-500" : "border-[#B9C0D4]"
+                            className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-semibold cursor-pointer appearance-none ${fieldErrors["delivery.expected_delivery"] ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"
                               }`}
                           >
                             {availableTimeSlots.length > 0 ? (
@@ -1776,7 +1776,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     />
                     <div
                       className={`w-5 h-5 rounded-[6px] border flex items-center justify-center transition-all ${confirmInfo
-                        ? "bg-[#142A68] border-[#142A68] text-white"
+                        ? "bg-primary border-primary text-white"
                         : "border-gray-300 bg-white"
                         }`}
                     >

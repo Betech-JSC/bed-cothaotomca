@@ -59,7 +59,7 @@ export default function PolicyNav({ policies, currentSlug }: PolicyNavProps) {
                   className={`p-3 transition-all duration-300 rounded-[12px] ${
                     isActive
                       ? "bg-primary text-yellow shadow-lg font-semibold"
-                      : "text-gray-900 lg:hover:text-[#142A68] lg:hover:bg-gray-50 font-medium"
+                      : "text-gray-900 lg:hover:text-primary lg:hover:bg-gray-50 font-medium"
                   } title-3`}
                 >
                   {policy.title}

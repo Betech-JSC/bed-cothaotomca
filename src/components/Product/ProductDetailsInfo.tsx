@@ -111,11 +111,11 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
           <span className="label-1 font-semibold text-gray-900 flex-shrink-0">
             {t("checkout.quantity")}:
           </span>
-          <div className="flex items-center border border-[#B9C0D4] rounded-full overflow-hidden h-11 bg-white shadow-sm">
+          <div className="flex items-center border border-gray-300 rounded-full overflow-hidden h-11 bg-white shadow-sm">
             <button
               type="button"
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100 text-lg transition-colors border-r border-[#B9C0D4]"
+              className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100 text-lg transition-colors border-r border-gray-300"
             >
               -
             </button>
@@ -125,7 +125,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
             <button
               type="button"
               onClick={() => setQuantity(quantity + 1)}
-              className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100 text-lg transition-colors border-l border-[#B9C0D4]"
+              className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100 text-lg transition-colors border-l border-gray-300"
             >
               +
             </button>

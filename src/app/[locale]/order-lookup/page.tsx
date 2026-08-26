@@ -315,7 +315,7 @@ export default function OrderLookupPage() {
 
         {/* Search Card */}
         <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-[0_4px_25px_rgba(20,42,104,0.06)] border border-gray-100 relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-secondary" />
           <form onSubmit={handleSearchSubmit} className="space-y-4 md:space-y-0 md:grid md:grid-cols-12 md:gap-4 items-end">
             <div className="md:col-span-5">
               <label htmlFor="orderCode" className="block text-xs font-bold text-primary uppercase tracking-wider mb-2">
@@ -383,7 +383,7 @@ export default function OrderLookupPage() {
         {order && (
           <div className="bg-white rounded-2xl shadow-[0_4px_25px_rgba(20,42,104,0.06)] border border-gray-100 overflow-hidden transition-all">
             {/* Header Banner - Brand Header */}
-            <div className="bg-gradient-to-r from-primary via-[#1A337E] to-primary text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
+            <div className="bg-primary text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
               <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-secondary/15 blur-2xl pointer-events-none" />
               <div className="relative z-10">
                 <div className="text-xs text-yellow/80 font-mono uppercase tracking-widest mb-1 flex items-center gap-1.5">
@@ -415,7 +415,7 @@ export default function OrderLookupPage() {
             {order.status !== "cancelled" &&
               order.status !== "expired" &&
               order.status !== "cancel_requested" && (
-                <div className="p-6 border-b border-gray-100 bg-[#F1EEDF]/40 relative">
+                <div className="p-6 border-b border-gray-100 bg-yellow/40 relative">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 text-brown font-bold text-sm">
@@ -470,7 +470,7 @@ export default function OrderLookupPage() {
 
             {/* Cancellation Status Banner if Cancelled */}
             {(order.status === "cancelled" || order.status === "cancel_requested") && (
-              <div className="p-6 bg-[#FDFBF7] border-b border-gray-100">
+              <div className="p-6 bg-yellow/20 border-b border-gray-100">
                 <div className="text-sm font-bold text-primary mb-1">
                   {order.status === "cancelled" ? t("status.cancelled") : t("status.cancel_requested")}
                 </div>
@@ -500,7 +500,7 @@ export default function OrderLookupPage() {
                   <span className="w-2 h-2 rounded-full bg-secondary"></span>
                   {t("receiver_info")}
                 </h3>
-                <div className="bg-[#F1EEDF]/30 p-5 rounded-2xl border border-[#F1EEDF] space-y-2 text-sm text-gray-800 shadow-xs">
+                <div className="bg-yellow/30 p-5 rounded-2xl border border-yellow space-y-2 text-sm text-gray-800 shadow-xs">
                   <div className="font-bold text-primary text-base">{order.customer?.name}</div>
                   <div className="flex items-center gap-2 text-gray-700">
                     <span className="text-gray-500">{t("phone")}:</span>
@@ -525,7 +525,7 @@ export default function OrderLookupPage() {
                   <span className="w-2 h-2 rounded-full bg-secondary"></span>
                   {t("payment_info")}
                 </h3>
-                <div className="bg-[#F1EEDF]/30 p-5 rounded-2xl border border-[#F1EEDF] space-y-2.5 text-sm text-gray-700 shadow-xs">
+                <div className="bg-yellow/30 p-5 rounded-2xl border border-yellow space-y-2.5 text-sm text-gray-700 shadow-xs">
                   <div className="flex justify-between">
                     <span>{t("subtotal")}:</span>
                     <span className="font-semibold text-gray-900">{formatMoney(order.subtotal)}</span>
@@ -561,7 +561,7 @@ export default function OrderLookupPage() {
               </h3>
               <div className="divide-y divide-gray-100 border border-gray-200/80 rounded-2xl overflow-hidden shadow-xs bg-white">
                 {order.items.map((item, idx) => (
-                  <div key={idx} className="p-4 flex items-center justify-between gap-4 hover:bg-[#F1EEDF]/20 transition-colors group">
+                  <div key={idx} className="p-4 flex items-center justify-between gap-4 hover:bg-yellow/20 transition-colors group">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 relative rounded-xl bg-gray-100 overflow-hidden shrink-0 border border-gray-200/80 shadow-xs">
                         <Image

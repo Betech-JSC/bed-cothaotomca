@@ -66,10 +66,7 @@ export default function ForgotPasswordContainer() {
       {/* Container Card */}
       <div className="relative z-20 w-full max-w-[440px] px-4 flex flex-col items-center">
         <div
-          className="w-full rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col"
-          style={{
-            backgroundColor: "#F6F2E9",
-          }}
+          className="w-full rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col bg-yellow"
         >
           <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full">
             {/* Header Title */}

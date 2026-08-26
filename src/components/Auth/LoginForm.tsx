@@ -130,7 +130,7 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
             onChange={handleChange}
             required
             placeholder={t("email_phone_placeholder")}
-            className="w-full rounded-[10px] border border-[#D8D4C8] bg-white px-3.5 py-2.5 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[42px] text-gray-900 placeholder:text-gray-400 shadow-sm transition-all"
+            className="w-full rounded-[10px] border border-gray-300 bg-white px-3.5 py-2.5 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[42px] text-gray-900 placeholder:text-gray-400 shadow-sm transition-all"
           />
         </div>
 
@@ -147,7 +147,7 @@ const LoginForm = ({ onLoginSuccess }: LoginFormProps) => {
               onChange={handleChange}
               required
               placeholder={t("password_placeholder")}
-              className="w-full rounded-[10px] border border-[#D8D4C8] bg-white px-3.5 py-2.5 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[42px] text-gray-900 placeholder:text-gray-400 shadow-sm transition-all pr-12"
+              className="w-full rounded-[10px] border border-gray-300 bg-white px-3.5 py-2.5 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[42px] text-gray-900 placeholder:text-gray-400 shadow-sm transition-all pr-12"
             />
             <button
               type="button"

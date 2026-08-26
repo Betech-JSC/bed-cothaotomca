@@ -138,7 +138,7 @@ export default function SmartCartProgressBar({
       {/* Progress Track */}
       <div className="w-full h-2.5 bg-white/80 rounded-full overflow-hidden p-0.5 border border-gray-200 shadow-inner">
         <div
-          className="h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-primary to-secondary"
+          className="h-full rounded-full transition-all duration-700 ease-out bg-secondary"
           style={{ width: `${milestone.percent}%` }}
         />
       </div>

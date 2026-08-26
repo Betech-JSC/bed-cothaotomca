@@ -46,10 +46,7 @@ export default async function SignUpPage({
       <div className="relative z-20 w-full max-w-[440px] sm:max-w-[460px] flex flex-col items-center">
         <div
           id="register-card"
-          className="w-full rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col gap-4"
-          style={{
-            backgroundColor: "#F6F2E9",
-          }}
+          className="w-full rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col gap-4 bg-yellow"
         >
           <RegisterForm />
         </div>

@@ -33,7 +33,7 @@ export default async function OrderSuccessPage({
   ];
 
   return (
-    <main className="py-10 md:py-16 bg-[#FAF8F5]">
+    <main className="py-10 md:py-16 bg-yellow/30">
       <div className="container max-w-2xl mx-auto space-y-6">
         {sync_warning ? (
           <div className="px-4">

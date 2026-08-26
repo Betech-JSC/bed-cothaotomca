@@ -248,7 +248,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   };
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto min-h-[698px] py-10 md:py-[60px] px-4 md:px-8 xl:px-12 flex flex-col lg:flex-row gap-10 xl:gap-[80px] bg-yellow" style={{ backgroundColor: "#F1EEDF" }}>
+    <div className="w-full max-w-[1440px] mx-auto min-h-[698px] py-10 md:py-[60px] px-4 md:px-8 xl:px-12 flex flex-col lg:flex-row gap-10 xl:gap-[80px] bg-yellow">
       {/* LEFT COLUMN: Sidebar */}
       <div className="w-full lg:w-[320px] shrink-0 space-y-6">
         <div className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center">
@@ -285,7 +285,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
             <button
               onClick={handleAvatarClick}
               disabled={uploading}
-              className="absolute bottom-0 right-0 bg-[#142A68] rounded-full p-2 border border-white hover:bg-secondary duration-300 disabled:opacity-50"
+              className="absolute bottom-0 right-0 bg-primary rounded-full p-2 border border-white hover:bg-secondary duration-300 disabled:opacity-50"
             >
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M10.5 3.5H9.33333C9.02333 3.5 8.74917 3.325 8.62083 3.03917L8.14333 1.96583C7.945 1.5225 7.50167 1.23083 7.0175 1.23083H4.9825C4.49833 1.23083 4.055 1.5225 3.85667 1.96583L3.37917 3.03917C3.25083 3.325 2.97667 3.5 2.66667 3.5H1.5C0.670833 3.5 0 4.17083 0 5V11.5C0 12.3292 0.670833 13 1.5 13H10.5C11.3292 13 12 12.3292 12 11.5V5C12 4.17083 11.3292 3.5 10.5 3.5ZM6 10.75C4.48 10.75 3.25 9.52 3.25 8C3.25 6.48 4.48 5.25 6 5.25C7.52 5.25 8.75 6.48 8.75 8C8.75 9.52 7.52 10.75 6 10.75Z" fill="white" />
@@ -399,8 +399,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                       key={idx}
                       className={`border rounded-[1rem] p-5 md:p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-md ${
                         isCompleted
-                          ? "bg-[#F8F9FC] border-gray-100 hover:border-gray-200"
-                          : "bg-orderBg border-[#F5EEDC] hover:border-secondary/40"
+                          ? "bg-gray-50 border-gray-100 hover:border-gray-200"
+                          : "bg-yellow/20 border-yellow/60 hover:border-secondary/40"
                       }`}
                       onClick={() => setExpandedOrderCode(expandedOrderCode === order.order_code ? null : order.order_code)}
                     >
@@ -409,10 +409,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                         <div className="flex flex-wrap items-center gap-y-3">
                           {/* 1. MÃ GIAO DỊCH */}
                           <div className="pr-4 md:pr-6">
-                            <span className="text-[0.875rem] text-[#7D89AF] font-normal block leading-tight mb-1 uppercase">
+                            <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1 uppercase">
                               {t("order_code") || "MÃ GIAO DỊCH"}
                             </span>
-                            <span className="text-[1.125rem] md:text-[1.25rem] font-bold text-orderCode">
+                            <span className="text-[1.125rem] md:text-[1.25rem] font-bold text-primary font-mono">
                               {formattedCode}
                             </span>
                           </div>
@@ -422,10 +422,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                           {/* 2. NGÀY GIAO DỊCH */}
                           <div className="px-2 md:px-4">
-                            <span className="text-[0.875rem] text-[#7D89AF] font-normal block leading-tight mb-1 uppercase">
+                            <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1 uppercase">
                               {t("order_date") || "NGÀY GIAO DỊCH"}
                             </span>
-                            <span className="text-[1rem] md:text-[1.125rem] font-semibold text-[#111322]">
+                            <span className="text-[1rem] md:text-[1.125rem] font-semibold text-gray-900">
                               {formatDate(order.created_at)}
                             </span>
                           </div>
@@ -435,12 +435,12 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                           {/* 3. Trạng thái */}
                           <div className="pl-2 md:pl-4">
-                            <span className="text-[0.875rem] text-[#7D89AF] font-normal block leading-tight mb-1">
+                            <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1">
                               {t("status") || "Trạng thái"}
                             </span>
 
                             {isShipping && (
-                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#CD4829] text-white text-[0.875rem] font-medium shadow-sm">
+                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-secondary text-white text-[0.875rem] font-medium shadow-sm">
                                 <Image
                                   src="/images/fi_2769339.svg"
                                   alt="Đang giao"
@@ -453,7 +453,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                             )}
 
                             {mappedStatus === "processing" && (
-                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#CD4829] text-white text-[0.875rem] font-medium shadow-sm">
+                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-secondary text-white text-[0.875rem] font-medium shadow-sm">
                                 <Image
                                   src="/images/fi_3448102.svg"
                                   alt="Đang xử lý"
@@ -466,7 +466,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                             )}
 
                             {isCompleted && (
-                              <span className="inline-flex items-center gap-1.5 text-[#4A5578] text-[0.875rem] font-medium py-1">
+                              <span className="inline-flex items-center gap-1.5 text-gray-600 text-[0.875rem] font-medium py-1">
                                 <Image
                                   src="/images/check.svg"
                                   alt="Hoàn thành"
@@ -485,7 +485,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                             )}
 
                             {mappedStatus === "error" && (
-                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#BD7F15] text-white text-[0.875rem] font-medium shadow-sm">
+                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-secondary text-white text-[0.875rem] font-medium shadow-sm">
                                 <span>{t("status_error") || "Lỗi đơn hàng"}</span>
                               </span>
                             )}
@@ -494,7 +494,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                         {/* Far Right: Total Amount & Expand Chevron */}
                         <div className="flex items-center gap-4 self-end md:self-auto">
-                          <div className="text-[1rem] font-display font-bold text-[#142A68]">
+                          <div className="text-[1rem] font-display font-bold text-primary">
                             {formatPrice(order.total)}
                           </div>
                           <div className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-primary transition-colors">

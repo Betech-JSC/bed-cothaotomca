@@ -136,7 +136,7 @@ export default function WardSelectCombobox({
           className={`w-full h-11 rounded-[4px] border px-[14px] pr-10 bg-white text-gray-900 focus:outline-none text-sm font-serif cursor-pointer transition-all ${
             hasError
               ? "border-red-500 ring-1 ring-red-500 bg-red-50/30"
-              : "border-[#B9C0D4] focus:border-primary"
+              : "border-gray-300 focus:border-primary"
           }`}
         />
 

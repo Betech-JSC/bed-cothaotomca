@@ -18,7 +18,7 @@ export default function ProfilePage() {
 
   if (loading || !user) {
     return (
-      <div className="w-full min-h-[90vh] bg-[#F1EEDF] flex items-center justify-center">
+      <div className="w-full min-h-[90vh] bg-yellow flex items-center justify-center">
         <div className="animate-pulse text-primary font-bold text-lg font-serif">Loading...</div>
       </div>
     );

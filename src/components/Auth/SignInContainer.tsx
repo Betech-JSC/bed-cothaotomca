@@ -23,7 +23,7 @@ const SignInContainer = () => {
 
   if (loading || user) {
     return (
-      <div className="w-full min-h-[90vh] bg-[#F1EEDF] flex items-center justify-center">
+      <div className="w-full min-h-[90vh] bg-yellow flex items-center justify-center">
         <div className="animate-pulse text-primary font-bold text-lg font-serif">Loading...</div>
       </div>
     );
@@ -51,10 +51,7 @@ const SignInContainer = () => {
       <div className="relative z-20 w-full max-w-[420px] sm:max-w-[440px] flex flex-col items-center">
         <div
           id="login-card"
-          className="w-full rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col"
-          style={{
-            backgroundColor: "#F6F2E9",
-          }}
+          className="w-full rounded-[28px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col bg-yellow"
         >
           <LoginForm onLoginSuccess={handleLoginSuccess} />
         </div>

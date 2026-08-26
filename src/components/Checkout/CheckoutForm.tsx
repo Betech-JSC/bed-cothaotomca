@@ -1047,7 +1047,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         setSelectedWard("");
                         setSelectedWardId("");
                       }}
-                      className="w-full h-11 rounded-[4px] border border-[#B9C0D4] px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif cursor-pointer"
+                      className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif cursor-pointer"
                     >
                       {adminProvinces.length > 0 ? (
                         adminProvinces.map((prov) => (
@@ -1258,7 +1258,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       <select
                         value={deliveryDate}
                         onChange={(e) => setDeliveryDate(e.target.value)}
-                        className="w-full h-11 rounded-lg border border-[#B9C0D4] shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none"
+                        className="w-full h-11 rounded-lg border border-gray-300 shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none"
                       >
                         {availableDeliveryDates.map((item) => (
                           <option key={item.iso} value={item.iso}>
@@ -1296,7 +1296,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                             });
                           }
                         }}
-                        className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none ${fieldError("delivery.expected_delivery") ? "border-red-500 ring-1 ring-red-500" : "border-[#B9C0D4]"
+                        className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none ${fieldError("delivery.expected_delivery") ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"
                           }`}
                       >
                         {availableTimeSlots.length > 0 ? (

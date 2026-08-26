@@ -213,7 +213,7 @@ const RegisterForm = () => {
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-300/60"></div>
         </div>
-        <span className="relative bg-[#F1EEDF] px-3.5 text-xs font-semibold uppercase text-gray-500 rounded-full font-serif">
+        <span className="relative bg-yellow px-3.5 text-xs font-semibold uppercase text-gray-500 rounded-full font-serif">
           {t("or")}
         </span>
       </div>
