@@ -15,8 +15,10 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
+  const { locale } = await params;
+  const isEn = locale === 'en';
   return {
-    title: 'Thanh toán | Cô Thảo Tôm Cá',
+    title: isEn ? 'Checkout | Co Thao Tom Ca' : 'Thanh toán | Cô Thảo Tôm Cá',
     robots: { index: false, follow: false },
   }
 }

@@ -31,9 +31,15 @@ export async function generateMetadata({
     }
   } catch {}
 
+  const isEn = locale === 'en'
+  const titleSuffix = isEn ? 'Blog & News | Co Thao Tom Ca' : 'Tin tức | Cô Thảo Tôm Cá'
+  const descSuffix = isEn
+    ? `Articles about ${categoryName} — Co Thao Tom Ca shares tips, insights and recipes.`
+    : `Tin tức về ${categoryName} — Cô Thảo Tôm Cá chia sẻ kiến thức, mẹo hay và thông tin hữu ích.`
+
   return {
-    title: `${categoryName} | Tin tức | Cô Thảo Tôm Cá`,
-    description: `Tin tức về ${categoryName} — Cô Thảo Tôm Cá chia sẻ kiến thức, mẹo hay và thông tin hữu ích.`,
+    title: `${categoryName} | ${titleSuffix}`,
+    description: descSuffix,
     alternates: {
       canonical: `${baseUrl}/${locale}/blog/category/${categorySlug}`,
       languages: {
@@ -42,8 +48,8 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title: `${categoryName} | Tin tức | Cô Thảo Tôm Cá`,
-      description: `Tin tức về ${categoryName} — Cô Thảo Tôm Cá`,
+      title: `${categoryName} | ${titleSuffix}`,
+      description: descSuffix,
       type: 'website',
     },
   }

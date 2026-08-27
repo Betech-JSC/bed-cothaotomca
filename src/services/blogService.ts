@@ -26,6 +26,7 @@ export interface BlogTranslation {
   meta_robots?: string | null;
   canonical_url?: string | null;
   og_image?: string | null;
+  thumbnail?: string | null;
 }
 
 export interface Blog {

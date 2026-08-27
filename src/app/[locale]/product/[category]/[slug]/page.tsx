@@ -24,13 +24,13 @@ export async function generateMetadata(
   if (!product) return {};
 
   const translation = getTranslation<Translation>(product.translations, locale);
-  const productName = translation?.custom_name || product.custom_name || translation?.name || product.name || "";
+  const isEn = locale === 'en';
+  const productName = (isEn ? (translation?.custom_name || translation?.name) : (translation?.custom_name || product.custom_name || translation?.name || product.name)) || product.custom_name || product.name || "";
+  const productDescription = (isEn ? translation?.description : null) || product.description || translation?.description || "";
 
-  const productDescription = translation?.description || product.description || "";
-
-  // Ưu tiên lấy SEO từ bản dịch, nếu không có thì lấy SEO ở cấp root, cuối cùng mới fallback về name/description mặc định
-  const seoTitle = translation?.seo_title || product.seo_title || product.meta_title || productName;
-  const seoDescription = translation?.seo_description || product.seo_description || product.meta_description || productDescription;
+  // Ưu tiên SEO từ bản dịch -> Tên theo ngôn ngữ -> Fallback root
+  const seoTitle = translation?.seo_title || (isEn ? (productName || product.seo_title || product.meta_title) : (product.seo_title || product.meta_title || productName));
+  const seoDescription = translation?.seo_description || (isEn ? (productDescription || product.seo_description || product.meta_description) : (product.seo_description || product.meta_description || productDescription));
   const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
 
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');

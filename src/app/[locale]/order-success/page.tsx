@@ -3,9 +3,15 @@ import { getTranslations } from "next-intl/server";
 import OrderSuccessClient from "@/components/Checkout/OrderSuccessClient";
 import { Metadata } from "next";
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isEn = locale === 'en';
   return {
-    title: 'Đặt hàng thành công | Cô Thảo Tôm Cá',
+    title: isEn ? 'Order Success | Co Thao Tom Ca' : 'Đặt hàng thành công | Cô Thảo Tôm Cá',
     robots: { index: false, follow: false },
   }
 }
