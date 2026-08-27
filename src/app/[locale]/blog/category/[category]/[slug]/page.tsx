@@ -68,7 +68,7 @@ export async function generateMetadata({
   const customCanonical = translation?.canonical_url || blog.canonical_url;
   const canonicalUrl = customCanonical || `${baseUrl}/${locale}/blog/category/${category}/${slug}`;
   const customOgImage = translation?.og_image || blog.og_image;
-  const blogImage = customOgImage || blog.thumbnail || "/cover.jpg";
+  const blogImage = customOgImage || translation?.thumbnail || blog.thumbnail || "/cover.jpg";
   const customRobots = translation?.meta_robots || blog.meta_robots || undefined;
 
   const metadata = {
@@ -163,7 +163,7 @@ export default async function BlogDetailsPage({
 
     return {
       image: {
-        url: item.thumbnail || "/cover.jpg",
+        url: itemTranslation?.thumbnail || item.thumbnail || "/cover.jpg",
         alt: title,
       },
       title: title,
@@ -211,7 +211,7 @@ export default async function BlogDetailsPage({
 
           <div className="rounded-3xl relative aspect-w-2 aspect-h-1 overflow-hidden">
             <Image
-              src={blog.thumbnail || "/cover.jpg"}
+              src={translation?.thumbnail || blog.thumbnail || "/cover.jpg"}
               alt={blogTitle}
               className="w-full h-full object-cover"
               fill
