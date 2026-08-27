@@ -23,6 +23,8 @@ export async function generateMetadata({
     ? (q ? `Search results for "${q}" on Co Thao Tom Ca` : 'Search products, blog articles and policies on Co Thao Tom Ca')
     : (q ? `Kết quả tìm kiếm cho "${q}" trên Cô Thảo Tôm Cá` : 'Tìm kiếm sản phẩm, tin tức và chính sách tại Cô Thảo Tôm Cá')
 
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')
+
   return {
     title,
     description,
