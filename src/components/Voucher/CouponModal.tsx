@@ -688,18 +688,8 @@ export default function CouponModal({
             </div>
 
             {/* Footer */}
-            <div className="p-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between body-3 font-sans text-gray-500 shrink-0">
+            <div className="p-3.5 bg-gray-50 border-t border-gray-100 flex items-center body-3 font-sans text-gray-500 shrink-0">
               <span>{t("system_wide")}</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose();
-                }}
-                className="font-bold font-display text-secondary hover:underline cursor-pointer"
-              >
-                {t("close")}
-              </button>
             </div>
           </>
         )}
