@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 
 export interface HeadingItem {
   id: string;
@@ -9,6 +10,7 @@ export interface HeadingItem {
 }
 
 export default function BlogTableOfContents() {
+  const t = useTranslations('blog');
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
@@ -108,14 +110,14 @@ export default function BlogTableOfContents() {
             setIsOpen(true);
           }}
           className="group relative flex items-center gap-2.5 px-4 py-3 bg-primary text-yellow rounded-full shadow-2xl border-2 border-yellow/40 hover:bg-secondary hover:text-white transition-all duration-300 active:scale-95 cursor-pointer"
-          aria-label="Mở Mục lục bài viết"
+          aria-label={t('toc_title')}
         >
           {/* Icon Mục lục */}
           <svg className="w-5 h-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h10M4 18h14" />
           </svg>
 
-          <span className="font-bold text-sm hidden md:inline-block">Mục lục</span>
+          <span className="font-bold text-sm hidden md:inline-block">{t('toc_button')}</span>
 
           {/* Counter Badge đếm số lượng tiêu đề */}
           <span className="size-5 text-[11px] font-bold rounded-full bg-yellow text-primary flex items-center justify-center group-hover:bg-white group-hover:text-primary transition-colors">
@@ -152,9 +154,9 @@ export default function BlogTableOfContents() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h10M4 18h14" />
                   </svg>
                 </span>
-                <h3 className="title-3 text-primary font-bold">Mục lục bài viết</h3>
+                <h3 className="title-3 text-primary font-bold">{t('toc_title')}</h3>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/10 text-secondary font-semibold">
-                  {headings.length} phần
+                  {t('toc_count', { count: headings.length })}
                 </span>
               </div>
 
@@ -170,7 +172,7 @@ export default function BlogTableOfContents() {
 
             {/* Danh sách các Mục lục (Triệt tiêu 100% thanh cuộn ngang & dọc) */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-1 pr-1 max-w-full no-scrollbar">
-              {headings.map((item, idx) => {
+              {headings.map((item) => {
                 const isActive = item.id === activeId;
                 const isH3 = item.level === 3;
 
@@ -187,9 +189,11 @@ export default function BlogTableOfContents() {
                         : 'text-gray-700 hover:bg-gray-50 hover:text-primary'
                     }`}
                   >
-                    <span className={`text-xs mt-0.5 flex-shrink-0 ${isActive ? 'text-primary' : 'text-gray-400'}`}>
-                      {isH3 ? '•' : `${idx + 1}.`}
-                    </span>
+                    {isH3 && (
+                      <span className={`text-xs mt-0.5 flex-shrink-0 ${isActive ? 'text-primary' : 'text-gray-400'}`}>
+                        •
+                      </span>
+                    )}
                     <span className="line-clamp-2 leading-snug break-words flex-1 min-w-0">{item.text}</span>
                   </button>
                 );

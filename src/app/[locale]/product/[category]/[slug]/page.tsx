@@ -185,8 +185,17 @@ export default async function ProductDetailsPage({
 
 
     category: {
-      title: (product.categories && product.categories.length > 0 ? product.categories[0]?.title : product.category?.title) || "Sản phẩm",
-      slug: (product.categories && product.categories.length > 0 ? product.categories[0]?.slug : product.category?.slug) || ""
+      title: (() => {
+        const cat = product.categories && product.categories.length > 0 ? product.categories[0] : product.category;
+        const trans = getTranslation(cat?.translations, locale) as any;
+        return trans?.title || cat?.title || "Sản phẩm";
+      })(),
+      slug: (() => {
+        const cat = product.categories && product.categories.length > 0 ? product.categories[0] : product.category;
+        const trans = getTranslation(cat?.translations, locale) as any;
+        const title = trans?.title || cat?.title || "";
+        return locale === 'vi' ? (cat?.slug || slugify(title)) : (slugify(title || cat?.slug || "") || cat?.slug || "");
+      })()
     },
     infos: product.sections?.map((section: any) => ({
       title: section.title,
@@ -196,7 +205,12 @@ export default async function ProductDetailsPage({
       productId: product.id,
       productCode: product.code || "",
       slug: product.slug || slug,
-      categorySlug: (product.categories && product.categories.length > 0 ? product.categories[0]?.slug : product.category?.slug) || category || "",
+      categorySlug: (() => {
+        const cat = product.categories && product.categories.length > 0 ? product.categories[0] : product.category;
+        const trans = getTranslation(cat?.translations, locale) as any;
+        const title = trans?.title || cat?.title || "";
+        return (locale === 'vi' ? (cat?.slug || slugify(title)) : (slugify(title || cat?.slug || "") || cat?.slug)) || category || "";
+      })(),
     }
   };
 
@@ -219,7 +233,9 @@ export default async function ProductDetailsPage({
     const categoryName = catTranslation?.title || relatedCategory?.title || "Sản phẩm";
 
     const productSlug = p.slug || slugify(name);
-    const categorySlug = relatedCategory?.slug || slugify(categoryName);
+    const categorySlug = locale === 'vi' 
+      ? (relatedCategory?.slug || slugify(categoryName))
+      : (slugify(categoryName || relatedCategory?.slug || "") || relatedCategory?.slug);
 
     return {
       id: p.id,
