@@ -1,25 +1,49 @@
 "use client";
 
-import { useRouter } from "@/i18n/i18n-navigation";
+import { usePathname, useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 
 export default function LanguageSwitcher() {
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useParams();
 
-  const nextLocale = locale === "vi" ? "en" : "vi";
+  const handleSwitchLocale = (targetLocale: "vi" | "en") => {
+    if (targetLocale === locale) return;
 
-  const handleToggle = () => {
-    router.replace("/", { locale: nextLocale });
+    // Lấy query search params từ window nếu có (tránh dùng hook useSearchParams để không trigger Suspense boundary)
+    let query: Record<string, string> | undefined = undefined;
+    if (typeof window !== "undefined" && window.location.search) {
+      const search = new URLSearchParams(window.location.search);
+      const searchObj: Record<string, string> = {};
+      search.forEach((val, key) => {
+        searchObj[key] = val;
+      });
+      if (Object.keys(searchObj).length > 0) {
+        query = searchObj;
+      }
+    }
+
+    // Loại bỏ locale ra khỏi params nếu có
+    const { locale: _localeParam, ...cleanParams } = (params || {}) as Record<string, any>;
+    const hasParams = Object.keys(cleanParams).length > 0;
+
+    router.replace(
+      // @ts-expect-error -- dynamic route params and pathname match the current route
+      hasParams || query ? { pathname, params: cleanParams, query } : pathname,
+      { locale: targetLocale, scroll: false }
+    );
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 shrink-0">
       <button
         type="button"
-        onClick={handleToggle}
-        className={`relative size-6 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "vi" ? "border-white" : "border-transparent"}`}
+        onClick={() => handleSwitchLocale("vi")}
+        className={`relative size-6 shrink-0 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "vi" ? "border-white" : "border-transparent"}`}
         aria-label="Chuyển sang tiếng Việt"
       >
         <Image
@@ -31,8 +55,8 @@ export default function LanguageSwitcher() {
       </button>
       <button
         type="button"
-        onClick={handleToggle}
-        className={`relative size-6 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "en" ? "border-white" : "border-transparent"}`}
+        onClick={() => handleSwitchLocale("en")}
+        className={`relative size-6 shrink-0 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "en" ? "border-white" : "border-transparent"}`}
         aria-label="Switch to English"
       >
         <Image
