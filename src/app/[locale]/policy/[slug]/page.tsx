@@ -32,10 +32,11 @@ export async function generateMetadata({
     return {};
   }
 
+  const isEn = locale === 'en';
   const title = currentPolicy.title || currentPolicy.name || "";
   const description = currentPolicy.seo_description || currentPolicy.meta_description || "";
 
-  const seoTitle = currentPolicy.seo_title || currentPolicy.meta_title || title;
+  const seoTitle = currentPolicy.seo_title || (isEn ? (title || currentPolicy.meta_title) : (currentPolicy.meta_title || title));
   const seoDescription = currentPolicy.seo_description || currentPolicy.meta_description || description;
   const seoKeywords = currentPolicy.seo_keywords || currentPolicy.meta_keywords || "";
 

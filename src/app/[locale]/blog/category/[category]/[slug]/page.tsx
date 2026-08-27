@@ -55,11 +55,13 @@ export async function generateMetadata({
   }
 
   const translation = getTranslation<BlogTranslation>(blog.translations, locale);
-  const blogTitle = translation?.title || blog.title || "";
-  const blogDescription = translation?.description || blog.description || "";
+  const isEn = locale === 'en';
+  const blogTitle = (isEn ? translation?.title : null) || blog.title || translation?.title || "";
+  const blogDescription = (isEn ? translation?.description : null) || blog.description || translation?.description || "";
 
-  const seoTitle = translation?.seo_title || blog.seo_title || blog.meta_title || blogTitle;
-  const seoDescription = translation?.seo_description || blog.seo_description || blog.meta_description || blogDescription;
+  // Ưu tiên SEO từ bản dịch -> Tên theo ngôn ngữ -> Fallback root
+  const seoTitle = translation?.seo_title || (isEn ? (blogTitle || blog.seo_title || blog.meta_title) : (blog.seo_title || blog.meta_title || blogTitle));
+  const seoDescription = translation?.seo_description || (isEn ? (blogDescription || blog.seo_description || blog.meta_description) : (blog.seo_description || blog.meta_description || blogDescription));
   const seoKeywords = translation?.seo_keywords || blog.seo_keywords || blog.meta_keywords || "";
 
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');

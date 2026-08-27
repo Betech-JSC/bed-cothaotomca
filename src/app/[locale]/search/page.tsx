@@ -14,11 +14,18 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params
   const { q = '' } = await searchParams
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')
+  const isEn = locale === 'en'
+
+  const title = isEn
+    ? (q ? `Search results: "${q}" | Co Thao Tom Ca` : 'Search | Co Thao Tom Ca')
+    : (q ? `Kết quả tìm kiếm: "${q}" | Cô Thảo Tôm Cá` : 'Tìm kiếm | Cô Thảo Tôm Cá')
+  const description = isEn
+    ? (q ? `Search results for "${q}" on Co Thao Tom Ca` : 'Search products, blog articles and policies on Co Thao Tom Ca')
+    : (q ? `Kết quả tìm kiếm cho "${q}" trên Cô Thảo Tôm Cá` : 'Tìm kiếm sản phẩm, tin tức và chính sách tại Cô Thảo Tôm Cá')
 
   return {
-    title: q ? `Kết quả tìm kiếm: "${q}" | Cô Thảo Tôm Cá` : 'Tìm kiếm | Cô Thảo Tôm Cá',
-    description: q ? `Kết quả tìm kiếm cho "${q}" trên Cô Thảo Tôm Cá` : 'Tìm kiếm sản phẩm, tin tức và chính sách tại Cô Thảo Tôm Cá',
+    title,
+    description,
     robots: { index: false, follow: true },
     alternates: {
       canonical: `${baseUrl}/${locale}/search`,

@@ -33,9 +33,15 @@ export async function generateMetadata({
     }
   } catch {}
 
+  const isEn = locale === 'en'
+  const titleSuffix = isEn ? 'Products | Co Thao Tom Ca' : 'Sản phẩm | Cô Thảo Tôm Cá'
+  const descSuffix = isEn
+    ? `Product category ${categoryName} — Co Thao Tom Ca specializes in premium fresh seafood.`
+    : `Danh mục sản phẩm ${categoryName} — Cô Thảo Tôm Cá chuyên cung cấp hải sản tươi ngon, chất lượng cao.`
+
   return {
-    title: `${categoryName} | Sản phẩm | Cô Thảo Tôm Cá`,
-    description: `Danh mục sản phẩm ${categoryName} — Cô Thảo Tôm Cá chuyên cung cấp hải sản tươi ngon, chất lượng cao.`,
+    title: `${categoryName} | ${titleSuffix}`,
+    description: descSuffix,
     alternates: {
       canonical: `${baseUrl}/${locale}/product/${categorySlug}`,
       languages: {
@@ -44,8 +50,8 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title: `${categoryName} | Sản phẩm | Cô Thảo Tôm Cá`,
-      description: `Danh mục sản phẩm ${categoryName} — Cô Thảo Tôm Cá`,
+      title: `${categoryName} | ${titleSuffix}`,
+      description: descSuffix,
       type: 'website',
     },
   }
@@ -134,13 +140,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   }
 
   if (selectedIngredientsSlugs.length === 0) {
-    // Fetch products using canonical DB category slug
+    // Fetch products using canonical DB category slug or category ID
     const productsData = await getApi<Product>('products', {
       params: {
         lang: locale,
         per_page: 9,
         page: page,
-        category_slug: canonicalCategorySlug,
+        ...(categoryId ? { category_id: categoryId } : { category_slug: canonicalCategorySlug }),
         ingredients: ''
       }
     }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }));
