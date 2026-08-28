@@ -150,7 +150,10 @@
       }
     },
     "section-3": {
-      "title": "Ân cần trọn vị mỗi ngày",
+      "title": {
+        "text1": "Ân cần trọn vị",
+        "text2": "mỗi ngày"
+      },
       "value1": {
         "title": "Chất Lượng Tinh Tuyển",
         "description": "Chỉ sử dụng nguồn nguyên liệu hạng nhất để chế biến. Cam kết tuyệt đối 100% không sử dụng chất bảo quản, giữ trọn hương vị nguyên bản và tốt cho sức khỏe."

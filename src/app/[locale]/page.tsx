@@ -345,7 +345,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                   <li><span className="font-bold">{t('home.section-7.description.text4.title')}</span> {t('home.section-7.description.text4.description')}</li>
                 </ol> */}
               </div>
-              <div className="grid grid-cols-2 md:flex items-center md:gap-4 gap-6 xl:gap-6">
+              <div className="grid grid-cols-2 md:flex items-center md:gap-4 gap-2 xl:gap-6">
                 <a href="tel:02499997122" className="btn btn-white flex items-center gap-2 px-3.5">
                   <Phone />
                   <span>024.9999.7122</span>
