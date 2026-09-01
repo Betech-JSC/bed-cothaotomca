@@ -390,7 +390,10 @@
       }
     },
     "section-3": {
-      "title": "Savory Perfection in Every Bite",
+      "title": {
+        "text1": "Savory Perfection",
+        "text2": "in Every Bite"
+      },
       "value1": {
         "title": "Premium-Grade Ingredients",
         "description": "We use only top-tier ingredients in every preparation. Absolutely no preservatives — preserving the pure, natural flavor while ensuring a wholesome and health-conscious experience."
