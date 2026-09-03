@@ -9,10 +9,12 @@ export default function ProfilePage() {
   const { user, loading, logout, updateProfile, refreshUser } = useAuth();
   const router = useRouter();
 
-  // Redirect to signin if not logged in
+  // Redirect to signin if not logged in, hoặc refresh thông tin điểm mới nhất từ KiotViet
   useEffect(() => {
     if (!loading && !user) {
       router.push("/signin");
+    } else if (user) {
+      refreshUser();
     }
   }, [user, loading, router]);
 

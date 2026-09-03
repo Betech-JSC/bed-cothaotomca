@@ -112,13 +112,14 @@
     "delivery_type": "Delivery method",
     "delivery_home": "Home Delivery",
     "delivery_pickup": "Store Pickup",
-    "province_label": "Province / City *",
-    "ward_label": "Ward (Delivery Area) *",
-    "street_label": "Street Address *",
+    "province_label": "Province / City",
+    "ward_label": "Ward (Delivery Area)",
+    "street_label": "Street Address",
     "pickup_branch_title": "Pickup Branch",
     "pickup_branch_label": "Select nearest branch",
     "pickup_address_label": "Pickup Address:",
     "pickup_freeship_tip": "Pickup at store saves shipping fees (Free shipping)",
+    "pickup_time_notice": "Pickup time: When our customer care staff calls to confirm your order, please provide the specific estimated time you will arrive at the store to pick up your order.",
     "delivery_time_label": "Preferred Delivery Time",
     "pickup_time_label": "Preferred Pickup Time",
     "delivery_now": "Deliver now (Express 45 - 90 mins)",
@@ -228,7 +229,9 @@
     "gift_tag": "Gift"
   },
   "preorder_notice": {
+    "title": "Scheduled Order Notice",
     "subtitle": "Service Hours & Delivery Schedule",
+    "message": "The kitchen has stopped accepting instant delivery orders after {cutoff}. You can still pre-order and select a pickup/delivery time slot starting from {openTime} today ({date}).",
     "expected_date": "Expected Delivery Date:",
     "slot_info": "Pickup / Delivery Slot:",
     "confirm_btn": "I understand, continue order"
@@ -243,6 +246,8 @@
   },
   "orderSuccess": {
     "title": "Order placed successfully!",
+    "notice_message": "We will call you shortly to confirm your order information before delivery. Please answer the phone to confirm, your order will be delivered after successful confirmation.",
+    "hotline_support": "Support hotline: <link>{hotline}</link>",
     "description": "Thank you, {name}, for trusting Cô Thảo Tôm Cá. Your order is being prepared and will be delivered to you <strong>at the latest by {time}</strong>.",
     "description_pickup": "Thank you, {name}, for trusting Cô Thảo Tôm Cá. Your order is being prepared and you can pick it up <strong>at the latest by {time}</strong>.",
     "hotline_message": "If you have not received your order by the above time, please contact us immediately<br></br><strong>hotline {hotline}</strong> for assistance!",
@@ -276,12 +281,20 @@
   "orderLookup": {
     "title": "Order Lookup",
     "subtitle": "Check the status and delivery progress of your order",
+    "notice_message": "Your order is being prepared. The order will only be delivered after the customer answers the phone and confirms. Please pay attention to your phone to avoid missing the order confirmation call.",
     "order_code_placeholder": "Enter order code (e.g. CTTC-123456)...",
     "phone_placeholder": "Enter order phone number...",
     "search_button": "Track Order",
     "searching": "Searching...",
-    "validation_error": "Please enter both Order Code and Phone Number.",
+    "validation_error": "Please enter your phone number or order code.",
     "not_found": "Order details not found.",
+    "recent_orders_title": "Recent Orders",
+    "recent_orders_subtitle": "Showing up to 5 most recent orders for {phone}",
+    "view_details": "View Details",
+    "back_to_list": "Back to Orders List",
+    "no_orders_found_phone": "No orders found for this phone number.",
+    "order_date": "Order Date",
+    "optional_tag": "(Optional)",
     "order_info": "Order Details",
     "order_code": "Order Code",
     "created_at": "Order Time",
@@ -340,6 +353,19 @@
       "pending_sync": "Pending Sync",
       "failed": "Sync Error"
     }
+  },
+  "orderStepper": {
+    "step1_title": "Pending Confirmation",
+    "step1_desc": "Order placed successfully, customer service is preparing to confirm.",
+    "step2_title": "Out for Delivery",
+    "step2_desc": "Confirmed & invoiced, currently being shipped to you.",
+    "step_number": "Step {step}",
+    "cancelled_badge": "Cancelled",
+    "cancelled_title": "Order has been cancelled",
+    "cancelled_desc": "This order is no longer in the delivery process.",
+    "cancel_requested_badge": "Cancellation Requested",
+    "cancel_requested_title": "Cancellation request is being processed",
+    "cancel_requested_desc": "Customer service is processing your cancellation request."
   },
   "home": {
     "section-2": {

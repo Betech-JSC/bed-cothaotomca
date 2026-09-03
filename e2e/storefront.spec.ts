@@ -144,7 +144,7 @@ test.describe('Storefront E2E Suite — 8 Critical Flow Tests (Real Chrome Brows
       flowName: 'Luồng 4: Phí ship & Chi nhánh Realtime',
       dataType: 'Vận chuyển / Chi nhánh',
       orderCodeWeb: 'Địa chỉ: Q.10, P.12, TP.HCM',
-      kiotvietCodeOrId: 'Branch ID: 1000000211 (HS - Cô Thảo Tôm Cá)',
+      kiotvietCodeOrId: 'Branch ID: 1000000211 (Chi nhánh Hoàng Sa (Q.1))',
       voucherUsed: 'Không',
       notes: 'Tự động tính phí giao hàng 15,000đ và gán chi nhánh KiotViet phụ trách realtime',
     });

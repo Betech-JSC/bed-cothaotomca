@@ -4,10 +4,56 @@
  * After 22:30 cutoff, immediate delivery is disabled and default date shifts to tomorrow.
  */
 
+export function getVietnamDateParts(date = new Date()): {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+} {
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(date);
+    const map: Record<string, number> = {};
+    for (const part of parts) {
+      if (part.type !== "literal") {
+        map[part.type] = parseInt(part.value, 10);
+      }
+    }
+    return {
+      year: map.year,
+      month: map.month,
+      day: map.day,
+      hour: map.hour === 24 ? 0 : (map.hour ?? 0),
+      minute: map.minute ?? 0,
+      second: map.second ?? 0,
+    };
+  } catch (err) {
+    return {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+      second: date.getSeconds(),
+    };
+  }
+}
+
 export function getVietnamDate(date = new Date()): Date {
   try {
-    const str = date.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" });
-    return new Date(str);
+    const parts = getVietnamDateParts(date);
+    return new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
   } catch (err) {
     return new Date(date);
   }
@@ -15,12 +61,10 @@ export function getVietnamDate(date = new Date()): Date {
 
 export function getVietnamTimeString(date = new Date()): string {
   try {
-    return date.toLocaleTimeString("en-GB", {
-      timeZone: "Asia/Ho_Chi_Minh",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+    const parts = getVietnamDateParts(date);
+    const hours = parts.hour.toString().padStart(2, "0");
+    const minutes = parts.minute.toString().padStart(2, "0");
+    return `${hours}:${minutes}`;
   } catch (err) {
     const hours = date.getHours().toString().padStart(2, "0");
     const minutes = date.getMinutes().toString().padStart(2, "0");
@@ -68,6 +112,9 @@ export interface PreOrderNotice {
   targetDateISO: string;
   targetDateDisplay: string;
   slotInfo: string;
+  cutoff?: string;
+  openTime?: string;
+  todayDateDisplay?: string;
 }
 
 export interface OperatingCheckResult {
@@ -132,6 +179,10 @@ export function checkOperatingHours(operatingConfig?: {
     return `${label} (${dd}/${mm})`;
   };
 
+  const todayDD = today.getDate().toString().padStart(2, "0");
+  const todayMM = (today.getMonth() + 1).toString().padStart(2, "0");
+  const todayDateFormatted = `${todayDD}/${todayMM}`;
+
   const todayShortDisplay = formatShortDate(today, "Hôm nay");
   const tomorrowShortDisplay = formatShortDate(tomorrow, "Ngày mai");
 
@@ -157,10 +208,13 @@ export function checkOperatingHours(operatingConfig?: {
     message = `Hiện quán đã ngưng nhận giao ngay | Bạn vẫn có thể Đặt trước (Hẹn giờ) để nhận món vào ${targetDateDisplay}.`;
     notice = {
       title: "Thông Báo Đặt Hàng Hẹn Giờ",
-      message: `Bếp đã ngưng nhận đơn giao ngay sau ${lastOrderCutoffStr}. Quý khách vui lòng hẹn giờ nhận món từ ${deliveryOpenStr} (${targetDateDisplay}).`,
+      message: `Bếp đã dừng nhận đơn giao ngay sau ${lastOrderCutoffStr}. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ ${deliveryOpenStr} hôm nay (${todayDateFormatted}).`,
       targetDateISO: defaultDate,
       targetDateDisplay: targetDateDisplay,
       slotInfo: `${deliveryOpenStr} - ${deliveryCloseStr}`,
+      cutoff: lastOrderCutoffStr,
+      openTime: deliveryOpenStr,
+      todayDateDisplay: todayDateFormatted,
     };
   }
 

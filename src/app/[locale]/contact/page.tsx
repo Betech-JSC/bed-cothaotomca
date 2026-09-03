@@ -77,7 +77,10 @@ export default async function ContactPage({
   };
 
   const settings = await getGeneralSettings(locale).catch(() => null);
-  const branches = await getBranches(locale).catch(() => []);
+  const rawBranches = await getBranches(locale).catch(() => []);
+  const branches = [...rawBranches].sort(
+    (a, b) => (a.sort_order ?? a.id ?? 0) - (b.sort_order ?? b.id ?? 0)
+  );
 
   const hotline = settings?.hotline?.replace(/\s/g, '') || '';
   const email = settings?.email;

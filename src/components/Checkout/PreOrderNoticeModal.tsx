@@ -19,6 +19,14 @@ export default function PreOrderNoticeModal({
 
   if (!isOpen || !notice) return null;
 
+  const messageText = notice.todayDateDisplay
+    ? t("message", {
+        cutoff: notice.cutoff || "22:30",
+        openTime: notice.openTime || "10:00",
+        date: notice.todayDateDisplay,
+      })
+    : notice.message;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div
@@ -38,7 +46,7 @@ export default function PreOrderNoticeModal({
         </div>
 
         <p className="body-2 text-gray-700 leading-relaxed font-sans">
-          {notice.message}
+          {messageText}
         </p>
 
         <div className="bg-yellow/60 border border-secondary/20 rounded-xl p-4 space-y-2 font-sans">

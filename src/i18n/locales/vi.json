@@ -112,13 +112,14 @@
     "delivery_type": "Hình thức nhận hàng",
     "delivery_home": "Giao hàng tận nơi",
     "delivery_pickup": "Tự đến lấy tại chi nhánh",
-    "province_label": "Tỉnh / Thành phố *",
-    "ward_label": "Phường / Xã (Khu vực giao) *",
-    "street_label": "Số nhà, tên đường *",
+    "province_label": "Tỉnh / Thành phố",
+    "ward_label": "Phường / Xã (Khu vực giao)",
+    "street_label": "Số nhà, tên đường",
     "pickup_branch_title": "Chi nhánh nhận hàng",
     "pickup_branch_label": "Chọn chi nhánh gần bạn nhất",
     "pickup_address_label": "Địa chỉ nhận hàng:",
     "pickup_freeship_tip": "Tự đến lấy giúp tiết kiệm phí vận chuyển (Miễn phí ship)",
+    "pickup_time_notice": "Thời gian lấy hàng: Khi nhân viên chăm sóc khách hàng gọi xác nhận đơn hàng, quý khách vui lòng cung cấp thời gian cụ thể dự kiến đến cửa hàng nhận món.",
     "delivery_time_label": "Thời gian giao hàng mong muốn",
     "pickup_time_label": "Thời gian đến lấy hàng mong muốn",
     "delivery_now": "Giao ngay (Hỏa tốc 45 - 90 phút)",
@@ -155,6 +156,8 @@
     "select_voucher_btn": "Chọn mã",
     "reapply_voucher": "Áp dụng lại",
     "voucher_prereq_note": "* Áp dụng cho đơn hàng từ {amount} trở lên.",
+    "member_discount_gold": "Ưu đãi thành viên Gold (-5%)",
+    "member_discount_diamond": "Ưu đãi thành viên Diamond (-8%)",
     "auto_assigned_branch": "Hệ thống tự động xác định giao từ chi nhánh: <strong>{branchName}</strong>",
     "qr": {
       "title": "Quét mã QR để thanh toán",
@@ -228,7 +231,9 @@
     "gift_tag": "Quà"
   },
   "preorder_notice": {
+    "title": "Thông Báo Đặt Hàng Hẹn Giờ",
     "subtitle": "Khung giờ phục vụ & hẹn nhận món",
+    "message": "Bếp đã dừng nhận đơn giao ngay sau {cutoff}. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ {openTime} hôm nay ({date}).",
     "expected_date": "Ngày nhận món dự kiến:",
     "slot_info": "Khung giờ giao / lấy hàng:",
     "confirm_btn": "Tôi đã hiểu, tiếp tục đặt hàng"
@@ -243,6 +248,8 @@
   },
   "orderSuccess": {
     "title": "Đặt hàng thành công!",
+    "notice_message": "Chúng tôi sẽ sớm gọi cho bạn để xác nhận thông tin trước khi giao. Vui lòng nghe máy để xác nhận, đơn hàng sẽ được giao sau khi xác nhận thành công.",
+    "hotline_support": "Hotline hỗ trợ: <link>{hotline}</link>",
     "description": "Cảm ơn bạn {name} đã tin tưởng Cô Thảo Tôm Cá. Đơn hàng của bạn đang được chuẩn bị và sẽ được giao đến bạn <strong>muộn nhất {time}</strong>.",
     "description_pickup": "Cảm ơn bạn {name} đã tin tưởng Cô Thảo Tôm Cá. Đơn hàng của bạn đang được chuẩn bị và bạn có thể đến lấy <strong>muộn nhất lúc {time}</strong>.",
     "hotline_message": "Nếu quá thời gian trên chưa nhận được đơn hàng, vui lòng liên hệ ngay<br></br><strong>hotline {hotline}</strong> để được hỗ trợ xử lý nhanh nhất!",
@@ -276,12 +283,20 @@
   "orderLookup": {
     "title": "Tra cứu đơn hàng",
     "subtitle": "Kiểm tra tiến độ chế biến và giao nhận đơn hàng của bạn",
+    "notice_message": "Đơn hàng của bạn đang được chuẩn bị. Đơn hàng chỉ được tiến hành giao sau khi khách hàng nghe máy và xác nhận. Vui lòng chú ý điện thoại để tránh bỏ lỡ cuộc gọi xác nhận đơn hàng.",
     "order_code_placeholder": "Nhập mã đơn hàng (VD: CTTC-123456)...",
     "phone_placeholder": "Nhập số điện thoại đặt hàng...",
     "search_button": "Tra cứu ngay",
     "searching": "Đang tra cứu...",
-    "validation_error": "Vui lòng nhập đầy đủ Mã đơn hàng và Số điện thoại.",
+    "validation_error": "Vui lòng nhập số điện thoại hoặc mã đơn hàng.",
     "not_found": "Không tìm thấy thông tin đơn hàng.",
+    "recent_orders_title": "Danh sách đơn hàng gần đây",
+    "recent_orders_subtitle": "Hiển thị tối đa 5 đơn hàng gần nhất của số điện thoại {phone}",
+    "view_details": "Xem chi tiết",
+    "back_to_list": "Quay lại danh sách đơn",
+    "no_orders_found_phone": "Không tìm thấy đơn hàng nào với số điện thoại này.",
+    "order_date": "Ngày đặt",
+    "optional_tag": "(Không bắt buộc)",
     "order_info": "Thông tin đơn hàng",
     "order_code": "Mã đơn hàng",
     "created_at": "Thời gian đặt",
@@ -340,6 +355,19 @@
       "pending_sync": "Chờ đồng bộ",
       "failed": "Lỗi đồng bộ"
     }
+  },
+  "orderStepper": {
+    "step1_title": "Chờ xác nhận",
+    "step1_desc": "Đơn đặt thành công, CSKH đang chuẩn bị gọi xác nhận.",
+    "step2_title": "Đang giao hàng",
+    "step2_desc": "Đã xác nhận & xuất hoá đơn, đang vận chuyển đến quý khách.",
+    "step_number": "Bước {step}",
+    "cancelled_badge": "Đã huỷ",
+    "cancelled_title": "Đơn hàng đã được huỷ",
+    "cancelled_desc": "Đơn hàng này không còn trong tiến trình giao nhận.",
+    "cancel_requested_badge": "Đang yêu cầu huỷ",
+    "cancel_requested_title": "Yêu cầu huỷ đơn đang được xử lý",
+    "cancel_requested_desc": "Bộ phận CSKH đang tiếp nhận và xử lý yêu cầu huỷ của bạn."
   },
   "home": {
     "section-2": {

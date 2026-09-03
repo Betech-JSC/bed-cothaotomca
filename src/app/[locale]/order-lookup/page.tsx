@@ -6,12 +6,13 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/i18n-navigation";
 import {
-  getOrderByCode,
+  lookupOrders,
   cancelOrderApi,
   requestCancelOrderApi,
   OrderApiError,
 } from "@/services/orderService";
 import { getGeneralSettings } from "@/services/generalSettingService";
+import OrderStatusStepper from "@/components/Order/OrderStatusStepper";
 
 interface OrderDetailData {
   order_code: string;
@@ -79,6 +80,7 @@ export default function OrderLookupPage() {
   }, []);
 
   const [order, setOrder] = useState<OrderDetailData | null>(null);
+  const [orderList, setOrderList] = useState<OrderDetailData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -92,8 +94,11 @@ export default function OrderLookupPage() {
   // Countdown timer for 15-minute window
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
 
-  const fetchOrder = async (codeStr: string, phoneStr: string) => {
-    if (!codeStr.trim() || !phoneStr.trim()) {
+  const fetchOrders = async (codeStr: string, phoneStr: string) => {
+    const trimmedCode = codeStr.trim();
+    const trimmedPhone = phoneStr.trim();
+
+    if (!trimmedCode && !trimmedPhone) {
       setError(t("validation_error"));
       return;
     }
@@ -103,12 +108,36 @@ export default function OrderLookupPage() {
     setSuccessMsg(null);
 
     try {
-      const data = await getOrderByCode(codeStr.trim(), phoneStr.trim());
-      const fetchedOrder = data as unknown as OrderDetailData;
-      setOrder(fetchedOrder);
-      setSecondsLeft(fetchedOrder.remaining_cancel_seconds || 0);
+      const res = await lookupOrders(trimmedPhone, trimmedCode);
+
+      if (Array.isArray(res)) {
+        if (res.length === 0) {
+          setOrder(null);
+          setOrderList([]);
+          setError(t("no_orders_found_phone") || t("not_found"));
+        } else if (res.length === 1 && trimmedCode) {
+          const singleOrder = res[0] as unknown as OrderDetailData;
+          setOrder(singleOrder);
+          setOrderList([]);
+          setSecondsLeft(singleOrder.remaining_cancel_seconds || 0);
+        } else {
+          const list = (res as unknown as OrderDetailData[]).slice(0, 5);
+          setOrderList(list);
+          setOrder(null);
+        }
+      } else if (res && typeof res === "object") {
+        const fetchedOrder = res as unknown as OrderDetailData;
+        setOrder(fetchedOrder);
+        setOrderList([]);
+        setSecondsLeft(fetchedOrder.remaining_cancel_seconds || 0);
+      } else {
+        setOrder(null);
+        setOrderList([]);
+        setError(t("not_found"));
+      }
     } catch (err: unknown) {
       setOrder(null);
+      setOrderList([]);
       if (err instanceof OrderApiError) {
         setError(err.message);
       } else {
@@ -121,12 +150,12 @@ export default function OrderLookupPage() {
 
   // Auto-fetch if URL query params exist
   useEffect(() => {
-    const codeParam = searchParams.get("code");
-    const phoneParam = searchParams.get("phone");
-    if (codeParam && phoneParam) {
+    const codeParam = searchParams.get("code") || "";
+    const phoneParam = searchParams.get("phone") || "";
+    if (codeParam || phoneParam) {
       setOrderCode(codeParam);
       setPhone(phoneParam);
-      fetchOrder(codeParam, phoneParam);
+      fetchOrders(codeParam, phoneParam);
     }
   }, [searchParams]);
 
@@ -147,9 +176,51 @@ export default function OrderLookupPage() {
     return () => clearInterval(timer);
   }, [secondsLeft]);
 
+  // Polling for live status updates if active order is pending
+  useEffect(() => {
+    if (!order?.order_code) return;
+
+    const currentStatus = (order.status || "").toLowerCase();
+    const currentSyncStatus = (order.sync_status || "").toLowerCase();
+    const shouldPoll =
+      currentStatus === "pending" ||
+      currentStatus === "pending_payment" ||
+      currentStatus === "pending_sync" ||
+      currentSyncStatus === "pending";
+
+    if (!shouldPoll) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const orderPhone = phone.trim() || order.customer?.phone || "";
+        const res = await lookupOrders(orderPhone, order.order_code);
+        if (Array.isArray(res) && res.length === 1) {
+          const updated = res[0] as unknown as OrderDetailData;
+          setOrder(updated);
+        } else if (res && typeof res === "object" && !Array.isArray(res)) {
+          const updated = res as unknown as OrderDetailData;
+          setOrder(updated);
+        }
+      } catch {
+        // silent polling error
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [order?.order_code, order?.status, order?.sync_status, phone]);
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchOrder(orderCode, phone);
+    fetchOrders(orderCode, phone);
+  };
+
+  const handleSelectOrder = (selectedOrder: OrderDetailData) => {
+    setOrder(selectedOrder);
+    setSecondsLeft(selectedOrder.remaining_cancel_seconds || 0);
+  };
+
+  const handleBackToList = () => {
+    setOrder(null);
   };
 
   const isOnlinePaid =
@@ -161,6 +232,8 @@ export default function OrderLookupPage() {
     setActionLoading(true);
     setModalError(null);
 
+    const cancelPhone = phone.trim() || order.customer?.phone || order.delivery?.contact_number || "";
+
     try {
       if (isOnlinePaid) {
         if (!cancelReason.trim()) {
@@ -170,19 +243,27 @@ export default function OrderLookupPage() {
         }
         const res = await requestCancelOrderApi(
           order.order_code,
-          phone,
+          cancelPhone,
           cancelReason.trim()
         );
         setSuccessMsg(res.message);
-        setOrder(res.data as unknown as OrderDetailData);
+        const updated = res.data as unknown as OrderDetailData;
+        setOrder(updated);
+        setOrderList((prev) =>
+          prev.map((item) => (item.order_code === updated.order_code ? updated : item))
+        );
       } else {
         const res = await cancelOrderApi(
           order.order_code,
-          phone,
+          cancelPhone,
           cancelReason.trim() || undefined
         );
         setSuccessMsg(res.message);
-        setOrder(res.data as unknown as OrderDetailData);
+        const updated = res.data as unknown as OrderDetailData;
+        setOrder(updated);
+        setOrderList((prev) =>
+          prev.map((item) => (item.order_code === updated.order_code ? updated : item))
+        );
       }
       setShowCancelModal(false);
       setCancelReason("");
@@ -319,7 +400,7 @@ export default function OrderLookupPage() {
           <form onSubmit={handleSearchSubmit} className="space-y-4 md:space-y-0 md:grid md:grid-cols-12 md:gap-4 items-end">
             <div className="md:col-span-5">
               <label htmlFor="orderCode" className="block text-xs font-bold text-primary uppercase tracking-wider mb-2">
-                {t("order_code")}
+                {t("order_code")} <span className="text-xs text-gray-400 font-normal lowercase tracking-normal">{t("optional_tag")}</span>
               </label>
               <input
                 id="orderCode"
@@ -328,7 +409,6 @@ export default function OrderLookupPage() {
                 onChange={(e) => setOrderCode(e.target.value)}
                 placeholder={t("order_code_placeholder")}
                 className="w-full h-[48px] px-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-900 font-mono text-sm shadow-xs"
-                required
               />
             </div>
             <div className="md:col-span-4">
@@ -342,7 +422,6 @@ export default function OrderLookupPage() {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder={t("phone_placeholder")}
                 className="w-full h-[48px] px-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-gray-900 text-sm shadow-xs"
-                required
               />
             </div>
             <div className="md:col-span-3">
@@ -379,9 +458,86 @@ export default function OrderLookupPage() {
           )}
         </div>
 
+        {/* Recent Orders List Container (Phương án 1) */}
+        {!order && orderList.length > 0 && (
+          <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-[0_4px_25px_rgba(20,42,104,0.06)] border border-gray-100 space-y-6">
+            <div className="border-b border-gray-100 pb-4">
+              <h2 className="text-xl sm:text-2xl font-bold font-display text-primary">
+                {t("recent_orders_title")}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {t("recent_orders_subtitle", { phone: phone || orderList[0]?.customer?.phone || "" })}
+              </p>
+            </div>
+
+            <div className="divide-y divide-gray-100">
+              {orderList.map((item) => (
+                <div
+                  key={item.order_code}
+                  className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-3">
+                      <span className="text-base sm:text-lg font-bold font-mono text-primary">
+                        {item.order_code}
+                      </span>
+                      <div className="sm:hidden">
+                        {renderStatusBadge(item.status, item.payment?.method, item.payment_status)}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      <span>{t("order_date")}: </span>
+                      <span className="font-medium text-gray-700">
+                        {item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "—"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      <span>{t("total")}: </span>
+                      <span className="font-bold text-secondary text-sm">
+                        {formatMoney(item.total)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 justify-between sm:justify-end">
+                    <div className="hidden sm:block">
+                      {renderStatusBadge(item.status, item.payment?.method, item.payment_status)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectOrder(item)}
+                      className="bg-secondary hover:bg-secondary/90 text-yellow text-sm font-bold py-2 px-4 rounded-xl transition-all shadow-md shadow-secondary/20 whitespace-nowrap cursor-pointer"
+                    >
+                      {t("view_details")}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Order Details Container */}
         {order && (
-          <div className="bg-white rounded-2xl shadow-[0_4px_25px_rgba(20,42,104,0.06)] border border-gray-100 overflow-hidden transition-all">
+          <div className="space-y-4">
+            {orderList.length > 0 && (
+              <button
+                type="button"
+                onClick={handleBackToList}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-primary text-sm font-semibold transition-all cursor-pointer shadow-xs"
+              >
+                {t("back_to_list")}
+              </button>
+            )}
+
+            {/* Confirmation Notice Box */}
+            <div className="bg-yellow/60 border border-secondary/30 rounded-2xl p-4 md:p-5 text-center shadow-xs">
+              <p className="text-brown text-sm md:text-base leading-relaxed font-normal">
+                {t("notice_message")}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-[0_4px_25px_rgba(20,42,104,0.06)] border border-gray-100 overflow-hidden transition-all">
             {/* Header Banner - Brand Header */}
             <div className="bg-primary text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
               <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-secondary/15 blur-2xl pointer-events-none" />
@@ -409,6 +565,14 @@ export default function OrderLookupPage() {
                   </span>
                 </div>
               </div>
+            </div>
+
+            {/* Order Progress Stepper */}
+            <div className="p-6 sm:p-8 border-b border-gray-100 bg-gray-50/50">
+              <OrderStatusStepper
+                status={order.status}
+                syncStatus={order.sync_status}
+              />
             </div>
 
             {/* 15-Minute Countdown Banner & Action */}
@@ -573,8 +737,13 @@ export default function OrderLookupPage() {
                       </div>
                       <div>
                         <div className="font-bold text-primary text-sm group-hover:text-secondary transition-colors">{item.product_name}</div>
-                        <div className="text-xs text-gray-500 font-mono mt-0.5">
-                          {t("order_code")}: {item.product_code} <span className="text-secondary font-bold font-sans ml-1">x {item.quantity}</span>
+                        <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+                          {item.variant_size && (
+                            <span className="font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                              {item.variant_size}
+                            </span>
+                          )}
+                          <span className="text-secondary font-bold font-sans">x {item.quantity}</span>
                         </div>
                       </div>
                     </div>
@@ -589,6 +758,7 @@ export default function OrderLookupPage() {
               </div>
             </div>
           </div>
+        </div>
         )}
 
         {/* Cancellation Confirmation Modal */}

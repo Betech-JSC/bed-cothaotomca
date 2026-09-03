@@ -3,6 +3,45 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { postApi } from "@/services/apiService";
 
+export interface MemberTierInfo {
+  tier: "member" | "gold" | "diamond";
+  name: string;
+  discountPercent: number;
+  label: string;
+}
+
+export function getMemberTier(points: number = 0): MemberTierInfo {
+  if (points >= 800) {
+    return {
+      tier: "diamond",
+      name: "Diamond",
+      discountPercent: 8,
+      label: "Ưu đãi thành viên Diamond (-8%)",
+    };
+  }
+  if (points >= 400) {
+    return {
+      tier: "gold",
+      name: "Gold",
+      discountPercent: 5,
+      label: "Ưu đãi thành viên Gold (-5%)",
+    };
+  }
+  return {
+    tier: "member",
+    name: "Member",
+    discountPercent: 0,
+    label: "",
+  };
+}
+
+export function calculateMemberDiscount(points: number = 0, subtotal: number = 0): number {
+  if (subtotal <= 0 || points < 400) return 0;
+  const tier = getMemberTier(points);
+  if (tier.discountPercent <= 0) return 0;
+  return Math.ceil((subtotal * (tier.discountPercent / 100)) / 1000) * 1000;
+}
+
 export interface StorefrontUser {
   id: number;
   name: string;
@@ -15,6 +54,9 @@ export interface StorefrontUser {
   gender: boolean | null;
   kiotviet_customer_id: number | null;
   photo_url?: string | null;
+  tier?: string;
+  tier_name?: string;
+  tier_info?: any;
 }
 
 interface AuthContextType {

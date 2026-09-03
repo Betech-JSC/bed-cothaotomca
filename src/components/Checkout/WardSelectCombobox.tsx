@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import type { AdministrativeWard } from "@/services/orderService";
 import { formatWardLabel, HCMC_WARD_OLD_NAME_MAP } from "@/data/wardMapping";
+import RequiredMark from "./RequiredMark";
 
 interface WardSelectComboboxProps {
   wards: AdministrativeWard[];
@@ -116,7 +117,8 @@ export default function WardSelectCombobox({
   return (
     <div className="space-y-1 relative" ref={containerRef}>
       <label className="text-sm font-serif font-semibold text-primary block">
-        Phường / Xã (Khu vực giao) *
+        Phường / Xã (Khu vực giao)
+        <RequiredMark />
       </label>
 
       <div className="relative">

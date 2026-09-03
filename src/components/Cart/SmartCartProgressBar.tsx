@@ -10,6 +10,8 @@ interface SmartCartProgressBarProps {
   shippingSettings?: {
     is_min_amount_enabled?: boolean;
     min_order_amount?: number;
+    shipping_discount_type?: "fixed" | "free";
+    shipping_discount_value?: number;
   } | null;
   isFreeship?: boolean;
   freeshipReason?: string | null;
@@ -44,13 +46,19 @@ export default function SmartCartProgressBar({
       code?: string;
     }[] = [];
 
-    // Freeship candidate
+    // Shipping discount / Freeship candidate
     if (freeshipMin > 0 && subtotal < freeshipMin && !isFreeship) {
+      const isFixed = shippingSettings?.shipping_discount_type === "fixed";
+      const discountVal = Number(shippingSettings?.shipping_discount_value || 0);
+      const rewardText = isFixed && discountVal > 0
+        ? `giảm ${formatPrice(discountVal)} phí ship`
+        : "Freeship";
+
       candidateMilestones.push({
         type: "freeship",
         target: freeshipMin,
-        label: "Freeship",
-        reward: "Freeship",
+        label: isFixed ? "Giảm phí ship" : "Freeship",
+        reward: rewardText,
       });
     }
 

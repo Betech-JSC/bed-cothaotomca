@@ -21,7 +21,7 @@ export async function getBranches(lang?: string): Promise<Branch[]> {
       const orderA = a.sort_order ?? a.id;
       const orderB = b.sort_order ?? b.id;
 
-      return orderB - orderA;
+      return orderA - orderB;
     });
   } catch (error) {
     console.error('Error fetching branches:', error);

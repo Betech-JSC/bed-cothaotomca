@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { getOrderByCode } from "@/services/orderService";
 import { formatPrice } from "@/lib/format";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
+import OrderStatusStepper from "@/components/Order/OrderStatusStepper";
 
 interface OrderSuccessClientProps {
   orderCode: string;
@@ -25,7 +26,7 @@ export default function OrderSuccessClient({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const hotline = settings?.hotline || "0987 654 321";
+  const hotline = "028 6686 1508";
 
   const fetchOrder = async () => {
     setLoading(true);
@@ -47,6 +48,34 @@ export default function OrderSuccessClient({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderCode, phone]);
+
+  // Polling for live status updates (pending / pending_sync / pending_payment -> synced)
+  useEffect(() => {
+    if (!orderCode) return;
+
+    const currentStatus = (order?.status || "").toLowerCase();
+    const currentSyncStatus = (order?.sync_status || "").toLowerCase();
+    const shouldPoll =
+      currentStatus === "pending" ||
+      currentStatus === "pending_payment" ||
+      currentStatus === "pending_sync" ||
+      currentSyncStatus === "pending";
+
+    if (!shouldPoll) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const updated = await getOrderByCode(orderCode, phone);
+        if (updated) {
+          setOrder(updated);
+        }
+      } catch {
+        // silent polling error
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [orderCode, phone, order?.status, order?.sync_status]);
 
   const formatExpectedTime = (orderData: any) => {
     let date = null;
@@ -156,34 +185,32 @@ export default function OrderSuccessClient({
         {t("title")}
       </h1>
 
-      {/* Message Description */}
-      <div className="space-y-3 text-center max-w-2xl mx-auto">
-        <p className="text-gray-700 text-sm md:text-base leading-relaxed block font-sans">
-          {isPickup
-            ? t.rich("description_pickup", {
-                name: customerName,
-                time: expectedTime,
-                strong: (chunks) => <strong className="font-bold text-gray-900">{chunks}</strong>,
-              })
-            : t.rich("description", {
-                name: customerName,
-                time: expectedTime,
-                strong: (chunks) => <strong className="font-bold text-gray-900">{chunks}</strong>,
-              })}
+      {/* Confirmation Notice Box */}
+      <div className="bg-yellow/60 border border-secondary/30 rounded-2xl p-4 md:p-5 text-center max-w-xl mx-auto space-y-2 font-sans">
+        <p className="text-brown text-sm md:text-base leading-relaxed font-normal">
+          {t("notice_message")}
         </p>
-        <p className="text-gray-600 text-xs md:text-sm leading-relaxed max-w-xl mx-auto block pt-1 font-sans">
-          {isPickup
-            ? t.rich("hotline_message_pickup", {
-                hotline,
-                strong: (chunks) => <strong className="font-bold text-gray-900">{chunks}</strong>,
-                br: () => <br />,
-              })
-            : t.rich("hotline_message", {
-                hotline,
-                strong: (chunks) => <strong className="font-bold text-gray-900">{chunks}</strong>,
-                br: () => <br />,
-              })}
+        <p className="text-brown text-sm md:text-base font-medium">
+          {t.rich("hotline_support", {
+            hotline,
+            link: (chunks) => (
+              <a
+                href={`tel:${hotline.replace(/\s+/g, "")}`}
+                className="text-secondary font-bold hover:underline transition-colors"
+              >
+                {chunks}
+              </a>
+            ),
+          })}
         </p>
+      </div>
+
+      {/* Order Status Stepper */}
+      <div className="mt-8">
+        <OrderStatusStepper
+          status={order?.status}
+          syncStatus={order?.sync_status}
+        />
       </div>
 
       {/* Receipt Info Card */}

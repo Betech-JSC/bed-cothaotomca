@@ -10,6 +10,7 @@ import { useBranches } from "@/contexts/BranchContext";
 import {
   calcOrderTotal,
   calculateShippingFee,
+  calculateVoucherDiscount,
   createOrder,
   getAdministrativeUnits,
   getAvailableVouchers,
@@ -61,9 +62,15 @@ const POPULAR_DISTRICTS = [
 
 export default function MobileCartFlow({ onClose, inline = false }: { onClose?: () => void; inline?: boolean }) {
   const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen } = useCart();
-  const { user } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const router = useRouter();
   const t = useTranslations("checkout");
+
+  useEffect(() => {
+    if (user) {
+      refreshUser();
+    }
+  }, [user]);
 
   const [step, setStep] = useState<1 | 2>(inline ? 2 : 1);
   const [loading, setLoading] = useState(false);
@@ -255,43 +262,43 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               id: b.id,
               branchName: (b as any).branchName || (b as any).name || b.title || b.address || `Chi nhánh #${b.id}`,
               address: b.address,
-              contactNumber: b.phone || (b as any).contactNumber || "",
+              contactNumber: b.phone || (b as any).contactNumber || "024.9999.7122",
               isActive: true
             }))
             : [
               {
                 id: 1000021387,
-                branchName: "GV - Cô Thảo Tôm Cá",
-                address: "1073 Phan Văn Trị, Phường Gò Vấp, Thành phố Hồ Chí Minh",
-                contactNumber: "+84 779 222 173",
+                branchName: "Chi nhánh Gò Vấp",
+                address: "1073 Phan Văn Trị, Gò Vấp (Takeaway)",
+                contactNumber: "024.9999.7122",
                 isActive: true,
               },
               {
                 id: 1000000211,
-                branchName: "HS - Cô Thảo Tôm Cá",
-                address: "197 Hoàng Sa, Phường Tân Định, Hồ Chí Minh - Quận 1",
-                contactNumber: "+84 867 608 971",
+                branchName: "Chi nhánh Hoàng Sa (Q.1)",
+                address: "197 Hoàng Sa, Tân Định, Quận 1 (Takeaway)",
+                contactNumber: "024.9999.7122",
                 isActive: true,
               },
               {
                 id: 1000021173,
-                branchName: "TB - Cô Thảo Tôm Cá",
-                address: "39 Thân Nhân Trung, Phường Tân Bình, Thành phố Hồ Chí Minh",
-                contactNumber: "+84 364 612 395",
+                branchName: "Chi nhánh Tân Bình",
+                address: "39 Thân Nhân Trung, P.13, Tân Bình (Takeaway)",
+                contactNumber: "024.9999.7122",
                 isActive: true,
               },
               {
                 id: 1333367,
-                branchName: "TDX - Cô Thảo Tôm Cá",
-                address: "42/2 Trần Đình xu, Phường Cô Giang, Hồ Chí Minh - Quận 1",
-                contactNumber: "+84 357 377 527",
+                branchName: "Chi nhánh Trần Đình Xu (Q.1)",
+                address: "42/2 Trần Đình Xu, Cô Giang, Quận 1 (Takeaway)",
+                contactNumber: "024.9999.7122",
                 isActive: true,
               },
               {
                 id: 1363270,
-                branchName: "Thủ Đức - Cô Thảo Tôm Cá",
-                address: "69A Trương Văn Thành, Phường Hiệp Phú, Hồ Chí Minh - Thành phố Thủ Đức",
-                contactNumber: "+84 901 193 964",
+                branchName: "Chi nhánh TP. Thủ Đức",
+                address: "69A Trương Văn Thành, Hiệp Phú, Thủ Đức (Takeaway)",
+                contactNumber: "024.9999.7122",
                 isActive: true,
               },
             ]
@@ -300,9 +307,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }, [branches]);
 
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
-  const [hotline, setHotline] = useState<string>("028 6686 1508");
+  const [hotline, setHotline] = useState<string>("024.9999.7122");
   const [calculatedFee, setCalculatedFee] = useState<number>(0);
   const [originalFee, setOriginalFee] = useState<number>(0);
+  const [shippingDiscount, setShippingDiscount] = useState<number>(0);
   const [isFreeship, setIsFreeship] = useState<boolean>(false);
   const [freeshipReason, setFreeshipReason] = useState<string | null>(null);
   const [isDeliverable, setIsDeliverable] = useState<boolean>(true);
@@ -331,6 +339,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   useEffect(() => {
     if (deliveryType !== "delivery") {
       setCalculatedFee(0);
+      setShippingDiscount(0);
       setIsFreeship(false);
       setIsDeliverable(true);
       setShippingMessage(null);
@@ -348,6 +357,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       .then((res) => {
         setCalculatedFee(res.shipping_fee);
         setOriginalFee(res.original_fee);
+        setShippingDiscount(res.shipping_discount ?? (res.original_fee > res.shipping_fee ? res.original_fee - res.shipping_fee : 0));
         setIsFreeship(res.is_freeship);
         setFreeshipReason(res.freeship_reason || null);
 
@@ -386,27 +396,23 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     0
   );
 
-  const voucherDiscount = useMemo(() => {
-    if (!appliedVoucher) return 0;
-    const codeUpper = appliedVoucher.code.toUpperCase();
-    const type = appliedVoucher.discountType;
-
-    if (type === "percent" || codeUpper.includes("PCT")) {
-      const pct = appliedVoucher.value;
-      const calculated = Math.round(subtotal * (pct / 100));
-      if (appliedVoucher.maxDiscount && appliedVoucher.maxDiscount > 0) {
-        return Math.min(appliedVoucher.maxDiscount, calculated);
+  // Auto-remove voucher if cart subtotal drops below the minimum required price (Applies to all vouchers including Freeship)
+  useEffect(() => {
+    if (appliedVoucher) {
+      if (appliedVoucher.prereqPrice && subtotal < appliedVoucher.prereqPrice) {
+        setAppliedVoucher(null);
+        setVoucherSuccess(null);
+        setVoucherError(
+          `Mã giảm giá đã bị gỡ do đơn hàng hiện tại chưa đủ ${appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ.`
+        );
       }
-      return Math.min(calculated, subtotal);
     }
-    if (type === "freeship" || appliedVoucher.isFreeship || codeUpper.includes("SHIP") || codeUpper.includes("FREE")) {
-      return shipping;
-    }
-    if (codeUpper.startsWith("EVOUCHER") || codeUpper.startsWith("EVO")) {
-      return Math.min(appliedVoucher.value, subtotal + shipping);
-    }
-    return Math.min(appliedVoucher.value, subtotal);
-  }, [appliedVoucher, subtotal, shipping]);
+  }, [subtotal, appliedVoucher]);
+
+  const voucherDiscount = useMemo(
+    () => calculateVoucherDiscount(appliedVoucher, subtotal, shipping),
+    [appliedVoucher, subtotal, shipping]
+  );
 
   // Total cart items count (for buy_x_get_y check)
   const totalCartQuantity = useMemo(() => {
@@ -591,7 +597,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     try {
       const hasCampaign = cartItems.some(i => (i.originalPrice && i.originalPrice > i.unitPrice)) || autoOrderDiscountAmount > 0;
       const campaignDiscount = autoOrderDiscountAmount;
-      const result = await validateVoucher(code, subtotal, shipping, hasCampaign, campaignDiscount);
+      const result = await validateVoucher(
+        code,
+        subtotal,
+        shipping,
+        hasCampaign,
+        campaignDiscount,
+        phone || user?.phone || undefined,
+        token || undefined
+      );
       if (result.valid && result.voucher) {
         setAppliedVoucher({
           id: result.voucher.id,
@@ -692,7 +706,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         : `${Date.now()}-mobile-cart`;
 
     let expectedDeliveryISO: string | undefined = undefined;
-    if (deliverySchedule === "schedule" || !opCheck.canOrderNow) {
+    if (deliveryType === "delivery" && (deliverySchedule === "schedule" || !opCheck.canOrderNow)) {
       if (!expectedDeliveryTime) {
         const msg = "Vui lòng chọn giờ nhận hàng mong muốn (khung giờ 10:00 - 23:00).";
         setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
@@ -757,11 +771,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               ward: selectedWard || undefined,
               ward_id: selectedWardId || undefined,
             }
-            : (expectedDeliveryISO
-              ? {
-                expected_delivery: expectedDeliveryISO
-              }
-              : null),
+            : null,
         items: [
           ...cartItems.map((item) => ({
             product_id: item.productId,
@@ -1319,9 +1329,39 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <span className="text-gray-500">{t("subtotal")}</span>
                         <span className="font-semibold">{formatPrice(subtotal)}</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center">
                         <span className="text-gray-500">{t("shipping_fee")}</span>
-                        <span className="font-semibold">{formatPrice(shipping)}</span>
+                        <div className="text-right">
+                          {deliveryType === "pickup" ? (
+                            <span className="text-secondary font-bold">0đ ({t("delivery_pickup")})</span>
+                          ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
+                            <span className="text-gray-500 font-bold">--</span>
+                          ) : isFreeship ? (
+                            <div className="flex items-center gap-2">
+                              {originalFee > 0 && (
+                                <span className="text-xs text-gray-400 line-through">
+                                  {formatPrice(originalFee)}
+                                </span>
+                              )}
+                              <span className="text-secondary font-bold">0đ</span>
+                            </div>
+                          ) : shippingDiscount > 0 && shipping < originalFee ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400 line-through">
+                                {formatPrice(originalFee)}
+                              </span>
+                              <span className="text-primary font-bold">
+                                {formatPrice(shipping)}
+                              </span>
+                            </div>
+                          ) : shipping > 0 ? (
+                            <span className="text-primary font-bold">
+                              {formatPrice(shipping)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500 font-bold">--</span>
+                          )}
+                        </div>
                       </div>
                       {autoOrderDiscountAmount > 0 && (
                         <div className="flex justify-between items-start gap-2 text-secondary font-semibold">
@@ -1460,7 +1500,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDeliveryType("pickup")}
+                    onClick={() => {
+                      setDeliveryType("pickup");
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next["delivery.expected_delivery"];
+                        delete next["delivery.ward"];
+                        delete next["delivery.address"];
+                        return next;
+                      });
+                    }}
                     className={`py-2 px-3 rounded-lg border text-center text-xs font-bold transition-all cursor-pointer ${deliveryType === "pickup"
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-gray-200 text-gray-600 bg-white"
@@ -1576,7 +1625,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   {config?.branches.find(b => b.id === selectedBranchId) && (
                     <div className="bg-white border border-gray-200 rounded-xl p-3.5 space-y-1.5 shadow-sm text-sm text-gray-600 font-serif">
                       <p>{t("pickup_address_label")} {config?.branches.find(b => b.id === selectedBranchId)?.address}</p>
-                      <p>Hotline: {config?.branches.find(b => b.id === selectedBranchId)?.contactNumber}</p>
+                      <p>
+                        Hotline:{" "}
+                        <a
+                          href={`tel:${(config?.branches.find(b => b.id === selectedBranchId)?.contactNumber || "024.9999.7122").replace(/[^0-9+]/g, "")}`}
+                          className="text-primary font-bold hover:underline"
+                        >
+                          {config?.branches.find(b => b.id === selectedBranchId)?.contactNumber || "024.9999.7122"}
+                        </a>
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1593,63 +1650,71 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 ></textarea>
               </div>
 
-              {/* Expected time & date */}
-              <div className="space-y-3 pt-2 border-t border-gray-100">
-                <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
-                  {deliveryType === "pickup" ? t("pickup_time_label") : t("delivery_time_label")}
-                </p>
-                <div className="space-y-3">
-                  {/* Option 1: Giao ngay (Chỉ hiển thị khi trước 22:30 / canOrderNow) */}
-                  {operatingStatus.canOrderNow && (
+              {/* Expected time & date / Pickup instruction */}
+              {deliveryType === "pickup" ? (
+                <div className="pt-2 border-t border-gray-100">
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 leading-relaxed font-medium">
+                    {t("pickup_time_notice")}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-2 border-t border-gray-100">
+                  <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
+                    {t("delivery_time_label")}
+                  </p>
+                  <div className="space-y-3">
+                    {/* Option 1: Giao ngay (Chỉ hiển thị khi trước 22:30 / canOrderNow) */}
+                    {operatingStatus.canOrderNow && (
+                      <div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="expected_time"
+                            value="now"
+                            checked={deliverySchedule === "now"}
+                            onChange={() => setDeliverySchedule("now")}
+                            className="accent-primary"
+                          />
+                          <span className="font-medium text-sm">
+                            {t("delivery_now")}
+                          </span>
+                        </label>
+
+                        {/* Footnote dưới Option 1: Chỉ hiển thị khi chọn Giao ngay VÀ thời gian hiện tại trước 10:00 AM */}
+                        {deliverySchedule === "now" && operatingStatus.currentTime < (operatingStatus.deliveryOpen || "10:00") && (
+                          <p className="text-xs text-secondary font-medium pl-6 mt-1">
+                            {t("early_morning_note", { openTime: operatingStatus.deliveryOpen || "10:00" })}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Nếu sau 22:30 (ngưng giao ngay), chỉ hiển thị thông báo chuyển qua Hẹn giờ */}
+                    {!operatingStatus.canOrderNow && (
+                      <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium space-y-1">
+                        <p className="font-semibold text-primary">
+                          {t("cutoff_notice_title", { cutoff: operatingStatus.lastOrderCutoff || "22:30" })}
+                        </p>
+                        <p>{t("cutoff_notice_desc", { openTime: operatingStatus.deliveryOpen || "10:00", targetDate: operatingStatus.notice?.targetDateDisplay || "ngày mai" })}</p>
+                      </div>
+                    )}
+
+                    {/* Option 2: Hẹn giờ giao hàng (Đặt trước) */}
                     <div>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
                           name="expected_time"
-                          value="now"
-                          checked={deliverySchedule === "now"}
-                          onChange={() => setDeliverySchedule("now")}
+                          value="schedule"
+                          checked={deliverySchedule === "schedule" || !operatingStatus.canOrderNow}
+                          onChange={() => setDeliverySchedule("schedule")}
                           className="accent-primary"
                         />
                         <span className="font-medium text-sm">
-                          {deliveryType === "pickup" ? t("pickup_now") : t("delivery_now")}
+                          {t("schedule_delivery")}
                         </span>
                       </label>
-
-                      {/* Footnote dưới Option 1: Chỉ hiển thị khi chọn Giao ngay VÀ thời gian hiện tại trước 10:00 AM */}
-                      {deliverySchedule === "now" && operatingStatus.currentTime < (operatingStatus.deliveryOpen || "10:00") && (
-                        <p className="text-xs text-secondary font-medium pl-6 mt-1">
-                          {t("early_morning_note", { openTime: operatingStatus.deliveryOpen || "10:00" })}
-                        </p>
-                      )}
                     </div>
-                  )}
-
-                  {/* Nếu sau 22:30 (ngưng giao ngay), chỉ hiển thị thông báo chuyển qua Hẹn giờ */}
-                  {!operatingStatus.canOrderNow && (
-                    <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium space-y-1">
-                      <p className="font-semibold text-primary">
-                        {t("cutoff_notice_title", { cutoff: operatingStatus.lastOrderCutoff || "22:30" })}
-                      </p>
-                      <p>{t("cutoff_notice_desc", { openTime: operatingStatus.deliveryOpen || "10:00", targetDate: operatingStatus.notice?.targetDateDisplay || "ngày mai" })}</p>
-                    </div>
-                  )}
-
-                  {/* Option 2: Hẹn giờ giao hàng (Đặt trước) */}
-                  <div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="expected_time"
-                        value="schedule"
-                        checked={deliverySchedule === "schedule" || !operatingStatus.canOrderNow}
-                        onChange={() => setDeliverySchedule("schedule")}
-                        className="accent-primary"
-                      />
-                      <span className="font-medium text-sm">
-                        {deliveryType === "pickup" ? t("schedule_pickup") : t("schedule_delivery")}
-                      </span>
-                    </label>
                   </div>
 
                   {/* Ô chọn Ngày và Giờ (UI đẹp, Step 15 phút) */}
@@ -1735,7 +1800,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     </div>
                   )}
                 </div>
-              </div>
+              )}
 
               {/* Payment methods selection */}
               <div className="space-y-3 pt-2 border-t border-gray-100">
@@ -1813,8 +1878,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 ? t("submitting")
                 : deliveryType === "delivery" && !isDeliverable
                   ? "Khu vực chưa hỗ trợ giao"
-                  : !operatingStatus.canOrderNow
-                    ? t("schedule_pickup")
+                  : deliveryType === "delivery" && !operatingStatus.canOrderNow
+                    ? t("schedule_delivery")
                     : t("place_order")}
             </button>
           </div>

@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
 import { useTranslations } from "next-intl";
 
@@ -14,6 +15,7 @@ interface CartPopupProps {
 export default function CartPopup({ onClose }: CartPopupProps) {
   const t = useTranslations("cart");
   const tCheckout = useTranslations("checkout");
+  const { user, refreshUser } = useAuth();
   const {
     cartItems,
     updateQuantity,
@@ -24,6 +26,13 @@ export default function CartPopup({ onClose }: CartPopupProps) {
   } = useCart();
 
   const popupRef = useRef<HTMLDivElement>(null);
+
+  // Refresh điểm KiotViet mới nhất khi mở giỏ hàng nếu đã đăng nhập
+  useEffect(() => {
+    if (isCartOpen && user) {
+      refreshUser();
+    }
+  }, [isCartOpen, user]);
 
   // Close popup when clicking outside
   useEffect(() => {

@@ -1,4 +1,5 @@
 "use client";
+import { useMemo } from "react";
 import { Link, usePathname } from "@/i18n/i18n-navigation";
 import Image from "next/image";
 import Logo from "../Logo";
@@ -12,11 +13,16 @@ import Chat from "../Icons/Chat";
 const Footer = () => {
   const t = useTranslations();
   const branches = useBranches();
+  const sortedBranches = useMemo(() => {
+    return [...branches].sort(
+      (a, b) => (a.sort_order ?? a.id ?? 0) - (b.sort_order ?? b.id ?? 0)
+    );
+  }, [branches]);
 
   const pathname = usePathname();
   const settings = useGeneralSettings();
-  const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
-  const hotlineClean = hotline.replace(/\s/g, "");
+  const hotline = settings?.hotline || "024.9999.7122";
+  const hotlineClean = hotline.replace(/[^0-9+]/g, "");
   const isAuthPage = [
     "/signin",
     "/dang-nhap",
@@ -78,7 +84,7 @@ const Footer = () => {
             <div className="col-span-full lg:col-span-7 xl:col-span-6 text-gray-200 space-y-6 md:space-y-6 xl:space-y-8">
               <div className="title-1 underline">{t('footer.showroom')}</div>
               <div className="grid md:grid-cols-2 md:gap-4 gap-y-6 xl:gap-6">
-                {branches.map((itemShowroom, indexShowroom) => (
+                {sortedBranches.map((itemShowroom, indexShowroom) => (
                   <a
                     href={itemShowroom.address_link || "#"}
                     target={itemShowroom.address_link ? "_blank" : undefined}

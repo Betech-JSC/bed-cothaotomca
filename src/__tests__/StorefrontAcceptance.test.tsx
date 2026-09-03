@@ -265,6 +265,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(res0830.canOrderNow).toBe(false);
     expect(res0830.isBeforeOpen).toBe(true);
     expect(res0830.notice).not.toBeNull();
+    expect(res0830.notice?.message).toBe('Bếp đã dừng nhận đơn giao ngay sau 22:30. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ 10:00 hôm nay (16/08).');
     expect(res0830.defaultDate).toBe('2026-08-16');
 
     // Case 2: 14:00 (Trong giờ nhận đơn ngay 09:00 - 22:30)
@@ -278,6 +279,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(res2245.canOrderNow).toBe(false);
     expect(res2245.isAfterCutoff).toBe(true);
     expect(res2245.notice).not.toBeNull();
+    expect(res2245.notice?.message).toBe('Bếp đã dừng nhận đơn giao ngay sau 22:30. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ 10:00 hôm nay (16/08).');
     expect(res2245.defaultDate).toBe('2026-08-17');
 
     // Case 4: 23:15 (Sau 23:00 đã đóng cửa)
@@ -285,6 +287,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(res2315.canOrderNow).toBe(false);
     expect(res2315.isAfterClose).toBe(true);
     expect(res2315.notice).not.toBeNull();
+    expect(res2315.notice?.message).toBe('Bếp đã dừng nhận đơn giao ngay sau 22:30. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ 10:00 hôm nay (16/08).');
     expect(res2315.defaultDate).toBe('2026-08-17');
   });
 
@@ -420,6 +423,21 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     );
     expect(screen.getByText(formatPrice(100000))).toBeInTheDocument();
     expect(screen.getByText(formatPrice(30000))).toBeInTheDocument();
+
+    // 4. Case: Cấu hình trợ giá cố định (đơn từ 400k giảm 20k phí ship), hiện tại 250k -> Cần mua thêm 150k
+    rerender(
+      <SmartCartProgressBar
+        subtotal={250000}
+        shippingSettings={{
+          is_min_amount_enabled: true,
+          min_order_amount: 400000,
+          shipping_discount_type: 'fixed',
+          shipping_discount_value: 20000,
+        }}
+      />
+    );
+    expect(screen.getByText(formatPrice(150000))).toBeInTheDocument();
+    expect(screen.getByText(`giảm ${formatPrice(20000)} phí ship`)).toBeInTheDocument();
   });
 
   it('UX Enhancement 2: CouponModal phân loại rõ mã đủ điều kiện và mã chưa đủ điều kiện kèm gợi ý mua thêm', async () => {
@@ -493,6 +511,37 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     render(<CardProduct item={cardProps} />);
     // Badge must render -12% instead of -11%
     expect(screen.getByText(/-12%/)).toBeInTheDocument();
+  });
+
+  it('Luồng 14: Chiến dịch tạo tại thời điểm hiện tại hiển thị ngay lập tức trên UI và đồng bộ thời gian ISO-8601 (+07:00)', () => {
+    const nowIso = new Date().toISOString();
+    const productActiveNow: any = {
+      id: 401,
+      name: 'Bò Tơ Nướng Y Yêu Cầu',
+      slug: 'bo-to-nuong-y',
+      price: 250000,
+      campaign_price: 200000,
+      active_campaign: {
+        id: 101,
+        name: 'Ưu Đãi Giờ Vàng',
+        discount_type: 'percent',
+        discount_value: 20,
+        campaign_price: 200000,
+        start_at: nowIso,
+        end_at: null,
+      },
+    };
+
+    const cardProps = mapProductToCardItem(productActiveNow, 'vi');
+    expect(cardProps.price).toBe(200000);
+    expect(cardProps.original_price).toBe(250000);
+    expect(cardProps.active_campaign?.id).toBe(101);
+    expect(cardProps.active_campaign?.start_at).toBe(nowIso);
+
+    const detail = normalizeProductDetail(productActiveNow);
+    const detailView = mapProductToDetailView(detail, 'vi', { standard: 'Tiêu chuẩn' });
+    expect(detailView.sizes[0].price).toBe(200000);
+    expect(detailView.sizes[0].original_price).toBe(250000);
   });
 });
 

@@ -230,6 +230,32 @@ export async function getOrderByCode(
   return json.data as Record<string, unknown>;
 }
 
+/** Tra cứu đơn hàng theo SĐT và/hoặc Mã đơn hàng */
+export async function lookupOrders(
+  phone?: string,
+  code?: string,
+): Promise<Record<string, unknown> | Record<string, unknown>[]> {
+  const params = new URLSearchParams();
+  if (phone && phone.trim()) {
+    params.set("phone", phone.trim());
+  }
+  if (code && code.trim()) {
+    params.set("code", code.trim());
+  }
+
+  const res = await fetch(`${API_BASE}/orders/lookup?${params.toString()}`, {
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new OrderApiError(res.status, await res.json().catch(() => ({})));
+  }
+
+  const json = await res.json();
+  return json.data;
+}
+
 /** subtotal + ship − discount */
 export function calcOrderTotal(
   items: { price: number; quantity: number; discount?: number }[],
@@ -247,6 +273,69 @@ export function calcOrderTotal(
   return { subtotal, shipping, total };
 }
 
+export interface AppliedVoucherState {
+  id: number;
+  code: string;
+  value: number;
+  discountType?: "fixed" | "percent" | "freeship";
+  maxDiscount?: number | null;
+  prereqPrice?: number;
+  isFreeship?: boolean;
+}
+
+/**
+ * Calculates discount amount matching backend Voucher.php::calculateDiscount()
+ */
+export function calculateVoucherDiscount(
+  voucher: AppliedVoucherState | null | undefined,
+  subtotal: number,
+  shipping: number
+): number {
+  if (!voucher) return 0;
+  if (voucher.prereqPrice && subtotal < voucher.prereqPrice) {
+    return 0;
+  }
+
+  const codeUpper = voucher.code.toUpperCase();
+  const type = voucher.discountType || "fixed";
+  const isShipping =
+    type === "freeship" ||
+    voucher.isFreeship ||
+    codeUpper.includes("FREESHIP") ||
+    codeUpper.includes("PHISHIP") ||
+    codeUpper.includes("SHIP");
+
+  if (isShipping) {
+    if (type === "percent" || codeUpper.includes("PCT")) {
+      const pct = voucher.value;
+      const calculated = Math.ceil((shipping * (pct / 100)) / 1000) * 1000;
+      if (voucher.maxDiscount && voucher.maxDiscount > 0) {
+        return Math.min(voucher.maxDiscount, calculated, shipping);
+      }
+      return Math.min(calculated, shipping);
+    }
+    if (type === "fixed" && voucher.value > 0) {
+      return Math.min(voucher.value, shipping);
+    }
+    return shipping;
+  }
+
+  if (type === "percent" || codeUpper.includes("PCT")) {
+    const pct = voucher.value;
+    const calculated = Math.ceil((subtotal * (pct / 100)) / 1000) * 1000;
+    if (voucher.maxDiscount && voucher.maxDiscount > 0) {
+      return Math.min(voucher.maxDiscount, calculated, subtotal);
+    }
+    return Math.min(calculated, subtotal);
+  }
+
+  if (codeUpper.startsWith("EVOUCHER") || codeUpper.startsWith("EVO")) {
+    return Math.min(voucher.value, subtotal + shipping);
+  }
+
+  return Math.min(voucher.value, subtotal);
+}
+
 export interface ValidateVoucherResult {
   valid: boolean;
   voucher?: {
@@ -259,6 +348,8 @@ export interface ValidateVoucherResult {
     campaign_name: string;
     prereq_price?: number;
     is_freeship?: boolean;
+    customer_scope?: "all" | "member_only" | "tier_only";
+    min_member_tier?: string | null;
     can_combine_with_promotions?: boolean;
     can_combine_with_freeship?: boolean;
   };
@@ -277,6 +368,8 @@ export interface PublicVoucherItem {
   campaign_name?: string;
   description?: string;
   is_freeship?: boolean;
+  customer_scope?: "all" | "member_only" | "tier_only";
+  min_member_tier?: string | null;
   can_combine_with_promotions?: boolean;
   can_combine_with_freeship?: boolean;
   start_date?: string | null;
@@ -302,7 +395,9 @@ export async function validateVoucher(
   subtotal?: number,
   shippingFee?: number,
   hasCampaign?: boolean,
-  campaignDiscount?: number
+  campaignDiscount?: number,
+  phone?: string,
+  token?: string
 ): Promise<ValidateVoucherResult> {
   const params = new URLSearchParams({ code });
   if (subtotal !== undefined) {
@@ -317,9 +412,18 @@ export async function validateVoucher(
   if (campaignDiscount && campaignDiscount > 0) {
     params.append("campaign_discount", campaignDiscount.toString());
   }
+  if (phone) {
+    params.append("phone", phone);
+  }
+
+  const authToken = token || (typeof window !== "undefined" ? localStorage.getItem("auth_token") || localStorage.getItem("token") || localStorage.getItem("access_token") : null);
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
 
   const res = await fetch(`${API_BASE}/vouchers/validate?${params.toString()}`, {
-    headers: { Accept: "application/json" },
+    headers,
     cache: "no-store",
   });
 
@@ -367,6 +471,9 @@ export async function getAdministrativeUnits(): Promise<AdministrativeProvince[]
 export interface ShippingCalculationResult {
   shipping_fee: number;
   original_fee: number;
+  shipping_discount?: number;
+  shipping_discount_type?: "fixed" | "free";
+  shipping_discount_value?: number;
   is_freeship: boolean;
   freeship_reason?: string | null;
   is_deliverable: boolean;
@@ -405,6 +512,9 @@ export async function calculateShippingFee(params: {
     return {
       shipping_fee: 50000,
       original_fee: 50000,
+      shipping_discount: 0,
+      shipping_discount_type: "free",
+      shipping_discount_value: 0,
       is_freeship: false,
       is_deliverable: true,
       is_configured_area: false,
@@ -415,6 +525,8 @@ export async function calculateShippingFee(params: {
 export interface ShippingSettings {
   min_order_amount: number;
   is_min_amount_enabled: boolean;
+  shipping_discount_type?: "fixed" | "free";
+  shipping_discount_value?: number;
   voucher_codes: string[];
   is_voucher_enabled: boolean;
   default_shipping_fee: number;

@@ -8,6 +8,7 @@ import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
 import {
   calcOrderTotal,
   calculateShippingFee,
+  calculateVoucherDiscount,
   createOrder,
   getAdministrativeUnits,
   getAvailableVouchers,
@@ -24,10 +25,11 @@ import {
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, getMemberTier, calculateMemberDiscount } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getVietnamDate, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
 import WardSelectCombobox from "./WardSelectCombobox";
+import RequiredMark from "./RequiredMark";
 import PreOrderNoticeModal from "./PreOrderNoticeModal";
 import MobileCartFlow from "@/components/Header/MobileCartFlow";
 import CouponModal from "@/components/Voucher/CouponModal";
@@ -76,11 +78,18 @@ const POPULAR_DISTRICTS = [
 ];
 
 export default function CheckoutForm({ order, config }: CheckoutFormProps) {
-  const { user } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const t = useTranslations("checkout");
   const router = useRouter();
   const { cartItems, updateQuantity, removeFromCart, clearCart, addToCart } = useCart();
   const isCartCheckout = !order;
+
+  // Refresh điểm KiotViet khi vào trang checkout
+  useEffect(() => {
+    if (user) {
+      refreshUser();
+    }
+  }, [user]);
 
   // Sync direct single-product checkout to cart on mobile
   useEffect(() => {
@@ -143,6 +152,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   const [shippingFee, setShippingFee] = useState<number>(defaultShippingFee);
   const [originalFee, setOriginalFee] = useState<number>(defaultShippingFee);
+  const [shippingDiscount, setShippingDiscount] = useState<number>(0);
   const [isFreeship, setIsFreeship] = useState<boolean>(false);
   const [freeshipReason, setFreeshipReason] = useState<string | null>(null);
   const [isDeliverable, setIsDeliverable] = useState<boolean>(true);
@@ -383,7 +393,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   }, [selectedOrderGiftItem, activeBuyXGetYItems]);
 
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
-  const [hotline, setHotline] = useState<string>("028 6686 1508");
+  const [hotline, setHotline] = useState<string>("024.9999.7122");
 
   useEffect(() => {
     getShippingSettings().then(setShippingSettings);
@@ -400,6 +410,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   useEffect(() => {
     if (deliveryType !== "delivery") {
       setShippingFee(0);
+      setShippingDiscount(0);
       setIsFreeship(false);
       setIsDeliverable(true);
       setShippingMessage(null);
@@ -421,6 +432,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         if (!isSubscribed) return;
         setShippingFee(res.shipping_fee);
         setOriginalFee(res.original_fee);
+        setShippingDiscount(res.shipping_discount ?? (res.original_fee > res.shipping_fee ? res.original_fee - res.shipping_fee : 0));
         setIsFreeship(res.is_freeship);
         setFreeshipReason(res.freeship_reason || null);
 
@@ -551,12 +563,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   // Sau khi tạo đơn thành công → chuyển sang màn hình QR
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
 
-  // Auto-remove voucher if cart subtotal drops below the minimum required price (Exempt Freeship vouchers)
+  // Auto-remove voucher if cart subtotal drops below the minimum required price (Applies to all vouchers including Freeship)
   useEffect(() => {
     if (appliedVoucher) {
-      const codeUpper = appliedVoucher.code.toUpperCase();
-      const isFreeshipCode = codeUpper.includes("SHIP") || codeUpper.includes("FREE");
-      if (!isFreeshipCode && appliedVoucher.prereqPrice && subtotal < appliedVoucher.prereqPrice) {
+      if (appliedVoucher.prereqPrice && subtotal < appliedVoucher.prereqPrice) {
         setAppliedVoucher(null);
         setVoucherSuccess(null);
         setVoucherError(
@@ -566,29 +576,26 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     }
   }, [subtotal, appliedVoucher]);
 
-  const voucherDiscount = useMemo(() => {
-    if (!appliedVoucher) return 0;
-    const codeUpper = appliedVoucher.code.toUpperCase();
-    const type = appliedVoucher.discountType;
+  const voucherDiscount = useMemo(
+    () => calculateVoucherDiscount(appliedVoucher, subtotal, shipping),
+    [appliedVoucher, subtotal, shipping]
+  );
 
-    if (type === "percent" || codeUpper.includes("PCT")) {
-      const pct = appliedVoucher.value;
-      const calculated = Math.ceil((subtotal * (pct / 100)) / 1000) * 1000;
-      if (appliedVoucher.maxDiscount && appliedVoucher.maxDiscount > 0) {
-        return Math.min(appliedVoucher.maxDiscount, calculated);
-      }
-      return Math.min(calculated, subtotal);
-    }
-    if (type === "freeship" || appliedVoucher.isFreeship || codeUpper.includes("SHIP") || codeUpper.includes("FREE")) {
-      return shipping;
-    }
-    if (codeUpper.startsWith("EVOUCHER") || codeUpper.startsWith("EVO")) {
-      return Math.min(appliedVoucher.value, subtotal + shipping);
-    }
-    return Math.min(appliedVoucher.value, subtotal);
-  }, [appliedVoucher, subtotal, shipping]);
+  // Member Tier Discount (Gold: 5%, Diamond: 8%)
+  const memberTier = useMemo(() => getMemberTier(user?.points || 0), [user?.points]);
+  const memberDiscount = useMemo(() => {
+    if (!user || (user.points || 0) < 400) return 0;
+    return calculateMemberDiscount(user.points, subtotal);
+  }, [user, subtotal]);
 
-  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount + shipping);
+  const memberDiscountLabel = useMemo(() => {
+    if (!user || (user.points || 0) < 400) return "";
+    return (user.points || 0) >= 800
+      ? (t("member_discount_diamond") || "Ưu đãi thành viên Diamond (-8%)")
+      : (t("member_discount_gold") || "Ưu đãi thành viên Gold (-5%)");
+  }, [user, t]);
+
+  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount - memberDiscount + shipping);
 
   const handleApplyVoucher = async (codeOverride?: string) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
@@ -606,7 +613,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     try {
       const hasCampaign = cartItems.some(i => (i.originalPrice && i.originalPrice > i.unitPrice)) || autoOrderDiscountAmount > 0;
       const campaignDiscount = autoOrderDiscountAmount;
-      const res = await validateVoucher(code, subtotal, shipping, hasCampaign, campaignDiscount);
+      const res = await validateVoucher(
+        code,
+        subtotal,
+        shipping,
+        hasCampaign,
+        campaignDiscount,
+        phone || user?.phone || undefined,
+        token || undefined
+      );
       if (res.valid && res.voucher) {
         setAppliedVoucher({
           id: res.voucher.id,
@@ -699,7 +714,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         : `${Date.now()}-${isCartCheckout ? "cart" : order?.productId}`;
 
     let expectedDeliveryISO: string | undefined = undefined;
-    if (deliverySchedule === "schedule" || !opCheck.canOrderNow) {
+    if (deliveryType === "delivery" && (deliverySchedule === "schedule" || !opCheck.canOrderNow)) {
       if (!expectedDeliveryTime) {
         const msg = "Vui lòng chọn giờ nhận hàng mong muốn (khung giờ 10:00 - 23:00).";
         setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
@@ -759,11 +774,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               price: shippingFee,
               expected_delivery: expectedDeliveryISO,
             }
-            : (expectedDeliveryISO
-              ? {
-                expected_delivery: expectedDeliveryISO
-              }
-              : null),
+            : null,
         items: isCartCheckout
           ? [
             ...cartItems.map((item) => ({
@@ -833,28 +844,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               })),
             ]
             : [],
-        discount: voucherDiscount + autoOrderDiscountAmount,
-        description: isCartCheckout
-          ? [
-            description.trim(),
-            cartItems.map((item) => `${item.title} (${item.variant}) x${item.quantity}`).join(", "),
-            autoOrderDiscountAmount > 0 ? `KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
-            selectedOrderGiftItem ? `Tặng kèm: ${selectedOrderGiftItem.product_name} (0đ - ${eligibleOrderGiftPromo?.name || "Ưu đãi"})` : "",
-            ...activeBuyXGetYItems.map(({ promo, item, tag }) => `Ưu đãi combo: ${item.product_name} (${item.campaign_price === 0 ? "0đ" : `${item.campaign_price.toLocaleString("vi-VN")}đ`} - ${tag})`),
-          ]
-            .filter(Boolean)
-            .join(" | ") || undefined
-          : order
-            ? [
-              description.trim(),
-              order.variant !== order.title ? order.variant : "",
-              autoOrderDiscountAmount > 0 ? `KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
-              selectedOrderGiftItem ? `Tặng kèm: ${selectedOrderGiftItem.product_name} (0đ - ${eligibleOrderGiftPromo?.name || "Ưu đãi"})` : "",
-              ...activeBuyXGetYItems.map(({ promo, item, tag }) => `Ưu đãi combo: ${item.product_name} (${item.campaign_price === 0 ? "0đ" : `${item.campaign_price.toLocaleString("vi-VN")}đ`} - ${tag})`),
-            ]
-              .filter(Boolean)
-              .join(" | ") || undefined
-            : undefined,
+        discount: voucherDiscount + autoOrderDiscountAmount + memberDiscount,
+        description: description.trim() || undefined,
         is_apply_voucher: !!appliedVoucher,
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
         voucher: appliedVoucher
@@ -953,7 +944,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
             {/* Họ và tên */}
             <div className="space-y-2">
-              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">Họ và tên</label>
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
+                {t("name")}
+                <RequiredMark />
+              </label>
               <input
                 type="text"
                 required
@@ -969,7 +963,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
             {/* Số điện thoại */}
             <div className="space-y-2">
-              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("phone")}</label>
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
+                {t("phone")}
+                <RequiredMark />
+              </label>
               <input
                 type="tel"
                 required
@@ -1019,7 +1016,16 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     type="radio"
                     name="delivery_type"
                     checked={deliveryType === "pickup"}
-                    onChange={() => setDeliveryType("pickup")}
+                    onChange={() => {
+                      setDeliveryType("pickup");
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next["delivery.expected_delivery"];
+                        delete next["delivery.ward"];
+                        delete next["delivery.address"];
+                        return next;
+                      });
+                    }}
                     className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                   />
                   <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-bold">
@@ -1037,7 +1043,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 {/* Chọn Tỉnh/Thành & Phường/Xã (Danh mục chuẩn) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <label className="text-sm font-serif font-semibold text-primary block">{t("province_label")}</label>
+                    <label className="text-sm font-serif font-semibold text-primary block">
+                      {t("province_label")}
+                      <RequiredMark />
+                    </label>
                     <select
                       value={selectedProvince}
                       onChange={(e) => {
@@ -1093,7 +1102,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
                 {/* Số nhà, tên đường */}
                 <div className="space-y-2">
-                  <label className="text-sm font-serif font-semibold text-primary block">{t("street_label")}</label>
+                  <label className="text-sm font-serif font-semibold text-primary block">
+                    {t("street_label")}
+                    <RequiredMark />
+                  </label>
                   <input
                     type="text"
                     required
@@ -1118,11 +1130,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 )}
 
 
-                {/* Thẻ thông báo phí tiêu chuẩn */}
-                {isDeliverable && shippingMessage && !isFreeship && (
-                  <div className="text-xs text-gray-500 font-medium italic px-1">
-                    {shippingMessage}
-                  </div>
+                {/* Thẻ thông báo phí tiêu chuẩn hoặc trợ giá */}
+                {isDeliverable && (
+                  freeshipReason ? (
+                    <div className="text-xs text-secondary font-semibold italic px-1">
+                      {freeshipReason}
+                    </div>
+                  ) : shippingMessage && !isFreeship ? (
+                    <div className="text-xs text-gray-500 font-medium italic px-1">
+                      {shippingMessage}
+                    </div>
+                  ) : null
                 )}
               </div>
             )}
@@ -1156,9 +1174,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     <p className="text-gray-600 leading-relaxed font-medium">
                       {selectedBranch.address}
                     </p>
-                    {selectedBranch.contactNumber && (
+                    {(selectedBranch.contactNumber || "024.9999.7122") && (
                       <p className="text-gray-500 font-semibold">
-                        Hotline: <span className="text-primary font-bold">{selectedBranch.contactNumber}</span>
+                        Hotline:{" "}
+                        <a
+                          href={`tel:${(selectedBranch.contactNumber || "024.9999.7122").replace(/[^0-9+]/g, "")}`}
+                          className="text-primary font-bold hover:underline"
+                        >
+                          {selectedBranch.contactNumber || "024.9999.7122"}
+                        </a>
                       </p>
                     )}
                     <div className="text-[14px] text-primary font-bold flex items-center gap-1.5 pt-1.5 border-t border-gray-100">
@@ -1182,150 +1206,158 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               ></textarea>
             </div>
 
-            {/* Thời gian giao/lấy hàng mong muốn */}
-            <div className="space-y-3 pt-2">
-              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
-                {deliveryType === "pickup" ? t("pickup_time_label") : t("delivery_time_label")}
-              </label>
+            {/* Thời gian nhận hàng / Ghi chú lấy hàng */}
+            {deliveryType === "pickup" ? (
+              <div className="pt-2">
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 leading-relaxed font-medium">
+                  {t("pickup_time_notice")}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-2">
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
+                  {t("delivery_time_label")}
+                </label>
 
-              <div className="space-y-3">
-                {/* Option 1: Giao ngay (Chỉ hiển thị khi trước 22:30 / canOrderNow) */}
-                {operatingStatus.canOrderNow && (
+                <div className="space-y-3">
+                  {/* Option 1: Giao ngay (Chỉ hiển thị khi trước 22:30 / canOrderNow) */}
+                  {operatingStatus.canOrderNow && (
+                    <div>
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="radio"
+                          name="delivery_schedule"
+                          value="now"
+                          checked={deliverySchedule === "now"}
+                          onChange={() => setDeliverySchedule("now")}
+                          className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-medium">
+                          {t("delivery_now")}
+                        </span>
+                      </label>
+
+                      {/* Footnote dưới Option 1: Chỉ hiển thị khi chọn Giao ngay VÀ thời gian hiện tại trước 10:00 AM */}
+                      {deliverySchedule === "now" && operatingStatus.currentTime < (operatingStatus.deliveryOpen || "10:00") && (
+                        <p className="text-xs text-secondary font-medium pl-7 mt-1">
+                          {t("early_morning_note", { openTime: operatingStatus.deliveryOpen || "10:00" })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Nếu sau 22:30 (ngưng giao ngay), chỉ hiển thị thông báo chuyển qua Hẹn giờ */}
+                  {!operatingStatus.canOrderNow && (
+                    <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium space-y-1">
+                      <p className="font-semibold text-primary">
+                        {t("cutoff_notice_title", { cutoff: operatingStatus.lastOrderCutoff || "22:30" })}
+                      </p>
+                      <p>{t("cutoff_notice_desc", { openTime: operatingStatus.deliveryOpen || "10:00", targetDate: operatingStatus.notice?.targetDateDisplay || "ngày mai" })}</p>
+                    </div>
+                  )}
+
+                  {/* Option 2: Hẹn giờ giao hàng (Đặt trước) */}
                   <div>
                     <label className="flex items-center gap-3 cursor-pointer group">
                       <input
                         type="radio"
                         name="delivery_schedule"
-                        value="now"
-                        checked={deliverySchedule === "now"}
-                        onChange={() => setDeliverySchedule("now")}
+                        value="schedule"
+                        checked={deliverySchedule === "schedule" || !operatingStatus.canOrderNow}
+                        onChange={() => setDeliverySchedule("schedule")}
                         className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
                       />
                       <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-medium">
-                        {deliveryType === "pickup" ? t("pickup_now") : t("delivery_now")}
+                        {t("schedule_delivery")}
                       </span>
                     </label>
-
-                    {/* Footnote dưới Option 1: Chỉ hiển thị khi chọn Giao ngay VÀ thời gian hiện tại trước 10:00 AM */}
-                    {deliverySchedule === "now" && operatingStatus.currentTime < (operatingStatus.deliveryOpen || "10:00") && (
-                      <p className="text-xs text-secondary font-medium pl-7 mt-1">
-                        {t("early_morning_note", { openTime: operatingStatus.deliveryOpen || "10:00" })}
-                      </p>
-                    )}
                   </div>
-                )}
-
-                {/* Nếu sau 22:30 (ngưng giao ngay), chỉ hiển thị thông báo chuyển qua Hẹn giờ */}
-                {!operatingStatus.canOrderNow && (
-                  <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium space-y-1">
-                    <p className="font-semibold text-primary">
-                      {t("cutoff_notice_title", { cutoff: operatingStatus.lastOrderCutoff || "22:30" })}
-                    </p>
-                    <p>{t("cutoff_notice_desc", { openTime: operatingStatus.deliveryOpen || "10:00", targetDate: operatingStatus.notice?.targetDateDisplay || "ngày mai" })}</p>
-                  </div>
-                )}
-
-                {/* Option 2: Hẹn giờ giao hàng (Đặt trước) */}
-                <div>
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="radio"
-                      name="delivery_schedule"
-                      value="schedule"
-                      checked={deliverySchedule === "schedule" || !operatingStatus.canOrderNow}
-                      onChange={() => setDeliverySchedule("schedule")}
-                      className="size-4 text-primary focus:ring-primary accent-primary cursor-pointer"
-                    />
-                    <span className="body-1 text-gray-900 group-hover:text-primary transition-colors font-medium">
-                      {deliveryType === "pickup" ? t("schedule_pickup") : t("schedule_delivery")}
-                    </span>
-                  </label>
                 </div>
-              </div>
 
-              {/* Ô chọn Ngày và Giờ (UI đẹp, Step 15 phút) */}
-              {(deliverySchedule === "schedule" || !operatingStatus.canOrderNow) && (
-                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 animate-fade-in pl-7">
-                  {/* Chọn Ngày */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                      <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 002-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span>Chọn ngày nhận hàng</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={deliveryDate}
-                        onChange={(e) => setDeliveryDate(e.target.value)}
-                        className="w-full h-11 rounded-lg border border-gray-300 shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none"
-                      >
-                        {availableDeliveryDates.map((item) => (
-                          <option key={item.iso} value={item.iso}>
-                            {item.label}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
-                        <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                {/* Ô chọn Ngày và Giờ (UI đẹp, Step 15 phút) */}
+                {(deliverySchedule === "schedule" || !operatingStatus.canOrderNow) && (
+                  <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 animate-fade-in pl-7">
+                    {/* Chọn Ngày */}
+                    <div>
+                      <label className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                        <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 002-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Chọn Giờ (Step 15 phút) */}
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                      <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>Chọn giờ nhận hàng (10:00 - 23:00)</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={expectedDeliveryTime}
-                        disabled={availableTimeSlots.length === 0}
-                        onChange={(e) => {
-                          setExpectedDeliveryTime(e.target.value);
-                          if (fieldErrors["delivery.expected_delivery"]) {
-                            setFieldErrors((prev) => {
-                              const next = { ...prev };
-                              delete next["delivery.expected_delivery"];
-                              return next;
-                            });
-                          }
-                        }}
-                        className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none ${fieldError("delivery.expected_delivery") ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"
-                          }`}
-                      >
-                        {availableTimeSlots.length > 0 ? (
-                          availableTimeSlots.map((slot) => (
-                            <option key={slot.value} value={slot.value}>
-                              {slot.label}
+                        <span>Chọn ngày nhận hàng</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={deliveryDate}
+                          onChange={(e) => setDeliveryDate(e.target.value)}
+                          className="w-full h-11 rounded-lg border border-gray-300 shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none"
+                        >
+                          {availableDeliveryDates.map((item) => (
+                            <option key={item.iso} value={item.iso}>
+                              {item.label}
                             </option>
-                          ))
-                        ) : (
-                          <option value="" disabled>
-                            Hôm nay đã hết khung giờ (Vui lòng chọn ngày mai)
-                          </option>
-                        )}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
-                        <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
+                          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
-                    {fieldError("delivery.expected_delivery") && (
-                      <p className="mt-1 text-xs text-red-500 font-semibold italic animate-fade-in">
-                        *{fieldError("delivery.expected_delivery")}
-                      </p>
-                    )}
+
+                    {/* Chọn Giờ (Step 15 phút) */}
+                    <div>
+                      <label className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                        <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Chọn giờ nhận hàng (10:00 - 23:00)</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={expectedDeliveryTime}
+                          disabled={availableTimeSlots.length === 0}
+                          onChange={(e) => {
+                            setExpectedDeliveryTime(e.target.value);
+                            if (fieldErrors["delivery.expected_delivery"]) {
+                              setFieldErrors((prev) => {
+                                const next = { ...prev };
+                                delete next["delivery.expected_delivery"];
+                                return next;
+                              });
+                            }
+                          }}
+                          className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none ${fieldError("delivery.expected_delivery") ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"
+                            }`}
+                        >
+                          {availableTimeSlots.length > 0 ? (
+                            availableTimeSlots.map((slot) => (
+                              <option key={slot.value} value={slot.value}>
+                                {slot.label}
+                              </option>
+                            ))
+                          ) : (
+                            <option value="" disabled>
+                              Hôm nay đã hết khung giờ (Vui lòng chọn ngày mai)
+                            </option>
+                          )}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
+                          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                      {fieldError("delivery.expected_delivery") && (
+                        <p className="mt-1 text-xs text-red-500 font-semibold italic animate-fade-in">
+                          *{fieldError("delivery.expected_delivery")}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Hình thức thanh toán */}
             <div className="space-y-2 pt-2 border-t border-gray-100">
@@ -1368,8 +1400,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         </div>
 
         {/* CỘT PHẢI: THÔNG TIN ĐƠN HÀNG */}
-        <div className="lg:col-span-5">
-          <div className="bg-white rounded-[24px] p-6 md:p-8 space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100">
+        <div className="lg:col-span-5 lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
+          <div className="bg-white rounded-[24px] p-6 2xl:p-8 space-y-5 2xl:space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100">
             <h2 className="title-1 font-display text-primary border-b border-gray-100 pb-3">
               {t("order_summary")}
             </h2>
@@ -1389,9 +1421,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   </div>
                 ) : (
                   cartItems.map((item) => (
-                    <div key={item.id} className="flex gap-4 items-start py-3 first:pt-0 last:pb-0">
+                    <div key={item.id} className="flex gap-3 2xl:gap-4 items-start py-3 first:pt-0 last:pb-0">
                       {/* Ảnh */}
-                      <div className="relative size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
+                      <div className="relative size-16 2xl:size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
                         <Image
                           src={item.imageUrl}
                           alt={item.title}
@@ -1401,9 +1433,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       </div>
 
                       {/* Thông tin ở giữa */}
-                      <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex-1 min-w-0 space-y-1.5 2xl:space-y-2">
                         <div className="flex justify-between items-start gap-2">
-                          <p className="title-3 font-display text-primary font-bold whitespace-pre-line">
+                          <p className="title-3 font-display text-primary font-bold whitespace-pre-line line-clamp-2">
                             {item.title}
                           </p>
                           <div className="text-right shrink-0">
@@ -1419,7 +1451,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         </div>
 
                         {!isDefaultVariant(item.variant) && (
-                          <p className="body-2 text-gray-500 font-medium">
+                          <p className="body-2 text-gray-500 font-medium truncate">
                             {cleanVariantName(item.variant)}
                           </p>
                         )}
@@ -1427,23 +1459,23 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         {/* Dòng điều khiển: Số lượng & Xóa */}
                         <div className="flex items-center justify-between pt-1">
                           {/* Tăng giảm số lượng kiểu Pill */}
-                          <div className="flex items-center border border-gray-200 rounded-full px-2 py-1 bg-white">
+                          <div className="flex items-center border border-gray-200 rounded-full px-2 py-0.5 2xl:py-1 bg-white">
                             <button
                               type="button"
                               aria-label="Decrease quantity"
-                              className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer flex justify-center"
+                              className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer"
                               disabled={item.quantity <= 1}
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
                             >
                               −
                             </button>
-                            <span className="w-10 text-center body-1 text-primary font-bold">
+                            <span className="w-8 2xl:w-10 text-center body-1 text-primary font-bold">
                               {item.quantity}
                             </span>
                             <button
                               type="button"
                               aria-label="Increase quantity"
-                              className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer flex justify-center"
+                              className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
                             >
                               +
@@ -1454,7 +1486,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                           <button
                             type="button"
                             onClick={() => removeFromCart(item.id)}
-                            className="text-gray-400 hover:text-red-500 transition-colors text-sm font-semibold cursor-pointer"
+                            className="text-gray-400 hover:text-red-500 transition-colors text-xs 2xl:text-sm font-semibold cursor-pointer"
                           >
                             {t("remove_voucher")}
                           </button>
@@ -1464,9 +1496,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   ))
                 )
               ) : order ? (
-                <div className="flex gap-4 items-start py-1">
+                <div className="flex gap-3 2xl:gap-4 items-start py-1">
                   {/* Ảnh */}
-                  <div className="relative size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
+                  <div className="relative size-16 2xl:size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
                     <Image
                       src={order.imageUrl}
                       alt={order.title}
@@ -1476,9 +1508,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   </div>
 
                   {/* Thông tin ở giữa */}
-                  <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex-1 min-w-0 space-y-1.5 2xl:space-y-2">
                     <div className="flex justify-between items-start gap-2">
-                      <p className="title-3 font-display text-primary font-bold whitespace-pre-line">
+                      <p className="title-3 font-display text-primary font-bold whitespace-pre-line line-clamp-2">
                         {order.title}
                       </p>
                       <div className="text-right shrink-0">
@@ -1494,7 +1526,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     </div>
 
                     {!isDefaultVariant(order.variant) && (
-                      <p className="body-2 text-gray-500 font-medium">
+                      <p className="body-2 text-gray-500 font-medium truncate">
                         {cleanVariantName(order.variant)}
                       </p>
                     )}
@@ -1502,11 +1534,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     {/* Dòng điều khiển: Số lượng & Xóa */}
                     <div className="flex items-center justify-between pt-1">
                       {/* Tăng giảm số lượng kiểu Pill */}
-                      <div className="flex items-center border border-gray-200 rounded-full px-2 py-1 bg-white">
+                      <div className="flex items-center border border-gray-200 rounded-full px-2 py-0.5 2xl:py-1 bg-white">
                         <button
                           type="button"
                           aria-label="Decrease quantity"
-                          className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer flex justify-center"
+                          className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer"
                           disabled={quantity <= 1}
                           onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                         >
@@ -1531,12 +1563,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                               setQuantity(1);
                             }
                           }}
-                          className="w-10 text-center body-1 text-primary font-bold focus:outline-none bg-transparent"
+                          className="w-8 2xl:w-10 text-center body-1 text-primary font-bold focus:outline-none bg-transparent"
                         />
                         <button
                           type="button"
                           aria-label="Increase quantity"
-                          className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer flex justify-center"
+                          className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer"
                           onClick={() => setQuantity((q) => q + 1)}
                         >
                           +
@@ -1547,7 +1579,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       <button
                         type="button"
                         onClick={() => setQuantity(1)}
-                        className="text-gray-400 hover:text-red-500 transition-colors text-sm font-semibold cursor-pointer"
+                        className="text-gray-400 hover:text-red-500 transition-colors text-xs 2xl:text-sm font-semibold cursor-pointer"
                       >
                         {t("remove_voucher")}
                       </button>
@@ -1558,19 +1590,19 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
               {/* Món quà tặng đơn hàng (order_gift_discount) */}
               {selectedOrderGiftItem && (
-                <div className="flex gap-4 items-start py-3 bg-yellow/60 rounded-2xl p-3 border border-secondary/30 animate-fade-in shadow-xs">
+                <div className="flex gap-3 2xl:gap-4 items-start py-3 bg-yellow/60 rounded-2xl p-3 border border-secondary/30 animate-fade-in shadow-xs">
                   {selectedOrderGiftItem.image ? (
-                    <div className="relative size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-secondary/20">
+                    <div className="relative size-14 2xl:size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-secondary/20">
                       <Image src={selectedOrderGiftItem.image} alt={selectedOrderGiftItem.product_name} fill className="object-cover" />
                     </div>
                   ) : (
-                    <div className="size-16 flex-shrink-0 rounded-[10px] bg-yellow/80 border border-secondary/20 flex items-center justify-center text-xs font-bold text-brown uppercase text-center p-1">
+                    <div className="size-14 2xl:size-16 flex-shrink-0 rounded-[10px] bg-yellow/80 border border-secondary/20 flex items-center justify-center text-xs font-bold text-brown uppercase text-center p-1">
                       {t("order_gift_tag")}
                     </div>
                   )}
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex justify-between items-start gap-2">
-                      <p className="title-3 font-display text-gray-900 font-bold">
+                      <p className="title-3 font-display text-gray-900 font-bold line-clamp-2">
                         {selectedOrderGiftItem.product_name}
                       </p>
                       <div className="text-right shrink-0">
@@ -1631,19 +1663,19 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
               {/* Món ưu đãi combo Mua X tặng/giảm Y (buy_x_get_y) - Hỗ trợ nhiều chiến dịch */}
               {activeBuyXGetYItems.map(({ promo, item, tag }) => (
-                <div key={`buyxy-${promo.id}-${item.id}`} className="flex gap-4 items-start py-3 bg-yellow/40 rounded-2xl p-3 border border-primary/15 animate-fade-in shadow-xs">
+                <div key={`buyxy-${promo.id}-${item.id}`} className="flex gap-3 2xl:gap-4 items-start py-3 bg-yellow/40 rounded-2xl p-3 border border-primary/15 animate-fade-in shadow-xs">
                   {item.image ? (
-                    <div className="relative size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-primary/20">
+                    <div className="relative size-14 2xl:size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-primary/20">
                       <Image src={item.image} alt={item.product_name} fill className="object-cover" />
                     </div>
                   ) : (
-                    <div className="size-16 flex-shrink-0 rounded-[10px] bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary uppercase text-center p-1">
+                    <div className="size-14 2xl:size-16 flex-shrink-0 rounded-[10px] bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary uppercase text-center p-1">
                       {t("combo_tag")}
                     </div>
                   )}
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex justify-between items-start gap-2">
-                      <p className="title-3 font-display text-gray-900 font-bold">
+                      <p className="title-3 font-display text-gray-900 font-bold line-clamp-2">
                         {item.product_name}
                       </p>
                       <div className="text-right shrink-0">
@@ -1766,14 +1798,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   readOnly={!!appliedVoucher}
                   disabled={validatingVoucher}
                   style={{ backgroundColor: "transparent" }}
-                  className="flex-1 !bg-transparent px-4 py-2 text-gray-900 focus:outline-none text-base uppercase placeholder-gray-400 font-semibold tracking-wider"
+                  className="flex-1 min-w-0 !bg-transparent px-3 2xl:px-4 py-1.5 2xl:py-2 text-gray-900 focus:outline-none text-sm 2xl:text-base uppercase placeholder-gray-400 font-semibold tracking-wider"
                   placeholder={t("voucher_input_placeholder")}
                 />
                 {appliedVoucher ? (
                   <button
                     type="button"
                     onClick={handleRemoveVoucher}
-                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-5 py-2 rounded-full text-sm transition-all border border-red-200/60 shrink-0 cursor-pointer"
+                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3.5 2xl:px-5 py-1.5 2xl:py-2 rounded-full text-xs 2xl:text-sm transition-all border border-red-200/60 shrink-0 cursor-pointer whitespace-nowrap"
                   >
                     {t("remove_voucher")}
                   </button>
@@ -1782,7 +1814,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     <button
                       type="button"
                       onClick={() => setIsVoucherModalOpen(true)}
-                      className="bg-yellow/70 hover:bg-yellow text-primary font-bold px-3.5 py-2 rounded-full text-xs transition-all border border-primary/20 cursor-pointer whitespace-nowrap"
+                      className="bg-yellow/70 hover:bg-yellow text-primary font-bold px-2.5 2xl:px-3.5 py-1.5 2xl:py-2 rounded-full text-xs transition-all border border-primary/20 cursor-pointer whitespace-nowrap"
                     >
                       {t("select_voucher_btn")}
                     </button>
@@ -1790,7 +1822,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       type="button"
                       onClick={() => handleApplyVoucher()}
                       disabled={validatingVoucher || !voucherCode.trim()}
-                      className="bg-primary hover:bg-primary/95 text-white font-bold px-5 py-2 rounded-full text-sm transition-all disabled:opacity-40 shrink-0 cursor-pointer"
+                      className="bg-primary hover:bg-primary/95 text-white font-bold px-3.5 2xl:px-5 py-1.5 2xl:py-2 rounded-full text-xs 2xl:text-sm transition-all disabled:opacity-40 shrink-0 cursor-pointer whitespace-nowrap"
                     >
                       {validatingVoucher ? t("checking_voucher") : t("apply_voucher")}
                     </button>
@@ -1825,7 +1857,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             />
 
             {/* Hộp tính giá (Blue-Gray rounded container) */}
-            <div className="bg-gray-50 rounded-[16px] p-4 space-y-3 border border-gray-100/80">
+            <div className="bg-gray-50 rounded-[16px] p-4 2xl:p-5 space-y-2.5 2xl:space-y-3 border border-gray-100/80">
               <div className="flex justify-between items-center text-sm font-medium">
                 <span className="text-gray-600 flex items-center gap-1.5">
                   <span>{t("shipping_fee")}</span>
@@ -1846,6 +1878,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         </span>
                       )}
                       <span className="text-secondary font-bold text-base">0đ</span>
+                    </div>
+                  ) : shippingDiscount > 0 && shippingFee < originalFee ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 line-through">
+                        {formatPrice(originalFee)}
+                      </span>
+                      <span className="text-primary font-bold text-base">
+                        {formatPrice(shippingFee)}
+                      </span>
                     </div>
                   ) : shipping > 0 ? (
                     <span className="text-primary font-bold text-base">
@@ -1906,6 +1947,18 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </div>
               )}
 
+              {/* Chiết khấu thành viên (Member Tier Discount) */}
+              {user && memberDiscount > 0 && (
+                <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                  <span className="flex-1 min-w-0 leading-snug">
+                    {memberDiscountLabel}
+                  </span>
+                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                    -{formatPrice(memberDiscount)}
+                  </span>
+                </div>
+              )}
+
               {appliedVoucher && voucherDiscount > 0 && (
                 <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2">
                   <span className="flex-1 min-w-0 leading-snug">{t("voucher_label")}</span>
@@ -1916,8 +1969,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               )}
 
               <div className="flex justify-between items-center border-t border-gray-200/80 pt-3 gap-2">
-                <span className="text-gray-900 font-bold text-base flex-1 min-w-0">{t("total")}</span>
-                <span className="text-xl font-display text-primary font-bold shrink-0 whitespace-nowrap text-right">
+                <span className="text-gray-900 font-bold text-sm 2xl:text-base flex-1 min-w-0">{t("total")}</span>
+                <span className="text-lg 2xl:text-xl font-display text-primary font-bold shrink-0 whitespace-nowrap text-right">
                   {formatPrice(total)}
                 </span>
               </div>
@@ -1930,8 +1983,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             </div>
 
             {/* Confirm details check checkbox */}
-            <div className="py-2.5">
-              <label className="flex items-center gap-2.5 cursor-pointer text-sm font-semibold text-gray-700 select-none">
+            <div className="py-2 2xl:py-2.5">
+              <label className="flex items-center gap-2.5 cursor-pointer text-xs 2xl:text-sm font-semibold text-gray-700 select-none">
                 <div className="relative">
                   <input
                     type="checkbox"
@@ -1971,14 +2024,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               type="button"
               onClick={handleSubmit}
               disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable)}
-              className="w-full bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none"
+              className="w-full bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white font-bold rounded-full py-3.5 2xl:py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none"
             >
               {loading
                 ? t("submitting")
                 : deliveryType === "delivery" && !isDeliverable
                   ? "Khu vực chưa hỗ trợ giao"
-                  : !operatingStatus.canOrderNow
-                    ? t("schedule_pickup")
+                  : deliveryType === "delivery" && !operatingStatus.canOrderNow
+                    ? t("schedule_delivery")
                     : t("place_order")}
             </button>
           </div>

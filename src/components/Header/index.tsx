@@ -42,8 +42,8 @@ const Header = () => {
   const t = useTranslations();
   const locale = useLocale();
   const settings = useGeneralSettings();
-  const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
-  const hotlineClean = hotline.replace(/\s/g, "");
+  const hotline = settings?.hotline || "024.9999.7122";
+  const hotlineClean = hotline.replace(/[^0-9+]/g, "");
   const { isCartOpen, setIsCartOpen, totalItems } = useCart();
   const toggleCart = () => setIsCartOpen(!isCartOpen);
 
@@ -468,8 +468,8 @@ const MobileMenu = ({
   const t = useTranslations();
   const [openSection, setOpenSection] = useState<number | null>(null);
   const settings = useGeneralSettings();
-  const hotline = settings?.hotline?.replace(/\s/g, '') || "0987 654 321";
-  const hotlineClean = hotline.replace(/\s/g, "");
+  const hotline = settings?.hotline || "024.9999.7122";
+  const hotlineClean = hotline.replace(/[^0-9+]/g, "");
   const { isCartOpen, setIsCartOpen, totalItems } = useCart();
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
