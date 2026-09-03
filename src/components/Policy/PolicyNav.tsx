@@ -92,8 +92,7 @@ export default function PolicyNav({ policies, currentSlug }: PolicyNavProps) {
             </span>
           </div>
 
-          <span className="px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xs font-semibold flex items-center gap-1.5 flex-shrink-0">
-            <span>{isEn ? "Change policy" : "Đổi chính sách"}</span>
+          <span className="size-7 rounded-full bg-secondary/10 text-secondary flex items-center justify-center flex-shrink-0">
             <div className="rotate-180">
               <Chevron className="w-2.5 h-2.5" />
             </div>

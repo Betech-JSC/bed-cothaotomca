@@ -484,7 +484,7 @@
   "modal": {
     "success": {
       "title": "Sent Successfully!",
-      "message": "Thank you for contacting us. Co Thao Kitchen will get back to you soon.",
+      "message": "Thank you for contacting us. Co Thao Tom Ca will get back to you soon.",
       "button": "Close"
     }
   },
@@ -561,7 +561,7 @@
     "account_label": "ACCOUNT"
   },
   "forgot_password": {
-    "title": "Forgot Password",
+    "title": "Forgot Password - Co Thao Tom Ca",
     "description": "Enter the email associated with your account. We will send you a link to reset your password.",
     "email_label": "Email Address",
     "email_placeholder": "Enter your email (e.g. name@gmail.com)",
@@ -573,7 +573,7 @@
     "network_error": "Connection error. Please check your network and try again."
   },
   "reset_password": {
-    "title": "Reset Password",
+    "title": "Reset Password - Co Thao Tom Ca",
     "description": "Please enter your new password for your account.",
     "password_label": "New Password",
     "password_placeholder": "Enter new password (min. 6 characters)",

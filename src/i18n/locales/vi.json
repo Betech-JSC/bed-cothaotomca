@@ -78,7 +78,7 @@
   },
   "checkout": {
     "title": "Thanh toán",
-    "description": "Vui lòng điền thông tin giao hàng. Bếp Cô Thảo sẽ xác nhận đơn và liên hệ với bạn sớm nhất.",
+    "description": "Vui lòng điền thông tin giao hàng. Bếp Cô Thảo Tôm Cá sẽ xác nhận đơn và liên hệ với bạn sớm nhất.",
     "order_summary": "Đơn hàng",
     "customer_info": "Thông tin liên hệ",
     "product": "Sản phẩm",
@@ -388,8 +388,8 @@
     },
     "section-5": {
       "title": {
-        "text1": "Giao trọn ",
-        "text2": "vị ngon ",
+        "text1": "Giao trọn",
+        "text2": "vị ngon",
         "text3": "đến tận nhà!"
       }
     },
@@ -402,7 +402,7 @@
         "text2": "Vẹn Nguyên Hương Vị"
       },
       "description": {
-        "text1": "Với mạng lưới 5 cửa hàng chuyên biệt cho mô hình Delivery, Cô Thảo Tôm Cá đảm bảo thời gian và chất lượng giao hàng tốt nhất ngành hàng. Chúng tôi luôn tâm huyết vào quy trình đóng gói chỉn chu, đảm bảo món ăn không bị ảnh hưởng bởi nhiệt độ hay thời gian di chuyển, mang trọn vẹn trải nghiệm cao cấp đến mỗi bữa ăn của khách hàng."
+        "text1": "Với mạng lưới 5 cửa hàng chuyên biệt cho mô hình Delivery, Cô Thảo Tôm Cá đảm bảo thời gian và chất lượng giao hàng tốt nhất ngành hàng. Chúng tôi đặt tâm huyết vào quy trình đóng gói chỉn chu, đảm bảo món ăn không bị ảnh hưởng bởi nhiệt độ hay thời gian di chuyển, mang trọn vẹn trải nghiệm cao cấp đến mỗi bữa ăn của khách hàng."
       }
     }
   },
@@ -423,15 +423,15 @@
       },
       "value1": {
         "title": "Chất Lượng Tinh Tuyển",
-        "description": "Chỉ sử dụng nguồn nguyên liệu hạng nhất để chế biến. Cam kết tuyệt đối 100% không sử dụng chất bảo quản, giữ trọn hương vị nguyên bản và tốt cho sức khỏe."
+        "description": "Chỉ dùng nguyên liệu loại 1. Cam kết 100% không chất bảo quản, giữ trọn hương vị nguyên bản."
       },
       "value2": {
         "title": "Chuyên Nghiệp & An Toàn",
-        "description": "Mọi khâu chế biến đều được thực hiện thủ công dưới bàn tay của đội ngũ được đào tạo bài bản, tuân thủ nghiêm ngặt các tiêu chuẩn an toàn vệ sinh thực phẩm. Không gian bếp và dụng cụ luôn đảm bảo vô trùng, sạch sẽ và gọn gàng trong từng chi tiết."
+        "description": "Mọi khâu chế biến đều được thực hiện thủ công dưới bàn tay của đội ngũ được đào tạo bài bản, tuân thủ nghiêm ngặt các tiêu chuẩn an toàn vệ sinh thực phẩm. Không gian bếp và dụng cụ luôn đảm bảo vô trùng, sạch sẽ và an toàn trong từng chi tiết."
       },
       "value3": {
         "title": "Tươi Ngon Chuẩn Vị",
-        "description": "Hải sản luôn giữ được độ tươi rói, mọng nước và giòn ngọt tự nhiên. Khi hòa quyện cùng nước tương độc quyền, mang đến một trải nghiệm thưởng thức thực sự “có gu”."
+        "description": "Hải sản giữ được độ tươi, mọng nước và giòn ngọt tự nhiên. Hoà cùng nước tương riêng của bếp, món ăn có một gu vị rõ ràng, không lẫn với nơi khác."
       },
       "value4": {
         "title": "Ân Cần & Tận Tâm",
@@ -459,7 +459,7 @@
     "description": "Cô Thảo Tôm Cá luôn sẵn sàng giải đáp mọi thắc mắc của khách hàng. Bằng tất cả sự ân cần và nhiệt tình, nếu bạn cần bếp tư vấn về khẩu vị hay lựa món cho hôm nay thì đừng ngần ngại liên hệ với chúng tôi!",
     "address": "Địa chỉ",
     "form": {
-      "title": "Bếp Cô Thảo có thể giúp gì cho bạn?",
+      "title": "Bếp Cô Thảo Tôm Cá có thể giúp gì cho bạn?",
       "name": {
         "title": "Họ và tên",
         "placeholder": "Nhập họ và tên..."
@@ -485,7 +485,7 @@
   "modal": {
     "success": {
       "title": "Gửi thành công!",
-      "message": "Cảm ơn bạn đã liên hệ. Bếp Cô Thảo sẽ sớm phản hồi tin nhắn của bạn.",
+      "message": "Cảm ơn bạn đã liên hệ. Bếp Cô Thảo Tôm Cá sẽ sớm phản hồi tin nhắn của bạn.",
       "button": "Đóng"
     }
   },
@@ -562,7 +562,7 @@
     "account_label": "TÀI KHOẢN"
   },
   "forgot_password": {
-    "title": "Quên Mật Khẩu",
+    "title": "Quên Mật Khẩu - Cô Thảo Tôm Cá",
     "description": "Nhập địa chỉ email liên kết với tài khoản của bạn. Chúng tôi sẽ gửi một liên kết để bạn đặt lại mật khẩu mới.",
     "email_label": "Địa chỉ Email",
     "email_placeholder": "Nhập email của bạn (ví dụ: name@gmail.com)",
@@ -574,7 +574,7 @@
     "network_error": "Đã xảy ra lỗi kết nối. Vui lòng kiểm tra mạng và thử lại."
   },
   "reset_password": {
-    "title": "Đặt Lại Mật Khẩu",
+    "title": "Đặt Lại Mật Khẩu - Cô Thảo Tôm Cá",
     "description": "Vui lòng nhập mật khẩu mới cho tài khoản của bạn.",
     "password_label": "Mật khẩu mới",
     "password_placeholder": "Nhập mật khẩu mới (tối thiểu 6 ký tự)",

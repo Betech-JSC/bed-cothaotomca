@@ -62,7 +62,7 @@ export default function JsonLd({ type, data, url }: JsonLdProps) {
           name: 'Cô Thảo Tôm Cá',
           logo: {
             '@type': 'ImageObject',
-            url: data.logoUrl || 'https://cothaotomca.com/images/logo.png',
+            url: data.logoUrl || 'https://cothaotomca.vn/images/logo.png',
           },
         },
       };
@@ -84,11 +84,11 @@ export default function JsonLd({ type, data, url }: JsonLdProps) {
       schemaBase = {
         ...schemaBase,
         name: data.siteName || 'Cô Thảo Tôm Cá',
-        url: data.url || 'https://cothaotomca.com',
-        logo: data.logoUrl || 'https://cothaotomca.com/images/logo.png',
+        url: data.url || 'https://cothaotomca.vn',
+        logo: data.logoUrl || 'https://cothaotomca.vn/images/logo.png',
         contactPoint: {
           '@type': 'ContactPoint',
-          telephone: data.hotline || '090 999 9999',
+          telephone: data.hotline || '024 9999 7122',
           contactType: 'customer service',
           areaServed: 'VN',
           availableLanguage: ['Vietnamese', 'English'],
@@ -100,23 +100,23 @@ export default function JsonLd({ type, data, url }: JsonLdProps) {
       schemaBase = {
         ...schemaBase,
         name: 'Cô Thảo Tôm Cá',
-        image: 'https://cothaotomca.com/images/store-front.jpg',
-        '@id': 'https://cothaotomca.com/#localbusiness',
-        url: 'https://cothaotomca.com',
-        telephone: data?.telephone || '090 999 9999',
+        image: 'https://cothaotomca.vn/cover.jpg',
+        '@id': 'https://cothaotomca.vn/#localbusiness',
+        url: 'https://cothaotomca.vn',
+        telephone: data?.telephone || '024 9999 7122',
         priceRange: '$$',
         address: {
           '@type': 'PostalAddress',
-          streetAddress: '1073 Phan Văn Trị, Phường 10',
-          addressLocality: 'Quận Gò Vấp',
+          streetAddress: '42/2 Trần Đình Xu, Phường Cô Giang',
+          addressLocality: 'Quận 1',
           addressRegion: 'TP. Hồ Chí Minh',
           postalCode: '700000',
           addressCountry: 'VN',
         },
         geo: {
           '@type': 'GeoCoordinates',
-          latitude: 10.8267,
-          longitude: 106.6785,
+          latitude: 10.7602,
+          longitude: 106.6908,
         },
         openingHoursSpecification: [
           {

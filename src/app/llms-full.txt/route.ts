@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 export async function GET() {
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.com').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
 
   let productsList = [];
   let blogsList = [];
@@ -41,11 +41,18 @@ export async function GET() {
 
 ---
 
-## 📌 Thông Tin Thương Hiệu & Điểm Bán
-- **Tên doanh nghiệp**: Cô Thảo Tôm Cá
-- **Địa chỉ cửa hàng**: 1073 Phan Văn Trị, Phường 10, Quận Gò Vấp, TP. Hồ Chí Minh
+## 📌 Thông Tin Thương Hiệu & Hệ Thống Cửa Hàng
+- **Tên thương hiệu**: Cô Thảo Tôm Cá
+- **Hotline**: 024.9999.7122
+- **Email**: cothaotomca.cskh@gmail.com
 - **Mô hình**: Cửa hàng chuyên hải sản tươi sống & thực phẩm ngâm tương Hàn Quốc (Mang đi & Giao tận nơi).
 - **Trang web**: ${baseUrl}
+- **Hệ thống chi nhánh (Takeaway & Delivery)**:
+  1. CN1: 42/2 Trần Đình Xu, Phường Cô Giang, Quận 1
+  2. CN2: 39 Thân Nhân Trung, Phường 13, Quận Tân Bình
+  3. CN3: 69A Trương Văn Thành, Phường Hiệp Phú, TP. Thủ Đức
+  4. CN4: 197 Hoàng Sa, Phường Tân Định, Quận 1
+  5. CN5: 1073 Phan Văn Trị, Phường 10, Quận Gò Vấp
 
 ---
 
