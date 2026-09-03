@@ -81,7 +81,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       try {
         const token = localStorage.getItem("auth_token");
         const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
-        const res = await fetch(`${BASE_URL}/orders`, {
+        const res = await fetch(`${BASE_URL}/user/orders`, {
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/json",
