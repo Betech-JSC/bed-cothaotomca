@@ -1,6 +1,8 @@
 import { getTranslations } from 'next-intl/server'
 import { locales as supportedLocales, defaultLocale } from '@/i18n/config'
 
+import Link from 'next/link'
+
 export default async function NotFound({ params }: { params: { locale?: string } }) {
   const locale = params?.locale || defaultLocale;
 
@@ -14,12 +16,12 @@ export default async function NotFound({ params }: { params: { locale?: string }
         <div className="max-w-xl mx-auto text-center">
           <h1 className="text-6xl font-extrabold text-primary mb-4">{t('errors.404.title')}</h1>
           <p className="text-xl text-gray-700 mb-6">{t('errors.404.description')}</p>
-          <a
-            href="/"
+          <Link
+            href={`/${useLocale}`}
             className="inline-block px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             {t('errors.404.go_home')}
-          </a>
+          </Link>
         </div>
       </div>
     </main>

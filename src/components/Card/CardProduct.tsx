@@ -78,7 +78,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         </Link>
         <div className="body-1 text-gray-900 line-clamp-3 min-h-[48px] md:min-h-[72px] mt-1 mb-2">{item.description}</div>
         <div className="flex items-center justify-center gap-1.5">
-          {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}</span> : null}
+          {item.variants && item.variants.length > 1 ? <span className="body-0 text-gray-900">{t('common.only_from')}&nbsp;</span> : null}
           <span className="title-2 text-secondary">
             {formatPrice(price)}
           </span>

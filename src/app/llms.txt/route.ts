@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 3600; // Cache for 1 hour
 
 export async function GET() {
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.com').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
 
   let productsList = [];
   let blogsList = [];
@@ -34,12 +34,17 @@ export async function GET() {
 
 > Cô Thảo Tôm Cá là thương hiệu ẩm thực chuyên cung cấp hải sản tươi sống chất lượng cao, thực phẩm ngâm tương Hàn Quốc chuẩn vị thủ công và các món ăn chế biến sẵn hàng đầu tại TP. Hồ Chí Minh.
 
-## 📌 Thông Tin Liên Hệ & Cửa Hàng
+## 📌 Thông Tin Liên Hệ & Hệ Thống Cửa Hàng
 - **Thương hiệu**: Cô Thảo Tôm Cá
-- **Địa chỉ cửa hàng**: 1073 Phan Văn Trị, Phường 10, Quận Gò Vấp, TP. Hồ Chí Minh
-- **Hình thức phục vụ**: Takeaway (Mang đi) & Giao hàng hoả tốc tận nơi
+- **Hotline**: 024.9999.7122
+- **Email**: cothaotomca.cskh@gmail.com
 - **Website chính thức**: ${baseUrl}
-- **Bản đồ Google Maps**: https://maps.google.com/?q=1073+Phan+Văn+Trị+Gò+Vấp
+- **Hệ thống chi nhánh (Takeaway & Delivery)**:
+  1. CN1: 42/2 Trần Đình Xu, Phường Cô Giang, Quận 1
+  2. CN2: 39 Thân Nhân Trung, Phường 13, Quận Tân Bình
+  3. CN3: 69A Trương Văn Thành, Phường Hiệp Phú, TP. Thủ Đức
+  4. CN4: 197 Hoàng Sa, Phường Tân Định, Quận 1
+  5. CN5: 1073 Phan Văn Trị, Phường 10, Quận Gò Vấp
 
 ## 🦐 Sản Phẩm Nổi Bật (Catalog)
 ${productMarkdown}

@@ -100,7 +100,7 @@ const Footer = () => {
                 <div className="relative max-w-[130px] w-full h-[50px]">
                   <Image
                     src="/images/image-vertification.png"
-                    alt="image vertification"
+                    alt="image verification"
                     fill
                     className="object-cover w-full h-full"
                   />

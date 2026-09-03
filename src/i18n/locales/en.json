@@ -219,7 +219,7 @@
   "modal": {
     "success": {
       "title": "Sent Successfully!",
-      "message": "Thank you for contacting us. Co Thao Kitchen will get back to you soon.",
+      "message": "Thank you for contacting us. Co Thao Tom Ca will get back to you soon.",
       "button": "Close"
     }
   },
@@ -281,11 +281,11 @@
     "account_label": "ACCOUNT"
   },
   "forgot_password": {
-    "title": "Forgot Password - Co Thao Kitchen",
-    "description": "Request a password reset for your Co Thao Kitchen account."
+    "title": "Forgot Password - Co Thao Tom Ca",
+    "description": "Request a password reset for your Co Thao Tom Ca account."
   },
   "reset_password": {
-    "title": "Reset Password - Co Thao Kitchen",
-    "description": "Set a new password for your Co Thao Kitchen account."
+    "title": "Reset Password - Co Thao Tom Ca",
+    "description": "Set a new password for your Co Thao Tom Ca account."
   }
 }
