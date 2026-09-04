@@ -180,6 +180,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   // Voucher states
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [bestDealNotice, setBestDealNotice] = useState<string | null>(null);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [availableVouchers, setAvailableVouchers] = useState<PublicVoucherItem[]>([]);
   const [appliedVoucher, setAppliedVoucher] = useState<{
@@ -208,15 +209,76 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return checkOperatingHours(config?.operating_hours);
   }, [config?.operating_hours]);
 
-  const lineItems = useMemo(() => {
+  // 1. Tiền giảm của khuyến mại món hiện tại: sum((item.originalPrice - item.unitPrice) * quantity) (với các món có originalPrice > unitPrice)
+  const totalItemDiscount = useMemo(() => {
     if (isCartCheckout) {
-      return cartItems.map(item => ({ price: item.unitPrice, quantity: item.quantity, discount: 0 }));
+      return cartItems.reduce((sum, item) => {
+        if (item.originalPrice && item.originalPrice > item.unitPrice) {
+          return sum + (item.originalPrice - item.unitPrice) * item.quantity;
+        }
+        return sum;
+      }, 0);
     }
     if (order) {
-      return [{ price: order.unitPrice, quantity, discount: 0 }];
+      if (order.originalPrice && order.originalPrice > order.unitPrice) {
+        return (order.originalPrice - order.unitPrice) * quantity;
+      }
+    }
+    return 0;
+  }, [isCartCheckout, cartItems, order, quantity]);
+
+  // 2. Tổng giá trị đơn hàng tính theo Giá gốc: sum(item.originalPrice * quantity)
+  const originalSubtotal = useMemo(() => {
+    if (isCartCheckout) {
+      return cartItems.reduce((sum, item) => {
+        const itemOriginalPrice = (item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice;
+        return sum + itemOriginalPrice * item.quantity;
+      }, 0);
+    }
+    if (order) {
+      const itemOriginalPrice = (order.originalPrice && order.originalPrice > order.unitPrice) ? order.originalPrice : order.unitPrice;
+      return itemOriginalPrice * quantity;
+    }
+    return 0;
+  }, [isCartCheckout, cartItems, order, quantity]);
+
+  // Tạm tính tính theo giá sale thông thường
+  const saleSubtotal = useMemo(() => {
+    if (isCartCheckout) {
+      return cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    }
+    if (order) {
+      return order.unitPrice * quantity;
+    }
+    return 0;
+  }, [isCartCheckout, cartItems, order, quantity]);
+
+  // Trạng thái Best Deal: Khi voucher có canCombineWithPromotions === false được áp dụng
+  const isBestDealVoucherApplied = useMemo(() => {
+    return Boolean(appliedVoucher && appliedVoucher.canCombineWithPromotions === false);
+  }, [appliedVoucher]);
+
+  const lineItems = useMemo(() => {
+    if (isCartCheckout) {
+      return cartItems.map(item => ({
+        price: isBestDealVoucherApplied
+          ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
+          : item.unitPrice,
+        quantity: item.quantity,
+        discount: 0,
+      }));
+    }
+    if (order) {
+      return [{
+        price: isBestDealVoucherApplied
+          ? ((order.originalPrice && order.originalPrice > order.unitPrice) ? order.originalPrice : order.unitPrice)
+          : order.unitPrice,
+        quantity,
+        discount: 0,
+      }];
     }
     return [];
-  }, [isCartCheckout, cartItems, order, quantity]);
+  }, [isCartCheckout, cartItems, order, quantity, isBestDealVoucherApplied]);
 
   const { subtotal, shipping } = calcOrderTotal(
     lineItems,
@@ -238,6 +300,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn)
   const eligibleOrderDiscountPromo = useMemo(() => {
+    if (isBestDealVoucherApplied) return null;
     return (
       config.active_promotions?.find(
         (p) =>
@@ -245,7 +308,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           subtotal >= (p.min_order_value || 0)
       ) || null
     );
-  }, [config.active_promotions, subtotal]);
+  }, [config.active_promotions, subtotal, isBestDealVoucherApplied]);
 
   const autoOrderDiscountAmount = useMemo(() => {
     if (!eligibleOrderDiscountPromo || optOutOrderDiscount) return 0;
@@ -565,16 +628,49 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // Auto-remove voucher if cart subtotal drops below the minimum required price (Applies to all vouchers including Freeship)
   useEffect(() => {
-    if (appliedVoucher) {
-      if (appliedVoucher.prereqPrice && subtotal < appliedVoucher.prereqPrice) {
+    if (!appliedVoucher) return;
+
+    if (appliedVoucher.canCombineWithPromotions === false) {
+      // 1. Kiểm tra prereqPrice dựa trên originalSubtotal
+      if (appliedVoucher.prereqPrice && originalSubtotal < appliedVoucher.prereqPrice) {
         setAppliedVoucher(null);
         setVoucherSuccess(null);
+        setBestDealNotice(null);
+        setVoucherError(
+          `Mã giảm giá đã bị gỡ do đơn hàng hiện tại chưa đủ ${appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ.`
+        );
+        return;
+      }
+
+      // 2. Tính lại voucherDiscountAmount trên originalSubtotal
+      const voucherDiscountAmount = calculateVoucherDiscount(
+        appliedVoucher,
+        originalSubtotal,
+        shipping
+      );
+
+      // 3. Nếu tổng tiền giảm của CTKM món >= voucherDiscountAmount -> rollback lại CTKM món
+      if (totalItemDiscount >= voucherDiscountAmount) {
+        setAppliedVoucher(null);
+        setVoucherSuccess(null);
+        setVoucherError(null);
+        setBestDealNotice(
+          t("best_deal_item_better") ||
+            "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất."
+        );
+      }
+    } else {
+      // Với voucher cộng dồn, kiểm tra prereqPrice dựa trên saleSubtotal
+      if (appliedVoucher.prereqPrice && saleSubtotal < appliedVoucher.prereqPrice) {
+        setAppliedVoucher(null);
+        setVoucherSuccess(null);
+        setBestDealNotice(null);
         setVoucherError(
           `Mã giảm giá đã bị gỡ do đơn hàng hiện tại chưa đủ ${appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ.`
         );
       }
     }
-  }, [subtotal, appliedVoucher]);
+  }, [appliedVoucher, originalSubtotal, saleSubtotal, totalItemDiscount, shipping]);
 
   const voucherDiscount = useMemo(
     () => calculateVoucherDiscount(appliedVoucher, subtotal, shipping),
@@ -602,6 +698,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     if (!code) {
       setVoucherError("Vui lòng nhập mã giảm giá.");
       setVoucherSuccess(null);
+      setBestDealNotice(null);
       return;
     }
 
@@ -609,44 +706,135 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     setValidatingVoucher(true);
     setVoucherError(null);
     setVoucherSuccess(null);
+    setBestDealNotice(null);
 
     try {
-      const hasCampaign = cartItems.some(i => (i.originalPrice && i.originalPrice > i.unitPrice)) || autoOrderDiscountAmount > 0;
-      const campaignDiscount = autoOrderDiscountAmount;
       const res = await validateVoucher(
         code,
-        subtotal,
+        originalSubtotal,
         shipping,
-        hasCampaign,
-        campaignDiscount,
+        false,
+        0,
         phone || user?.phone || undefined,
         token || undefined
       );
       if (res.valid && res.voucher) {
-        setAppliedVoucher({
-          id: res.voucher.id,
-          code: res.voucher.code,
-          value: res.voucher.value,
-          discountType: res.voucher.discount_type,
-          maxDiscount: res.voucher.max_discount,
-          campaignId: res.voucher.campaign_id,
-          prereqPrice: res.voucher.prereq_price,
-          isFreeship: res.voucher.is_freeship,
-          canCombineWithPromotions: res.voucher.can_combine_with_promotions,
-          canCombineWithFreeship: res.voucher.can_combine_with_freeship,
-          discountAmount: res.discount_amount,
-        });
-        setVoucherSuccess(res.message);
-        return true;
+        const canCombine = res.voucher.can_combine_with_promotions !== false;
+
+        if (!canCombine) {
+          // 1. Điều kiện tối thiểu của voucher (prereqPrice) được xét dựa trên originalSubtotal
+          const prereqPrice = Number(res.voucher.prereq_price || 0);
+          if (prereqPrice > 0 && originalSubtotal < prereqPrice) {
+            const msg = `Mã giảm giá chỉ áp dụng cho đơn hàng từ ${prereqPrice.toLocaleString("vi-VN")}đ trở lên.`;
+            setVoucherError(msg);
+            setAppliedVoucher(null);
+            throw new Error(msg);
+          }
+
+          // 2. Tính tiền giảm của voucher dựa trên originalSubtotal: voucherDiscountAmount
+          const voucherCandidate = {
+            id: res.voucher.id,
+            code: res.voucher.code,
+            value: res.voucher.value,
+            discountType: res.voucher.discount_type,
+            maxDiscount: res.voucher.max_discount,
+            prereqPrice: res.voucher.prereq_price,
+            isFreeship: res.voucher.is_freeship,
+          };
+          const voucherDiscountAmount = calculateVoucherDiscount(
+            voucherCandidate,
+            originalSubtotal,
+            shipping
+          );
+
+          // 3. So sánh:
+          if (totalItemDiscount >= voucherDiscountAmount) {
+            // totalItemDiscount >= voucherDiscountAmount (CTKM món đang tốt hơn):
+            // -> Giữ nguyên CTKM món (không áp trừ voucher).
+            // -> Hiển thị thông báo (toast/alert text, dùng text-secondary)
+            setAppliedVoucher(null);
+            setVoucherSuccess(null);
+            setVoucherError(null);
+            const notice =
+              t("best_deal_item_better") ||
+              "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất.";
+            setBestDealNotice(notice);
+            return false;
+          }
+
+          // voucherDiscountAmount > totalItemDiscount (Voucher hời hơn):
+          // -> Áp dụng voucher!
+          // -> Tạm tính chuyển sang tính theo originalSubtotal (các món hiển thị giá gốc).
+          // -> Giảm trừ tiền theo voucherDiscountAmount.
+          setAppliedVoucher({
+            id: res.voucher.id,
+            code: res.voucher.code,
+            value: res.voucher.value,
+            discountType: res.voucher.discount_type,
+            maxDiscount: res.voucher.max_discount,
+            campaignId: res.voucher.campaign_id,
+            prereqPrice: res.voucher.prereq_price,
+            isFreeship: res.voucher.is_freeship,
+            canCombineWithPromotions: false,
+            canCombineWithFreeship: res.voucher.can_combine_with_freeship,
+            discountAmount: voucherDiscountAmount,
+          });
+          setVoucherSuccess(res.message || "Áp dụng mã giảm giá thành công!");
+          setBestDealNotice(null);
+          return true;
+        } else {
+          // can_combine_with_promotions === true
+          const prereqPrice = Number(res.voucher.prereq_price || 0);
+          if (prereqPrice > 0 && saleSubtotal < prereqPrice) {
+            const msg = `Mã giảm giá chỉ áp dụng cho đơn hàng từ ${prereqPrice.toLocaleString("vi-VN")}đ trở lên.`;
+            setVoucherError(msg);
+            setAppliedVoucher(null);
+            throw new Error(msg);
+          }
+
+          const voucherCandidate = {
+            id: res.voucher.id,
+            code: res.voucher.code,
+            value: res.voucher.value,
+            discountType: res.voucher.discount_type,
+            maxDiscount: res.voucher.max_discount,
+            prereqPrice: res.voucher.prereq_price,
+            isFreeship: res.voucher.is_freeship,
+          };
+          const voucherDiscountAmount = calculateVoucherDiscount(
+            voucherCandidate,
+            saleSubtotal,
+            shipping
+          );
+
+          setAppliedVoucher({
+            id: res.voucher.id,
+            code: res.voucher.code,
+            value: res.voucher.value,
+            discountType: res.voucher.discount_type,
+            maxDiscount: res.voucher.max_discount,
+            campaignId: res.voucher.campaign_id,
+            prereqPrice: res.voucher.prereq_price,
+            isFreeship: res.voucher.is_freeship,
+            canCombineWithPromotions: true,
+            canCombineWithFreeship: res.voucher.can_combine_with_freeship,
+            discountAmount: voucherDiscountAmount,
+          });
+          setVoucherSuccess(res.message || "Áp dụng mã giảm giá thành công!");
+          setBestDealNotice(null);
+          return true;
+        }
       } else {
         setVoucherError(res.message);
         setAppliedVoucher(null);
+        setBestDealNotice(null);
         throw new Error(res.message);
       }
     } catch (err: any) {
       const msg = err?.message || "Không thể xác thực mã giảm giá.";
       setVoucherError(msg);
       setAppliedVoucher(null);
+      setBestDealNotice(null);
       throw new Error(msg);
     } finally {
       setValidatingVoucher(false);
@@ -658,6 +846,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     setVoucherCode("");
     setVoucherSuccess(null);
     setVoucherError(null);
+    setBestDealNotice(null);
   };
 
   // Address concatenation
@@ -782,7 +971,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               product_code: item.productCode,
               product_name: item.title,
               quantity: item.quantity,
-              price: item.unitPrice,
+              price: isBestDealVoucherApplied
+                ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
+                : item.unitPrice,
               discount: 0,
               note: undefined,
             })),
@@ -816,7 +1007,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 product_code: order.productCode,
                 product_name: order.title,
                 quantity,
-                price: order.unitPrice,
+                price: isBestDealVoucherApplied
+                  ? ((order.originalPrice && order.originalPrice > order.unitPrice) ? order.originalPrice : order.unitPrice)
+                  : order.unitPrice,
                 discount: 0,
                 note: itemNote.trim() || undefined,
               },
@@ -1439,13 +1632,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                             {item.title}
                           </p>
                           <div className="text-right shrink-0">
-                            {item.originalPrice && item.originalPrice > item.unitPrice ? (
+                            {!isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice ? (
                               <p className="text-xs font-semibold text-gray-400 line-through leading-tight">
                                 {formatPrice(item.originalPrice)}
                               </p>
                             ) : null}
                             <p className="title-3 text-secondary font-bold leading-tight">
-                              {formatPrice(item.unitPrice)}
+                              {formatPrice(
+                                isBestDealVoucherApplied
+                                  ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
+                                  : item.unitPrice
+                              )}
                             </p>
                           </div>
                         </div>
@@ -1514,13 +1711,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         {order.title}
                       </p>
                       <div className="text-right shrink-0">
-                        {order.originalPrice && order.originalPrice > order.unitPrice ? (
+                        {!isBestDealVoucherApplied && order.originalPrice && order.originalPrice > order.unitPrice ? (
                           <p className="text-xs font-semibold text-gray-400 line-through leading-tight">
                             {formatPrice(order.originalPrice)}
                           </p>
                         ) : null}
                         <p className="title-3 text-secondary font-bold leading-tight">
-                          {formatPrice(order.unitPrice)}
+                          {formatPrice(
+                            isBestDealVoucherApplied
+                              ? ((order.originalPrice && order.originalPrice > order.unitPrice) ? order.originalPrice : order.unitPrice)
+                              : order.unitPrice
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1832,6 +2033,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {voucherError && (
                 <p className="text-xs text-red-600 font-semibold px-2">{voucherError}</p>
               )}
+              {bestDealNotice && (
+                <p className="text-xs text-secondary font-semibold px-2">{bestDealNotice}</p>
+              )}
               {voucherSuccess && (
                 <div className="text-xs text-secondary font-semibold px-2 space-y-0.5">
                   <p className="flex items-center gap-1.5">
@@ -1858,6 +2062,19 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
             {/* Hộp tính giá (Blue-Gray rounded container) */}
             <div className="bg-gray-50 rounded-[16px] p-4 2xl:p-5 space-y-2.5 2xl:space-y-3 border border-gray-100/80">
+              <div className="flex justify-between items-center text-sm font-medium">
+                <span className="text-gray-600">{t("subtotal")}</span>
+                <span className="text-primary font-bold text-base">
+                  {formatPrice(subtotal)}
+                </span>
+              </div>
+
+              {isBestDealVoucherApplied && (
+                <p className="text-secondary font-medium text-xs">
+                  {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
+                </p>
+              )}
+
               <div className="flex justify-between items-center text-sm font-medium">
                 <span className="text-gray-600 flex items-center gap-1.5">
                   <span>{t("shipping_fee")}</span>
@@ -2048,6 +2265,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         isOpen={isVoucherModalOpen}
         onClose={() => setIsVoucherModalOpen(false)}
         subtotal={subtotal}
+        originalSubtotal={originalSubtotal}
         shippingFee={shipping}
         appliedVoucherCode={appliedVoucher?.code || ""}
         onApplyVoucher={(code) => handleApplyVoucher(code)}

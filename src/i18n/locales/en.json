@@ -156,6 +156,8 @@
     "select_voucher_btn": "Select code",
     "reapply_voucher": "Reapply",
     "voucher_prereq_note": "* Applicable for orders from {amount} and above.",
+    "best_deal_applied": "Best deal automatically applied for your order.",
+    "best_deal_item_better": "Item promotional price is better than this voucher, optimal discount has been retained.",
     "auto_assigned_branch": "System automatically assigned delivery from: <strong>{branchName}</strong>",
     "qr": {
       "title": "Scan QR Code to Pay",
@@ -217,7 +219,9 @@
     "system_wide": "* Offers valid across the entire system",
     "close": "Close window",
     "promo_tag": "Offer",
-    "click_to_view_terms": "* Click to view details and terms"
+    "click_to_view_terms": "* Click to view details and terms",
+    "best_deal_applied": "Best deal automatically applied for your order.",
+    "best_deal_item_better": "Item promotional price is better than this voucher, optimal discount has been retained."
   },
   "gift_selector": {
     "default_title": "Choose your free gift",

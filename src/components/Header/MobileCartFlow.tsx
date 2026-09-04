@@ -138,6 +138,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     discountAmount?: number;
   } | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [bestDealNotice, setBestDealNotice] = useState<string | null>(null);
   const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
   const [validatingVoucher, setValidatingVoucher] = useState(false);
 
@@ -327,10 +328,44 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       .catch(() => { });
   }, []);
 
+  // 1. Tiền giảm của khuyến mại món hiện tại: sum((item.originalPrice - item.unitPrice) * quantity) (với các món có originalPrice > unitPrice)
+  const totalItemDiscount = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      if (item.originalPrice && item.originalPrice > item.unitPrice) {
+        return sum + (item.originalPrice - item.unitPrice) * item.quantity;
+      }
+      return sum;
+    }, 0);
+  }, [cartItems]);
+
+  // 2. Tổng giá trị đơn hàng tính theo Giá gốc: sum(item.originalPrice * quantity)
+  const originalSubtotal = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      const itemOriginalPrice = (item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice;
+      return sum + itemOriginalPrice * item.quantity;
+    }, 0);
+  }, [cartItems]);
+
+  // Tạm tính tính theo giá sale thông thường
+  const saleSubtotal = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  }, [cartItems]);
+
+  // Trạng thái Best Deal: Khi voucher có canCombineWithPromotions === false được áp dụng
+  const isBestDealVoucherApplied = useMemo(() => {
+    return Boolean(appliedVoucher && appliedVoucher.canCombineWithPromotions === false);
+  }, [appliedVoucher]);
+
   // Calculate totals
   const lineItems = useMemo(() => {
-    return cartItems.map(item => ({ price: item.unitPrice, quantity: item.quantity, discount: 0 }));
-  }, [cartItems]);
+    return cartItems.map(item => ({
+      price: isBestDealVoucherApplied
+        ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
+        : item.unitPrice,
+      quantity: item.quantity,
+      discount: 0,
+    }));
+  }, [cartItems, isBestDealVoucherApplied]);
 
   const rawSubtotal = useMemo(() => {
     return lineItems.reduce((acc, curr) => acc + curr.price * curr.quantity, 0);
@@ -398,16 +433,49 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   // Auto-remove voucher if cart subtotal drops below the minimum required price (Applies to all vouchers including Freeship)
   useEffect(() => {
-    if (appliedVoucher) {
-      if (appliedVoucher.prereqPrice && subtotal < appliedVoucher.prereqPrice) {
+    if (!appliedVoucher) return;
+
+    if (appliedVoucher.canCombineWithPromotions === false) {
+      // 1. Kiểm tra prereqPrice dựa trên originalSubtotal
+      if (appliedVoucher.prereqPrice && originalSubtotal < appliedVoucher.prereqPrice) {
         setAppliedVoucher(null);
         setVoucherSuccess(null);
+        setBestDealNotice(null);
+        setVoucherError(
+          `Mã giảm giá đã bị gỡ do đơn hàng hiện tại chưa đủ ${appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ.`
+        );
+        return;
+      }
+
+      // 2. Tính lại voucherDiscountAmount trên originalSubtotal
+      const voucherDiscountAmount = calculateVoucherDiscount(
+        appliedVoucher,
+        originalSubtotal,
+        shipping
+      );
+
+      // 3. Nếu tổng tiền giảm của CTKM món >= voucherDiscountAmount -> rollback lại CTKM món
+      if (totalItemDiscount >= voucherDiscountAmount) {
+        setAppliedVoucher(null);
+        setVoucherSuccess(null);
+        setVoucherError(null);
+        setBestDealNotice(
+          t("best_deal_item_better") ||
+            "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất."
+        );
+      }
+    } else {
+      // Với voucher cộng dồn, kiểm tra prereqPrice dựa trên saleSubtotal
+      if (appliedVoucher.prereqPrice && saleSubtotal < appliedVoucher.prereqPrice) {
+        setAppliedVoucher(null);
+        setVoucherSuccess(null);
+        setBestDealNotice(null);
         setVoucherError(
           `Mã giảm giá đã bị gỡ do đơn hàng hiện tại chưa đủ ${appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ.`
         );
       }
     }
-  }, [subtotal, appliedVoucher]);
+  }, [appliedVoucher, originalSubtotal, saleSubtotal, totalItemDiscount, shipping]);
 
   const voucherDiscount = useMemo(
     () => calculateVoucherDiscount(appliedVoucher, subtotal, shipping),
@@ -424,6 +492,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn)
   const eligibleOrderDiscountPromo = useMemo(() => {
+    if (isBestDealVoucherApplied) return null;
     return (
       config?.active_promotions?.find(
         (p) =>
@@ -431,7 +500,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           subtotal >= (p.min_order_value || 0)
       ) || null
     );
-  }, [config?.active_promotions, subtotal]);
+  }, [config?.active_promotions, subtotal, isBestDealVoucherApplied]);
 
   const autoOrderDiscountAmount = useMemo(() => {
     if (!eligibleOrderDiscountPromo || optOutOrderDiscount) return 0;
@@ -586,6 +655,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     if (!code) {
       setVoucherError("Vui lòng nhập mã giảm giá.");
       setVoucherSuccess(null);
+      setBestDealNotice(null);
       return;
     }
 
@@ -593,42 +663,135 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     setValidatingVoucher(true);
     setVoucherError(null);
     setVoucherSuccess(null);
+    setBestDealNotice(null);
 
     try {
-      const hasCampaign = cartItems.some(i => (i.originalPrice && i.originalPrice > i.unitPrice)) || autoOrderDiscountAmount > 0;
-      const campaignDiscount = autoOrderDiscountAmount;
       const result = await validateVoucher(
         code,
-        subtotal,
+        originalSubtotal,
         shipping,
-        hasCampaign,
-        campaignDiscount,
+        false,
+        0,
         phone || user?.phone || undefined,
         token || undefined
       );
       if (result.valid && result.voucher) {
-        setAppliedVoucher({
-          id: result.voucher.id,
-          code: result.voucher.code,
-          value: result.voucher.value,
-          discountType: result.voucher.discount_type,
-          maxDiscount: result.voucher.max_discount,
-          campaignId: result.voucher.campaign_id,
-          prereqPrice: result.voucher.prereq_price,
-          isFreeship: result.voucher.is_freeship,
-          canCombineWithPromotions: result.voucher.can_combine_with_promotions,
-          canCombineWithFreeship: result.voucher.can_combine_with_freeship,
-          discountAmount: result.discount_amount,
-        });
-        setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công.");
-        return true;
+        const canCombine = result.voucher.can_combine_with_promotions !== false;
+
+        if (!canCombine) {
+          // 1. Điều kiện tối thiểu của voucher (prereqPrice) được xét dựa trên originalSubtotal
+          const prereqPrice = Number(result.voucher.prereq_price || 0);
+          if (prereqPrice > 0 && originalSubtotal < prereqPrice) {
+            const msg = `Mã giảm giá chỉ áp dụng cho đơn hàng từ ${prereqPrice.toLocaleString("vi-VN")}đ trở lên.`;
+            setVoucherError(msg);
+            setAppliedVoucher(null);
+            throw new Error(msg);
+          }
+
+          // 2. Tính tiền giảm của voucher dựa trên originalSubtotal: voucherDiscountAmount
+          const voucherCandidate = {
+            id: result.voucher.id,
+            code: result.voucher.code,
+            value: result.voucher.value,
+            discountType: result.voucher.discount_type,
+            maxDiscount: result.voucher.max_discount,
+            prereqPrice: result.voucher.prereq_price,
+            isFreeship: result.voucher.is_freeship,
+          };
+          const voucherDiscountAmount = calculateVoucherDiscount(
+            voucherCandidate,
+            originalSubtotal,
+            shipping
+          );
+
+          // 3. So sánh:
+          if (totalItemDiscount >= voucherDiscountAmount) {
+            // totalItemDiscount >= voucherDiscountAmount (CTKM món đang tốt hơn):
+            // -> Giữ nguyên CTKM món (không áp trừ voucher).
+            // -> Hiển thị thông báo (toast/alert text, dùng text-secondary)
+            setAppliedVoucher(null);
+            setVoucherSuccess(null);
+            setVoucherError(null);
+            const notice =
+              t("best_deal_item_better") ||
+              "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất.";
+            setBestDealNotice(notice);
+            return false;
+          }
+
+          // voucherDiscountAmount > totalItemDiscount (Voucher hời hơn):
+          // -> Áp dụng voucher!
+          // -> Tạm tính chuyển sang tính theo originalSubtotal (các món hiển thị giá gốc).
+          // -> Giảm trừ tiền theo voucherDiscountAmount.
+          setAppliedVoucher({
+            id: result.voucher.id,
+            code: result.voucher.code,
+            value: result.voucher.value,
+            discountType: result.voucher.discount_type,
+            maxDiscount: result.voucher.max_discount,
+            campaignId: result.voucher.campaign_id,
+            prereqPrice: result.voucher.prereq_price,
+            isFreeship: result.voucher.is_freeship,
+            canCombineWithPromotions: false,
+            canCombineWithFreeship: result.voucher.can_combine_with_freeship,
+            discountAmount: voucherDiscountAmount,
+          });
+          setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công.");
+          setBestDealNotice(null);
+          return true;
+        } else {
+          // can_combine_with_promotions === true
+          const prereqPrice = Number(result.voucher.prereq_price || 0);
+          if (prereqPrice > 0 && saleSubtotal < prereqPrice) {
+            const msg = `Mã giảm giá chỉ áp dụng cho đơn hàng từ ${prereqPrice.toLocaleString("vi-VN")}đ trở lên.`;
+            setVoucherError(msg);
+            setAppliedVoucher(null);
+            throw new Error(msg);
+          }
+
+          const voucherCandidate = {
+            id: result.voucher.id,
+            code: result.voucher.code,
+            value: result.voucher.value,
+            discountType: result.voucher.discount_type,
+            maxDiscount: result.voucher.max_discount,
+            prereqPrice: result.voucher.prereq_price,
+            isFreeship: result.voucher.is_freeship,
+          };
+          const voucherDiscountAmount = calculateVoucherDiscount(
+            voucherCandidate,
+            saleSubtotal,
+            shipping
+          );
+
+          setAppliedVoucher({
+            id: result.voucher.id,
+            code: result.voucher.code,
+            value: result.voucher.value,
+            discountType: result.voucher.discount_type,
+            maxDiscount: result.voucher.max_discount,
+            campaignId: result.voucher.campaign_id,
+            prereqPrice: result.voucher.prereq_price,
+            isFreeship: result.voucher.is_freeship,
+            canCombineWithPromotions: true,
+            canCombineWithFreeship: result.voucher.can_combine_with_freeship,
+            discountAmount: voucherDiscountAmount,
+          });
+          setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công.");
+          setBestDealNotice(null);
+          return true;
+        }
       } else {
         setVoucherError(result.message || "Mã giảm giá không hợp lệ.");
+        setAppliedVoucher(null);
+        setBestDealNotice(null);
         throw new Error(result.message || "Mã giảm giá không hợp lệ.");
       }
     } catch (err: any) {
       const msg = err?.message || "Lỗi kiểm tra mã giảm giá.";
       setVoucherError(msg);
+      setAppliedVoucher(null);
+      setBestDealNotice(null);
       throw new Error(msg);
     } finally {
       setValidatingVoucher(false);
@@ -640,6 +803,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     setVoucherCode("");
     setVoucherSuccess(null);
     setVoucherError(null);
+    setBestDealNotice(null);
   };
 
   // Submit Order
@@ -778,7 +942,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             product_code: item.productCode,
             product_name: item.title,
             quantity: item.quantity,
-            price: item.unitPrice,
+            price: isBestDealVoucherApplied
+              ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
+              : item.unitPrice,
             discount: 0,
           })),
           ...(selectedOrderGiftItem
@@ -946,13 +1112,17 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             {item.title}
                           </h4>
                           <div className="text-right shrink-0">
-                            {item.originalPrice && item.originalPrice > item.unitPrice ? (
+                            {!isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice ? (
                               <p className="text-xs font-semibold text-gray-400 line-through leading-tight">
                                 {formatPrice(item.originalPrice)}
                               </p>
                             ) : null}
                             <span className="title-3 text-primary font-bold whitespace-nowrap leading-tight">
-                              {formatPrice(item.unitPrice)}
+                              {formatPrice(
+                                isBestDealVoucherApplied
+                                  ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
+                                  : item.unitPrice
+                              )}
                             </span>
                           </div>
                         </div>
@@ -1066,6 +1236,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     )}
                   </div>
                   {voucherError && <p className="text-sm text-red-600 font-semibold mt-1">{voucherError}</p>}
+                  {bestDealNotice && <p className="text-sm text-secondary font-semibold mt-1">{bestDealNotice}</p>}
                   {voucherSuccess && (
                     <div className="text-xs text-secondary font-semibold mt-1 space-y-0.5">
                       <p className="flex items-center gap-1">
@@ -1096,6 +1267,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     <span className="text-gray-500 font-medium">{t("subtotal")}</span>
                     <span className="text-primary font-bold font-display">{formatPrice(subtotal)}</span>
                   </div>
+                  {isBestDealVoucherApplied && (
+                    <p className="text-secondary font-medium text-xs">
+                      {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
+                    </p>
+                  )}
                   <div className="flex justify-between items-center text-base">
                     <span className="text-gray-500 font-medium">{t("shipping_fee")}</span>
                     <span className="text-primary font-bold font-display">
@@ -1176,12 +1352,18 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             <div className="flex justify-between items-start gap-2">
                               <p className="body-2 text-primary font-bold font-display line-clamp-1">{item.title}</p>
                               <div className="text-right shrink-0">
-                                {item.originalPrice && item.originalPrice > item.unitPrice ? (
+                                {!isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice ? (
                                   <p className="text-[10px] font-semibold text-gray-400 line-through leading-tight">
                                     {formatPrice(item.originalPrice)}
                                   </p>
                                 ) : null}
-                                <span className="body-2 text-primary font-bold whitespace-nowrap leading-tight">{formatPrice(item.unitPrice)}</span>
+                                <span className="body-2 text-primary font-bold whitespace-nowrap leading-tight">
+                                  {formatPrice(
+                                    isBestDealVoucherApplied
+                                      ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
+                                      : item.unitPrice
+                                  )}
+                                </span>
                               </div>
                             </div>
                             <p className="text-[10px] text-gray-500 font-semibold uppercase">
@@ -1329,6 +1511,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <span className="text-gray-500">{t("subtotal")}</span>
                         <span className="font-semibold">{formatPrice(subtotal)}</span>
                       </div>
+                      {isBestDealVoucherApplied && (
+                        <p className="text-secondary font-medium text-xs">
+                          {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
+                        </p>
+                      )}
                       <div className="flex justify-between items-center">
                         <span className="text-gray-500">{t("shipping_fee")}</span>
                         <div className="text-right">
@@ -1896,6 +2083,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         isOpen={isVoucherModalOpen}
         onClose={() => setIsVoucherModalOpen(false)}
         subtotal={subtotal}
+        originalSubtotal={originalSubtotal}
         shippingFee={shipping}
         appliedVoucherCode={appliedVoucher?.code || ""}
         onApplyVoucher={(code) => handleApplyVoucher(code)}

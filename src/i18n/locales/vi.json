@@ -156,6 +156,8 @@
     "select_voucher_btn": "Chọn mã",
     "reapply_voucher": "Áp dụng lại",
     "voucher_prereq_note": "* Áp dụng cho đơn hàng từ {amount} trở lên.",
+    "best_deal_applied": "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng.",
+    "best_deal_item_better": "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất.",
     "member_discount_gold": "Ưu đãi thành viên Gold (-5%)",
     "member_discount_diamond": "Ưu đãi thành viên Diamond (-8%)",
     "auto_assigned_branch": "Hệ thống tự động xác định giao từ chi nhánh: <strong>{branchName}</strong>",
@@ -219,7 +221,9 @@
     "system_wide": "* Ưu đãi áp dụng trên toàn bộ hệ thống",
     "close": "Đóng cửa sổ",
     "promo_tag": "Ưu đãi",
-    "click_to_view_terms": "* Bấm để xem chi tiết điều kiện áp dụng"
+    "click_to_view_terms": "* Bấm để xem chi tiết điều kiện áp dụng",
+    "best_deal_applied": "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng.",
+    "best_deal_item_better": "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất."
   },
   "gift_selector": {
     "default_title": "Chọn món quà tặng miễn phí",

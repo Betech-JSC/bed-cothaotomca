@@ -281,6 +281,10 @@ export interface AppliedVoucherState {
   maxDiscount?: number | null;
   prereqPrice?: number;
   isFreeship?: boolean;
+  campaignId?: number;
+  canCombineWithPromotions?: boolean;
+  canCombineWithFreeship?: boolean;
+  discountAmount?: number;
 }
 
 /**

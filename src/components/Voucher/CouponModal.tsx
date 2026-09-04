@@ -12,6 +12,7 @@ interface CouponModalProps {
   isOpen: boolean;
   onClose: () => void;
   subtotal?: number;
+  originalSubtotal?: number;
   shippingFee?: number;
   appliedVoucherCode?: string;
   onApplyVoucher?: (code: string) => Promise<boolean | void> | void;
@@ -49,6 +50,7 @@ export default function CouponModal({
   isOpen,
   onClose,
   subtotal = 0,
+  originalSubtotal,
   shippingFee = 0,
   appliedVoucherCode = "",
   onApplyVoucher,
@@ -66,11 +68,13 @@ export default function CouponModal({
   const [applyingCode, setApplyingCode] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setFeedbackError(null);
+      setFeedbackNotice(null);
       setFeedbackSuccess(null);
       setSelectedCampaign(null);
 
@@ -108,7 +112,10 @@ export default function CouponModal({
 
     vouchers.forEach((v) => {
       const minSpend = Number(v.prereq_price || 0);
-      if (minSpend === 0 || subtotal >= minSpend || isBrowseOnly) {
+      const effectiveSpend = (v.can_combine_with_promotions === false && originalSubtotal !== undefined)
+        ? originalSubtotal
+        : subtotal;
+      if (minSpend === 0 || effectiveSpend >= minSpend || isBrowseOnly) {
         eligible.push(v);
       } else {
         ineligible.push(v);
@@ -116,7 +123,7 @@ export default function CouponModal({
     });
 
     return { eligibleVouchers: eligible, ineligibleVouchers: ineligible };
-  }, [vouchers, subtotal, isBrowseOnly]);
+  }, [vouchers, subtotal, originalSubtotal, isBrowseOnly]);
 
   if (!isOpen) return null;
 
@@ -133,9 +140,17 @@ export default function CouponModal({
     }
     setApplyingCode(code);
     setFeedbackError(null);
+    setFeedbackNotice(null);
     setFeedbackSuccess(null);
     try {
-      await onApplyVoucher(code);
+      const applyRes = await onApplyVoucher(code);
+      if (applyRes === false) {
+        setFeedbackNotice(
+          t("best_deal_item_better") ||
+            "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất."
+        );
+        return;
+      }
       setFeedbackSuccess(`Đã áp dụng mã "${code}" thành công!`);
       setTimeout(() => {
         onClose();
@@ -152,6 +167,7 @@ export default function CouponModal({
     const trimmed = manualCode.trim().toUpperCase();
     if (!trimmed) {
       setFeedbackError("Vui lòng nhập mã giảm giá.");
+      setFeedbackNotice(null);
       return;
     }
     await handleApply(trimmed);
@@ -320,8 +336,8 @@ export default function CouponModal({
                 type="button"
                 onClick={() => setActiveTab("campaigns")}
                 className={`flex-1 py-2 px-3 font-display title-4 font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === "campaigns"
-                    ? "bg-white text-secondary shadow-xs border border-gray-200/80"
-                    : "text-gray-500 hover:text-gray-800"
+                  ? "bg-white text-secondary shadow-xs border border-gray-200/80"
+                  : "text-gray-500 hover:text-gray-800"
                   }`}
               >
                 <span>{t("tab_campaigns")}</span>
@@ -336,8 +352,8 @@ export default function CouponModal({
                 type="button"
                 onClick={() => setActiveTab("vouchers")}
                 className={`flex-1 py-2 px-3 font-display title-4 font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === "vouchers"
-                    ? "bg-white text-secondary shadow-xs border border-gray-200/80"
-                    : "text-gray-500 hover:text-gray-800"
+                  ? "bg-white text-secondary shadow-xs border border-gray-200/80"
+                  : "text-gray-500 hover:text-gray-800"
                   }`}
               >
                 <span>{t("tab_vouchers")}</span>
@@ -360,6 +376,7 @@ export default function CouponModal({
                       onChange={(e) => {
                         setManualCode(e.target.value.toUpperCase());
                         setFeedbackError(null);
+                        setFeedbackNotice(null);
                       }}
                       placeholder={t("input_placeholder")}
                       className="w-full h-10 px-3.5 body-2 font-sans font-semibold uppercase rounded-full border border-gray-300 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/20 placeholder:text-gray-400 placeholder:normal-case transition-all"
@@ -367,7 +384,11 @@ export default function CouponModal({
                     {manualCode && (
                       <button
                         type="button"
-                        onClick={() => setManualCode("")}
+                        onClick={() => {
+                          setManualCode("");
+                          setFeedbackError(null);
+                          setFeedbackNotice(null);
+                        }}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
                       >
                         &times;
@@ -384,6 +405,11 @@ export default function CouponModal({
                 </form>
 
                 {/* Feedback alerts */}
+                {feedbackNotice && (
+                  <p className="body-3 font-sans text-secondary font-semibold mt-2 px-2">
+                    {feedbackNotice}
+                  </p>
+                )}
                 {feedbackError && (
                   <p className="body-3 font-sans text-red-600 font-semibold mt-2 px-2 flex items-center gap-1">
                     <span>{feedbackError}</span>
@@ -513,8 +539,8 @@ export default function CouponModal({
                               <div
                                 key={v.code}
                                 className={`relative rounded-2xl border transition-all overflow-hidden flex flex-col sm:flex-row bg-white shadow-xs ${isApplied
-                                    ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40"
-                                    : "border-gray-200 hover:border-secondary/40 hover:shadow-md"
+                                  ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40"
+                                  : "border-gray-200 hover:border-secondary/40 hover:shadow-md"
                                   }`}
                               >
                                 {/* Left Badge */}
