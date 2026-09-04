@@ -26,7 +26,7 @@ export default function OrderSuccessClient({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const hotline = "028 6686 1508";
+  const hotline = "024.9999.7122";
 
   const fetchOrder = async () => {
     setLoading(true);
@@ -186,16 +186,16 @@ export default function OrderSuccessClient({
       </h1>
 
       {/* Confirmation Notice Box */}
-      <div className="bg-yellow/60 border border-secondary/30 rounded-2xl p-4 md:p-5 text-center max-w-xl mx-auto space-y-2 font-sans">
-        <p className="text-brown text-sm md:text-base leading-relaxed font-normal">
-          {t("notice_message")}
+      <div className="bg-yellow/60 border border-secondary/30 rounded-2xl p-4 md:p-5 text-center max-w-2xl mx-auto space-y-2 font-sans">
+        <p className="text-brown text-sm md:text-base leading-relaxed font-normal text-balance">
+          {isPickup ? t("notice_message_pickup") : t("notice_message")}
         </p>
         <p className="text-brown text-sm md:text-base font-medium">
           {t.rich("hotline_support", {
             hotline,
             link: (chunks) => (
               <a
-                href={`tel:${hotline.replace(/\s+/g, "")}`}
+                href={`tel:${hotline.replace(/[^0-9+]/g, "")}`}
                 className="text-secondary font-bold hover:underline transition-colors"
               >
                 {chunks}
@@ -210,6 +210,7 @@ export default function OrderSuccessClient({
         <OrderStatusStepper
           status={order?.status}
           syncStatus={order?.sync_status}
+          deliveryType={order?.delivery_type}
         />
       </div>
 

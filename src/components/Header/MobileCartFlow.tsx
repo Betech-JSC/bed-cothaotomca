@@ -24,11 +24,12 @@ import {
   type OrderInitiated,
   type PublicVoucherItem,
   type ShippingSettings,
+  type ActivePromotion,
   OrderApiError,
 } from "@/services/orderService";
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, getMemberTier } from "@/contexts/AuthContext";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getVietnamDate, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
@@ -63,6 +64,7 @@ const POPULAR_DISTRICTS = [
 export default function MobileCartFlow({ onClose, inline = false }: { onClose?: () => void; inline?: boolean }) {
   const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen } = useCart();
   const { user, token, refreshUser } = useAuth();
+  const memberTier = getMemberTier(user?.points || 0);
   const router = useRouter();
   const t = useTranslations("checkout");
 
@@ -633,6 +635,30 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       })
       .filter((x) => Boolean(x.item));
   }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap, optOutBuyXGetYSet]);
+
+  const appliedCartPromotions = useMemo(() => {
+    const list: ActivePromotion[] = [];
+    if (eligibleOrderDiscountPromo && !optOutOrderDiscount) {
+      list.push(eligibleOrderDiscountPromo);
+    }
+    if (eligibleOrderGiftPromo && !optOutOrderGift && selectedOrderGiftItem) {
+      list.push(eligibleOrderGiftPromo);
+    }
+    eligibleBuyXGetYPromos.forEach((p) => {
+      if (!optOutBuyXGetYSet[p.id]) {
+        list.push(p);
+      }
+    });
+    return list;
+  }, [
+    eligibleOrderDiscountPromo,
+    optOutOrderDiscount,
+    eligibleOrderGiftPromo,
+    optOutOrderGift,
+    selectedOrderGiftItem,
+    eligibleBuyXGetYPromos,
+    optOutBuyXGetYSet,
+  ]);
 
   const promoItemsExtraPrice = useMemo(() => {
     let extra = 0;
@@ -2088,6 +2114,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         appliedVoucherCode={appliedVoucher?.code || ""}
         onApplyVoucher={(code) => handleApplyVoucher(code)}
         onRemoveVoucher={handleRemoveVoucher}
+        activePromotions={appliedCartPromotions}
+        user={user}
+        memberTier={memberTier.tier}
       />
 
       {/* Order Gift Selector Modal */}

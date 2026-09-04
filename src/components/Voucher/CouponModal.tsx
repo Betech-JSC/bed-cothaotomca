@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { formatPrice, formatImageUrl } from "@/lib/format";
-import { PublicVoucherItem, getAvailableVouchers } from "@/services/orderService";
+import {
+  PublicVoucherItem,
+  getAvailableVouchers,
+  ActivePromotion,
+} from "@/services/orderService";
 import { PublicCampaignItem, getActiveCampaigns } from "@/services/campaignService";
 import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
+import { useAuth, StorefrontUser } from "@/contexts/AuthContext";
 
-interface CouponModalProps {
+export interface CouponModalProps {
   isOpen: boolean;
   onClose: () => void;
   subtotal?: number;
@@ -18,6 +23,9 @@ interface CouponModalProps {
   onApplyVoucher?: (code: string) => Promise<boolean | void> | void;
   onRemoveVoucher?: () => void;
   isBrowseOnly?: boolean;
+  activePromotions?: ActivePromotion[];
+  user?: StorefrontUser | null;
+  memberTier?: string;
 }
 
 // Module-level in-memory cache to prevent layout shift / flickering on open
@@ -56,10 +64,27 @@ export default function CouponModal({
   onApplyVoucher,
   onRemoveVoucher,
   isBrowseOnly = false,
+  activePromotions,
+  user,
+  memberTier,
 }: CouponModalProps) {
   const t = useTranslations("voucher");
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"campaigns" | "vouchers">("campaigns");
+  const { user: authUser } = useAuth();
+  const currentUser = user !== undefined ? user : authUser;
+  const resolveTierFromPoints = (pts: number = 0): string => {
+    if (pts >= 800) return "diamond";
+    if (pts >= 400) return "gold";
+    return "member";
+  };
+  const currentUserTier = (
+    memberTier ||
+    (currentUser?.tier || resolveTierFromPoints(currentUser?.points || 0))
+  ).toLowerCase();
+
+  const [activeTab, setActiveTab] = useState<"campaigns" | "vouchers">(
+    !isBrowseOnly || onApplyVoucher ? "vouchers" : "campaigns"
+  );
   const [campaigns, setCampaigns] = useState<PublicCampaignItem[]>(cachedCampaigns || []);
   const [vouchers, setVouchers] = useState<PublicVoucherItem[]>(cachedVouchers || []);
   const [selectedCampaign, setSelectedCampaign] = useState<PublicCampaignItem | null>(null);
@@ -105,25 +130,123 @@ export default function CouponModal({
     }
   }, [isOpen, isBrowseOnly, onApplyVoucher]);
 
-  // Split vouchers into eligible and ineligible
-  const { eligibleVouchers, ineligibleVouchers } = useMemo(() => {
-    const eligible: PublicVoucherItem[] = [];
-    const ineligible: PublicVoucherItem[] = [];
-
-    vouchers.forEach((v) => {
-      const minSpend = Number(v.prereq_price || 0);
-      const effectiveSpend = (v.can_combine_with_promotions === false && originalSubtotal !== undefined)
-        ? originalSubtotal
-        : subtotal;
-      if (minSpend === 0 || effectiveSpend >= minSpend || isBrowseOnly) {
-        eligible.push(v);
-      } else {
-        ineligible.push(v);
+  // Active cart promotions flags
+  const activeCartPromos = useMemo(() => {
+    if (!activePromotions || activePromotions.length === 0) return [];
+    return activePromotions.filter((p) => {
+      if (p.min_order_value && subtotal < p.min_order_value) {
+        return false;
       }
+      return true;
     });
+  }, [activePromotions, subtotal]);
 
-    return { eligibleVouchers: eligible, ineligibleVouchers: ineligible };
-  }, [vouchers, subtotal, originalSubtotal, isBrowseOnly]);
+  const hasCampaignWithNoFreeship = useMemo(() => {
+    return activeCartPromos.some((p) => p.can_combine_with_freeship === false);
+  }, [activeCartPromos]);
+
+  const hasCampaignWithNoPromotions = useMemo(() => {
+    return activeCartPromos.some((p) => p.can_combine_with_promotions === false);
+  }, [activeCartPromos]);
+
+  // Check eligibility for each voucher
+  const checkVoucherEligibility = useCallback(
+    (v: PublicVoucherItem): { eligible: boolean; reason?: string; missingAmount?: number } => {
+      const isFreeship = Boolean(v.is_freeship || v.discount_type === "freeship");
+
+      // 1. Member scope check
+      if (v.customer_scope === "member_only") {
+        if (!currentUser) {
+          return {
+            eligible: false,
+            reason: t("member_only_login") || "Chỉ dành cho khách hàng thành viên. Vui lòng đăng nhập.",
+          };
+        }
+      } else if (v.customer_scope === "tier_only") {
+        if (!currentUser) {
+          return {
+            eligible: false,
+            reason: t("member_tier_login") || "Chỉ dành riêng cho thành viên đăng nhập",
+          };
+        }
+        const reqTier = (v.min_member_tier || "member").toLowerCase();
+        if (reqTier !== "member") {
+          const tierRank: Record<string, number> = {
+            member: 1,
+            gold: 2,
+            diamond: 3,
+          };
+          const userRank = tierRank[currentUserTier] ?? 1;
+          const reqRank = tierRank[reqTier] ?? 1;
+          if (userRank < reqRank) {
+            const tierName = reqTier === "diamond" ? "Kim Cương" : reqTier === "gold" ? "Vàng" : "Thành viên";
+            return {
+              eligible: false,
+              reason:
+                t("tier_only_required", { tier: tierName }) ||
+                `Chỉ dành riêng cho thành viên đạt hạng ${tierName} trở lên`,
+            };
+          }
+        }
+      }
+
+      // 2. Freeship combined with active campaign check
+      if (isFreeship && hasCampaignWithNoFreeship) {
+        return {
+          eligible: false,
+          reason:
+            t("campaign_no_freeship") ||
+            "Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship",
+        };
+      }
+
+      // 3. Campaign forbids other promotions check
+      if (hasCampaignWithNoPromotions && v.can_combine_with_promotions === false) {
+        return {
+          eligible: false,
+          reason:
+            t("campaign_no_promotions") ||
+            "Mã này không áp dụng đồng thời với chương trình khuyến mãi trong giỏ hàng",
+        };
+      }
+
+      // 4. Minimum spend check
+      const minSpend = Number(v.prereq_price || 0);
+      const effectiveSpend =
+        v.can_combine_with_promotions === false && originalSubtotal !== undefined
+          ? originalSubtotal
+          : subtotal;
+
+      if (minSpend > 0 && effectiveSpend < minSpend) {
+        const missingAmount = Math.max(0, minSpend - effectiveSpend);
+        return {
+          eligible: false,
+          reason: `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}`,
+          missingAmount,
+        };
+      }
+
+      return { eligible: true };
+    },
+    [
+      currentUser,
+      currentUserTier,
+      hasCampaignWithNoFreeship,
+      hasCampaignWithNoPromotions,
+      subtotal,
+      originalSubtotal,
+      t,
+    ]
+  );
+
+  // Single sorted vouchers list: eligible vouchers first, followed by ineligible ones
+  const sortedVouchers = useMemo(() => {
+    return [...vouchers].sort((a, b) => {
+      const aEligible = checkVoucherEligibility(a).eligible ? 1 : 0;
+      const bEligible = checkVoucherEligibility(b).eligible ? 1 : 0;
+      return bEligible - aEligible;
+    });
+  }, [vouchers, checkVoucherEligibility]);
 
   if (!isOpen) return null;
 
@@ -330,15 +453,16 @@ export default function CouponModal({
               </button>
             </div>
 
-            {/* Segmented Tabs */}
+            {/* Segmented Tabs: Chương trình ưu đãi & Mã giảm giá */}
             <div className="flex border-b border-gray-100 bg-gray-50/60 p-1.5 gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveTab("campaigns")}
-                className={`flex-1 py-2 px-3 font-display title-4 font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === "campaigns"
-                  ? "bg-white text-secondary shadow-xs border border-gray-200/80"
-                  : "text-gray-500 hover:text-gray-800"
-                  }`}
+                className={`flex-1 py-2 px-3 font-display title-4 font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  activeTab === "campaigns"
+                    ? "bg-white text-secondary shadow-xs border border-gray-200/80"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
               >
                 <span>{t("tab_campaigns")}</span>
                 {campaigns.length > 0 && (
@@ -351,10 +475,11 @@ export default function CouponModal({
               <button
                 type="button"
                 onClick={() => setActiveTab("vouchers")}
-                className={`flex-1 py-2 px-3 font-display title-4 font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === "vouchers"
-                  ? "bg-white text-secondary shadow-xs border border-gray-200/80"
-                  : "text-gray-500 hover:text-gray-800"
-                  }`}
+                className={`flex-1 py-2 px-3 font-display title-4 font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  activeTab === "vouchers"
+                    ? "bg-white text-secondary shadow-xs border border-gray-200/80"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
               >
                 <span>{t("tab_vouchers")}</span>
                 {vouchers.length > 0 && (
@@ -389,7 +514,7 @@ export default function CouponModal({
                           setFeedbackError(null);
                           setFeedbackNotice(null);
                         }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm cursor-pointer"
                       >
                         &times;
                       </button>
@@ -411,18 +536,18 @@ export default function CouponModal({
                   </p>
                 )}
                 {feedbackError && (
-                  <p className="body-3 font-sans text-red-600 font-semibold mt-2 px-2 flex items-center gap-1">
-                    <span>{feedbackError}</span>
+                  <p className="body-3 font-sans text-secondary font-semibold mt-2 px-2">
+                    {feedbackError}
                   </p>
                 )}
                 {feedbackSuccess && (
-                  <p className="body-3 font-sans text-secondary font-semibold mt-2 px-2 flex items-center gap-1">
-                    <span>✓</span> <span>{feedbackSuccess}</span>
+                  <p className="body-3 font-sans text-secondary font-semibold mt-2 px-2">
+                    ✓ {feedbackSuccess}
                   </p>
                 )}
                 {copiedCode && (
-                  <p className="body-3 font-sans text-secondary font-semibold mt-2 px-2 flex items-center gap-1">
-                    <span>{t("copied_code")}: <strong>{copiedCode}</strong></span>
+                  <p className="body-3 font-sans text-secondary font-semibold mt-2 px-2">
+                    {t("copied_code")}: <strong>{copiedCode}</strong>
                   </p>
                 )}
               </div>
@@ -437,7 +562,7 @@ export default function CouponModal({
                 </div>
               ) : activeTab === "campaigns" ? (
                 /* ================================================================= */
-                /* TAB 1: CAMPAIGNS LIST (Square Banner + 3 Rows Layout) */
+                /* TAB 1: CAMPAIGNS LIST */
                 /* ================================================================= */
                 campaigns.length === 0 ? (
                   <div className="py-12 text-center space-y-2">
@@ -481,7 +606,7 @@ export default function CouponModal({
                               {camp.name}
                             </h4>
 
-                            {/* Row 2: Thời gian diễn ra (Chữ to đậm hơn) */}
+                            {/* Row 2: Thời gian diễn ra */}
                             <div className="body-2 font-sans font-bold text-gray-800">
                               <span className="line-clamp-1">
                                 {t("duration")}{" "}
@@ -491,7 +616,7 @@ export default function CouponModal({
                               </span>
                             </div>
 
-                            {/* Row 3: Ghi chú đặc biệt (In nghiêng, chữ nhạt hơn) */}
+                            {/* Row 3: Ghi chú đặc biệt */}
                             {camp.special_note ? (
                               <div className="body-3 font-sans text-gray-500 italic">
                                 <span className="line-clamp-1">{camp.special_note}</span>
@@ -514,200 +639,227 @@ export default function CouponModal({
                 )
               ) : (
                 /* ================================================================= */
-                /* TAB 2: VOUCHERS LIST */
+                /* TAB 2: VOUCHERS LIST - 1 DANH SÁCH DUY NHẤT */
                 /* ================================================================= */
-                vouchers.length === 0 ? (
+                sortedVouchers.length === 0 ? (
                   <div className="py-12 text-center space-y-2">
                     <p className="body-2 font-sans font-semibold text-gray-600">{t("no_vouchers")}</p>
                     <p className="body-3 font-sans text-gray-400">{t("no_vouchers_hint")}</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {/* SECTION 1: Mã đủ điều kiện */}
-                    {eligibleVouchers.length > 0 && (
-                      <div className="space-y-2.5">
-                        <div className="title-4 font-display text-secondary uppercase tracking-wider font-bold">
-                          {t("eligible_vouchers", { count: eligibleVouchers.length })}
-                        </div>
+                  <div className="space-y-3">
+                    {sortedVouchers.map((v) => {
+                      const eligibility = checkVoucherEligibility(v);
+                      const isEligible = eligibility.eligible;
+                      const isApplied = appliedVoucherCode.toUpperCase() === v.code.toUpperCase();
+                      const isFreeship = Boolean(v.is_freeship || v.discount_type === "freeship");
 
-                        <div className="space-y-2.5">
-                          {eligibleVouchers.map((v) => {
-                            const isApplied = appliedVoucherCode.toUpperCase() === v.code.toUpperCase();
-                            const isFreeship = v.is_freeship || v.discount_type === "freeship";
+                      // 1. Voucher KHÔNG ĐỦ ĐIỀU KIỆN
+                      if (!isEligible) {
+                        return (
+                          <div
+                            key={v.code}
+                            className="opacity-60 bg-gray-100/70 pointer-events-none cursor-not-allowed select-none relative rounded-2xl border border-gray-200/80 transition-all overflow-hidden flex flex-col sm:flex-row shadow-xs"
+                          >
+                            {/* Left Badge */}
+                            <div className="sm:w-28 py-3 px-3 flex sm:flex-col items-center justify-center gap-1 text-center shrink-0 bg-gray-400 text-white">
+                              <span className="title-3 font-display font-bold uppercase tracking-wider leading-tight text-white">
+                                {isFreeship
+                                  ? "FREESHIP"
+                                  : v.discount_type === "percent"
+                                    ? `-${v.value}%`
+                                    : `-${formatPrice(v.value)}`}
+                              </span>
+                            </div>
 
-                            return (
-                              <div
-                                key={v.code}
-                                className={`relative rounded-2xl border transition-all overflow-hidden flex flex-col sm:flex-row bg-white shadow-xs ${isApplied
-                                  ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40"
-                                  : "border-gray-200 hover:border-secondary/40 hover:shadow-md"
-                                  }`}
-                              >
-                                {/* Left Badge */}
-                                <div className="sm:w-28 py-3 px-3 flex sm:flex-col items-center justify-center gap-1 text-center shrink-0 bg-secondary text-white">
-                                  <span className="title-3 font-display font-bold uppercase tracking-wider leading-tight text-white">
-                                    {isFreeship
-                                      ? "FREESHIP"
-                                      : v.discount_type === "percent"
-                                        ? `-${v.value}%`
-                                        : `-${formatPrice(v.value)}`}
+                            {/* Center Content */}
+                            <div className="flex-1 p-3 flex flex-col justify-between space-y-1.5">
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-mono font-bold text-xs text-gray-600 bg-gray-200 px-2 py-0.5 rounded">
+                                    {v.code}
                                   </span>
-                                </div>
-
-                                {/* Center Content */}
-                                <div className="flex-1 p-3 flex flex-col justify-between space-y-1.5">
-                                  <div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="font-mono font-bold text-xs text-primary bg-yellow/60 px-2 py-0.5 rounded border border-secondary/20">
-                                        {v.code}
-                                      </span>
-                                      {v.can_combine_with_promotions === false && (
-                                        <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
-                                          {t("no_combo_with_promos")}
-                                        </span>
-                                      )}
-                                      {v.can_combine_with_freeship === false && (
-                                        <span className="body-3 font-sans font-medium text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
-                                          {t("no_combo_with_freeship")}
-                                        </span>
-                                      )}
-                                      {isApplied && (
-                                        <span className="body-3 font-sans font-bold text-secondary bg-secondary/15 px-2 py-0.5 rounded-full">
-                                          {t("in_use")}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="body-2 font-sans font-bold text-primary mt-1 leading-snug">
-                                      {v.description || v.campaign_name}
-                                    </p>
-                                    {v.prereq_price && v.prereq_price > 0 ? (
-                                      <p className="body-3 font-sans text-gray-500 mt-0.5">
-                                        {t("min_spend", { amount: formatPrice(v.prereq_price) })}
-                                      </p>
-                                    ) : (
-                                      <p className="body-3 font-sans text-secondary font-medium mt-0.5">
-                                        {t("all_orders")}
-                                      </p>
-                                    )}
-                                  </div>
-
-                                  {/* Action Buttons */}
-                                  <div className="flex items-center justify-between pt-1.5 border-t border-gray-100 gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopyCode(v.code)}
-                                      className="body-3 font-sans text-gray-500 hover:text-secondary font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                                    >
-                                      <span>{copiedCode === v.code ? t("copied_code") : t("copy_code")}</span>
-                                    </button>
-
-                                    {!isBrowseOnly && onApplyVoucher && (
-                                      isApplied ? (
-                                        <button
-                                          type="button"
-                                          onClick={onRemoveVoucher}
-                                          className="body-3 font-display font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full border border-red-200 transition-all cursor-pointer"
-                                        >
-                                          {t("unapply")}
-                                        </button>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          disabled={applyingCode === v.code}
-                                          onClick={() => handleApply(v.code)}
-                                          className="font-display title-4 font-bold text-white bg-secondary hover:bg-secondary/95 px-4 py-1.5 rounded-full transition-all cursor-pointer shadow-xs"
-                                        >
-                                          {applyingCode === v.code ? "..." : t("apply")}
-                                        </button>
-                                      )
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* SECTION 2: Mã chưa đủ điều kiện */}
-                    {ineligibleVouchers.length > 0 && (
-                      <div className="space-y-2.5 pt-2">
-                        <div className="title-4 font-display text-gray-500 uppercase tracking-wider font-bold">
-                          {t("ineligible_vouchers", { count: ineligibleVouchers.length })}
-                        </div>
-
-                        <div className="space-y-2.5">
-                          {ineligibleVouchers.map((v) => {
-                            const minSpend = Number(v.prereq_price || 0);
-                            const missingAmount = Math.max(0, minSpend - subtotal);
-                            const isFreeship = v.is_freeship || v.discount_type === "freeship";
-
-                            return (
-                              <div
-                                key={v.code}
-                                className="relative rounded-2xl border border-gray-200/80 bg-gray-50/70 p-3 space-y-2 opacity-85 hover:opacity-100 transition-opacity"
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="space-y-0.5 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-mono font-bold text-xs text-gray-600 bg-gray-200/80 px-2 py-0.5 rounded">
-                                        {v.code}
-                                      </span>
-                                      {v.can_combine_with_promotions === false && (
-                                        <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
-                                          {t("no_combo_with_promos")}
-                                        </span>
-                                      )}
-                                      {v.can_combine_with_freeship === false && (
-                                        <span className="body-3 font-sans font-medium text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
-                                          {t("no_combo_with_freeship")}
-                                        </span>
-                                      )}
-                                      <span className="title-4 font-display font-bold text-gray-700">
-                                        {isFreeship
-                                          ? "FREESHIP"
-                                          : v.discount_type === "percent"
-                                            ? `-${v.value}%`
-                                            : `-${formatPrice(v.value)}`}
-                                      </span>
-                                    </div>
-                                    <p className="body-3 font-sans text-gray-600 font-medium">
-                                      {v.description || v.campaign_name}
-                                    </p>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCopyCode(v.code)}
-                                    className="body-3 font-sans text-gray-500 hover:text-secondary font-medium px-2 py-1 rounded bg-white border border-gray-200 shrink-0 cursor-pointer"
-                                  >
-                                    {copiedCode === v.code ? `✓ ${t("copied_code")}` : t("copy_code")}
-                                  </button>
-                                </div>
-
-                                <div className="bg-yellow/70 rounded-xl px-3 py-1.5 body-3 font-sans text-brown border border-secondary/20 flex items-center justify-between gap-2">
-                                  <div className="font-medium">
-                                    <span>
-                                      {t.rich("buy_more_to_use", {
-                                        amount: formatPrice(missingAmount),
-                                        strong: (chunks) => <strong>{chunks}</strong>,
-                                      })}
+                                  {v.customer_scope === "member_only" && (
+                                    <span className="body-3 font-sans font-medium text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">
+                                      Thành viên
                                     </span>
-                                  </div>
+                                  )}
+                                  {v.customer_scope === "tier_only" && (
+                                    <span className="body-3 font-sans font-medium text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">
+                                      Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "Kim Cương" : "Vàng") : "VIP"}
+                                    </span>
+                                  )}
+                                  {v.can_combine_with_promotions === false && (
+                                    <span className="body-3 font-sans font-medium text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">
+                                      {t("no_combo_with_promos")}
+                                    </span>
+                                  )}
+                                  {v.can_combine_with_freeship === false && (
+                                    <span className="body-3 font-sans font-medium text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">
+                                      {t("no_combo_with_freeship")}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <p className="body-2 font-sans font-bold text-gray-700 mt-1 leading-snug">
+                                  {v.description || v.campaign_name}
+                                </p>
+
+                                {v.prereq_price && v.prereq_price > 0 && (
+                                  <p className="body-3 font-sans text-gray-500 mt-0.5">
+                                    {t("min_spend", { amount: formatPrice(v.prereq_price) })}
+                                  </p>
+                                )}
+
+                                {/* Reason why ineligible (100% Plain Text, No SVG, Brand Color text-secondary) */}
+                                {eligibility.reason && (
+                                  <p className="text-secondary text-xs font-semibold mt-1.5 leading-normal">
+                                    {eligibility.reason}
+                                  </p>
+                                )}
+
+                                {(eligibility as any).missingAmount !== undefined && (eligibility as any).missingAmount > 0 && (
+                                  <p className="text-gray-500 text-xs mt-0.5">
+                                    Mua thêm <strong className="text-secondary font-bold">{formatPrice((eligibility as any).missingAmount)}</strong> để dùng mã này
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center justify-end pt-1.5 border-t border-gray-200/60 gap-2">
+                                {!isBrowseOnly && onApplyVoucher && (
                                   <button
                                     type="button"
-                                    onClick={handleGoShopping}
-                                    className="body-3 font-display font-bold text-secondary underline shrink-0 cursor-pointer"
+                                    disabled
+                                    className="font-display title-4 font-bold text-gray-400 bg-gray-200 px-4 py-1.5 rounded-full cursor-not-allowed"
                                   >
-                                    {t("buy_more")}
+                                    {t("apply")}
                                   </button>
-                                </div>
+                                )}
                               </div>
-                            );
-                          })}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // 2. Voucher ĐỦ ĐIỀU KIỆN
+                      return (
+                        <div
+                          key={v.code}
+                          onClick={() => {
+                            if (!isBrowseOnly && onApplyVoucher && !isApplied) {
+                              handleApply(v.code);
+                            }
+                          }}
+                          className={`relative rounded-2xl border transition-all overflow-hidden flex flex-col sm:flex-row bg-white shadow-xs cursor-pointer ${
+                            isApplied
+                              ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40"
+                              : "border-gray-200 hover:border-secondary/40 hover:shadow-md"
+                          }`}
+                        >
+                          {/* Left Badge */}
+                          <div className="sm:w-28 py-3 px-3 flex sm:flex-col items-center justify-center gap-1 text-center shrink-0 bg-secondary text-white">
+                            <span className="title-3 font-display font-bold uppercase tracking-wider leading-tight text-white">
+                              {isFreeship
+                                ? "FREESHIP"
+                                : v.discount_type === "percent"
+                                  ? `-${v.value}%`
+                                  : `-${formatPrice(v.value)}`}
+                            </span>
+                          </div>
+
+                          {/* Center Content */}
+                          <div className="flex-1 p-3 flex flex-col justify-between space-y-1.5">
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono font-bold text-xs text-primary bg-yellow/60 px-2 py-0.5 rounded border border-secondary/20">
+                                  {v.code}
+                                </span>
+                                {v.customer_scope === "member_only" && (
+                                  <span className="body-3 font-sans font-medium text-primary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
+                                    Thành viên
+                                  </span>
+                                )}
+                                {v.customer_scope === "tier_only" && (
+                                  <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
+                                    Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "Kim Cương" : "Vàng") : "VIP"}
+                                  </span>
+                                )}
+                                {v.can_combine_with_promotions === false && (
+                                  <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
+                                    {t("no_combo_with_promos")}
+                                  </span>
+                                )}
+                                {v.can_combine_with_freeship === false && (
+                                  <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
+                                    {t("no_combo_with_freeship")}
+                                  </span>
+                                )}
+                                {isApplied && (
+                                  <span className="body-3 font-sans font-bold text-secondary bg-secondary/15 px-2 py-0.5 rounded-full">
+                                    {t("in_use")}
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="body-2 font-sans font-bold text-primary mt-1 leading-snug">
+                                {v.description || v.campaign_name}
+                              </p>
+
+                              {v.prereq_price && v.prereq_price > 0 ? (
+                                <p className="body-3 font-sans text-gray-500 mt-0.5">
+                                  {t("min_spend", { amount: formatPrice(v.prereq_price) })}
+                                </p>
+                              ) : (
+                                <p className="body-3 font-sans text-secondary font-medium mt-0.5">
+                                  {t("all_orders")}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center justify-between pt-1.5 border-t border-gray-100 gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyCode(v.code);
+                                }}
+                                className="body-3 font-sans text-gray-500 hover:text-secondary font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                <span>{copiedCode === v.code ? t("copied_code") : t("copy_code")}</span>
+                              </button>
+
+                              {!isBrowseOnly && onApplyVoucher && (
+                                isApplied ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onRemoveVoucher?.();
+                                    }}
+                                    className="body-3 font-display font-bold text-secondary bg-yellow/60 hover:bg-yellow px-3 py-1 rounded-full border border-secondary/30 transition-all cursor-pointer"
+                                  >
+                                    {t("unapply")}
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={applyingCode === v.code}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleApply(v.code);
+                                    }}
+                                    className="font-display title-4 font-bold text-white bg-secondary hover:bg-secondary/95 px-4 py-1.5 rounded-full transition-all cursor-pointer shadow-xs"
+                                  >
+                                    {applyingCode === v.code ? "..." : t("apply")}
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
                 )
               )}

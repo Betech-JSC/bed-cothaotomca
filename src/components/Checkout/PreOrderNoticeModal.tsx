@@ -23,6 +23,7 @@ export default function PreOrderNoticeModal({
     ? t("message", {
         cutoff: notice.cutoff || "22:30",
         openTime: notice.openTime || "10:00",
+        nextOpenDate: (notice.nextOpenDate || notice.next_open_date || "hôm nay").toLowerCase(),
         date: notice.todayDateDisplay,
       })
     : notice.message;

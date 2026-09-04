@@ -96,6 +96,7 @@ vi.mock('@/contexts/CartContext', () => ({
 // Mock AuthContext
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: null }),
+  getMemberTier: () => ({ tier: 'member', name: 'Member', discountPercent: 0, label: '' }),
 }));
 
 // Mock orderService API calls
@@ -108,6 +109,11 @@ vi.mock('@/services/orderService', async () => {
     createOrder: vi.fn(),
   };
 });
+
+// Mock campaignService
+vi.mock('@/services/campaignService', () => ({
+  getActiveCampaigns: vi.fn().mockResolvedValue([]),
+}));
 
 describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
   beforeEach(() => {
@@ -279,7 +285,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(res2245.canOrderNow).toBe(false);
     expect(res2245.isAfterCutoff).toBe(true);
     expect(res2245.notice).not.toBeNull();
-    expect(res2245.notice?.message).toBe('Bếp đã dừng nhận đơn giao ngay sau 22:30. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ 10:00 hôm nay (16/08).');
+    expect(res2245.notice?.message).toBe('Bếp đã dừng nhận đơn giao ngay sau 22:30. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ 10:00 ngày mai (17/08).');
     expect(res2245.defaultDate).toBe('2026-08-17');
 
     // Case 4: 23:15 (Sau 23:00 đã đóng cửa)
@@ -287,7 +293,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(res2315.canOrderNow).toBe(false);
     expect(res2315.isAfterClose).toBe(true);
     expect(res2315.notice).not.toBeNull();
-    expect(res2315.notice?.message).toBe('Bếp đã dừng nhận đơn giao ngay sau 22:30. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ 10:00 hôm nay (16/08).');
+    expect(res2315.notice?.message).toBe('Bếp đã dừng nhận đơn giao ngay sau 22:30. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ 10:00 ngày mai (17/08).');
     expect(res2315.defaultDate).toBe('2026-08-17');
   });
 

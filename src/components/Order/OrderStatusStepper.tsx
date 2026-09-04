@@ -6,17 +6,20 @@ import { useTranslations } from "next-intl";
 export interface OrderStatusStepperProps {
   status?: string;
   syncStatus?: string;
+  deliveryType?: string;
   className?: string;
 }
 
 export default function OrderStatusStepper({
   status,
   syncStatus,
+  deliveryType,
   className = "",
 }: OrderStatusStepperProps) {
   const t = useTranslations("orderStepper");
   const s = (status || "pending").toLowerCase();
   const sync = (syncStatus || "").toLowerCase();
+  const isPickup = deliveryType === "pickup";
 
   // Check cancellation or expired status
   if (s === "cancelled" || s === "expired") {
@@ -68,6 +71,11 @@ export default function OrderStatusStepper({
     sync === "synced" ||
     sync === "success";
 
+  const step1Title = t("step1_title");
+  const step1Desc = isPickup ? t("step1_desc_pickup") : t("step1_desc");
+  const step2Title = t("step2_title");
+  const step2Desc = isPickup ? t("step2_desc_pickup") : t("step2_desc");
+
   return (
     <div
       className={`rounded-2xl p-5 sm:p-6 bg-white border border-gray-100 shadow-xs font-sans ${className}`}
@@ -84,7 +92,7 @@ export default function OrderStatusStepper({
         {/* Connector Line */}
         <div
           className={`h-1 flex-1 mx-3 sm:mx-6 rounded-full transition-colors duration-300 ${
-            isStep2Active ? "bg-primary" : "bg-gray-200"
+            isStep2Active ? "bg-primary" : "bg-[#E0E0E0]"
           }`}
         />
 
@@ -94,7 +102,7 @@ export default function OrderStatusStepper({
             className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm border-2 select-none shrink-0 transition-colors duration-300 ${
               isStep2Active
                 ? "bg-secondary text-white border-secondary"
-                : "bg-gray-100 text-gray-400 border-gray-200"
+                : "bg-[#E0E0E0] text-gray-500 border-[#E0E0E0]"
             }`}
           >
             2
@@ -110,10 +118,10 @@ export default function OrderStatusStepper({
             {t("step_number", { step: 1 })}
           </span>
           <h4 className="text-sm sm:text-base font-bold text-primary">
-            {t("step1_title")}
+            <span className="block">{step1Title}</span>
           </h4>
           <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-            {t("step1_desc")}
+            <span className="block">{step1Desc}</span>
           </p>
         </div>
 
@@ -131,14 +139,14 @@ export default function OrderStatusStepper({
               isStep2Active ? "text-primary" : "text-gray-400"
             }`}
           >
-            {t("step2_title")}
+            <span className="block">{step2Title}</span>
           </h4>
           <p
             className={`text-xs sm:text-sm leading-relaxed ${
               isStep2Active ? "text-gray-600" : "text-gray-400"
             }`}
           >
-            {t("step2_desc")}
+            <span className="block">{step2Desc}</span>
           </p>
         </div>
       </div>

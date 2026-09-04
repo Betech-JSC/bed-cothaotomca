@@ -120,12 +120,14 @@
     "pickup_address_label": "Địa chỉ nhận hàng:",
     "pickup_freeship_tip": "Tự đến lấy giúp tiết kiệm phí vận chuyển (Miễn phí ship)",
     "pickup_time_notice": "Thời gian lấy hàng: Khi nhân viên chăm sóc khách hàng gọi xác nhận đơn hàng, quý khách vui lòng cung cấp thời gian cụ thể dự kiến đến cửa hàng nhận món.",
+    "pickup_time_notice_out_hours": "Thời gian lấy hàng (09:00 - 23:00): Các đơn đặt sau 22:30 sẽ được nhân viên gọi xác nhận từ 09:00 sáng mai. Khi được liên hệ, quý khách vui lòng cung cấp thời gian dự kiến đến lấy.",
     "delivery_time_label": "Thời gian giao hàng mong muốn",
     "pickup_time_label": "Thời gian đến lấy hàng mong muốn",
     "delivery_now": "Giao ngay (Hỏa tốc 45 - 90 phút)",
     "pickup_now": "Lấy ngay (Chuẩn bị 15 - 30 phút)",
     "schedule_time": "Hẹn giờ (Đặt trước)",
     "schedule_delivery": "Hẹn giờ giao hàng (Đặt trước)",
+    "preorder_cta": "Đặt trước",
     "schedule_pickup": "Hẹn giờ đến lấy (Đặt trước)",
     "cutoff_notice_title": "Bếp đã ngưng nhận đơn giao ngay sau {cutoff}.",
     "cutoff_notice_desc": "Quý khách vui lòng đặt hẹn giờ nhận món từ {openTime} ({targetDate}).",
@@ -223,7 +225,13 @@
     "promo_tag": "Ưu đãi",
     "click_to_view_terms": "* Bấm để xem chi tiết điều kiện áp dụng",
     "best_deal_applied": "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng.",
-    "best_deal_item_better": "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất."
+    "best_deal_item_better": "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất.",
+    "member_only_login": "Chỉ dành cho khách hàng thành viên. Vui lòng đăng nhập.",
+    "member_tier_login": "Chỉ dành riêng cho thành viên đăng nhập",
+    "tier_only_required": "Chỉ dành riêng cho thành viên đạt hạng {tier} trở lên",
+    "campaign_no_freeship": "Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship",
+    "campaign_no_promotions": "Mã này không áp dụng đồng thời với chương trình khuyến mãi trong giỏ hàng",
+    "min_spend_not_met": "Chưa đạt giá trị đơn tối thiểu {amount}"
   },
   "gift_selector": {
     "default_title": "Chọn món quà tặng miễn phí",
@@ -237,7 +245,7 @@
   "preorder_notice": {
     "title": "Thông Báo Đặt Hàng Hẹn Giờ",
     "subtitle": "Khung giờ phục vụ & hẹn nhận món",
-    "message": "Bếp đã dừng nhận đơn giao ngay sau {cutoff}. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ {openTime} hôm nay ({date}).",
+    "message": "Bếp đã dừng nhận đơn giao ngay sau {cutoff}. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ {openTime} {nextOpenDate} ({date}).",
     "expected_date": "Ngày nhận món dự kiến:",
     "slot_info": "Khung giờ giao / lấy hàng:",
     "confirm_btn": "Tôi đã hiểu, tiếp tục đặt hàng"
@@ -253,6 +261,7 @@
   "orderSuccess": {
     "title": "Đặt hàng thành công!",
     "notice_message": "Chúng tôi sẽ sớm gọi cho bạn để xác nhận thông tin trước khi giao. Vui lòng nghe máy để xác nhận, đơn hàng sẽ được giao sau khi xác nhận thành công.",
+    "notice_message_pickup": "Khi nhân viên gọi xác nhận đơn, quý khách vui lòng cung cấp thời gian dự kiến đến nhận món tại cửa hàng.",
     "hotline_support": "Hotline hỗ trợ: <link>{hotline}</link>",
     "description": "Cảm ơn bạn {name} đã tin tưởng Cô Thảo Tôm Cá. Đơn hàng của bạn đang được chuẩn bị và sẽ được giao đến bạn <strong>muộn nhất {time}</strong>.",
     "description_pickup": "Cảm ơn bạn {name} đã tin tưởng Cô Thảo Tôm Cá. Đơn hàng của bạn đang được chuẩn bị và bạn có thể đến lấy <strong>muộn nhất lúc {time}</strong>.",
@@ -287,7 +296,7 @@
   "orderLookup": {
     "title": "Tra cứu đơn hàng",
     "subtitle": "Kiểm tra tiến độ chế biến và giao nhận đơn hàng của bạn",
-    "notice_message": "Đơn hàng của bạn đang được chuẩn bị. Đơn hàng chỉ được tiến hành giao sau khi khách hàng nghe máy và xác nhận. Vui lòng chú ý điện thoại để tránh bỏ lỡ cuộc gọi xác nhận đơn hàng.",
+    "notice_message": "Đơn hàng của bạn đang được xử lý. Đơn hàng chỉ được tiến hành chuẩn bị sau khi khách hàng nghe máy và xác nhận. Vui lòng chú ý điện thoại để tránh bỏ lỡ cuộc gọi xác nhận đơn hàng.",
     "order_code_placeholder": "Nhập mã đơn hàng (VD: CTTC-123456)...",
     "phone_placeholder": "Nhập số điện thoại đặt hàng...",
     "search_button": "Tra cứu ngay",
@@ -331,6 +340,9 @@
     "cancel_reason_placeholder": "Nhập lý do hủy đơn hàng (không bắt buộc)...",
     "confirm_cancel": "Xác nhận hủy",
     "close": "Đóng",
+    "expired_title": "Đơn hàng đã hết hạn xử lý",
+    "expired_cskh_desc": "Đơn hàng đã hết hạn xử lý. Vui lòng liên hệ bộ phận CSKH qua Hotline để được hỗ trợ.",
+    "expired_paid_cskh_desc": "Đơn hàng của bạn đã hết hạn nhưng đã được thanh toán. Vui lòng liên hệ bộ phận CSKH qua Hotline để được hỗ trợ hoàn tiền hoặc xử lý đơn hàng.",
     "status": {
       "pending_payment": "Chờ thanh toán",
       "pending_sync": "Chờ xử lý / Đóng gói",
@@ -361,10 +373,12 @@
     }
   },
   "orderStepper": {
-    "step1_title": "Chờ xác nhận",
-    "step1_desc": "Đơn đặt thành công, CSKH đang chuẩn bị gọi xác nhận.",
-    "step2_title": "Đang giao hàng",
-    "step2_desc": "Đã xác nhận & xuất hoá đơn, đang vận chuyển đến quý khách.",
+    "step1_title": "Đặt hàng thành công.",
+    "step1_desc": "CSKH sẽ gọi xác nhận trong ít phút.",
+    "step1_desc_pickup": "CSKH sẽ gọi xác nhận giờ nhận món.",
+    "step2_title": "Đã xác nhận & xuất hoá đơn.",
+    "step2_desc": "Đang vận chuyển đến quý khách.",
+    "step2_desc_pickup": "Quán đang chuẩn bị món.",
     "step_number": "Bước {step}",
     "cancelled_badge": "Đã huỷ",
     "cancelled_title": "Đơn hàng đã được huỷ",
@@ -394,7 +408,8 @@
       "title": {
         "text1": "Giao trọn",
         "text2": "vị ngon",
-        "text3": "đến tận nhà!"
+        "text3": "đến tận nhà!",
+        "text4": ""
       }
     },
     "section-6": {

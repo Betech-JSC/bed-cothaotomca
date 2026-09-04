@@ -119,13 +119,15 @@
     "pickup_branch_label": "Select nearest branch",
     "pickup_address_label": "Pickup Address:",
     "pickup_freeship_tip": "Pickup at store saves shipping fees (Free shipping)",
-    "pickup_time_notice": "Pickup time: When our customer care staff calls to confirm your order, please provide the specific estimated time you will arrive at the store to pick up your order.",
+    "pickup_time_notice": "Pickup time (09:00 - 23:00): When our customer service staff calls to confirm your order, please provide the specific estimated time you will arrive at the store to pick up your order.",
+    "pickup_time_notice_out_hours": "Pickup time (09:00 - 23:00): Orders placed after 22:30 will be confirmed after 09:00 tomorrow morning. When contacted, please provide your expected pickup time.",
     "delivery_time_label": "Preferred Delivery Time",
     "pickup_time_label": "Preferred Pickup Time",
     "delivery_now": "Deliver now (Express 45 - 90 mins)",
     "pickup_now": "Pickup now (Ready in 15 - 30 mins)",
     "schedule_time": "Schedule (Pre-order)",
-    "schedule_delivery": "Schedule delivery (Pre-order)",
+    "schedule_delivery": "Pre-order",
+    "preorder_cta": "Pre-order",
     "schedule_pickup": "Schedule pickup (Pre-order)",
     "cutoff_notice_title": "Kitchen has stopped express orders after {cutoff}.",
     "cutoff_notice_desc": "Please schedule your order pickup/delivery from {openTime} ({targetDate}).",
@@ -158,6 +160,8 @@
     "voucher_prereq_note": "* Applicable for orders from {amount} and above.",
     "best_deal_applied": "Best deal automatically applied for your order.",
     "best_deal_item_better": "Item promotional price is better than this voucher, optimal discount has been retained.",
+    "member_discount_gold": "Gold Member Discount (-5%)",
+    "member_discount_diamond": "Diamond Member Discount (-8%)",
     "auto_assigned_branch": "System automatically assigned delivery from: <strong>{branchName}</strong>",
     "qr": {
       "title": "Scan QR Code to Pay",
@@ -221,7 +225,13 @@
     "promo_tag": "Offer",
     "click_to_view_terms": "* Click to view details and terms",
     "best_deal_applied": "Best deal automatically applied for your order.",
-    "best_deal_item_better": "Item promotional price is better than this voucher, optimal discount has been retained."
+    "best_deal_item_better": "Item promotional price is better than this voucher, optimal discount has been retained.",
+    "member_only_login": "Only for registered members. Please log in.",
+    "member_tier_login": "Only for logged-in members",
+    "tier_only_required": "Exclusive to members with tier {tier} and above",
+    "campaign_no_freeship": "Current promotion cannot be combined with Freeship vouchers",
+    "campaign_no_promotions": "Cannot be combined with active promotions in cart",
+    "min_spend_not_met": "Minimum order value of {amount} not met"
   },
   "gift_selector": {
     "default_title": "Choose your free gift",
@@ -235,7 +245,7 @@
   "preorder_notice": {
     "title": "Scheduled Order Notice",
     "subtitle": "Service Hours & Delivery Schedule",
-    "message": "The kitchen has stopped accepting instant delivery orders after {cutoff}. You can still pre-order and select a pickup/delivery time slot starting from {openTime} today ({date}).",
+    "message": "The kitchen has stopped accepting instant delivery orders after {cutoff}. You can still pre-order and select a pickup/delivery time slot starting from {openTime} {nextOpenDate} ({date}).",
     "expected_date": "Expected Delivery Date:",
     "slot_info": "Pickup / Delivery Slot:",
     "confirm_btn": "I understand, continue order"
@@ -251,6 +261,7 @@
   "orderSuccess": {
     "title": "Order placed successfully!",
     "notice_message": "We will call you shortly to confirm your order information before delivery. Please answer the phone to confirm, your order will be delivered after successful confirmation.",
+    "notice_message_pickup": "When our staff calls to confirm your order, please provide your estimated time to pick up your order at the store.",
     "hotline_support": "Support hotline: <link>{hotline}</link>",
     "description": "Thank you, {name}, for trusting Cô Thảo Tôm Cá. Your order is being prepared and will be delivered to you <strong>at the latest by {time}</strong>.",
     "description_pickup": "Thank you, {name}, for trusting Cô Thảo Tôm Cá. Your order is being prepared and you can pick it up <strong>at the latest by {time}</strong>.",
@@ -285,7 +296,7 @@
   "orderLookup": {
     "title": "Order Lookup",
     "subtitle": "Check the status and delivery progress of your order",
-    "notice_message": "Your order is being prepared. The order will only be delivered after the customer answers the phone and confirms. Please pay attention to your phone to avoid missing the order confirmation call.",
+    "notice_message": "Your order is being processed. The order will only be prepared after the customer answers the phone and confirms. Please pay attention to your phone to avoid missing the order confirmation call.",
     "order_code_placeholder": "Enter order code (e.g. CTTC-123456)...",
     "phone_placeholder": "Enter order phone number...",
     "search_button": "Track Order",
@@ -329,6 +340,9 @@
     "cancel_reason_placeholder": "Enter cancellation reason (optional)...",
     "confirm_cancel": "Confirm Cancellation",
     "close": "Close",
+    "expired_title": "Order Expired",
+    "expired_cskh_desc": "This order has expired. Please contact customer service via hotline for support.",
+    "expired_paid_cskh_desc": "Your order has expired but was paid for. Please contact customer service via hotline for a refund or further assistance.",
     "status": {
       "pending_payment": "Pending Payment",
       "pending_sync": "Pending Processing / Packing",
@@ -359,10 +373,12 @@
     }
   },
   "orderStepper": {
-    "step1_title": "Pending Confirmation",
-    "step1_desc": "Order placed successfully, customer service is preparing to confirm.",
-    "step2_title": "Out for Delivery",
-    "step2_desc": "Confirmed & invoiced, currently being shipped to you.",
+    "step1_title": "Order Placed Successfully.",
+    "step1_desc": "Customer service will call to confirm shortly.",
+    "step1_desc_pickup": "Customer service will call to confirm pickup time.",
+    "step2_title": "Confirmed & Invoiced.",
+    "step2_desc": "Currently being delivered to you.",
+    "step2_desc_pickup": "The restaurant is preparing your order.",
     "step_number": "Step {step}",
     "cancelled_badge": "Cancelled",
     "cancelled_title": "Order has been cancelled",

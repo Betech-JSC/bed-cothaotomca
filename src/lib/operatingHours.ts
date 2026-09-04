@@ -115,6 +115,8 @@ export interface PreOrderNotice {
   cutoff?: string;
   openTime?: string;
   todayDateDisplay?: string;
+  nextOpenDate?: string;
+  next_open_date?: string;
 }
 
 export interface OperatingCheckResult {
@@ -193,10 +195,16 @@ export function checkOperatingHours(operatingConfig?: {
   let message: string | null = null;
 
   if (canOrderNow) {
-    message = `Quán đang nhận đơn | Giao món từ ${deliveryOpenStr} - ${deliveryCloseStr} mỗi ngày.`;
+    message = "Quán đang nhận đơn | Bắt đầu nhận đơn từ 9:00 - 23:00 mỗi ngày.";
     defaultDate = isTodayOutOfSlots ? tomorrowISO : todayISO;
     targetDateDisplay = isTodayOutOfSlots ? tomorrowShortDisplay : todayShortDisplay;
   } else {
+    // Calculate next open date: after 0h (midnight to 09:00) is "Hôm nay", before 0h (22:30 to 23:59) is "Ngày mai"
+    const nextOpenDate = isBeforeOpen ? "Hôm nay" : "Ngày mai";
+    const dateFormatted = isBeforeOpen
+      ? todayDateFormatted
+      : `${tomorrow.getDate().toString().padStart(2, "0")}/${(tomorrow.getMonth() + 1).toString().padStart(2, "0")}`;
+
     if (isBeforeOpen) {
       defaultDate = todayISO;
       targetDateDisplay = todayShortDisplay;
@@ -205,16 +213,18 @@ export function checkOperatingHours(operatingConfig?: {
       targetDateDisplay = tomorrowShortDisplay;
     }
 
-    message = `Hiện quán đã ngưng nhận giao ngay | Bạn vẫn có thể Đặt trước (Hẹn giờ) để nhận món vào ${targetDateDisplay}.`;
+    message = `Hiện quán đã ngưng nhận giao ngay | Bạn vẫn có thể Đặt trước (Hẹn giờ) để nhận món vào ${nextOpenDate}.`;
     notice = {
       title: "Thông Báo Đặt Hàng Hẹn Giờ",
-      message: `Bếp đã dừng nhận đơn giao ngay sau ${lastOrderCutoffStr}. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ ${deliveryOpenStr} hôm nay (${todayDateFormatted}).`,
+      message: `Bếp đã dừng nhận đơn giao ngay sau ${lastOrderCutoffStr}. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ ${deliveryOpenStr} ${nextOpenDate.toLowerCase()} (${dateFormatted}).`,
       targetDateISO: defaultDate,
       targetDateDisplay: targetDateDisplay,
       slotInfo: `${deliveryOpenStr} - ${deliveryCloseStr}`,
       cutoff: lastOrderCutoffStr,
       openTime: deliveryOpenStr,
-      todayDateDisplay: todayDateFormatted,
+      todayDateDisplay: dateFormatted,
+      nextOpenDate: nextOpenDate,
+      next_open_date: nextOpenDate,
     };
   }
 

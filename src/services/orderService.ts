@@ -121,6 +121,8 @@ export interface ActivePromotion {
   max_discount?: number | null;
   settings?: Record<string, any>;
   items: PromotionGiftItem[];
+  can_combine_with_promotions?: boolean;
+  can_combine_with_freeship?: boolean;
 }
 
 export interface CheckoutConfig {

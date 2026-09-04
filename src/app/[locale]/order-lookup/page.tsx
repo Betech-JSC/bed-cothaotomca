@@ -350,12 +350,27 @@ export default function OrderLookupPage() {
             {t("status.cancelled")}
           </span>
         );
-      case "expired":
+      case "expired": {
+        const isPaid = paymentStatus === "paid" || paymentStatus === "success";
+        if (isPaid) {
+          return (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-500/20 text-gray-300 border border-gray-400/30 backdrop-blur-sm shadow-xs">
+                {t("status.expired")}
+              </span>
+              <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-primary text-white shadow-xs flex items-center gap-1.5 border border-white/20">
+                <span className="w-2 h-2 rounded-full bg-yellow"></span>
+                {t("status.paid")}
+              </span>
+            </div>
+          );
+        }
         return (
           <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-500/20 text-gray-300 border border-gray-400/30 backdrop-blur-sm shadow-xs">
             {t("status.expired")}
           </span>
         );
+      }
       default:
         return (
           <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-white/10 text-white border border-white/20 backdrop-blur-sm">
@@ -530,13 +545,6 @@ export default function OrderLookupPage() {
               </button>
             )}
 
-            {/* Confirmation Notice Box */}
-            <div className="bg-yellow/60 border border-secondary/30 rounded-2xl p-4 md:p-5 text-center shadow-xs">
-              <p className="text-brown text-sm md:text-base leading-relaxed font-normal">
-                {t("notice_message")}
-              </p>
-            </div>
-
             <div className="bg-white rounded-2xl shadow-[0_4px_25px_rgba(20,42,104,0.06)] border border-gray-100 overflow-hidden transition-all">
             {/* Header Banner - Brand Header */}
             <div className="bg-primary text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
@@ -567,13 +575,41 @@ export default function OrderLookupPage() {
               </div>
             </div>
 
-            {/* Order Progress Stepper */}
-            <div className="p-6 sm:p-8 border-b border-gray-100 bg-gray-50/50">
-              <OrderStatusStepper
-                status={order.status}
-                syncStatus={order.sync_status}
-              />
-            </div>
+            {/* Order Progress Stepper or Expired CSKH Notice */}
+            {order.status === "expired" ? (
+              <div className="p-6 sm:p-8 border-b border-gray-100 bg-yellow/40 text-center font-sans">
+                <div className="max-w-xl mx-auto space-y-2">
+                  <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-gray-500 text-white mb-1">
+                    {t("status.expired")}
+                  </span>
+                  <h4 className="text-base font-bold text-brown">
+                    {t("expired_title")}
+                  </h4>
+                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                    {order.payment_status === "paid" || order.payment_status === "success"
+                      ? t("expired_paid_cskh_desc")
+                      : t("expired_cskh_desc")}
+                  </p>
+                  <p className="text-xs sm:text-sm font-semibold text-primary pt-1">
+                    Hotline CSKH:{" "}
+                    <a
+                      href={`tel:${hotline.replace(/[^0-9+]/g, "")}`}
+                      className="text-secondary hover:underline font-bold"
+                    >
+                      {hotline}
+                    </a>
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 sm:p-8 border-b border-gray-100 bg-gray-50/50">
+                <OrderStatusStepper
+                  status={order.status}
+                  syncStatus={order.sync_status}
+                  deliveryType={order.delivery_type}
+                />
+              </div>
+            )}
 
             {/* 15-Minute Countdown Banner & Action */}
             {order.status !== "cancelled" &&
@@ -714,6 +750,15 @@ export default function OrderLookupPage() {
                     <span className="text-secondary font-display text-xl font-extrabold">{formatMoney(order.total)}</span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Confirmation Notice Box inside Order Card */}
+            <div className="px-6 sm:px-8 py-4 border-b border-gray-100 bg-secondary/5">
+              <div className="bg-yellow/60 border border-secondary/30 rounded-2xl p-4 md:p-5 text-center shadow-xs">
+                <p className="text-brown text-sm md:text-base leading-relaxed font-medium">
+                  {t("notice_message")}
+                </p>
               </div>
             </div>
 

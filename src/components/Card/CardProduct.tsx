@@ -169,13 +169,13 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
     <div className="group rounded-[24px] relative overflow-hidden bg-white h-full flex flex-col w-full shadow-sm">
       {/* Campaign Discount Badge */}
       {hasDiscount && (
-        <div className="absolute top-3 left-3 z-10 bg-secondary text-white font-bold text-[0.6875rem] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md flex items-center">
+        <div className="absolute top-2.5 left-2.5 bg-secondary text-white text-xs font-bold px-2 py-0.5 rounded-full z-10">
           <span>
             {discountPercent > 0
               ? `-${discountPercent}%`
               : (item as any).active_campaign?.discount_percent
                 ? `-${(item as any).active_campaign.discount_percent}%`
-                : (t("product.sale") || "PROMO")}
+                : "-10%"}
           </span>
         </div>
       )}
@@ -210,15 +210,15 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
             {item.description}
           </div>
         </div>
-        <div className="mt-auto pt-2 flex flex-wrap items-center justify-center gap-1.5">
-          <span className="title-2 text-secondary">
-            {formatPrice(price)}
-          </span>
-          {hasDiscount && originalPrice && (
-            <span className="text-gray-400 line-through text-sm font-medium">
+        <div className="mt-auto pt-2 flex flex-col items-center justify-center">
+          {hasDiscount && originalPrice ? (
+            <span className="text-gray-400 line-through text-xs md:text-sm font-medium">
               {formatPrice(originalPrice)}
             </span>
-          )}
+          ) : null}
+          <span className="title-2 text-secondary text-base md:text-xl font-bold">
+            {formatPrice(price)}
+          </span>
         </div>
       </div>
     </div>

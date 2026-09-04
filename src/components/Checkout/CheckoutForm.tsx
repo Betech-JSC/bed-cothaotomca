@@ -22,6 +22,7 @@ import {
   type OrderInitiated,
   type PublicVoucherItem,
   type ShippingSettings,
+  type ActivePromotion,
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
@@ -442,6 +443,30 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       .filter((x) => Boolean(x.item));
   }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap, optOutBuyXGetYSet]);
 
+  const appliedCartPromotions = useMemo(() => {
+    const list: ActivePromotion[] = [];
+    if (eligibleOrderDiscountPromo && !optOutOrderDiscount) {
+      list.push(eligibleOrderDiscountPromo);
+    }
+    if (eligibleOrderGiftPromo && !optOutOrderGift && selectedOrderGiftItem) {
+      list.push(eligibleOrderGiftPromo);
+    }
+    eligibleBuyXGetYPromos.forEach((p) => {
+      if (!optOutBuyXGetYSet[p.id]) {
+        list.push(p);
+      }
+    });
+    return list;
+  }, [
+    eligibleOrderDiscountPromo,
+    optOutOrderDiscount,
+    eligibleOrderGiftPromo,
+    optOutOrderGift,
+    selectedOrderGiftItem,
+    eligibleBuyXGetYPromos,
+    optOutBuyXGetYSet,
+  ]);
+
   const promoItemsExtraPrice = useMemo(() => {
     let extra = 0;
     if (selectedOrderGiftItem && selectedOrderGiftItem.campaign_price > 0) {
@@ -622,6 +647,66 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+
+  const validatePhoneInput = (val: string): string | null => {
+    const clean = val.trim().replace(/\s+/g, "");
+    if (!clean) {
+      return "Vui lòng nhập số điện thoại.";
+    }
+    const normalized = clean.startsWith("+84") ? "0" + clean.slice(3) : clean;
+    const phoneRegex = /^0[35789]\d{8}$/;
+    if (!phoneRegex.test(normalized)) {
+      return "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
+    }
+    if (/^(\d)\1{9}$/.test(normalized)) {
+      return "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
+    }
+    if (normalized === "0123456789") {
+      return "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
+    }
+    return null;
+  };
+
+  const validateNameInput = (val: string): string | null => {
+    const clean = val.trim();
+    if (!clean) {
+      return "Vui lòng nhập họ và tên.";
+    }
+    if (clean.length < 2) {
+      return "Họ và tên quá ngắn. Vui lòng nhập tối thiểu 2 ký tự.";
+    }
+    const nameRegex = /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ\s'-]+$/u;
+    if (!nameRegex.test(clean)) {
+      return "Họ và tên không hợp lệ. Vui lòng không nhập số hoặc ký tự đặc biệt.";
+    }
+    return null;
+  };
+
+  const validateEmailInput = (val: string): string | null => {
+    const clean = val.trim();
+    if (!clean) return null;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(clean)) {
+      return "Email không hợp lệ. Vui lòng kiểm tra lại.";
+    }
+    return null;
+  };
+
+  const handleBlurField = (fieldKey: string) => {
+    setTouchedFields((prev) => ({ ...prev, [fieldKey]: true }));
+    let err: string | null = null;
+    if (fieldKey === "customer.name") err = validateNameInput(name);
+    if (fieldKey === "customer.phone") err = validatePhoneInput(phone);
+    if (fieldKey === "customer.email") err = validateEmailInput(email);
+
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (err) next[fieldKey] = err;
+      else delete next[fieldKey];
+      return next;
+    });
+  };
 
   // Sau khi tạo đơn thành công → chuyển sang màn hình QR
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
@@ -880,21 +965,41 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       return;
     }
 
+    // Mark fields as touched upon submit
+    setTouchedFields({
+      "customer.name": true,
+      "customer.phone": true,
+      "customer.email": true,
+      "delivery.ward": true,
+      "delivery.address": true,
+    });
+
+    const errs: Record<string, string> = {};
+
+    const nameErr = validateNameInput(name);
+    if (nameErr) errs["customer.name"] = nameErr;
+
+    const phoneErr = validatePhoneInput(phone);
+    if (phoneErr) errs["customer.phone"] = phoneErr;
+
+    const emailErr = validateEmailInput(email);
+    if (emailErr) errs["customer.email"] = emailErr;
+
     // Validate custom delivery inputs
     if (deliveryType === "delivery") {
-      const errs: Record<string, string> = {};
       if (!selectedWard.trim() && !selectedWardId) {
         errs["delivery.ward"] = "* Vui lòng chọn Phường / Xã (Khu vực giao).";
       }
       if (!streetAddress.trim()) {
         errs["delivery.address"] = "Vui lòng nhập số nhà và tên đường.";
       }
-      if (Object.keys(errs).length > 0) {
-        setFieldErrors(errs);
-        setError("Vui lòng hoàn thành đầy đủ thông tin giao hàng.");
-        setLoading(false);
-        return;
-      }
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      setError("Vui lòng kiểm tra lại thông tin còn thiếu hoặc chưa chính xác.");
+      setLoading(false);
+      return;
     }
 
     const idempotencyKey =
@@ -1106,12 +1211,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   return (
     <>
       {/* Mobile step-by-step cart & checkout flow */}
-      <div className="xl:hidden">
+      <div className="lg:hidden">
         <MobileCartFlow inline />
       </div>
 
       {/* Desktop side-by-side checkout layout */}
-      <div className="hidden xl:grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
+      <div className="hidden lg:grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
 
         {/* CỘT TRÁI: THÔNG TIN LIÊN HỆ & GIAO HÀNG */}
         <div className="lg:col-span-7 font-serif">
@@ -1145,12 +1250,27 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 type="text"
                 required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setName(val);
+                  if (touchedFields["customer.name"]) {
+                    const err = validateNameInput(val);
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      if (err) next["customer.name"] = err;
+                      else delete next["customer.name"];
+                      return next;
+                    });
+                  }
+                }}
+                onBlur={() => handleBlurField("customer.name")}
+                className={`w-full h-11 rounded-[4px] border ${
+                  fieldError("customer.name") ? "border-secondary" : "border-gray-300"
+                } shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]`}
                 placeholder={t("name_placeholder")}
               />
               {fieldError("customer.name") ? (
-                <p className="text-sm text-red-600 mt-1">{fieldError("customer.name")}</p>
+                <p className="text-sm text-secondary font-medium mt-1">{fieldError("customer.name")}</p>
               ) : null}
             </div>
 
@@ -1164,12 +1284,27 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 type="tel"
                 required
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPhone(val);
+                  if (touchedFields["customer.phone"]) {
+                    const err = validatePhoneInput(val);
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      if (err) next["customer.phone"] = err;
+                      else delete next["customer.phone"];
+                      return next;
+                    });
+                  }
+                }}
+                onBlur={() => handleBlurField("customer.phone")}
+                className={`w-full h-11 rounded-[4px] border ${
+                  fieldError("customer.phone") ? "border-secondary" : "border-gray-300"
+                } shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]`}
                 placeholder={t("phone_placeholder")}
               />
               {fieldError("customer.phone") ? (
-                <p className="text-sm text-red-600 mt-1">{fieldError("customer.phone")}</p>
+                <p className="text-sm text-secondary font-medium mt-1">{fieldError("customer.phone")}</p>
               ) : null}
             </div>
 
@@ -1179,10 +1314,28 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEmail(val);
+                  if (touchedFields["customer.email"]) {
+                    const err = validateEmailInput(val);
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      if (err) next["customer.email"] = err;
+                      else delete next["customer.email"];
+                      return next;
+                    });
+                  }
+                }}
+                onBlur={() => handleBlurField("customer.email")}
+                className={`w-full h-11 rounded-[4px] border ${
+                  fieldError("customer.email") ? "border-secondary" : "border-gray-300"
+                } shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]`}
                 placeholder={t("email_placeholder")}
               />
+              {fieldError("customer.email") ? (
+                <p className="text-sm text-secondary font-medium mt-1">{fieldError("customer.email")}</p>
+              ) : null}
             </div>
 
             {/* LOẠI GIAO NHẬN (Giao hàng / Tự đến lấy) */}
@@ -1387,6 +1540,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               </div>
             )}
 
+            {/* Thời gian nhận hàng cho Pickup (nằm TRÊN ô lời nhắn) */}
+            {deliveryType === "pickup" && (
+              <div className="pt-2">
+                <div className="rounded-xl border border-secondary/20 bg-yellow/40 p-4 text-sm text-brown leading-relaxed font-medium font-sans">
+                  {operatingStatus.canOrderNow
+                    ? t("pickup_time_notice")
+                    : t("pickup_time_notice_out_hours")}
+                </div>
+              </div>
+            )}
+
             {/* Lời nhắn */}
             <div className="space-y-2 pt-2 border-t border-gray-100">
               <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("note")}</label>
@@ -1399,14 +1563,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               ></textarea>
             </div>
 
-            {/* Thời gian nhận hàng / Ghi chú lấy hàng */}
-            {deliveryType === "pickup" ? (
-              <div className="pt-2">
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 leading-relaxed font-medium">
-                  {t("pickup_time_notice")}
-                </div>
-              </div>
-            ) : (
+            {/* Thời gian giao hàng cho Delivery */}
+            {deliveryType === "delivery" && (
               <div className="space-y-3 pt-2">
                 <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
                   {t("delivery_time_label")}
@@ -1593,7 +1751,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         </div>
 
         {/* CỘT PHẢI: THÔNG TIN ĐƠN HÀNG */}
-        <div className="lg:col-span-5 lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
+        <div className="lg:col-span-5 lg:sticky lg:top-24">
           <div className="bg-white rounded-[24px] p-6 2xl:p-8 space-y-5 2xl:space-y-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100">
             <h2 className="title-1 font-display text-primary border-b border-gray-100 pb-3">
               {t("order_summary")}
@@ -2247,8 +2405,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 ? t("submitting")
                 : deliveryType === "delivery" && !isDeliverable
                   ? "Khu vực chưa hỗ trợ giao"
-                  : deliveryType === "delivery" && !operatingStatus.canOrderNow
-                    ? t("schedule_delivery")
+                  : !operatingStatus.canOrderNow || (deliveryType === "delivery" && deliverySchedule === "schedule")
+                    ? (t("preorder_cta") || "Đặt trước")
                     : t("place_order")}
             </button>
           </div>
@@ -2270,6 +2428,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         appliedVoucherCode={appliedVoucher?.code || ""}
         onApplyVoucher={(code) => handleApplyVoucher(code)}
         onRemoveVoucher={handleRemoveVoucher}
+        activePromotions={appliedCartPromotions}
+        user={user}
+        memberTier={memberTier.tier}
       />
 
       {/* Order Gift Selector Modal */}
