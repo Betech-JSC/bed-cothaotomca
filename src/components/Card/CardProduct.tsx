@@ -1,6 +1,7 @@
 'use client'
 
 import Image from "next/image";
+import { useCart } from "@/contexts/CartContext";
 import { Link } from "@/i18n/routing";
 import React from "react";
 import { formatPrice } from "@/lib/format";
@@ -31,6 +32,8 @@ interface CardProductProps {
 }
 
 const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
+  const { cartItems } = useCart();
+  const cartGrossSubtotal = React.useMemo(() => cartItems.reduce((sum, i) => sum + (i.originalPrice || i.unitPrice) * i.quantity, 0), [cartItems]);
   const t = useTranslations();
   const imageSrc = item.image?.url || '/cover.jpg';
 
@@ -87,10 +90,13 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
           }
         }
 
-        const isDiscounted = campPrice !== null && campPrice > 0 && campPrice < basePrice;
-        const effectivePrice = isDiscounted ? campPrice : basePrice;
-
         const activeCamp = (v as any).active_campaign || (item as any).active_campaign;
+        let isEligible = true;
+        if (activeCamp?.min_order_value) {
+          isEligible = cartGrossSubtotal >= parseFloat(String(activeCamp.min_order_value));
+        }
+        const isDiscounted = campPrice !== null && campPrice > 0 && campPrice < basePrice && isEligible;
+        const effectivePrice = isDiscounted ? campPrice : basePrice;
         const configuredPercent = activeCamp?.discount_type === 'percent' && Number(activeCamp.discount_value) > 0
           ? Math.round(Number(activeCamp.discount_value))
           : (activeCamp?.discount_percent ? Math.round(Number(activeCamp.discount_percent)) : 0);
@@ -141,12 +147,15 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
       }
     }
 
-    const isDiscounted = campPrice !== null && campPrice > 0 && campPrice < basePrice;
+    const fallbackActiveCamp = (item as any).active_campaign;
+    let isEligible = true;
+    if (fallbackActiveCamp?.min_order_value) {
+      isEligible = cartGrossSubtotal >= parseFloat(String(fallbackActiveCamp.min_order_value));
+    }
+    const isDiscounted = campPrice !== null && campPrice > 0 && campPrice < basePrice && isEligible;
     const price = isDiscounted ? campPrice : (directPrice > 0 ? directPrice : basePrice);
     const originalPrice = isDiscounted ? basePrice : (directOrigPrice > price ? directOrigPrice : undefined);
     const hasDiscount = Boolean(originalPrice && originalPrice > price);
-    
-    const fallbackActiveCamp = (item as any).active_campaign;
     const fallbackConfiguredPercent = fallbackActiveCamp?.discount_type === 'percent' && Number(fallbackActiveCamp.discount_value) > 0
       ? Math.round(Number(fallbackActiveCamp.discount_value))
       : (fallbackActiveCamp?.discount_percent ? Math.round(Number(fallbackActiveCamp.discount_percent)) : 0);
@@ -161,12 +170,12 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
       hasDiscount,
       discountPercent,
     };
-  }, [item]);
+  }, [item, cartGrossSubtotal]);
 
   const { price, originalPrice, hasDiscount, discountPercent } = pricing;
 
   return (
-    <div className="group rounded-[24px] relative overflow-hidden bg-white h-full flex flex-col w-full shadow-sm">
+    <div className="group rounded-xl relative overflow-hidden bg-white h-full flex flex-col w-full shadow-sm">
       {/* Campaign Discount Badge */}
       {hasDiscount && (
         <div className="absolute top-2.5 left-2.5 bg-secondary text-white text-xs font-bold px-2 py-0.5 rounded-full z-10">

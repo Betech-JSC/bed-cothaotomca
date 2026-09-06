@@ -70,79 +70,113 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [cartItems, isLoaded]);
 
-  // Auto-enrich originalPrice and prices for existing cart items from API if missing
-  useEffect(() => {
-    if (!isLoaded || cartItems.length === 0) return;
-    const needsEnrichment = cartItems.some((i) => i.originalPrice === undefined);
-    if (!needsEnrichment) return;
+  const [productsCache, setProductsCache] = useState<any[]>([]);
 
+  // Fetch products once to power dynamic price calculation
+  useEffect(() => {
+    if (!isLoaded) return;
     fetch("/api/products?per_page=all")
       .then((res) => res.json())
       .then((res) => {
-        const products = res.data || [];
-        if (!Array.isArray(products) || products.length === 0) return;
-
-        setCartItems((prev) => {
-          let changed = false;
-          const updated = prev.map((item) => {
-            if (item.originalPrice !== undefined) return item;
-            const p = products.find(
-              (x: any) =>
-                x.id === item.productId ||
-                x.kiotviet_id === item.productId ||
-                x.slug === item.slug
-            );
-            if (!p) return item;
-
-            let origPrice: number | undefined = undefined;
-            let currentPrice: number | undefined = undefined;
-
-            if (p.variants && p.variants.length > 0) {
-              const v = p.variants.find(
-                (vObj: any) =>
-                  vObj.size === item.variant ||
-                  vObj.id === item.productId ||
-                  vObj.kiotviet_id === item.productId
-              );
-              if (v) {
-                const vBase = parseFloat(String(v.original_price || v.price || 0));
-                const vCamp =
-                  v.campaign_price !== null && v.campaign_price !== undefined
-                    ? parseFloat(String(v.campaign_price))
-                    : null;
-                if (vCamp && vCamp < vBase) {
-                  origPrice = vBase;
-                  currentPrice = vCamp;
-                } else if (vBase > 0) {
-                  currentPrice = vBase;
-                }
-              }
-            }
-
-            if (!origPrice && p.original_price && p.price) {
-              const pBase = parseFloat(String(p.original_price));
-              const pPrice = parseFloat(String(p.campaign_price || p.price));
-              if (pBase > pPrice) {
-                origPrice = pBase;
-                currentPrice = pPrice;
-              }
-            }
-
-            if (origPrice && origPrice > (currentPrice || item.unitPrice)) {
-              changed = true;
-              return {
-                ...item,
-                unitPrice: currentPrice || item.unitPrice,
-                originalPrice: origPrice,
-              };
-            }
-            return item;
-          });
-          return changed ? updated : prev;
-        });
+        if (res.data && Array.isArray(res.data)) {
+          setProductsCache(res.data);
+        }
       })
       .catch(() => {});
-  }, [isLoaded, cartItems]);
+  }, [isLoaded]);
+
+  // Dynamic price evaluation based on subtotal and campaign conditions
+  useEffect(() => {
+    if (!isLoaded || productsCache.length === 0 || cartItems.length === 0) return;
+
+    // 1. Calculate gross subtotal (using base prices)
+    const grossSubtotal = cartItems.reduce((sum, item) => {
+      const p = productsCache.find(x => x.id === item.productId || x.kiotviet_id === item.productId || x.slug === item.slug);
+      let basePrice = item.originalPrice || item.unitPrice;
+      if (p) {
+        if (p.variants && p.variants.length > 0) {
+          const v = p.variants.find((vObj: any) => vObj.size === item.variant || vObj.id === item.productId || vObj.kiotviet_id === item.productId);
+          if (v) basePrice = parseFloat(String(v.original_price || v.price || 0));
+        } else if (p.original_price || p.price) {
+          basePrice = parseFloat(String(p.original_price || p.price));
+        }
+      }
+      return sum + basePrice * item.quantity;
+    }, 0);
+
+    // 2. Re-evaluate prices for all items
+    let changed = false;
+    const updated = cartItems.map((item) => {
+      const p = productsCache.find(
+        (x: any) => x.id === item.productId || x.kiotviet_id === item.productId || x.slug === item.slug
+      );
+      if (!p) return item;
+
+      let origPrice: number | undefined = undefined;
+      let currentPrice: number | undefined = undefined;
+
+      const evaluateCampaign = (campaignPrice: any, campaignObj: any, base: number) => {
+        const cPrice = campaignPrice !== null && campaignPrice !== undefined ? parseFloat(String(campaignPrice)) : null;
+        if (cPrice && cPrice < base) {
+          const minOrder = campaignObj?.min_order_value ? parseFloat(String(campaignObj.min_order_value)) : 0;
+          if (grossSubtotal >= minOrder) {
+            return cPrice;
+          }
+        }
+        return null;
+      };
+
+      if (p.variants && p.variants.length > 0) {
+        const v = p.variants.find(
+          (vObj: any) => vObj.size === item.variant || vObj.id === item.productId || vObj.kiotviet_id === item.productId
+        );
+        if (v) {
+          const vBase = parseFloat(String(v.original_price || v.price || 0));
+          const activeCampaign = v.active_campaign || p.active_campaign;
+          const vCamp = evaluateCampaign(v.campaign_price, activeCampaign, vBase);
+          
+          if (vCamp) {
+            origPrice = vBase;
+            currentPrice = vCamp;
+          } else if (vBase > 0) {
+            currentPrice = vBase;
+            origPrice = vBase;
+          }
+        }
+      }
+
+      if (!origPrice && p.original_price && p.price) {
+        const pBase = parseFloat(String(p.original_price));
+        const activeCampaign = p.active_campaign;
+        const pPrice = evaluateCampaign(p.campaign_price, activeCampaign, pBase);
+        
+        if (pPrice) {
+          origPrice = pBase;
+          currentPrice = pPrice;
+        } else {
+          currentPrice = pBase;
+          origPrice = pBase;
+        }
+      }
+
+      const newUnit = currentPrice || item.unitPrice;
+      const newOrig = origPrice && origPrice > newUnit ? origPrice : newUnit;
+
+      if (item.unitPrice !== newUnit || item.originalPrice !== newOrig) {
+        changed = true;
+        return {
+          ...item,
+          unitPrice: newUnit,
+          originalPrice: newOrig,
+        };
+      }
+      return item;
+    });
+
+    if (changed) {
+      setCartItems(updated);
+    }
+  }, [isLoaded, productsCache, cartItems]);
 
   const addToCart = (item: Omit<CartItem, "quantity">, quantity = 1) => {
     setCartItems((prev) => {

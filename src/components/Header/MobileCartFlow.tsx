@@ -278,29 +278,29 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               },
               {
                 id: 1000000211,
-                branchName: "Chi nhánh Hoàng Sa (Q.1)",
-                address: "197 Hoàng Sa, Tân Định, Quận 1 (Takeaway)",
+                branchName: "Chi nhánh Tân Định",
+                address: "197 Hoàng Sa, Quận 1 (Takeaway)",
                 contactNumber: "024.9999.7122",
                 isActive: true,
               },
               {
                 id: 1000021173,
                 branchName: "Chi nhánh Tân Bình",
-                address: "39 Thân Nhân Trung, P.13, Tân Bình (Takeaway)",
+                address: "39 Thân Nhân Trung, Tân Bình (Takeaway)",
                 contactNumber: "024.9999.7122",
                 isActive: true,
               },
               {
                 id: 1333367,
-                branchName: "Chi nhánh Trần Đình Xu (Q.1)",
-                address: "42/2 Trần Đình Xu, Cô Giang, Quận 1 (Takeaway)",
+                branchName: "Chi nhánh Cầu Ông Lãnh",
+                address: "42/2 Trần Đình Xu, Quận 1 (Takeaway)",
                 contactNumber: "024.9999.7122",
                 isActive: true,
               },
               {
                 id: 1363270,
                 branchName: "Chi nhánh TP. Thủ Đức",
-                address: "69A Trương Văn Thành, Hiệp Phú, Thủ Đức (Takeaway)",
+                address: "69A Trương Văn Thành, Thủ Đức (Takeaway)",
                 contactNumber: "024.9999.7122",
                 isActive: true,
               },
@@ -457,15 +457,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       );
 
       // 3. Nếu tổng tiền giảm của CTKM món >= voucherDiscountAmount -> rollback lại CTKM món
-      if (totalItemDiscount >= voucherDiscountAmount) {
-        setAppliedVoucher(null);
-        setVoucherSuccess(null);
-        setVoucherError(null);
-        setBestDealNotice(
-          t("best_deal_item_better") ||
-            "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất."
-        );
-      }
+      // if (totalItemDiscount >= voucherDiscountAmount) {
+      //   setAppliedVoucher(null);
+      //   setVoucherSuccess(null);
+      //   setVoucherError(null);
+      //   setBestDealNotice(
+      //     t("best_deal_item_better") ||
+      //       "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất."
+      //   );
+      // }
     } else {
       // Với voucher cộng dồn, kiểm tra prereqPrice dựa trên saleSubtotal
       if (appliedVoucher.prereqPrice && saleSubtotal < appliedVoucher.prereqPrice) {
@@ -731,19 +731,19 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           );
 
           // 3. So sánh:
-          if (totalItemDiscount >= voucherDiscountAmount) {
-            // totalItemDiscount >= voucherDiscountAmount (CTKM món đang tốt hơn):
-            // -> Giữ nguyên CTKM món (không áp trừ voucher).
-            // -> Hiển thị thông báo (toast/alert text, dùng text-secondary)
-            setAppliedVoucher(null);
-            setVoucherSuccess(null);
-            setVoucherError(null);
-            const notice =
-              t("best_deal_item_better") ||
-              "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất.";
-            setBestDealNotice(notice);
-            return false;
-          }
+          // if (totalItemDiscount >= voucherDiscountAmount) {
+          //   // totalItemDiscount >= voucherDiscountAmount (CTKM món đang tốt hơn):
+          //   // -> Giữ nguyên CTKM món (không áp trừ voucher).
+          //   // -> Hiển thị thông báo (toast/alert text, dùng text-secondary)
+          //   setAppliedVoucher(null);
+          //   setVoucherSuccess(null);
+          //   setVoucherError(null);
+          //   const notice =
+          //     t("best_deal_item_better") ||
+          //     "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất.";
+          //   setBestDealNotice(notice);
+          //   return false;
+          // }
 
           // voucherDiscountAmount > totalItemDiscount (Voucher hời hơn):
           // -> Áp dụng voucher!
@@ -1157,6 +1157,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             {cleanVariantName(item.variant)}
                           </p>
                         )}
+                        {isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice && (
+                          <p className="text-[11px] text-secondary mt-1">
+                            Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
+                          </p>
+                        )}
 
                         <div className="flex items-center justify-between pt-1">
                           {/* Quantity selectors */}
@@ -1284,6 +1289,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   isFreeship={isFreeship}
                   freeshipReason={freeshipReason}
                   vouchers={availableVouchers}
+              appliedVoucher={appliedVoucher as any}
                   onOpenVouchers={() => setIsVoucherModalOpen(true)}
                 />
 
@@ -1293,11 +1299,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     <span className="text-gray-500 font-medium">{t("subtotal")}</span>
                     <span className="text-primary font-bold font-display">{formatPrice(subtotal)}</span>
                   </div>
-                  {isBestDealVoucherApplied && (
+                  {isBestDealVoucherApplied ? (
+                    <p className="text-secondary font-medium text-xs">
+                      Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
+                    </p>
+                  ) : ( ((config?.active_promotions?.length ?? 0) > 0 || isFreeship) && (
                     <p className="text-secondary font-medium text-xs">
                       {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
                     </p>
-                  )}
+                  ))}
                   <div className="flex justify-between items-center text-base">
                     <span className="text-gray-500 font-medium">{t("shipping_fee")}</span>
                     <span className="text-primary font-bold font-display">
@@ -1395,6 +1405,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             <p className="text-[10px] text-gray-500 font-semibold uppercase">
                               {isDefaultVariant(item.variant) ? `x${item.quantity}` : `${cleanVariantName(item.variant)} x${item.quantity}`}
                             </p>
+                            {isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice && (
+                              <p className="text-[11px] text-secondary mt-1">
+                                Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
+                              </p>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1537,11 +1552,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <span className="text-gray-500">{t("subtotal")}</span>
                         <span className="font-semibold">{formatPrice(subtotal)}</span>
                       </div>
-                      {isBestDealVoucherApplied && (
+                      {isBestDealVoucherApplied ? (
+                        <p className="text-secondary font-medium text-xs">
+                          Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
+                        </p>
+                      ) : ( ((config?.active_promotions?.length ?? 0) > 0 || isFreeship) && (
                         <p className="text-secondary font-medium text-xs">
                           {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
                         </p>
-                      )}
+                      ))}
                       <div className="flex justify-between items-center">
                         <span className="text-gray-500">{t("shipping_fee")}</span>
                         <div className="text-right">

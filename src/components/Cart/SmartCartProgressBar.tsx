@@ -12,10 +12,12 @@ interface SmartCartProgressBarProps {
     min_order_amount?: number;
     shipping_discount_type?: "fixed" | "free";
     shipping_discount_value?: number;
+    can_combine_with_promotions?: boolean;
   } | null;
   isFreeship?: boolean;
   freeshipReason?: string | null;
   vouchers?: PublicVoucherItem[];
+  appliedVoucher?: PublicVoucherItem | null;
   onOpenVouchers?: () => void;
   className?: string;
 }
@@ -26,10 +28,23 @@ export default function SmartCartProgressBar({
   isFreeship = false,
   freeshipReason,
   vouchers = [],
+  appliedVoucher = null,
   onOpenVouchers,
   className = "",
 }: SmartCartProgressBarProps) {
   const t = useTranslations("progress_bar");
+
+  
+  if (
+    shippingSettings?.can_combine_with_promotions === false &&
+    appliedVoucher
+  ) {
+    return (
+      <div className={`rounded-2xl p-3.5 border transition-all bg-red-50 border-red-200 text-red-800 text-xs font-semibold ${className}`}>
+        Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá (Không áp dụng đồng thời).
+      </div>
+    );
+  }
 
   const milestone = useMemo(() => {
     const freeshipMin =
@@ -51,7 +66,7 @@ export default function SmartCartProgressBar({
       const isFixed = shippingSettings?.shipping_discount_type === "fixed";
       const discountVal = Number(shippingSettings?.shipping_discount_value || 0);
       const rewardText = isFixed && discountVal > 0
-        ? `giảm ${formatPrice(discountVal)} phí ship`
+        ? `Hỗ trợ ${formatPrice(discountVal)} phí ship`
         : "Freeship";
 
       candidateMilestones.push({

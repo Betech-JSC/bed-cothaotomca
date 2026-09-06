@@ -128,7 +128,7 @@
     "schedule_time": "Schedule (Pre-order)",
     "schedule_delivery": "Pre-order",
     "preorder_cta": "Pre-order",
-    "schedule_pickup": "Schedule pickup (Pre-order)",
+    "schedule_pickup": "Pre-order",
     "cutoff_notice_title": "Kitchen has stopped express orders after {cutoff}.",
     "cutoff_notice_desc": "Please schedule your order pickup/delivery from {openTime} ({targetDate}).",
     "early_morning_note": "* Earliest delivery from {openTime} (Kitchen opens at 9:00 AM).",

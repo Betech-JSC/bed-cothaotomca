@@ -735,15 +735,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       );
 
       // 3. Nếu tổng tiền giảm của CTKM món >= voucherDiscountAmount -> rollback lại CTKM món
-      if (totalItemDiscount >= voucherDiscountAmount) {
-        setAppliedVoucher(null);
-        setVoucherSuccess(null);
-        setVoucherError(null);
-        setBestDealNotice(
-          t("best_deal_item_better") ||
-            "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất."
-        );
-      }
+      // if (totalItemDiscount >= voucherDiscountAmount) {
+      //   setAppliedVoucher(null);
+      //   setVoucherSuccess(null);
+      //   setVoucherError(null);
+      //   setBestDealNotice(
+      //     t("best_deal_item_better") ||
+      //       "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất."
+      //   );
+      // }
     } else {
       // Với voucher cộng dồn, kiểm tra prereqPrice dựa trên saleSubtotal
       if (appliedVoucher.prereqPrice && saleSubtotal < appliedVoucher.prereqPrice) {
@@ -833,19 +833,19 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           );
 
           // 3. So sánh:
-          if (totalItemDiscount >= voucherDiscountAmount) {
-            // totalItemDiscount >= voucherDiscountAmount (CTKM món đang tốt hơn):
-            // -> Giữ nguyên CTKM món (không áp trừ voucher).
-            // -> Hiển thị thông báo (toast/alert text, dùng text-secondary)
-            setAppliedVoucher(null);
-            setVoucherSuccess(null);
-            setVoucherError(null);
-            const notice =
-              t("best_deal_item_better") ||
-              "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất.";
-            setBestDealNotice(notice);
-            return false;
-          }
+          // if (totalItemDiscount >= voucherDiscountAmount) {
+          //   // totalItemDiscount >= voucherDiscountAmount (CTKM món đang tốt hơn):
+          //   // -> Giữ nguyên CTKM món (không áp trừ voucher).
+          //   // -> Hiển thị thông báo (toast/alert text, dùng text-secondary)
+          //   setAppliedVoucher(null);
+          //   setVoucherSuccess(null);
+          //   setVoucherError(null);
+          //   const notice =
+          //     t("best_deal_item_better") ||
+          //     "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất.";
+          //   setBestDealNotice(notice);
+          //   return false;
+          // }
 
           // voucherDiscountAmount > totalItemDiscount (Voucher hời hơn):
           // -> Áp dụng voucher!
@@ -1627,6 +1627,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
                 {/* Ô chọn Ngày và Giờ (UI đẹp, Step 15 phút) */}
                 {(deliverySchedule === "schedule" || !operatingStatus.canOrderNow) && (
+                  <>
                   <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 animate-fade-in pl-7">
                     {/* Chọn Ngày */}
                     <div>
@@ -1706,6 +1707,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       )}
                     </div>
                   </div>
+                  {!operatingStatus.canOrderNow && operatingStatus.message && (
+                    <div className="pl-7 mt-2 animate-fade-in">
+                      <p className="text-xs text-rose-700 font-medium italic bg-rose-50 border border-rose-100 p-2 rounded-md">
+                        * {operatingStatus.message}
+                      </p>
+                    </div>
+                  )}
+                  </>
                 )}
               </div>
             )}
@@ -1810,6 +1819,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                             {cleanVariantName(item.variant)}
                           </p>
                         )}
+                        {isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice && (
+                          <p className="text-[11px] text-secondary mt-1">
+                            Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
+                          </p>
+                        )}
 
                         {/* Dòng điều khiển: Số lượng & Xóa */}
                         <div className="flex items-center justify-between pt-1">
@@ -1887,6 +1901,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     {!isDefaultVariant(order.variant) && (
                       <p className="body-2 text-gray-500 font-medium truncate">
                         {cleanVariantName(order.variant)}
+                      </p>
+                    )}
+                    {isBestDealVoucherApplied && order.originalPrice && order.originalPrice > order.unitPrice && (
+                      <p className="text-[11px] text-secondary mt-1">
+                        Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
                       </p>
                     )}
 
@@ -2215,6 +2234,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               isFreeship={isFreeship}
               freeshipReason={freeshipReason}
               vouchers={availableVouchers}
+              appliedVoucher={appliedVoucher as any}
               onOpenVouchers={() => setIsVoucherModalOpen(true)}
             />
 
@@ -2227,11 +2247,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </span>
               </div>
 
-              {isBestDealVoucherApplied && (
+              {isBestDealVoucherApplied ? (
+                <p className="text-secondary font-medium text-xs">
+                  Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
+                </p>
+              ) : ( ((config?.active_promotions?.length ?? 0) > 0 || isFreeship) && (
                 <p className="text-secondary font-medium text-xs">
                   {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
                 </p>
-              )}
+              ))}
 
               <div className="flex justify-between items-center text-sm font-medium">
                 <span className="text-gray-600 flex items-center gap-1.5">

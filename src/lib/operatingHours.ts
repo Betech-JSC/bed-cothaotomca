@@ -213,10 +213,10 @@ export function checkOperatingHours(operatingConfig?: {
       targetDateDisplay = tomorrowShortDisplay;
     }
 
-    message = `Hiện quán đã ngưng nhận giao ngay | Bạn vẫn có thể Đặt trước (Hẹn giờ) để nhận món vào ${nextOpenDate}.`;
+    message = `Quán ngưng nhận đơn từ ${lastOrderCutoffStr}... | Đặt trước từ ${deliveryOpenStr} ngày ${dateFormatted}.`;
     notice = {
       title: "Thông Báo Đặt Hàng Hẹn Giờ",
-      message: `Bếp đã dừng nhận đơn giao ngay sau ${lastOrderCutoffStr}. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ ${deliveryOpenStr} ${nextOpenDate.toLowerCase()} (${dateFormatted}).`,
+      message: `Quán ngưng nhận đơn từ ${lastOrderCutoffStr}... | Đặt trước từ ${deliveryOpenStr} ngày ${dateFormatted}.`,
       targetDateISO: defaultDate,
       targetDateDisplay: targetDateDisplay,
       slotInfo: `${deliveryOpenStr} - ${deliveryCloseStr}`,
