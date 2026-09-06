@@ -82,7 +82,7 @@ export default function WardSelectCombobox({
         : false;
       const oldWardMatch = oldWard
         ? removeAccents(oldWard).includes(normalizedQuery) ||
-          removeAccents(oldWard.replace(/p\./gi, "phuong ")).includes(normalizedQuery)
+        removeAccents(oldWard.replace(/p\./gi, "phuong ")).includes(normalizedQuery)
         : false;
 
       return nameMatch || districtMatch || oldWardMatch;
@@ -105,17 +105,17 @@ export default function WardSelectCombobox({
   const displayInputValue = isOpen
     ? searchQuery
     : currentSelectedObj
-    ? formatWardLabel(
+      ? formatWardLabel(
         currentSelectedObj.name,
         currentSelectedObj.district,
         currentSelectedObj.old_ward
       )
-    : selectedWardName
-    ? formatWardLabel(selectedWardName)
-    : "";
+      : selectedWardName
+        ? formatWardLabel(selectedWardName)
+        : "";
 
   return (
-    <div className="space-y-1 relative" ref={containerRef}>
+    <div className="space-y-2 relative" ref={containerRef}>
       <label className="text-sm font-serif font-semibold text-primary block">
         Phường / Xã (Khu vực giao)
         <RequiredMark />
@@ -135,11 +135,10 @@ export default function WardSelectCombobox({
             setSearchQuery("");
           }}
           placeholder="-- Gõ hoặc chọn Phường / Xã (VD: An Hội Tây, P.14, Gò Vấp) --"
-          className={`w-full h-11 rounded-[4px] border px-[14px] pr-10 bg-white text-gray-900 focus:outline-none text-sm font-serif cursor-pointer transition-all ${
-            hasError
+          className={`w-full h-11 rounded-[4px] border px-[14px] pr-10 bg-white text-gray-900 focus:outline-none text-sm font-serif cursor-pointer transition-all ${hasError
               ? "border-red-500 ring-1 ring-red-500 bg-red-50/30"
               : "border-gray-300 focus:border-primary"
-          }`}
+            }`}
         />
 
         {/* Clear/Dropdown Icon */}
@@ -155,9 +154,8 @@ export default function WardSelectCombobox({
             </button>
           )}
           <span
-            className={`transition-transform duration-200 pointer-events-none text-xs ${
-              isOpen ? "rotate-180 text-primary" : ""
-            }`}
+            className={`transition-transform duration-200 pointer-events-none text-xs ${isOpen ? "rotate-180 text-primary" : ""
+              }`}
           >
             ▼
           </span>
@@ -177,11 +175,10 @@ export default function WardSelectCombobox({
                 <div
                   key={w.id || w.name}
                   onClick={() => handleSelect(w)}
-                  className={`px-4 py-2.5 cursor-pointer flex items-center justify-between transition-colors ${
-                    isSelected
+                  className={`px-4 py-2.5 cursor-pointer flex items-center justify-between transition-colors ${isSelected
                       ? "bg-primary/10 text-primary font-bold"
                       : "hover:bg-gray-50 text-gray-800"
-                  }`}
+                    }`}
                 >
                   <div className="flex-1 pr-2">
                     <span className="block leading-snug">{label}</span>

@@ -34,18 +34,6 @@ export default function SmartCartProgressBar({
 }: SmartCartProgressBarProps) {
   const t = useTranslations("progress_bar");
 
-  
-  if (
-    shippingSettings?.can_combine_with_promotions === false &&
-    appliedVoucher
-  ) {
-    return (
-      <div className={`rounded-2xl p-3.5 border transition-all bg-red-50 border-red-200 text-red-800 text-xs font-semibold ${className}`}>
-        Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá (Không áp dụng đồng thời).
-      </div>
-    );
-  }
-
   const milestone = useMemo(() => {
     const freeshipMin =
       shippingSettings?.is_min_amount_enabled && Number(shippingSettings.min_order_amount) > 0
@@ -121,6 +109,17 @@ export default function SmartCartProgressBar({
       next,
     };
   }, [subtotal, shippingSettings, isFreeship, freeshipReason, vouchers]);
+
+  if (
+    shippingSettings?.can_combine_with_promotions === false &&
+    appliedVoucher
+  ) {
+    return (
+      <div className={`rounded-2xl p-3.5 border transition-all bg-red-50 border-red-200 text-red-800 text-xs font-semibold ${className}`}>
+        Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá (Không áp dụng đồng thời).
+      </div>
+    );
+  }
 
   return (
     <div

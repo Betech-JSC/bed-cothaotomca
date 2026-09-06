@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "@/i18n/routing";
 import ProfileDashboard from "@/components/Auth/ProfileDashboard";
@@ -8,15 +8,22 @@ import ProfileDashboard from "@/components/Auth/ProfileDashboard";
 export default function ProfilePage() {
   const { user, loading, logout, updateProfile, refreshUser } = useAuth();
   const router = useRouter();
+  const hasRefreshedRef = useRef(false);
 
-  // Redirect to signin if not logged in, hoặc refresh thông tin điểm mới nhất từ KiotViet
+  // Redirect to signin if not logged in
   useEffect(() => {
     if (!loading && !user) {
       router.push("/signin");
-    } else if (user) {
-      refreshUser();
     }
   }, [user, loading, router]);
+
+  // Refresh user data (points, tier...) once on mount when user is present
+  useEffect(() => {
+    if (user && !hasRefreshedRef.current) {
+      hasRefreshedRef.current = true;
+      refreshUser();
+    }
+  }, [user, refreshUser]);
 
   if (loading || !user) {
     return (

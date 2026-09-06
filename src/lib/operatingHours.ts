@@ -114,9 +114,13 @@ export interface PreOrderNotice {
   slotInfo: string;
   cutoff?: string;
   openTime?: string;
+  storeOpen?: string;
   todayDateDisplay?: string;
   nextOpenDate?: string;
   next_open_date?: string;
+  nextOpenDateInSentence?: string;
+  nextOpenDateDisplay?: string;
+  expectedDateNote?: string;
 }
 
 export interface OperatingCheckResult {
@@ -137,17 +141,22 @@ export interface OperatingCheckResult {
   defaultDate: string;
   defaultDeliverySchedule: "now" | "schedule";
   notice: PreOrderNotice | null;
+  expectedDateNote?: string;
 }
 
-export function checkOperatingHours(operatingConfig?: {
-  store_open?: string;
-  store_close?: string;
-  delivery_open?: string;
-  delivery_close?: string;
-  last_order_cutoff?: string;
-  is_store_open?: boolean;
-  is_delivery_open?: boolean;
-}, referenceDate = new Date()): OperatingCheckResult {
+export function checkOperatingHours(
+  operatingConfig?: {
+    store_open?: string;
+    store_close?: string;
+    delivery_open?: string;
+    delivery_close?: string;
+    last_order_cutoff?: string;
+    is_store_open?: boolean;
+    is_delivery_open?: boolean;
+  },
+  referenceDate = new Date(),
+  deliveryType: "delivery" | "pickup" = "delivery"
+): OperatingCheckResult {
   const storeOpenStr = operatingConfig?.store_open || "09:00";
   const storeCloseStr = operatingConfig?.store_close || "23:00";
   const deliveryOpenStr = operatingConfig?.delivery_open || "10:00";
@@ -183,48 +192,62 @@ export function checkOperatingHours(operatingConfig?: {
 
   const todayDD = today.getDate().toString().padStart(2, "0");
   const todayMM = (today.getMonth() + 1).toString().padStart(2, "0");
+  const tomorrowDD = tomorrow.getDate().toString().padStart(2, "0");
+  const tomorrowMM = (tomorrow.getMonth() + 1).toString().padStart(2, "0");
+
   const todayDateFormatted = `${todayDD}/${todayMM}`;
+  const tomorrowDateFormatted = `${tomorrowDD}/${tomorrowMM}`;
 
   const todayShortDisplay = formatShortDate(today, "Hôm nay");
   const tomorrowShortDisplay = formatShortDate(tomorrow, "Ngày mai");
+
+  const openTime = deliveryType === "pickup" ? storeOpenStr : deliveryOpenStr;
 
   let defaultDate = todayISO;
   let targetDateDisplay = todayShortDisplay;
   let defaultDeliverySchedule: "now" | "schedule" = canOrderNow ? "now" : "schedule";
   let notice: PreOrderNotice | null = null;
   let message: string | null = null;
+  let expectedDateNote: string | undefined = undefined;
 
   if (canOrderNow) {
     message = "Quán đang nhận đơn | Bắt đầu nhận đơn từ 9:00 - 23:00 mỗi ngày.";
     defaultDate = isTodayOutOfSlots ? tomorrowISO : todayISO;
     targetDateDisplay = isTodayOutOfSlots ? tomorrowShortDisplay : todayShortDisplay;
   } else {
-    // Calculate next open date: after 0h (midnight to 09:00) is "Hôm nay", before 0h (22:30 to 23:59) is "Ngày mai"
-    const nextOpenDate = isBeforeOpen ? "Hôm nay" : "Ngày mai";
-    const dateFormatted = isBeforeOpen
-      ? todayDateFormatted
-      : `${tomorrow.getDate().toString().padStart(2, "0")}/${(tomorrow.getMonth() + 1).toString().padStart(2, "0")}`;
+    // Logic xác định {next_open_date}:
+    // Sau 0h (isBeforeOpen: 00:00 -> 09:00): Là hôm nay -> "hôm nay DD/MM" trong câu, "Hôm nay DD/MM" cho hiển thị dự kiến
+    // Trước 0h (từ 22:30 đến 23:59 hoặc sau giờ đóng cửa): Là ngày mai -> "mai DD/MM" trong câu, "Ngày mai DD/MM" cho hiển thị dự kiến
+    const nextOpenDateInSentence = isBeforeOpen
+      ? `hôm nay ${todayDateFormatted}`
+      : `mai ${tomorrowDateFormatted}`;
+    const nextOpenDateDisplay = isBeforeOpen
+      ? `Hôm nay ${todayDateFormatted}`
+      : `Ngày mai ${tomorrowDateFormatted}`;
 
-    if (isBeforeOpen) {
-      defaultDate = todayISO;
-      targetDateDisplay = todayShortDisplay;
-    } else {
-      defaultDate = tomorrowISO;
-      targetDateDisplay = tomorrowShortDisplay;
-    }
+    defaultDate = isBeforeOpen ? todayISO : tomorrowISO;
+    targetDateDisplay = nextOpenDateDisplay;
 
-    message = `Quán ngưng nhận đơn từ ${lastOrderCutoffStr}... | Đặt trước từ ${deliveryOpenStr} ngày ${dateFormatted}.`;
+    const line1 = `Quán ngưng nhận đơn từ ${lastOrderCutoffStr} - ${storeOpenStr} | Đặt trước từ ${openTime} ngày ${nextOpenDateInSentence} (hoặc đặt món sau ${storeOpenStr} sáng).`;
+    const line2 = `*Ngày nhận món dự kiến: ${nextOpenDateDisplay}`;
+    message = `${line1}\n${line2}`;
+    expectedDateNote = line2;
+
     notice = {
       title: "Thông Báo Đặt Hàng Hẹn Giờ",
-      message: `Quán ngưng nhận đơn từ ${lastOrderCutoffStr}... | Đặt trước từ ${deliveryOpenStr} ngày ${dateFormatted}.`,
+      message: message,
       targetDateISO: defaultDate,
-      targetDateDisplay: targetDateDisplay,
-      slotInfo: `${deliveryOpenStr} - ${deliveryCloseStr}`,
+      targetDateDisplay: nextOpenDateDisplay,
+      slotInfo: `${openTime} - ${deliveryCloseStr}`,
       cutoff: lastOrderCutoffStr,
-      openTime: deliveryOpenStr,
-      todayDateDisplay: dateFormatted,
-      nextOpenDate: nextOpenDate,
-      next_open_date: nextOpenDate,
+      openTime: openTime,
+      storeOpen: storeOpenStr,
+      todayDateDisplay: isBeforeOpen ? todayDateFormatted : tomorrowDateFormatted,
+      nextOpenDate: nextOpenDateInSentence,
+      next_open_date: nextOpenDateInSentence,
+      nextOpenDateInSentence: nextOpenDateInSentence,
+      nextOpenDateDisplay: nextOpenDateDisplay,
+      expectedDateNote: expectedDateNote,
     };
   }
 
@@ -246,6 +269,7 @@ export function checkOperatingHours(operatingConfig?: {
     defaultDate,
     defaultDeliverySchedule,
     notice,
+    expectedDateNote,
   };
 }
 

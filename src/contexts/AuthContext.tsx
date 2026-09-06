@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { postApi } from "@/services/apiService";
 
 export interface MemberTierInfo {
@@ -230,8 +230,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshUser = async () => {
-    if (!token) return;
+  const isRefreshingUserRef = useRef(false);
+  const refreshUser = useCallback(async () => {
+    if (!token || isRefreshingUserRef.current) return;
+    isRefreshingUserRef.current = true;
     try {
       const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
       const res = await fetch(`${BASE_URL}/auth/me`, {
@@ -247,8 +249,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (e) {
       console.error("Failed to refresh user info:", e);
+    } finally {
+      isRefreshingUserRef.current = false;
     }
-  };
+  }, [token]);
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, register, logout, updateProfile, refreshUser }}>

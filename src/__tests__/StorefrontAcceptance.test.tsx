@@ -263,16 +263,28 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(resWardId.branch_name).toBe('Chi nhánh B (Ưu đãi)');
   });
 
-  it('Luồng 7: checkOperatingHours xử lý chính xác 4 khung giờ: Trước 9h, 9h-22h30, 22h30-23h, Sau 23h', () => {
+  it('Luồng 7: checkOperatingHours xử lý chính xác 4 khung giờ: Trước 9h, 9h-22h30, 22h30-23h, Sau 23h (hỗ trợ delivery và pickup)', () => {
     const config = { store_open: '09:00', store_close: '23:00', delivery_open: '10:00', delivery_close: '23:00', last_order_cutoff: '22:30' };
 
-    // Case 1: 08:30 (Trước 9h sáng)
-    const res0830 = checkOperatingHours(config, new Date('2026-08-16T08:30:00+07:00'));
+    // Case 1: 08:30 (Trước 9h sáng hôm nay - Giao hàng tận nơi: 10:00)
+    const res0830 = checkOperatingHours(config, new Date('2026-08-16T08:30:00+07:00'), 'delivery');
     expect(res0830.canOrderNow).toBe(false);
     expect(res0830.isBeforeOpen).toBe(true);
     expect(res0830.notice).not.toBeNull();
-    expect(res0830.notice?.message).toBe('Bếp đã dừng nhận đơn giao ngay sau 22:30. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ 10:00 hôm nay (16/08).');
+    expect(res0830.notice?.openTime).toBe('10:00');
+    expect(res0830.notice?.targetDateDisplay).toBe('Hôm nay 16/08');
+    expect(res0830.notice?.message).toBe(
+      'Quán ngưng nhận đơn từ 22:30 - 09:00 | Đặt trước từ 10:00 ngày hôm nay 16/08 (hoặc đặt món sau 09:00 sáng).\n*Ngày nhận món dự kiến: Hôm nay 16/08'
+    );
     expect(res0830.defaultDate).toBe('2026-08-16');
+    expect(res0830.expectedDateNote).toBe('*Ngày nhận món dự kiến: Hôm nay 16/08');
+
+    // Case 1b: 08:30 (Trước 9h sáng hôm nay - Tự đến lấy: 09:00)
+    const res0830Pickup = checkOperatingHours(config, new Date('2026-08-16T08:30:00+07:00'), 'pickup');
+    expect(res0830Pickup.notice?.openTime).toBe('09:00');
+    expect(res0830Pickup.notice?.message).toBe(
+      'Quán ngưng nhận đơn từ 22:30 - 09:00 | Đặt trước từ 09:00 ngày hôm nay 16/08 (hoặc đặt món sau 09:00 sáng).\n*Ngày nhận món dự kiến: Hôm nay 16/08'
+    );
 
     // Case 2: 14:00 (Trong giờ nhận đơn ngay 09:00 - 22:30)
     const res1400 = checkOperatingHours(config, new Date('2026-08-16T14:00:00+07:00'));
@@ -280,20 +292,36 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(res1400.notice).toBeNull();
     expect(res1400.defaultDate).toBe('2026-08-16');
 
-    // Case 3: 22:45 (Giờ cutoff 22:30 - 23:00)
-    const res2245 = checkOperatingHours(config, new Date('2026-08-16T22:45:00+07:00'));
+    // Case 3: 22:45 (Giờ cutoff 22:30 - 23:00 - Giao hàng tận nơi: 10:00 ngày mai)
+    const res2245 = checkOperatingHours(config, new Date('2026-08-16T22:45:00+07:00'), 'delivery');
     expect(res2245.canOrderNow).toBe(false);
     expect(res2245.isAfterCutoff).toBe(true);
     expect(res2245.notice).not.toBeNull();
-    expect(res2245.notice?.message).toBe('Bếp đã dừng nhận đơn giao ngay sau 22:30. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ 10:00 ngày mai (17/08).');
+    expect(res2245.notice?.openTime).toBe('10:00');
+    expect(res2245.notice?.targetDateDisplay).toBe('Ngày mai 17/08');
+    expect(res2245.notice?.message).toBe(
+      'Quán ngưng nhận đơn từ 22:30 - 09:00 | Đặt trước từ 10:00 ngày mai 17/08 (hoặc đặt món sau 09:00 sáng).\n*Ngày nhận món dự kiến: Ngày mai 17/08'
+    );
     expect(res2245.defaultDate).toBe('2026-08-17');
+    expect(res2245.expectedDateNote).toBe('*Ngày nhận món dự kiến: Ngày mai 17/08');
+
+    // Case 3b: 22:45 (Giờ cutoff 22:30 - 23:00 - Tự đến lấy: 09:00 ngày mai)
+    const res2245Pickup = checkOperatingHours(config, new Date('2026-08-16T22:45:00+07:00'), 'pickup');
+    expect(res2245Pickup.notice?.openTime).toBe('09:00');
+    expect(res2245Pickup.notice?.message).toBe(
+      'Quán ngưng nhận đơn từ 22:30 - 09:00 | Đặt trước từ 09:00 ngày mai 17/08 (hoặc đặt món sau 09:00 sáng).\n*Ngày nhận món dự kiến: Ngày mai 17/08'
+    );
 
     // Case 4: 23:15 (Sau 23:00 đã đóng cửa)
-    const res2315 = checkOperatingHours(config, new Date('2026-08-16T23:15:00+07:00'));
+    const res2315 = checkOperatingHours(config, new Date('2026-08-16T23:15:00+07:00'), 'delivery');
     expect(res2315.canOrderNow).toBe(false);
     expect(res2315.isAfterClose).toBe(true);
     expect(res2315.notice).not.toBeNull();
-    expect(res2315.notice?.message).toBe('Bếp đã dừng nhận đơn giao ngay sau 22:30. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ 10:00 ngày mai (17/08).');
+    expect(res2315.notice?.openTime).toBe('10:00');
+    expect(res2315.notice?.targetDateDisplay).toBe('Ngày mai 17/08');
+    expect(res2315.notice?.message).toBe(
+      'Quán ngưng nhận đơn từ 22:30 - 09:00 | Đặt trước từ 10:00 ngày mai 17/08 (hoặc đặt món sau 09:00 sáng).\n*Ngày nhận món dự kiến: Ngày mai 17/08'
+    );
     expect(res2315.defaultDate).toBe('2026-08-17');
   });
 
@@ -443,7 +471,40 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
       />
     );
     expect(screen.getByText(formatPrice(150000))).toBeInTheDocument();
-    expect(screen.getByText(`giảm ${formatPrice(20000)} phí ship`)).toBeInTheDocument();
+    expect(screen.getByText(`Hỗ trợ ${formatPrice(20000)} phí ship`)).toBeInTheDocument();
+
+    // 5. Case: Áp dụng voucher khi can_combine_with_promotions === false -> Re-render an toàn, KHÔNG vi phạm React hook count
+    rerender(
+      <SmartCartProgressBar
+        subtotal={250000}
+        shippingSettings={{
+          is_min_amount_enabled: true,
+          min_order_amount: 400000,
+          can_combine_with_promotions: false,
+        }}
+        appliedVoucher={{
+          id: 99,
+          code: 'TEST_SHIP_30K',
+          discount_type: 'freeship',
+          value: 30000,
+        } as any}
+      />
+    );
+    expect(screen.getByText(/Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá/i)).toBeInTheDocument();
+
+    // Re-render khi tháo voucher -> Trở lại trạng thái bình thường mà không có lỗi hook mismatch
+    rerender(
+      <SmartCartProgressBar
+        subtotal={250000}
+        shippingSettings={{
+          is_min_amount_enabled: true,
+          min_order_amount: 400000,
+          can_combine_with_promotions: false,
+        }}
+        appliedVoucher={null}
+      />
+    );
+    expect(screen.getByText(/Mua thêm/i)).toBeInTheDocument();
   });
 
   it('UX Enhancement 2: CouponModal phân loại rõ mã đủ điều kiện và mã chưa đủ điều kiện kèm gợi ý mua thêm', async () => {

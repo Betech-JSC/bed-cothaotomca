@@ -61,8 +61,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   const [refreshingPoints, setRefreshingPoints] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-
-
+  const hasFetchedOrdersRef = useRef<number | null>(null);
 
   // Load address from localStorage on mount
   useEffect(() => {
@@ -74,7 +73,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     }
   }, []);
 
-  // Fetch orders from API
+  // Fetch orders from API once per user ID
+  const userId = user?.id;
   useEffect(() => {
     const fetchOrders = async () => {
       setLoadingOrders(true);
@@ -98,22 +98,25 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       }
     };
 
-    if (user) {
+    if (userId && hasFetchedOrdersRef.current !== userId) {
+      hasFetchedOrdersRef.current = userId;
       fetchOrders();
     }
-  }, [user]);
+  }, [userId]);
 
-  // Keep form fields synced with user prop updates
+  // Keep form fields synced only when name, phone, or email changes
+  const userName = user?.name;
+  const userPhone = user?.phone;
+  const userEmail = user?.email;
+
   useEffect(() => {
-    if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        fullname: user.name || "",
-        phone: user.phone || "",
-        email: user.email || "",
-      }));
-    }
-  }, [user]);
+    setFormData((prev) => ({
+      ...prev,
+      fullname: userName || "",
+      phone: userPhone || "",
+      email: userEmail || "",
+    }));
+  }, [userName, userPhone, userEmail]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

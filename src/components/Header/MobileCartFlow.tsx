@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
@@ -68,11 +68,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const router = useRouter();
   const t = useTranslations("checkout");
 
+  const hasRefreshedUserRef = useRef(false);
   useEffect(() => {
-    if (user) {
+    if ((isCartOpen || inline) && user && !hasRefreshedUserRef.current) {
+      hasRefreshedUserRef.current = true;
       refreshUser();
+    } else if (!isCartOpen && !inline) {
+      hasRefreshedUserRef.current = false;
     }
-  }, [user]);
+  }, [isCartOpen, inline, user, refreshUser]);
 
   const [step, setStep] = useState<1 | 2>(inline ? 2 : 1);
   const [loading, setLoading] = useState(false);
@@ -160,8 +164,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   // Operating hours check (09:00 - 23:00)
   const operatingStatus = useMemo(() => {
-    return checkOperatingHours(config?.operating_hours);
-  }, [config?.operating_hours]);
+    return checkOperatingHours(config?.operating_hours, undefined, deliveryType);
+  }, [config?.operating_hours, deliveryType]);
 
   useEffect(() => {
     if (operatingStatus) {
@@ -844,7 +848,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       return;
     }
 
-    const opCheck = checkOperatingHours(config?.operating_hours);
+    const opCheck = checkOperatingHours(config?.operating_hours, undefined, deliveryType);
 
     if (!name.trim()) {
       setFieldErrors(prev => ({ ...prev, name: "Vui lòng nhập họ và tên." }));
@@ -1347,7 +1351,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 : "bg-yellow/80 border-secondary/30 text-brown"
                 }`}
             >
-              <div className="text-xs sm:text-sm font-semibold flex-1 leading-relaxed font-sans">
+              <div className="text-xs sm:text-sm font-semibold flex-1 leading-relaxed font-sans whitespace-pre-line">
                 {operatingStatus.message}
               </div>
             </div>
@@ -1923,11 +1927,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
                     {/* Nếu sau 22:30 (ngưng giao ngay), chỉ hiển thị thông báo chuyển qua Hẹn giờ */}
                     {!operatingStatus.canOrderNow && (
-                      <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium space-y-1">
-                        <p className="font-semibold text-primary">
-                          {t("cutoff_notice_title", { cutoff: operatingStatus.lastOrderCutoff || "22:30" })}
-                        </p>
-                        <p>{t("cutoff_notice_desc", { openTime: operatingStatus.deliveryOpen || "10:00", targetDate: operatingStatus.notice?.targetDateDisplay || "ngày mai" })}</p>
+                      <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium">
+                        {t("delivery_operating_notice", {
+                          storeOpen: operatingStatus.storeOpen || "09:00",
+                          deliveryOpen: operatingStatus.deliveryOpen || "10:00",
+                          cutoff: operatingStatus.lastOrderCutoff || "22:30",
+                        })}
                       </div>
                     )}
 

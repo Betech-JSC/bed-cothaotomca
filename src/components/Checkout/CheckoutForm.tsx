@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
@@ -86,11 +86,13 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const isCartCheckout = !order;
 
   // Refresh điểm KiotViet khi vào trang checkout
+  const hasRefreshedUserRef = useRef(false);
   useEffect(() => {
-    if (user) {
+    if (user && !hasRefreshedUserRef.current) {
+      hasRefreshedUserRef.current = true;
       refreshUser();
     }
-  }, [user]);
+  }, [user, refreshUser]);
 
   // Sync direct single-product checkout to cart on mobile
   useEffect(() => {
@@ -207,8 +209,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // Operating hours check (10:00 - 23:00)
   const operatingStatus = useMemo(() => {
-    return checkOperatingHours(config?.operating_hours);
-  }, [config?.operating_hours]);
+    return checkOperatingHours(config?.operating_hours, undefined, deliveryType);
+  }, [config?.operating_hours, deliveryType]);
 
   // 1. Tiền giảm của khuyến mại món hiện tại: sum((item.originalPrice - item.unitPrice) * quantity) (với các món có originalPrice > unitPrice)
   const totalItemDiscount = useMemo(() => {
@@ -957,7 +959,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     setError(null);
     setFieldErrors({});
 
-    const opCheck = checkOperatingHours(config?.operating_hours);
+    const opCheck = checkOperatingHours(config?.operating_hours, undefined, deliveryType);
 
     if (isCartCheckout && cartItems.length === 0) {
       setError("Giỏ hàng của bạn đang trống.");
@@ -1231,7 +1233,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 : "bg-yellow/80 border-secondary/30 text-brown"
                 }`}
             >
-              <div className="text-sm font-semibold flex-1 leading-relaxed font-sans">
+              <div className="text-sm font-semibold flex-1 leading-relaxed font-sans whitespace-pre-line">
                 {operatingStatus.message}
               </div>
             </div>
@@ -1599,11 +1601,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
                   {/* Nếu sau 22:30 (ngưng giao ngay), chỉ hiển thị thông báo chuyển qua Hẹn giờ */}
                   {!operatingStatus.canOrderNow && (
-                    <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium space-y-1">
-                      <p className="font-semibold text-primary">
-                        {t("cutoff_notice_title", { cutoff: operatingStatus.lastOrderCutoff || "22:30" })}
-                      </p>
-                      <p>{t("cutoff_notice_desc", { openTime: operatingStatus.deliveryOpen || "10:00", targetDate: operatingStatus.notice?.targetDateDisplay || "ngày mai" })}</p>
+                    <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium">
+                      {t("delivery_operating_notice", {
+                        storeOpen: operatingStatus.storeOpen || "09:00",
+                        deliveryOpen: operatingStatus.deliveryOpen || "10:00",
+                        cutoff: operatingStatus.lastOrderCutoff || "22:30",
+                      })}
                     </div>
                   )}
 
@@ -1709,7 +1712,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   </div>
                   {!operatingStatus.canOrderNow && operatingStatus.message && (
                     <div className="pl-7 mt-2 animate-fade-in">
-                      <p className="text-xs text-rose-700 font-medium italic bg-rose-50 border border-rose-100 p-2 rounded-md">
+                      <p className="text-xs text-rose-700 font-medium italic bg-rose-50 border border-rose-100 p-2 rounded-md whitespace-pre-line">
                         * {operatingStatus.message}
                       </p>
                     </div>

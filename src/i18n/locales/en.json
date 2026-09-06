@@ -131,6 +131,7 @@
     "schedule_pickup": "Pre-order",
     "cutoff_notice_title": "Kitchen has stopped express orders after {cutoff}.",
     "cutoff_notice_desc": "Please schedule your order pickup/delivery from {openTime} ({targetDate}).",
+    "delivery_operating_notice": "Kitchen receives orders from {storeOpen} and delivers from {deliveryOpen} - {cutoff}. Orders placed during closed hours will be processed the next morning.",
     "early_morning_note": "* Earliest delivery from {openTime} (Kitchen opens at 9:00 AM).",
     "payment_method_label": "Payment method",
     "payment_qr_desc": "Bank Transfer / Scan QR (Recommended)",
@@ -245,7 +246,7 @@
   "preorder_notice": {
     "title": "Scheduled Order Notice",
     "subtitle": "Service Hours & Delivery Schedule",
-    "message": "The kitchen has stopped accepting instant delivery orders after {cutoff}. You can still pre-order and select a pickup/delivery time slot starting from {openTime} {nextOpenDate} ({date}).",
+    "message": "The restaurant stops taking orders from {cutoff} - {storeOpen} | Pre-order from {openTime} {nextOpenDate} (or place order after {storeOpen} AM).",
     "expected_date": "Expected Delivery Date:",
     "slot_info": "Pickup / Delivery Slot:",
     "confirm_btn": "I understand, continue order"

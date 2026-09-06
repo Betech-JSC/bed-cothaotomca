@@ -131,6 +131,7 @@
     "schedule_pickup": "Đặt trước",
     "cutoff_notice_title": "Bếp đã ngưng nhận đơn giao ngay sau {cutoff}.",
     "cutoff_notice_desc": "Quý khách vui lòng đặt hẹn giờ nhận món từ {openTime} ({targetDate}).",
+    "delivery_operating_notice": "Bếp nhận đơn từ {storeOpen} và giao món từ {deliveryOpen} - {cutoff}. Đơn đặt trong khung giờ đóng cửa sẽ được xử lý vào sáng hôm sau.",
     "early_morning_note": "* Khách nhận món sớm nhất từ {openTime} (Bếp mở nhận đơn từ 9:00).",
     "payment_method_label": "Phương thức thanh toán",
     "payment_qr_desc": "Chuyển khoản / Quét mã QR (Khuyên dùng)",
@@ -245,7 +246,7 @@
   "preorder_notice": {
     "title": "Thông Báo Đặt Hàng Hẹn Giờ",
     "subtitle": "Khung giờ phục vụ & hẹn nhận món",
-    "message": "Bếp đã dừng nhận đơn giao ngay sau {cutoff}. Bạn vẫn có thể đặt trước và chọn khung giờ nhận món từ {openTime} {nextOpenDate} ({date}).",
+    "message": "Quán ngưng nhận đơn từ {cutoff} - {storeOpen} | Đặt trước từ {openTime} ngày {nextOpenDate} (hoặc đặt món sau {storeOpen} sáng).",
     "expected_date": "Ngày nhận món dự kiến:",
     "slot_info": "Khung giờ giao / lấy hàng:",
     "confirm_btn": "Tôi đã hiểu, tiếp tục đặt hàng"

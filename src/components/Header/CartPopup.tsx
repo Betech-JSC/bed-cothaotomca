@@ -28,11 +28,15 @@ export default function CartPopup({ onClose }: CartPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
 
   // Refresh điểm KiotViet mới nhất khi mở giỏ hàng nếu đã đăng nhập
+  const hasRefreshedRef = useRef(false);
   useEffect(() => {
-    if (isCartOpen && user) {
+    if (isCartOpen && user && !hasRefreshedRef.current) {
+      hasRefreshedRef.current = true;
       refreshUser();
+    } else if (!isCartOpen) {
+      hasRefreshedRef.current = false;
     }
-  }, [isCartOpen, user]);
+  }, [isCartOpen, user, refreshUser]);
 
   // Close popup when clicking outside
   useEffect(() => {
