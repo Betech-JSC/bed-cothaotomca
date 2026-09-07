@@ -107,7 +107,7 @@ export default function JsonLd({ type, data, url }: JsonLdProps) {
         priceRange: '$$',
         address: {
           '@type': 'PostalAddress',
-          streetAddress: '42/2 Trần Đình Xu, Phường Cô Giang',
+          streetAddress: '42/2 Trần Đình Xu, Phường Cầu Ông Lãnh (Q.1 cũ)',
           addressLocality: 'Quận 1',
           addressRegion: 'TP. Hồ Chí Minh',
           postalCode: '700000',

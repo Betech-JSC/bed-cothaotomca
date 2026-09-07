@@ -48,11 +48,11 @@ export async function GET() {
 - **Mô hình**: Cửa hàng chuyên hải sản tươi sống & thực phẩm ngâm tương Hàn Quốc (Mang đi & Giao tận nơi).
 - **Trang web**: ${baseUrl}
 - **Hệ thống chi nhánh (Takeaway & Delivery)**:
-  1. CN1: 42/2 Trần Đình Xu, Phường Cô Giang, Quận 1
-  2. CN2: 39 Thân Nhân Trung, Phường 13, Quận Tân Bình
-  3. CN3: 69A Trương Văn Thành, Phường Hiệp Phú, TP. Thủ Đức
-  4. CN4: 197 Hoàng Sa, Phường Tân Định, Quận 1
-  5. CN5: 1073 Phan Văn Trị, Phường 10, Quận Gò Vấp
+  1. CN1: 42/2 Trần Đình Xu, Phường Cầu Ông Lãnh (Q.1 cũ), TP. Hồ Chí Minh
+  2. CN2: 39 Thân Nhân Trung, Phường Tân Bình, TP. Hồ Chí Minh
+  3. CN3: 69A Trương Văn Thành, Phường Tăng Nhơn Phú, TP. Thủ Đức
+  4. CN4: 197 Hoàng Sa, Phường Tân Định (Q.1 cũ), TP. Hồ Chí Minh
+  5. CN5: 1073 Phan Văn Trị, Phường Gò Vấp, TP. Hồ Chí Minh
 
 ---
 
