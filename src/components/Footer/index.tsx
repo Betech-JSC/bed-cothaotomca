@@ -99,8 +99,8 @@ const Footer = () => {
                 </div>
                 <div className="relative max-w-[130px] w-full h-[50px]">
                   <Image
-                    src="/images/image-vertification.png"
-                    alt="image verification"
+                    src="/images/image-verification.png"
+                    alt={t('footer.bct_verification')}
                     fill
                     className="object-cover w-full h-full"
                   />
