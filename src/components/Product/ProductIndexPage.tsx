@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition, useEffect } from 'react'
 import { useRouter } from '@/i18n/routing'
 import { useTranslations } from 'next-intl'
 import Breadcrumb from '../Common/Breadcrumb'
@@ -39,6 +39,42 @@ export default function ProductIndexPage({
   const router = useRouter()
   const t = useTranslations()
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [pendingPage, setPendingPage] = useState<number | null>(null)
+
+  // Reset pending state when currentPage updates
+  useEffect(() => {
+    setPendingPage(null)
+  }, [pagination.currentPage])
+
+  // Prefetch adjacent pages in the background for instant navigation
+  useEffect(() => {
+    const buildQuery = (p: number) => {
+      const q: Record<string, string> = {}
+      if (selectedIngredients.length > 0) q.ingredients = selectedIngredients.join(',')
+      if (p > 1) q.page = p.toString()
+      return q
+    }
+
+    const prevPage = pagination.currentPage - 1
+    const nextPage = pagination.currentPage + 1
+
+    if (nextPage <= pagination.lastPage) {
+      if (category) {
+        router.prefetch({ pathname: '/product/[category]', params: { category }, query: buildQuery(nextPage) })
+      } else {
+        router.prefetch({ pathname: '/product', query: buildQuery(nextPage) })
+      }
+    }
+
+    if (prevPage >= 1) {
+      if (category) {
+        router.prefetch({ pathname: '/product/[category]', params: { category }, query: buildQuery(prevPage) })
+      } else {
+        router.prefetch({ pathname: '/product', query: buildQuery(prevPage) })
+      }
+    }
+  }, [pagination.currentPage, pagination.lastPage, category, selectedIngredients, router])
 
   const getTranslation = <T extends { locale: string }>(translations: T[] | undefined, currentLocale: string): T | undefined => {
     if (!translations || translations.length === 0) return undefined;
@@ -157,10 +193,17 @@ export default function ProductIndexPage({
   }
 
   const handlePageChange = (page: number) => {
-    pushWithFilters(category, selectedIngredients, page)
+    if (page === pagination.currentPage || isPending) return
+    setPendingPage(page)
+    startTransition(() => {
+      pushWithFilters(category, selectedIngredients, page)
+    })
     const section = document.getElementById('products-section')
     if (section) {
-      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const rect = section.getBoundingClientRect()
+      if (rect.top < 0) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
     }
   }
 
@@ -241,19 +284,24 @@ export default function ProductIndexPage({
                 </button>
               </div>
             ) : (
-              <AnimateOnScroll animate="slideup" delay={300} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-8 max-md:max-w-[22.375rem] max-md:mx-auto">
+              <div
+                className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-8 max-md:max-w-[22.375rem] max-md:mx-auto transition-opacity duration-200 ${
+                  isPending ? 'opacity-40 pointer-events-none' : 'opacity-100'
+                }`}
+              >
                 {filteredProductsSorted.map(product => (
                   <CardProduct key={product.id} item={product} />
                 ))}
-              </AnimateOnScroll>
+              </div>
             )}
 
             {pagination.lastPage > 1 && (
               <div className="flex justify-center items-center gap-2">
                 <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
-                  disabled={pagination.currentPage === 1}
-                  className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer group"
+                  disabled={pagination.currentPage === 1 || isPending}
+                  className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer disabled:cursor-not-allowed group"
+                  aria-label="Previous page"
                 >
                   <div className="rotate-90">
                     <Chevron />
@@ -262,16 +310,19 @@ export default function ProductIndexPage({
 
                 <div className="flex gap-2">
                   {Array.from({ length: pagination.lastPage }, (_, i) => i + 1).map((p) => {
+                    const isActive = (pendingPage ?? pagination.currentPage) === p
                     return (
                       <button
                         key={p}
                         onClick={() => handlePageChange(p)}
+                        disabled={isPending && pendingPage === p}
                         className={`
-                          size-12 flex items-center justify-center rounded-full transition-all duration-300 title-2 cursor-pointer
-                          ${pagination.currentPage === p
-                            ? 'bg-secondary text-yellow'
+                          size-12 flex items-center justify-center rounded-full transition-all duration-200 title-2 cursor-pointer
+                          ${isActive
+                            ? 'bg-secondary text-yellow shadow-xs'
                             : 'bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow'
                           }
+                          ${isPending && pendingPage === p ? 'opacity-80 scale-95' : ''}
                         `}
                       >
                         {p}
@@ -282,8 +333,9 @@ export default function ProductIndexPage({
 
                 <button
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
-                  disabled={pagination.currentPage === pagination.lastPage}
+                  disabled={pagination.currentPage === pagination.lastPage || isPending}
                   className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer disabled:cursor-not-allowed group"
+                  aria-label="Next page"
                 >
                   <div className="-rotate-90">
                     <Chevron />
