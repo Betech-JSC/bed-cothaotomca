@@ -213,7 +213,8 @@
   },
   "footer": {
     "showroom": "Hệ thống cửa hàng",
-    "branch": "Chi nhánh"
+    "branch": "Chi nhánh",
+    "bct_verification": "Đã thông báo Bộ Công Thương"
   },
   "modal": {
     "success": {
