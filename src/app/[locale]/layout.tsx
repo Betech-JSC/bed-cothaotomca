@@ -23,7 +23,9 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params
-  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
+  const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('localhost:3000'))
+    ? process.env.NEXT_PUBLIC_BASE_URL
+    : 'https://cothaotomca.vn';
   const baseUrl = (rawBaseUrl.startsWith('http') ? rawBaseUrl : `https://${rawBaseUrl}`).replace(/\/$/, '');
   const isEn = locale === 'en'
   // Defaults

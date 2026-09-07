@@ -40,12 +40,23 @@ export async function generateMetadata({
   const seoDescription = currentPolicy.seo_description || currentPolicy.meta_description || description;
   const seoKeywords = currentPolicy.seo_keywords || currentPolicy.meta_keywords || "";
 
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
-  const customCanonical = currentPolicy.canonical_url;
-  const canonicalUrl = customCanonical || `${baseUrl}/${locale}/policy/${slug}`;
+  const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('localhost:3000'))
+    ? process.env.NEXT_PUBLIC_BASE_URL
+    : 'https://cothaotomca.vn';
+  const baseUrl = rawBaseUrl.replace(/\/$/, '');
 
-  const customOgImage = currentPolicy.og_image;
-  const policyImage = customOgImage || currentPolicy.image || "/cover.jpg";
+  let canonicalUrl = currentPolicy.canonical_url;
+  if (canonicalUrl && canonicalUrl.includes('localhost:3000')) {
+    canonicalUrl = canonicalUrl.replace(/https?:\/\/localhost:3000/g, baseUrl);
+  }
+  if (!canonicalUrl) {
+    canonicalUrl = `${baseUrl}/${locale}/policy/${slug}`;
+  }
+
+  let policyImage = currentPolicy.og_image || currentPolicy.image || "/cover.jpg";
+  if (policyImage && policyImage.includes('localhost:3000')) {
+    policyImage = policyImage.replace(/https?:\/\/localhost:3000/g, baseUrl);
+  }
   const customRobots = currentPolicy.meta_robots || undefined;
 
   return {
@@ -110,12 +121,17 @@ export default async function PolicyPage({
     { title: currentPolicy.title || currentPolicy.name }
   ];
 
+  const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('localhost:3000'))
+    ? process.env.NEXT_PUBLIC_BASE_URL
+    : 'https://cothaotomca.vn';
+  const baseUrl = rawBaseUrl.replace(/\/$/, '');
+
   return (
     <main className="md:py-16 py-12 xl:pt-20 xl:pb-[112px]">
       <JsonLd
         type="Article"
         data={currentPolicy}
-        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')}/${locale}/policy/${slug}`}
+        url={`${baseUrl}/${locale}/policy/${slug}`}
       />
       <div className="container space-y-3">
         <Breadcrumb breadcrumbs={breadcrumbs} />

@@ -4,6 +4,7 @@ import Script from 'next/script'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn'),
   verification: {
     google: 'wu7G5Y43-OJpfT_MdiJok7SiXB9rzE2Q988xapcDYQw',
   },

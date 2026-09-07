@@ -18,10 +18,7 @@ export async function getBranches(lang?: string): Promise<Branch[]> {
     const params = lang ? { lang } : undefined;
     const response = await getApi<Branch>('branches', { params, revalidate: 60 });
     return [...response.data].sort((a, b) => {
-      const orderA = a.sort_order ?? a.id;
-      const orderB = b.sort_order ?? b.id;
-
-      return orderA - orderB;
+      return (a.sort_order ?? 999) - (b.sort_order ?? 999);
     });
   } catch (error) {
     console.error('Error fetching branches:', error);

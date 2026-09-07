@@ -522,7 +522,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               className="w-full rounded-[8px] border border-gray-200 px-4 py-3 bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-sm resize-none"
-              placeholder="Lời nhắn cho Bếp Cô Thảo"
+              placeholder="Lời nhắn cho Cô Thảo Tôm Cá"
             />
           </div>
 

@@ -42,14 +42,14 @@ const defaultConfig = {
   branches: [
     {
       id: 1,
-      branchName: "Bếp Cô Thảo - Cầu Giấy",
+      branchName: "Cô Thảo Tôm Cá - Cầu Giấy",
       address: "Số 12 Dịch Vọng Hậu, Quận Cầu Giấy, Hà Nội",
       contactNumber: "024.9999.7122",
       isActive: true,
     },
     {
       id: 2,
-      branchName: "Bếp Cô Thảo - Đống Đa",
+      branchName: "Cô Thảo Tôm Cá - Đống Đa",
       address: "Số 34 Chùa Bộc, Quận Đống Đa, Hà Nội",
       contactNumber: "024.9999.7123",
       isActive: true,
