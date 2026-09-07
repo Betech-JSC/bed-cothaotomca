@@ -284,11 +284,7 @@ export default function ProductIndexPage({
                 </button>
               </div>
             ) : (
-              <div
-                className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-8 max-md:max-w-[22.375rem] max-md:mx-auto transition-opacity duration-200 ${
-                  isPending ? 'opacity-40 pointer-events-none' : 'opacity-100'
-                }`}
-              >
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-8 max-md:max-w-[22.375rem] max-md:mx-auto">
                 {filteredProductsSorted.map(product => (
                   <CardProduct key={product.id} item={product} />
                 ))}
@@ -300,7 +296,7 @@ export default function ProductIndexPage({
                 <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={pagination.currentPage === 1 || isPending}
-                  className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer disabled:cursor-not-allowed group"
+                  className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-200 cursor-pointer disabled:cursor-not-allowed group"
                   aria-label="Previous page"
                 >
                   <div className="rotate-90">
@@ -317,12 +313,11 @@ export default function ProductIndexPage({
                         onClick={() => handlePageChange(p)}
                         disabled={isPending && pendingPage === p}
                         className={`
-                          size-12 flex items-center justify-center rounded-full transition-all duration-200 title-2 cursor-pointer
+                          size-12 flex items-center justify-center rounded-full transition-colors duration-200 title-2 cursor-pointer
                           ${isActive
                             ? 'bg-secondary text-yellow shadow-xs'
                             : 'bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow'
                           }
-                          ${isPending && pendingPage === p ? 'opacity-80 scale-95' : ''}
                         `}
                       >
                         {p}
