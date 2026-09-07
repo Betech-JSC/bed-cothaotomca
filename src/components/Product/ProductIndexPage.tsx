@@ -135,12 +135,12 @@ export default function ProductIndexPage({
         pathname: '/product/[category]',
         params: { category: newCategorySlug },
         query: query
-      })
+      }, { scroll: false })
     } else {
       router.push({
         pathname: '/product',
         query: query
-      })
+      }, { scroll: false })
     }
   }
 
@@ -158,6 +158,10 @@ export default function ProductIndexPage({
 
   const handlePageChange = (page: number) => {
     pushWithFilters(category, selectedIngredients, page)
+    const section = document.getElementById('products-section')
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }
 
   const clearCategory = () => pushWithFilters(null, selectedIngredients, 1)
@@ -196,7 +200,7 @@ export default function ProductIndexPage({
   }, [category, selectedIngredients, productsDisplay, ingredientsDisplay])
 
   return (
-    <section className="py-[60px]">
+    <section id="products-section" className="py-[60px] scroll-mt-24">
       <div className="container md:space-y-6 space-y-4 xl:space-y-8">
         <div className="flex flex-col items-center gap-3 md:gap-4 text-center w-full">
           <AnimateOnScroll animate="slideup" delay={0}>

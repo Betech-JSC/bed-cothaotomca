@@ -100,24 +100,29 @@ export default function BlogListPage({
     const query = Object.fromEntries(params.entries());
 
     if (currentCategorySlug) {
-      router.push({ pathname: '/blog/category/[category]', params: { category: currentCategorySlug }, query });
+      router.push({ pathname: '/blog/category/[category]', params: { category: currentCategorySlug }, query }, { scroll: false });
     } else {
-      router.push({ pathname: '/blog', query });
+      router.push({ pathname: '/blog', query }, { scroll: false });
+    }
+
+    const section = document.getElementById('blog-list-section');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
   const handleCategoryChange = (slug?: string) => {
     if (!slug) {
-      router.push({ pathname: '/blog' });
+      router.push({ pathname: '/blog' }, { scroll: false });
     } else {
-      router.push({ pathname: '/blog/category/[category]', params: { category: slug } });
+      router.push({ pathname: '/blog/category/[category]', params: { category: slug } }, { scroll: false });
     }
   };
 
   return (
     <main>
       <Banner banner={banner} />
-      <section className="py-8 md:py-14 xl:py-16">
+      <section id="blog-list-section" className="py-8 md:py-14 xl:py-16 scroll-mt-24">
         <div className="container space-y-8 md:space-y-16 xl:space-y-20">
           <div className="space-y-4 md:space-y-8 xl:space-y-8">
             <AnimateOnScroll animate="slideup" delay={0}>

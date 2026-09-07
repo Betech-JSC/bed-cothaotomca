@@ -59,17 +59,13 @@ export default function OrderStatusStepper({
     );
   }
 
-  // Determine if Step 2 is active
+  // Determine if Step 2 is active (Chỉ kích hoạt khi đơn hàng đã thực sự được xác nhận hoặc đang vận chuyển / hoàn tất)
   const isStep2Active =
-    s === "synced" ||
     s === "confirmed" ||
     s === "shipping" ||
     s === "delivering" ||
-    s === "paid" ||
-    s === "completed" ||
-    s === "processing" ||
-    sync === "synced" ||
-    sync === "success";
+    s === "delivered" ||
+    s === "completed";
 
   const step1Title = t("step1_title");
   const step1Desc = isPickup ? t("step1_desc_pickup") : t("step1_desc");
@@ -84,8 +80,22 @@ export default function OrderStatusStepper({
       <div className="flex items-center justify-between mb-4">
         {/* Step 1 Circle */}
         <div className="flex items-center">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm bg-primary text-white border-2 border-primary select-none shrink-0">
-            1
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm bg-primary text-white border-2 border-primary select-none shrink-0 transition-colors duration-300">
+            {isStep2Active ? (
+              <svg
+                className="w-4 h-4 sm:w-5 sm:h-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : (
+              "1"
+            )}
           </div>
         </div>
 
@@ -102,7 +112,7 @@ export default function OrderStatusStepper({
             className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm border-2 select-none shrink-0 transition-colors duration-300 ${
               isStep2Active
                 ? "bg-secondary text-white border-secondary"
-                : "bg-[#E0E0E0] text-gray-500 border-[#E0E0E0]"
+                : "bg-[#E0E0E0] text-gray-400 border-[#E0E0E0]"
             }`}
           >
             2
@@ -114,13 +124,25 @@ export default function OrderStatusStepper({
       <div className="grid grid-cols-2 gap-4 sm:gap-8">
         {/* Step 1 Info */}
         <div className="text-left space-y-1">
-          <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-primary block">
+          <span
+            className={`text-[11px] font-mono font-bold uppercase tracking-wider block transition-colors duration-300 ${
+              isStep2Active ? "text-primary/70" : "text-primary"
+            }`}
+          >
             {t("step_number", { step: 1 })}
           </span>
-          <h4 className="text-sm sm:text-base font-bold text-primary">
+          <h4
+            className={`text-sm sm:text-base font-bold transition-colors duration-300 ${
+              isStep2Active ? "text-primary/80" : "text-primary"
+            }`}
+          >
             <span className="block">{step1Title}</span>
           </h4>
-          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+          <p
+            className={`text-xs sm:text-sm leading-relaxed transition-colors duration-300 ${
+              isStep2Active ? "text-gray-500" : "text-gray-600"
+            }`}
+          >
             <span className="block">{step1Desc}</span>
           </p>
         </div>
@@ -128,21 +150,21 @@ export default function OrderStatusStepper({
         {/* Step 2 Info */}
         <div className="text-right space-y-1">
           <span
-            className={`text-[11px] font-mono font-bold uppercase tracking-wider block ${
+            className={`text-[11px] font-mono font-bold uppercase tracking-wider block transition-colors duration-300 ${
               isStep2Active ? "text-secondary" : "text-gray-400"
             }`}
           >
             {t("step_number", { step: 2 })}
           </span>
           <h4
-            className={`text-sm sm:text-base font-bold ${
+            className={`text-sm sm:text-base font-bold transition-colors duration-300 ${
               isStep2Active ? "text-primary" : "text-gray-400"
             }`}
           >
             <span className="block">{step2Title}</span>
           </h4>
           <p
-            className={`text-xs sm:text-sm leading-relaxed ${
+            className={`text-xs sm:text-sm leading-relaxed transition-colors duration-300 ${
               isStep2Active ? "text-gray-600" : "text-gray-400"
             }`}
           >

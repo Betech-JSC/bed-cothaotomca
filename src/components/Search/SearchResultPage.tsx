@@ -146,7 +146,12 @@ export default function SearchResultPage({
     router.push({
       pathname: '/search',
       query: Object.fromEntries(params.entries())
-    })
+    }, { scroll: false })
+
+    const section = document.getElementById('search-results-section')
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }
 
   const handleBlogPageChange = (page: number) => {
@@ -159,7 +164,12 @@ export default function SearchResultPage({
     router.push({
       pathname: '/search',
       query: Object.fromEntries(params.entries())
-    })
+    }, { scroll: false })
+
+    const section = document.getElementById('search-results-section')
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }
 
   const handleTabChange = (tab: 'products' | 'blogs' | 'policies') => {
@@ -186,7 +196,7 @@ export default function SearchResultPage({
   const totalResults = productPagination.total + blogPagination.total + policyCount
 
   return (
-    <section className="py-[60px]">
+    <section id="search-results-section" className="py-[60px] scroll-mt-24">
       <div className="container xl:space-y-8 md:space-y-6 space-y-4">
 
         <div className="flex flex-col items-center justify-center gap-3">

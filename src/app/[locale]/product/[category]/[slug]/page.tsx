@@ -163,7 +163,7 @@ export default async function ProductDetailsPage({
 
         return {
           id: v.id,
-          code: v.code || "",
+          code: v.code || product.code || (v.id ? `SP-${v.id}` : (product.id ? `SP-${product.id}` : "")),
           title: locale === "vi" ? v.size : (v.size_en || v.size),
           price: finalPrice,
           original_price: isCamp ? basePrice : undefined,
@@ -172,7 +172,7 @@ export default async function ProductDetailsPage({
       })
       : [{
         id: product.id,
-        code: product.code || "",
+        code: product.code || (product.id ? `SP-${product.id}` : ""),
         title: t("product.standard"),
         price: product.campaign_price && parseFloat(String(product.campaign_price)) < parseFloat(product.price) ? parseFloat(String(product.campaign_price)) : parseInt(product.price),
         original_price: product.campaign_price && parseFloat(String(product.campaign_price)) < parseFloat(product.price) ? parseInt(product.price) : undefined,
@@ -203,7 +203,7 @@ export default async function ProductDetailsPage({
     })) || [],
     checkout: {
       productId: product.id,
-      productCode: product.code || "",
+      productCode: product.code || (product.variants?.[0]?.code ?? "") || (product.id ? `SP-${product.id}` : ""),
       slug: product.slug || slug,
       categorySlug: (() => {
         const cat = product.categories && product.categories.length > 0 ? product.categories[0] : product.category;

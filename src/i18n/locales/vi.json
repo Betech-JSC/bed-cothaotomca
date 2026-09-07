@@ -120,7 +120,7 @@
     "pickup_address_label": "Địa chỉ nhận hàng:",
     "pickup_freeship_tip": "Tự đến lấy giúp tiết kiệm phí vận chuyển (Miễn phí ship)",
     "pickup_time_notice": "Thời gian lấy hàng (09:00 - 23:00): Khi nhân viên CSKH gọi xác nhận đơn hàng, quý khách vui lòng cung cấp thời gian cụ thể dự kiến đến cửa hàng nhận món.",
-    "pickup_time_notice_out_hours": "Thời gian lấy hàng (09:00 - 23:00): Các đơn đặt sau 22:30 sẽ được nhân viên gọi xác nhận từ 09:00 sáng mai. Khi được liên hệ, quý khách vui lòng cung cấp thời gian dự kiến đến lấy.",
+    "pickup_time_notice_out_hours": "Thời gian lấy hàng (09:00 - 23:00): Đơn đặt sau 22:30 sẽ được nhân viên liên hệ xác nhận sau 09:00 sáng mai. Khi nhận cuộc gọi, quý khách vui lòng cung cấp thời gian cụ thể dự kiến đến cửa hàng nhận món.",
     "delivery_time_label": "Thời gian giao hàng mong muốn",
     "pickup_time_label": "Thời gian đến lấy hàng mong muốn",
     "delivery_now": "Giao ngay (Hỏa tốc 45 - 90 phút)",

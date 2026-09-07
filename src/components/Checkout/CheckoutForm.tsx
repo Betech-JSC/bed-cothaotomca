@@ -1505,11 +1505,16 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     onChange={(e) => setSelectedBranchId(Number(e.target.value))}
                     className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base cursor-pointer font-serif leading-[150%] tracking-[0%]"
                   >
-                    {config.branches?.map((branch) => (
-                      <option key={branch.id} value={branch.id} className="text-gray-900 bg-white py-1">
-                        {branch.branchName || branch.address || (branch as any).title || `Chi nhánh #${branch.id}`}
-                      </option>
-                    ))}
+                    {config.branches?.map((branch, index) => {
+                      const rawName = branch.branchName || (branch as any).title || branch.address || `Chi nhánh #${branch.id}`;
+                      const cleanName = rawName.replace(/^Chi\s*nhánh\s*(\d+[\s:.-]*)?/i, "").trim();
+                      const displayName = cleanName ? `Chi nhánh ${index + 1} - ${cleanName}` : `Chi nhánh ${index + 1}`;
+                      return (
+                        <option key={branch.id} value={branch.id} className="text-gray-900 bg-white py-1">
+                          {displayName}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 

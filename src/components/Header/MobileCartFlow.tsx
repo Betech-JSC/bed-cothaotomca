@@ -1851,11 +1851,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       onChange={(e) => setSelectedBranchId(Number(e.target.value))}
                       className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
                     >
-                      {config?.branches.map((b) => (
-                        <option key={b.id} value={b.id} className="text-gray-900 bg-white py-1">
-                          {b.branchName || b.address || (b as any).title || `Chi nhánh #${b.id}`}
-                        </option>
-                      ))}
+                      {config?.branches.map((b, index) => {
+                        const rawName = b.branchName || (b as any).title || b.address || `Chi nhánh #${b.id}`;
+                        const cleanName = rawName.replace(/^Chi\s*nhánh\s*(\d+[\s:.-]*)?/i, "").trim();
+                        const displayName = cleanName ? `Chi nhánh ${index + 1} - ${cleanName}` : `Chi nhánh ${index + 1}`;
+                        return (
+                          <option key={b.id} value={b.id} className="text-gray-900 bg-white py-1">
+                            {displayName}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                   {config?.branches.find(b => b.id === selectedBranchId) && (
@@ -1889,8 +1894,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               {/* Expected time & date / Pickup instruction */}
               {deliveryType === "pickup" ? (
                 <div className="pt-2 border-t border-gray-100">
-                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 leading-relaxed font-medium">
-                    {t("pickup_time_notice")}
+                  <div className="rounded-xl border border-secondary/20 bg-yellow/40 p-4 text-sm text-brown leading-relaxed font-medium font-sans">
+                    {operatingStatus.canOrderNow
+                      ? t("pickup_time_notice")
+                      : t("pickup_time_notice_out_hours")}
                   </div>
                 </div>
               ) : (
