@@ -19,7 +19,7 @@ export default function OrderStatusStepper({
   const t = useTranslations("orderStepper");
   const s = (status || "pending").toLowerCase();
   const sync = (syncStatus || "").toLowerCase();
-  const isPickup = deliveryType === "pickup";
+  const isPickup = (deliveryType || "").toLowerCase() === "pickup";
 
   // Check cancellation or expired status
   if (s === "cancelled" || s === "expired") {
@@ -59,13 +59,18 @@ export default function OrderStatusStepper({
     );
   }
 
-  // Determine if Step 2 is active (Chỉ kích hoạt khi đơn hàng đã thực sự được xác nhận hoặc đang vận chuyển / hoàn tất)
+  // Determine if Step 2 is active (Đã đồng bộ KiotViet / xuất hoá đơn / xác nhận / đang chuẩn bị món / vận chuyển)
   const isStep2Active =
+    s === "synced" ||
     s === "confirmed" ||
+    s === "processing" ||
+    s === "paid" ||
     s === "shipping" ||
     s === "delivering" ||
     s === "delivered" ||
-    s === "completed";
+    s === "completed" ||
+    sync === "synced" ||
+    sync === "success";
 
   const step1Title = t("step1_title");
   const step1Desc = isPickup ? t("step1_desc_pickup") : t("step1_desc");
@@ -80,22 +85,8 @@ export default function OrderStatusStepper({
       <div className="flex items-center justify-between mb-4">
         {/* Step 1 Circle */}
         <div className="flex items-center">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm bg-primary text-white border-2 border-primary select-none shrink-0 transition-colors duration-300">
-            {isStep2Active ? (
-              <svg
-                className="w-4 h-4 sm:w-5 sm:h-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            ) : (
-              "1"
-            )}
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm bg-primary text-white border-2 border-primary select-none shrink-0 transition-colors duration-300 shadow-xs">
+            1
           </div>
         </div>
 
@@ -109,7 +100,7 @@ export default function OrderStatusStepper({
         {/* Step 2 Circle */}
         <div className="flex items-center">
           <div
-            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm border-2 select-none shrink-0 transition-colors duration-300 ${
+            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm border-2 select-none shrink-0 transition-colors duration-300 shadow-xs ${
               isStep2Active
                 ? "bg-secondary text-white border-secondary"
                 : "bg-[#E0E0E0] text-gray-400 border-[#E0E0E0]"
@@ -120,7 +111,7 @@ export default function OrderStatusStepper({
         </div>
       </div>
 
-      {/* Step Details */}
+      {/* Step Details - 2 Dòng cân đối ngắt tại dấu chấm */}
       <div className="grid grid-cols-2 gap-4 sm:gap-8">
         {/* Step 1 Info */}
         <div className="text-left space-y-1">
@@ -132,18 +123,18 @@ export default function OrderStatusStepper({
             {t("step_number", { step: 1 })}
           </span>
           <h4
-            className={`text-sm sm:text-base font-bold transition-colors duration-300 ${
+            className={`text-xs sm:text-sm md:text-base font-bold transition-colors duration-300 ${
               isStep2Active ? "text-primary/80" : "text-primary"
             }`}
           >
-            <span className="block">{step1Title}</span>
+            <span className="block leading-snug">{step1Title}</span>
           </h4>
           <p
             className={`text-xs sm:text-sm leading-relaxed transition-colors duration-300 ${
               isStep2Active ? "text-gray-500" : "text-gray-600"
             }`}
           >
-            <span className="block">{step1Desc}</span>
+            <span className="block leading-snug">{step1Desc}</span>
           </p>
         </div>
 
@@ -157,18 +148,18 @@ export default function OrderStatusStepper({
             {t("step_number", { step: 2 })}
           </span>
           <h4
-            className={`text-sm sm:text-base font-bold transition-colors duration-300 ${
-              isStep2Active ? "text-primary" : "text-gray-400"
+            className={`text-xs sm:text-sm md:text-base font-bold transition-colors duration-300 ${
+              isStep2Active ? "text-primary font-bold" : "text-gray-400"
             }`}
           >
-            <span className="block">{step2Title}</span>
+            <span className="block leading-snug">{step2Title}</span>
           </h4>
           <p
             className={`text-xs sm:text-sm leading-relaxed transition-colors duration-300 ${
               isStep2Active ? "text-gray-600" : "text-gray-400"
             }`}
           >
-            <span className="block">{step2Desc}</span>
+            <span className="block leading-snug">{step2Desc}</span>
           </p>
         </div>
       </div>
