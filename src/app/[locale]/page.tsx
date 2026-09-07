@@ -267,7 +267,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             <AnimateOnScroll animate="slideup">
               {locale == 'vi' ? (
                 <h2 className="display-2 max-md:text-[36px] text-center text-primary">
-                  {t('home.section-5.title.text1')} <span className="text-secondary">{t('home.section-5.title.text2')}</span> <br className="md:hidden" />{t('home.section-5.title.text3')}
+                  <span>{t('home.section-5.title.text1')}</span>{' '}<span className="text-secondary">{t('home.section-5.title.text2')}</span><span className="hidden md:inline"> </span><br className="md:hidden" /><span>{t('home.section-5.title.text3')}</span>
                 </h2>
               ) : (
                 <h2 className="display-2 max-md:text-[36px] text-center text-primary">
