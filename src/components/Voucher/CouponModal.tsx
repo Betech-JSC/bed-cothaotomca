@@ -19,6 +19,9 @@ export interface CouponModalProps {
   subtotal?: number;
   originalSubtotal?: number;
   shippingFee?: number;
+  isFreeship?: boolean;
+  isAutoFreeship?: boolean;
+  canCombineWithFreeship?: boolean;
   appliedVoucherCode?: string;
   onApplyVoucher?: (code: string) => Promise<boolean | void> | void;
   onRemoveVoucher?: () => void;
@@ -60,6 +63,9 @@ export default function CouponModal({
   subtotal = 0,
   originalSubtotal,
   shippingFee = 0,
+  isFreeship = false,
+  isAutoFreeship,
+  canCombineWithFreeship,
   appliedVoucherCode = "",
   onApplyVoucher,
   onRemoveVoucher,
@@ -81,6 +87,10 @@ export default function CouponModal({
     memberTier ||
     (currentUser?.tier || resolveTierFromPoints(currentUser?.points || 0))
   ).toLowerCase();
+
+  const orderIsAutoFreeship = isAutoFreeship !== undefined
+    ? isAutoFreeship
+    : Boolean(isFreeship && shippingFee === 0);
 
   const [activeTab, setActiveTab] = useState<"campaigns" | "vouchers">(
     !isBrowseOnly || onApplyVoucher ? "vouchers" : "campaigns"
@@ -152,7 +162,30 @@ export default function CouponModal({
   // Check eligibility for each voucher
   const checkVoucherEligibility = useCallback(
     (v: PublicVoucherItem): { eligible: boolean; reason?: string; missingAmount?: number } => {
-      const isFreeship = Boolean(v.is_freeship || v.discount_type === "freeship");
+      const isFreeship = Boolean(
+        v.is_freeship ||
+        v.discount_type === "freeship" ||
+        v.code.toUpperCase().includes("FREESHIP") ||
+        v.code.toUpperCase().includes("SHIP")
+      );
+
+      // 0. Auto Freeship check: Đơn hàng đã được hưởng Freeship tự động 100%
+      if (orderIsAutoFreeship && isFreeship) {
+        return {
+          eligible: false,
+          reason: t("order_already_freeship") || "Đơn hàng đã được Freeship tự động",
+        };
+      }
+
+      // 0.1 Combination rule check: Mã giảm giá hàng hiện tại cấm kết hợp freeship
+      if (canCombineWithFreeship === false && isFreeship) {
+        return {
+          eligible: false,
+          reason:
+            t("order_voucher_no_freeship") ||
+            "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship",
+        };
+      }
 
       // 1. Member scope check
       if (v.customer_scope === "member_only") {
@@ -231,6 +264,8 @@ export default function CouponModal({
     [
       currentUser,
       currentUserTier,
+      orderIsAutoFreeship,
+      canCombineWithFreeship,
       hasCampaignWithNoFreeship,
       hasCampaignWithNoPromotions,
       subtotal,
@@ -279,7 +314,18 @@ export default function CouponModal({
         onClose();
       }, 600);
     } catch (err: any) {
-      setFeedbackError(err?.message || "Không thể áp dụng mã này.");
+      const msg = err?.message || "Không thể áp dụng mã này.";
+      if (
+        msg.includes("Freeship tự động") ||
+        msg.includes("freeship tự động") ||
+        msg.includes("miễn phí vận chuyển tự động")
+      ) {
+        setFeedbackNotice(msg);
+        setFeedbackError(null);
+      } else {
+        setFeedbackError(msg);
+        setFeedbackNotice(null);
+      }
     } finally {
       setApplyingCode(null);
     }
@@ -290,6 +336,21 @@ export default function CouponModal({
     const trimmed = manualCode.trim().toUpperCase();
     if (!trimmed) {
       setFeedbackError("Vui lòng nhập mã giảm giá.");
+      setFeedbackNotice(null);
+      return;
+    }
+    const isCodeFreeship = trimmed.includes("FREESHIP") || trimmed.includes("SHIP");
+    if (orderIsAutoFreeship && isCodeFreeship) {
+      setFeedbackNotice(
+        "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé."
+      );
+      setFeedbackError(null);
+      return;
+    }
+    if (canCombineWithFreeship === false && isCodeFreeship) {
+      setFeedbackError(
+        "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship"
+      );
       setFeedbackNotice(null);
       return;
     }
@@ -652,7 +713,12 @@ export default function CouponModal({
                       const eligibility = checkVoucherEligibility(v);
                       const isEligible = eligibility.eligible;
                       const isApplied = appliedVoucherCode.toUpperCase() === v.code.toUpperCase();
-                      const isFreeship = Boolean(v.is_freeship || v.discount_type === "freeship");
+                      const isFreeship = Boolean(
+                        v.is_freeship ||
+                        v.discount_type === "freeship" ||
+                        v.code.toUpperCase().includes("FREESHIP") ||
+                        v.code.toUpperCase().includes("SHIP")
+                      );
 
                       // 1. Voucher KHÔNG ĐỦ ĐIỀU KIỆN
                       if (!isEligible) {

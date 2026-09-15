@@ -232,7 +232,11 @@
     "tier_only_required": "Exclusive to members with tier {tier} and above",
     "campaign_no_freeship": "Current promotion cannot be combined with Freeship vouchers",
     "campaign_no_promotions": "Cannot be combined with active promotions in cart",
-    "min_spend_not_met": "Minimum order value of {amount} not met"
+    "min_spend_not_met": "Minimum order value of {amount} not met",
+    "order_already_freeship": "Order already received automatic Free Shipping",
+    "order_voucher_no_freeship": "Current order discount cannot be combined with Free Shipping vouchers",
+    "auto_freeship_badge": "Auto Free Shipping",
+    "auto_freeship_friendly_tip": "Your order already qualified for automatic Free Shipping! Please save this voucher for your next order."
   },
   "gift_selector": {
     "default_title": "Choose your free gift",

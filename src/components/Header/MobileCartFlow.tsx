@@ -695,6 +695,36 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     setVoucherSuccess(null);
     setBestDealNotice(null);
 
+    const isOrderAutoFreeship = Boolean(
+      (deliveryType === "delivery" && isFreeship && shippingFee === 0) ||
+      (deliveryType === "delivery" &&
+        shippingSettings?.is_min_amount_enabled &&
+        shippingSettings?.min_order_amount &&
+        subtotal >= shippingSettings.min_order_amount &&
+        (shippingSettings.shipping_discount_type === "free" || !shippingSettings.shipping_discount_type || (shippingSettings.shipping_discount_value ?? 0) >= originalFee))
+    );
+
+    const isCodeFreeship = code.includes("FREESHIP") || code.includes("SHIP");
+
+    if (isOrderAutoFreeship && isCodeFreeship) {
+      const friendlyMsg = "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.";
+      setBestDealNotice(friendlyMsg);
+      setVoucherError(null);
+      setVoucherSuccess(null);
+      setAppliedVoucher(null);
+      setValidatingVoucher(false);
+      throw new Error(friendlyMsg);
+    }
+
+    if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false && isCodeFreeship) {
+      const msg = "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship";
+      setVoucherError(msg);
+      setBestDealNotice(null);
+      setVoucherSuccess(null);
+      setValidatingVoucher(false);
+      throw new Error(msg);
+    }
+
     try {
       const result = await validateVoucher(
         code,
@@ -703,9 +733,34 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         false,
         0,
         phone || user?.phone || undefined,
-        token || undefined
+        token || undefined,
+        isOrderAutoFreeship
       );
       if (result.valid && result.voucher) {
+        const isCandidateFreeship = Boolean(
+          result.voucher.discount_type === "freeship" ||
+          result.voucher.is_freeship ||
+          code.includes("FREESHIP") ||
+          code.includes("SHIP")
+        );
+
+        if (isOrderAutoFreeship && isCandidateFreeship) {
+          const friendlyMsg = "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.";
+          setBestDealNotice(friendlyMsg);
+          setVoucherError(null);
+          setVoucherSuccess(null);
+          setAppliedVoucher(null);
+          throw new Error(friendlyMsg);
+        }
+
+        if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false && isCandidateFreeship) {
+          const msg = "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship";
+          setVoucherError(msg);
+          setBestDealNotice(null);
+          setVoucherSuccess(null);
+          throw new Error(msg);
+        }
+
         const canCombine = result.voucher.can_combine_with_promotions !== false;
 
         if (!canCombine) {
@@ -812,6 +867,18 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           return true;
         }
       } else {
+        if (
+          result.message?.includes("Freeship tự động") ||
+          result.message?.includes("freeship tự động") ||
+          result.message?.includes("miễn phí vận chuyển tự động")
+        ) {
+          const friendlyMsg = "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.";
+          setBestDealNotice(friendlyMsg);
+          setVoucherError(null);
+          setVoucherSuccess(null);
+          setAppliedVoucher(null);
+          throw new Error(friendlyMsg);
+        }
         setVoucherError(result.message || "Mã giảm giá không hợp lệ.");
         setAppliedVoucher(null);
         setBestDealNotice(null);
@@ -819,9 +886,20 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       }
     } catch (err: any) {
       const msg = err?.message || "Lỗi kiểm tra mã giảm giá.";
-      setVoucherError(msg);
+      if (
+        msg.includes("Freeship tự động") ||
+        msg.includes("freeship tự động") ||
+        msg.includes("miễn phí vận chuyển tự động")
+      ) {
+        setBestDealNotice(
+          "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé."
+        );
+        setVoucherError(null);
+      } else {
+        setVoucherError(msg);
+        setBestDealNotice(null);
+      }
       setAppliedVoucher(null);
-      setBestDealNotice(null);
       throw new Error(msg);
     } finally {
       setValidatingVoucher(false);
@@ -1015,6 +1093,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             voucher_id: appliedVoucher.id,
             campaign_id: appliedVoucher.campaignId,
             amount: appliedVoucher.value,
+            can_combine_with_freeship: appliedVoucher.canCombineWithFreeship,
           }
           : null,
         payment_method: paymentMethod,
@@ -1572,6 +1651,22 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             <span className="text-secondary font-bold">0đ ({t("delivery_pickup")})</span>
                           ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                             <span className="text-gray-500 font-bold">--</span>
+                          ) : appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") && appliedVoucher.maxDiscount && appliedVoucher.maxDiscount > 0 ? (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <div className="flex items-center gap-2">
+                                {originalFee > shipping && originalFee > 0 && (
+                                  <span className="text-xs text-gray-400 line-through">
+                                    {formatPrice(originalFee)}
+                                  </span>
+                                )}
+                                <span className={`${shipping === 0 ? "text-secondary" : "text-primary"} font-bold`}>
+                                  {shipping === 0 ? "0đ" : formatPrice(shipping)}
+                                </span>
+                              </div>
+                              <span className="text-xs text-secondary font-semibold">
+                                Giảm {formatPrice(appliedVoucher.maxDiscount)} phí vận chuyển
+                              </span>
+                            </div>
                           ) : isFreeship ? (
                             <div className="flex items-center gap-2">
                               {originalFee > 0 && (
@@ -1580,14 +1675,24 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 </span>
                               )}
                               <span className="text-secondary font-bold">0đ</span>
+                              <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
+                                {appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship")
+                                  ? `Mã ${appliedVoucher.code}`
+                                  : "Freeship tự động"}
+                              </span>
                             </div>
                           ) : shippingDiscount > 0 && shipping < originalFee ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-400 line-through">
-                                {formatPrice(originalFee)}
-                              </span>
-                              <span className="text-primary font-bold">
-                                {formatPrice(shipping)}
+                            <div className="flex flex-col items-end gap-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400 line-through">
+                                  {formatPrice(originalFee)}
+                                </span>
+                                <span className="text-primary font-bold">
+                                  {formatPrice(shipping)}
+                                </span>
+                              </div>
+                              <span className="text-xs text-secondary font-semibold">
+                                Giảm {formatPrice(shippingDiscount)} phí vận chuyển
                               </span>
                             </div>
                           ) : shipping > 0 ? (
@@ -2142,6 +2247,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         subtotal={subtotal}
         originalSubtotal={originalSubtotal}
         shippingFee={shipping}
+        isFreeship={isFreeship}
+        isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
+        canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
         appliedVoucherCode={appliedVoucher?.code || ""}
         onApplyVoucher={(code) => handleApplyVoucher(code)}
         onRemoveVoucher={handleRemoveVoucher}

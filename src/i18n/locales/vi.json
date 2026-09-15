@@ -232,7 +232,11 @@
     "tier_only_required": "Chỉ dành riêng cho thành viên đạt hạng {tier} trở lên",
     "campaign_no_freeship": "Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship",
     "campaign_no_promotions": "Mã này không áp dụng đồng thời với chương trình khuyến mãi trong giỏ hàng",
-    "min_spend_not_met": "Chưa đạt giá trị đơn tối thiểu {amount}"
+    "min_spend_not_met": "Chưa đạt giá trị đơn tối thiểu {amount}",
+    "order_already_freeship": "Đơn hàng đã được Freeship tự động",
+    "order_voucher_no_freeship": "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship",
+    "auto_freeship_badge": "Freeship tự động",
+    "auto_freeship_friendly_tip": "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé."
   },
   "gift_selector": {
     "default_title": "Chọn món quà tặng miễn phí",

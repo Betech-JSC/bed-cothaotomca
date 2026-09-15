@@ -42,6 +42,7 @@ export interface CreateOrderPayload {
     voucher_id: number;
     campaign_id: number;
     amount: number;
+    can_combine_with_freeship?: boolean;
   } | null;
   voucher_code?: string;
   payment_method?: "COD" | "TRANSFER" | "CARD";
@@ -323,6 +324,9 @@ export function calculateVoucherDiscount(
     if (type === "fixed" && voucher.value > 0) {
       return Math.min(voucher.value, shipping);
     }
+    if (voucher.maxDiscount && voucher.maxDiscount > 0) {
+      return Math.min(voucher.maxDiscount, shipping);
+    }
     return shipping;
   }
 
@@ -403,7 +407,8 @@ export async function validateVoucher(
   hasCampaign?: boolean,
   campaignDiscount?: number,
   phone?: string,
-  token?: string
+  token?: string,
+  isAutoFreeship?: boolean
 ): Promise<ValidateVoucherResult> {
   const params = new URLSearchParams({ code });
   if (subtotal !== undefined) {
@@ -420,6 +425,9 @@ export async function validateVoucher(
   }
   if (phone) {
     params.append("phone", phone);
+  }
+  if (isAutoFreeship !== undefined) {
+    params.append("is_auto_freeship", isAutoFreeship ? "1" : "0");
   }
 
   const authToken = token || (typeof window !== "undefined" ? localStorage.getItem("auth_token") || localStorage.getItem("token") || localStorage.getItem("access_token") : null);
@@ -496,6 +504,7 @@ export async function calculateShippingFee(params: {
   ward_id?: string;
   subtotal: number;
   voucher_code?: string;
+  can_combine_with_freeship?: boolean;
 }): Promise<ShippingCalculationResult> {
   try {
     const res = await fetch(`${API_BASE}/shipping/calculate`, {

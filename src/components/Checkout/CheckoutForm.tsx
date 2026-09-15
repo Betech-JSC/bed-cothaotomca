@@ -517,14 +517,20 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       ward_id: selectedWardId,
       subtotal,
       voucher_code: appliedVoucher?.code,
+      can_combine_with_freeship: appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined,
     })
       .then((res) => {
         if (!isSubscribed) return;
-        setShippingFee(res.shipping_fee);
+        const cannotCombine = appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false;
+        const finalFreeship = cannotCombine ? false : res.is_freeship;
+        const finalFee = cannotCombine ? res.original_fee : res.shipping_fee;
+        const finalDiscount = cannotCombine ? 0 : (res.shipping_discount ?? (res.original_fee > res.shipping_fee ? res.original_fee - res.shipping_fee : 0));
+
+        setShippingFee(finalFee);
         setOriginalFee(res.original_fee);
-        setShippingDiscount(res.shipping_discount ?? (res.original_fee > res.shipping_fee ? res.original_fee - res.shipping_fee : 0));
-        setIsFreeship(res.is_freeship);
-        setFreeshipReason(res.freeship_reason || null);
+        setShippingDiscount(finalDiscount);
+        setIsFreeship(finalFreeship);
+        setFreeshipReason(cannotCombine ? null : (res.freeship_reason || null));
 
         const hasWard = !!selectedWard || !!selectedWardId;
         setIsDeliverable(hasWard ? res.is_deliverable : true);
@@ -795,6 +801,36 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     setVoucherSuccess(null);
     setBestDealNotice(null);
 
+    const isOrderAutoFreeship = Boolean(
+      (deliveryType === "delivery" && isFreeship && shippingFee === 0) ||
+      (deliveryType === "delivery" &&
+        shippingSettings?.is_min_amount_enabled &&
+        shippingSettings?.min_order_amount &&
+        subtotal >= shippingSettings.min_order_amount &&
+        (shippingSettings.shipping_discount_type === "free" || !shippingSettings.shipping_discount_type || (shippingSettings.shipping_discount_value ?? 0) >= originalFee))
+    );
+
+    const isCodeFreeship = code.includes("FREESHIP") || code.includes("SHIP");
+
+    if (isOrderAutoFreeship && isCodeFreeship) {
+      const friendlyMsg = "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.";
+      setBestDealNotice(friendlyMsg);
+      setVoucherError(null);
+      setVoucherSuccess(null);
+      setAppliedVoucher(null);
+      setValidatingVoucher(false);
+      throw new Error(friendlyMsg);
+    }
+
+    if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false && isCodeFreeship) {
+      const msg = "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship";
+      setVoucherError(msg);
+      setBestDealNotice(null);
+      setVoucherSuccess(null);
+      setValidatingVoucher(false);
+      throw new Error(msg);
+    }
+
     try {
       const res = await validateVoucher(
         code,
@@ -803,9 +839,34 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         false,
         0,
         phone || user?.phone || undefined,
-        token || undefined
+        token || undefined,
+        isOrderAutoFreeship
       );
       if (res.valid && res.voucher) {
+        const isCandidateFreeship = Boolean(
+          res.voucher.discount_type === "freeship" ||
+          res.voucher.is_freeship ||
+          code.includes("FREESHIP") ||
+          code.includes("SHIP")
+        );
+
+        if (isOrderAutoFreeship && isCandidateFreeship) {
+          const friendlyMsg = "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.";
+          setBestDealNotice(friendlyMsg);
+          setVoucherError(null);
+          setVoucherSuccess(null);
+          setAppliedVoucher(null);
+          throw new Error(friendlyMsg);
+        }
+
+        if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false && isCandidateFreeship) {
+          const msg = "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship";
+          setVoucherError(msg);
+          setBestDealNotice(null);
+          setVoucherSuccess(null);
+          throw new Error(msg);
+        }
+
         const canCombine = res.voucher.can_combine_with_promotions !== false;
 
         if (!canCombine) {
@@ -912,6 +973,18 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           return true;
         }
       } else {
+        if (
+          res.message?.includes("Freeship tự động") ||
+          res.message?.includes("freeship tự động") ||
+          res.message?.includes("miễn phí vận chuyển tự động")
+        ) {
+          const friendlyMsg = "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.";
+          setBestDealNotice(friendlyMsg);
+          setVoucherError(null);
+          setVoucherSuccess(null);
+          setAppliedVoucher(null);
+          throw new Error(friendlyMsg);
+        }
         setVoucherError(res.message);
         setAppliedVoucher(null);
         setBestDealNotice(null);
@@ -919,9 +992,20 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       }
     } catch (err: any) {
       const msg = err?.message || "Không thể xác thực mã giảm giá.";
-      setVoucherError(msg);
+      if (
+        msg.includes("Freeship tự động") ||
+        msg.includes("freeship tự động") ||
+        msg.includes("miễn phí vận chuyển tự động")
+      ) {
+        setBestDealNotice(
+          "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé."
+        );
+        setVoucherError(null);
+      } else {
+        setVoucherError(msg);
+        setBestDealNotice(null);
+      }
       setAppliedVoucher(null);
-      setBestDealNotice(null);
       throw new Error(msg);
     } finally {
       setValidatingVoucher(false);
@@ -1153,6 +1237,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             voucher_id: appliedVoucher.id,
             campaign_id: appliedVoucher.campaignId,
             amount: appliedVoucher.value,
+            can_combine_with_freeship: appliedVoucher.canCombineWithFreeship,
           }
           : null,
         payment_method: paymentMethod, // CASH (COD) or TRANSFER (SePay)
@@ -2277,6 +2362,22 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     <span className="text-secondary font-bold">0đ ({t("delivery_pickup")})</span>
                   ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                     <span className="text-gray-500 font-bold text-base">--</span>
+                  ) : appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") && appliedVoucher.maxDiscount && appliedVoucher.maxDiscount > 0 ? (
+                    <div className="flex flex-col items-end gap-0.5">
+                      <div className="flex items-center gap-2">
+                        {originalFee > shippingFee && originalFee > 0 && (
+                          <span className="text-xs text-gray-400 line-through">
+                            {formatPrice(originalFee)}
+                          </span>
+                        )}
+                        <span className={`${shippingFee === 0 ? "text-secondary" : "text-primary"} font-bold text-base`}>
+                          {shippingFee === 0 ? "0đ" : formatPrice(shippingFee)}
+                        </span>
+                      </div>
+                      <span className="text-xs text-secondary font-semibold">
+                        Giảm {formatPrice(appliedVoucher.maxDiscount)} phí vận chuyển
+                      </span>
+                    </div>
                   ) : isFreeship ? (
                     <div className="flex items-center gap-2">
                       {originalFee > 0 && (
@@ -2285,14 +2386,24 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         </span>
                       )}
                       <span className="text-secondary font-bold text-base">0đ</span>
+                      <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
+                        {appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship")
+                          ? `Mã ${appliedVoucher.code}`
+                          : "Freeship tự động"}
+                      </span>
                     </div>
                   ) : shippingDiscount > 0 && shippingFee < originalFee ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 line-through">
-                        {formatPrice(originalFee)}
-                      </span>
-                      <span className="text-primary font-bold text-base">
-                        {formatPrice(shippingFee)}
+                    <div className="flex flex-col items-end gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 line-through">
+                          {formatPrice(originalFee)}
+                        </span>
+                        <span className="text-primary font-bold text-base">
+                          {formatPrice(shippingFee)}
+                        </span>
+                      </div>
+                      <span className="text-xs text-secondary font-semibold">
+                        Giảm {formatPrice(shippingDiscount)} phí vận chuyển
                       </span>
                     </div>
                   ) : shipping > 0 ? (
@@ -2457,6 +2568,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         subtotal={subtotal}
         originalSubtotal={originalSubtotal}
         shippingFee={shipping}
+        isFreeship={isFreeship}
+        isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
+        canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
         appliedVoucherCode={appliedVoucher?.code || ""}
         onApplyVoucher={(code) => handleApplyVoucher(code)}
         onRemoveVoucher={handleRemoveVoucher}

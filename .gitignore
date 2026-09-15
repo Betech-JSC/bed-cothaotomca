@@ -8,6 +8,9 @@
 /.pnp
 
 .pnp.js
+.agent/
+.agents/
+openspec/
 
 .vscode
 
