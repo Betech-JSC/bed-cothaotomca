@@ -149,9 +149,17 @@ export class OrderApiError extends Error {
   }
 }
 
-export async function getCheckoutConfig(): Promise<CheckoutConfig> {
+export async function getCheckoutConfig(
+  cartItems?: { product_id: number }[]
+): Promise<CheckoutConfig> {
+  const hasCart = cartItems && cartItems.length > 0;
   const res = await fetch(`${API_BASE}/orders/checkout-config`, {
-    headers: { Accept: "application/json" },
+    method: hasCart ? "POST" : "GET",
+    headers: {
+      ...(hasCart ? { "Content-Type": "application/json" } : {}),
+      Accept: "application/json",
+    },
+    body: hasCart ? JSON.stringify({ cart_items: cartItems }) : undefined,
     cache: "no-store",
   });
 

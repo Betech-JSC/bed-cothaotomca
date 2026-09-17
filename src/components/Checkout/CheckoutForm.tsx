@@ -12,6 +12,7 @@ import {
   createOrder,
   getAdministrativeUnits,
   getAvailableVouchers,
+  getCheckoutConfig,
   getShippingSettings,
   OrderApiError,
   validateVoucher,
@@ -31,6 +32,9 @@ import {
   createCustomerAddressApi,
   type CustomerAddress,
 } from "@/services/authService";
+import GuestTierHintBanner from "./GuestTierHintBanner";
+import { checkGuestTierByPhone, type GuestTierHint } from "@/services/authService";
+
 import { useAuth, getMemberTier, calculateMemberDiscount } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getVietnamDate, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
@@ -90,6 +94,24 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const { cartItems, updateQuantity, removeFromCart, clearCart, addToCart, hasOutOfStockItems } = useCart();
   const isOutOfStockOverall = hasOutOfStockItems ?? cartItems.some((i) => i.isOutOfStock);
   const isCartCheckout = !order;
+
+  // Local config state: initialized from SSR props, updated client-side when cartItems change
+  const [configState, setConfigState] = useState<CheckoutConfig>(config);
+
+  // SSR fallback: fetch config once on mount (no cartItems — works without JS cart context)
+  useEffect(() => {
+    getCheckoutConfig().then(setConfigState).catch(() => {});
+  }, []);
+
+  // Cart-aware refetch: re-fetch with cartItems whenever cart changes (debounced 300ms)
+  useEffect(() => {
+    if (!cartItems || cartItems.length === 0) return;
+    const items = cartItems.map((item) => ({ product_id: item.productId }));
+    const timer = setTimeout(() => {
+      getCheckoutConfig(items).then(setConfigState).catch(() => {});
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [cartItems]);
 
   // Refresh điểm KiotViet khi vào trang checkout
   const hasRefreshedUserRef = useRef(false);
@@ -258,6 +280,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [isAutoVoucherApplied, setIsAutoVoucherApplied] = useState(false);
   const [confirmInfo, setConfirmInfo] = useState(false);
 
+  // Guest VIP tier hint states
+  const [guestTierHint, setGuestTierHint] = useState<GuestTierHint | null>(null);
+  const [guestTierChecking, setGuestTierChecking] = useState(false);
+  const [guestTierDismissed, setGuestTierDismissed] = useState(false);
+
   useEffect(() => {
     getAvailableVouchers().then(setAvailableVouchers).catch(() => setAvailableVouchers([]));
   }, []);
@@ -356,21 +383,21 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   // Opt-out state for promotions (allowing user to remove if desired)
   const [optOutOrderDiscount, setOptOutOrderDiscount] = useState(false);
 
-  // Campaign G1 trong giỏ hàng (nhận diện theo config.active_promotions và mức giá đơn hàng)
+  // Campaign G1 trong giỏ hàng (nhận diện theo configState.active_promotions và mức giá đơn hàng)
   const cartCampaignG1 = useMemo(() => {
-    if (!config.active_promotions || config.active_promotions.length === 0) return null;
+    if (!configState.active_promotions || configState.active_promotions.length === 0) return null;
     const checkAmount = originalSubtotal > 0 ? originalSubtotal : subtotal;
-    const orderDiscountPromo = config.active_promotions.find(
+    const orderDiscountPromo = configState.active_promotions.find(
       (p) => p.promotion_type === "order_discount" && checkAmount >= (p.min_order_value || 0)
     );
     if (orderDiscountPromo) return orderDiscountPromo;
 
     return (
-      config.active_promotions.find(
+      configState.active_promotions.find(
         (p) => (p.min_order_value || 0) <= checkAmount
       ) || null
     );
-  }, [config.active_promotions, originalSubtotal, subtotal]);
+  }, [configState.active_promotions, originalSubtotal, subtotal]);
 
   // Ma trận Khuyến mãi & Giảm giá (Promotion Matrix 6 Cases)
   const promotionMatrixVoucherNotice = useMemo(() => {
@@ -416,13 +443,13 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const eligibleOrderDiscountPromo = useMemo(() => {
     if (isBestDealVoucherApplied) return null;
     return (
-      config.active_promotions?.find(
+      configState.active_promotions?.find(
         (p) =>
           p.promotion_type === "order_discount" &&
           subtotal >= (p.min_order_value || 0)
       ) || null
     );
-  }, [config.active_promotions, subtotal, isBestDealVoucherApplied]);
+  }, [configState.active_promotions, subtotal, isBestDealVoucherApplied]);
 
   const autoOrderDiscountAmount = useMemo(() => {
     if (!eligibleOrderDiscountPromo || optOutOrderDiscount) return 0;
@@ -446,7 +473,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   // 2. ORDER GIFT PROMOTION (Quà tặng theo giá trị đơn)
   const eligibleOrderGiftPromo = useMemo(() => {
     return (
-      config.active_promotions?.find(
+      configState.active_promotions?.find(
         (p) =>
           p.promotion_type === "order_gift_discount" &&
           p.items &&
@@ -454,12 +481,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           subtotal >= (p.min_order_value || 0)
       ) || null
     );
-  }, [config.active_promotions, subtotal]);
+  }, [configState.active_promotions, subtotal]);
 
   const upcomingOrderGiftPromo = useMemo(() => {
-    if (eligibleOrderGiftPromo || !config.active_promotions) return null;
+    if (eligibleOrderGiftPromo || !configState.active_promotions) return null;
     return (
-      config.active_promotions.find(
+      configState.active_promotions.find(
         (p) =>
           p.promotion_type === "order_gift_discount" &&
           p.items &&
@@ -467,7 +494,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           subtotal < (p.min_order_value || 0)
       ) || null
     );
-  }, [config.active_promotions, eligibleOrderGiftPromo, subtotal]);
+  }, [configState.active_promotions, eligibleOrderGiftPromo, subtotal]);
 
   const [optOutOrderGift, setOptOutOrderGift] = useState(false);
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
@@ -497,24 +524,24 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - Hỗ trợ nhiều chiến dịch đồng thời)
   const eligibleBuyXGetYPromos = useMemo(() => {
-    if (!config.active_promotions) return [];
-    return config.active_promotions.filter((p) => {
+    if (!configState.active_promotions) return [];
+    return configState.active_promotions.filter((p) => {
       if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
       const buyQty = Number(p.settings?.buy_quantity || 2);
       return totalCartQuantity >= buyQty;
     });
-  }, [config.active_promotions, totalCartQuantity]);
+  }, [configState.active_promotions, totalCartQuantity]);
 
   const upcomingBuyXGetYPromo = useMemo(() => {
-    if (!config.active_promotions) return null;
+    if (!configState.active_promotions) return null;
     return (
-      config.active_promotions.find((p) => {
+      configState.active_promotions.find((p) => {
         if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
         const buyQty = Number(p.settings?.buy_quantity || 2);
         return totalCartQuantity < buyQty;
       }) || null
     );
-  }, [config.active_promotions, totalCartQuantity]);
+  }, [configState.active_promotions, totalCartQuantity]);
 
   const [optOutBuyXGetYSet, setOptOutBuyXGetYSet] = useState<Record<number, boolean>>({});
   const [selectedBuyXGetYMap, setSelectedBuyXGetYMap] = useState<Record<number, number>>({});
@@ -841,6 +868,25 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       else delete next[fieldKey];
       return next;
     });
+
+    // Guest VIP tier hint: trigger only when phone is valid, user not logged in, cart not empty, and hint not dismissed
+    if (
+      fieldKey === "customer.phone" &&
+      !err &&
+      !user &&
+      !guestTierDismissed &&
+      phone.trim().replace(/\s/g, "").length >= 10 &&
+      (cartItems.length > 0 || !!order)
+    ) {
+      setGuestTierChecking(true);
+      checkGuestTierByPhone(phone)
+        .then((hint) => {
+          setGuestTierHint(hint && hint.hasBenefit ? hint : null);
+        })
+        .finally(() => {
+          setGuestTierChecking(false);
+        });
+    }
   };
 
   // Sau khi tạo đơn thành công → chuyển sang màn hình QR
@@ -1549,6 +1595,21 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {fieldError("customer.phone") ? (
                 <p className="text-sm text-secondary font-medium mt-1">{fieldError("customer.phone")}</p>
               ) : null}
+              {!user && !guestTierDismissed && guestTierHint && guestTierHint.hasBenefit && (
+                <GuestTierHintBanner
+                  tier={guestTierHint.tier as "gold" | "diamond"}
+                  discountPercent={guestTierHint.discountPercent}
+                  loginHref={`/vi/login?redirect=/vi/checkout`}
+                  onDismiss={() => {
+                    setGuestTierDismissed(true);
+                    setGuestTierHint(null);
+                  }}
+                  autoDismissMs={2000}
+                />
+              )}
+              {!user && guestTierChecking && (
+                <p className="text-xs text-primary/50 font-serif mt-1 animate-pulse">Đang kiểm tra ưu đãi...</p>
+              )}
             </div>
 
             {/* Email (Optional) */}

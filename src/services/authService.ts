@@ -370,3 +370,50 @@ export async function setDefaultCustomerAddressApi(id: number): Promise<void> {
     throw new Error(errorMsg);
   }
 }
+
+export interface GuestTierHint {
+  tier: "member" | "gold" | "diamond";
+  discountPercent: number;
+  hasBenefit: boolean;
+}
+
+/**
+ * Check if a phone number belongs to a Gold or Diamond member (for guest checkout hint).
+ * Returns null on network error or timeout — fail silently.
+ */
+export async function checkGuestTierByPhone(
+  phone: string
+): Promise<GuestTierHint | null> {
+  const cleanPhone = phone.trim().replace(/\s/g, "");
+  if (cleanPhone.length < 10) return null;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/auth/check-tier-by-phone?phone=${encodeURIComponent(cleanPhone)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return null;
+
+    const body = await res.json();
+    const data = body?.data;
+    if (!data) return null;
+
+    return {
+      tier: data.tier || "member",
+      discountPercent: data.discount_percent ?? 0,
+      hasBenefit: Boolean(data.has_benefit),
+    };
+  } catch {
+    clearTimeout(timeoutId);
+    return null;
+  }
+}

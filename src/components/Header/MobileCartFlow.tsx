@@ -314,6 +314,22 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       });
   }, [branches]);
 
+  // Cart-aware refetch: re-fetch with cartItems whenever cart changes (debounced 300ms)
+  useEffect(() => {
+    if (!cartItems || cartItems.length === 0) return;
+    const items = cartItems.map((item) => ({ product_id: item.productId }));
+    const timer = setTimeout(() => {
+      getCheckoutConfig(items)
+        .then((cfg) => {
+          setConfig(cfg);
+        })
+        .catch((err) => {
+          console.error("Failed to reload checkout config with cart items", err);
+        });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [cartItems]);
+
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   const [hotline, setHotline] = useState<string>("024.9999.7122");
   const [calculatedFee, setCalculatedFee] = useState<number>(0);

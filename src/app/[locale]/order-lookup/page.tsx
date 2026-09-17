@@ -67,7 +67,7 @@ interface OrderDetailData {
 export default function OrderLookupPage() {
   const t = useTranslations("orderLookup");
   const searchParams = useSearchParams();
-  const [orderCode, setOrderCode] = useState(searchParams.get("code") || "");
+  const [orderCode, setOrderCode] = useState(searchParams.get("order") || searchParams.get("code") || "");
   const [phone, setPhone] = useState(searchParams.get("phone") || "");
   const [hotline, setHotline] = useState("0987 654 321");
 
@@ -150,7 +150,7 @@ export default function OrderLookupPage() {
 
   // Auto-fetch if URL query params exist
   useEffect(() => {
-    const codeParam = searchParams.get("code") || "";
+    const codeParam = searchParams.get("order") || searchParams.get("code") || "";
     const phoneParam = searchParams.get("phone") || "";
     if (codeParam || phoneParam) {
       setOrderCode(codeParam);
