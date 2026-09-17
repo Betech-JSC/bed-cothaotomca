@@ -5,19 +5,24 @@ import { formatPrice } from "@/lib/format";
 import { PublicVoucherItem } from "@/services/orderService";
 import { useTranslations } from "next-intl";
 
-interface SmartCartProgressBarProps {
+export interface SmartCartProgressBarProps {
   subtotal: number;
   shippingSettings?: {
     is_min_amount_enabled?: boolean;
     min_order_amount?: number;
     shipping_discount_type?: "fixed" | "free";
     shipping_discount_value?: number;
+    /** @deprecated Legacy property, use can_combine_with_freeship on Campaign/Voucher */
     can_combine_with_promotions?: boolean;
   } | null;
   isFreeship?: boolean;
   freeshipReason?: string | null;
   vouchers?: PublicVoucherItem[];
-  appliedVoucher?: PublicVoucherItem | null;
+  appliedVoucher?: (PublicVoucherItem & { canCombineWithFreeship?: boolean; can_combine_with_freeship?: boolean }) | null;
+  appliedCampaign?: {
+    name?: string;
+    can_combine_with_freeship?: boolean;
+  } | null;
   onOpenVouchers?: () => void;
   className?: string;
 }
@@ -29,6 +34,7 @@ export default function SmartCartProgressBar({
   freeshipReason,
   vouchers = [],
   appliedVoucher = null,
+  appliedCampaign = null,
   onOpenVouchers,
   className = "",
 }: SmartCartProgressBarProps) {
@@ -46,6 +52,8 @@ export default function SmartCartProgressBar({
       target: number;
       label: string;
       reward: string;
+      isFixed?: boolean;
+      discountVal?: number;
       code?: string;
     }[] = [];
 
@@ -54,14 +62,16 @@ export default function SmartCartProgressBar({
       const isFixed = shippingSettings?.shipping_discount_type === "fixed";
       const discountVal = Number(shippingSettings?.shipping_discount_value || 0);
       const rewardText = isFixed && discountVal > 0
-        ? `Hỗ trợ ${formatPrice(discountVal)} phí ship`
-        : "Freeship";
+        ? `${formatPrice(discountVal)} phí ship.`
+        : "Miễn phí ship.";
 
       candidateMilestones.push({
         type: "freeship",
         target: freeshipMin,
-        label: isFixed ? "Giảm phí ship" : "Freeship",
+        label: isFixed ? "Giảm phí ship" : "Miễn phí ship",
         reward: rewardText,
+        isFixed,
+        discountVal,
       });
     }
 
@@ -91,10 +101,16 @@ export default function SmartCartProgressBar({
 
     if (candidateMilestones.length === 0) {
       // Reached all milestones
+      const isFixed = shippingSettings?.shipping_discount_type === "fixed";
+      const discountVal = Number(shippingSettings?.shipping_discount_value || 0);
+      let completedText = isFixed && discountVal > 0
+        ? t("applied_reduced_shipping", { amount: formatPrice(discountVal) })
+        : t("applied_freeship");
+
       return {
         completed: true,
         percent: 100,
-        text: freeshipReason || "Chúc mừng! Bạn đã đạt tất cả các mức ưu đãi lớn nhất của cửa hàng!",
+        text: completedText,
       };
     }
 
@@ -108,15 +124,23 @@ export default function SmartCartProgressBar({
       missing,
       next,
     };
-  }, [subtotal, shippingSettings, isFreeship, freeshipReason, vouchers]);
+  }, [subtotal, shippingSettings, isFreeship, vouchers, t]);
 
-  if (
-    shippingSettings?.can_combine_with_promotions === false &&
-    appliedVoucher
-  ) {
+  const isFreeshipBlocked = Boolean(
+    (appliedCampaign && appliedCampaign.can_combine_with_freeship === false) ||
+    (appliedVoucher &&
+      (appliedVoucher.canCombineWithFreeship === false ||
+        appliedVoucher.can_combine_with_freeship === false))
+  );
+
+  if (isFreeshipBlocked) {
+    const message = (appliedCampaign && appliedCampaign.can_combine_with_freeship === false)
+      ? `Không thể áp dụng Hỗ trợ phí ship do CTKM ${appliedCampaign.name || ""} không áp dụng cùng giảm phí ship.`
+      : t("cannot_combine_voucher");
+
     return (
       <div className={`rounded-2xl p-3.5 border transition-all bg-red-50 border-red-200 text-red-800 text-xs font-semibold ${className}`}>
-        Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá (Không áp dụng đồng thời).
+        {message}
       </div>
     );
   }
@@ -130,6 +154,28 @@ export default function SmartCartProgressBar({
           <span className="truncate">
             {milestone.completed ? (
               <span className="text-secondary font-bold font-sans">{milestone.text}</span>
+            ) : milestone.next?.type === "freeship" ? (
+              milestone.next.isFixed ? (
+                <span>
+                  {t("buy_more")}{" "}
+                  <strong className="text-primary font-bold">
+                    {formatPrice(milestone.missing || 0)}
+                  </strong>{" "}
+                  {t("to_get_reduced_shipping")}{" "}
+                  <strong className="text-secondary font-bold">
+                    {formatPrice(milestone.next.discountVal || 0)}
+                  </strong>{" "}
+                  {t("shipping_fee_suffix")}
+                </span>
+              ) : (
+                <span>
+                  {t("buy_more")}{" "}
+                  <strong className="text-primary font-bold">
+                    {formatPrice(milestone.missing || 0)}
+                  </strong>{" "}
+                  {t("to_freeship")}
+                </span>
+              )
             ) : (
               <span>
                 {t("buy_more")}{" "}

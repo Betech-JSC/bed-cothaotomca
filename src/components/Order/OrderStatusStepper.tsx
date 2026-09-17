@@ -59,23 +59,23 @@ export default function OrderStatusStepper({
     );
   }
 
-  // Determine if Step 2 is active (Đã đồng bộ KiotViet / xuất hoá đơn / xác nhận / đang chuẩn bị món / vận chuyển)
-  const isStep2Active =
-    s === "synced" ||
+  // Trạng thái hoàn tất 100% (Giai đoạn 3)
+  const isCompleted = s === "completed" || s === "delivered" || s === "success";
+
+  // Trạng thái đã duyệt Hóa đơn / Đang xử lý giao (Giai đoạn 2)
+  const isConfirmed =
     s === "confirmed" ||
     s === "processing" ||
-    s === "paid" ||
     s === "shipping" ||
     s === "delivering" ||
-    s === "delivered" ||
-    s === "completed" ||
-    sync === "synced" ||
-    sync === "success";
+    isCompleted;
 
   const step1Title = t("step1_title");
   const step1Desc = isPickup ? t("step1_desc_pickup") : t("step1_desc");
-  const step2Title = t("step2_title");
-  const step2Desc = isPickup ? t("step2_desc_pickup") : t("step2_desc");
+  const step2Title = isCompleted ? t("step2_title_completed") : t("step2_title");
+  const step2Desc = isCompleted
+    ? (isPickup ? t("step2_desc_completed_pickup") : t("step2_desc_completed"))
+    : (isPickup ? t("step2_desc_pickup") : t("step2_desc"));
 
   return (
     <div
@@ -85,15 +85,27 @@ export default function OrderStatusStepper({
       <div className="flex items-center justify-between mb-4">
         {/* Step 1 Circle */}
         <div className="flex items-center">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm bg-primary text-white border-2 border-primary select-none shrink-0 transition-colors duration-300 shadow-xs">
-            1
+          <div
+            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm border-2 select-none shrink-0 transition-colors duration-300 shadow-xs ${
+              isConfirmed
+                ? "bg-emerald-600 text-white border-emerald-600"
+                : "bg-secondary text-white border-secondary"
+            }`}
+          >
+            {isConfirmed ? (
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              "1"
+            )}
           </div>
         </div>
 
         {/* Connector Line */}
         <div
           className={`h-1 flex-1 mx-3 sm:mx-6 rounded-full transition-colors duration-300 ${
-            isStep2Active ? "bg-primary" : "bg-[#E0E0E0]"
+            isConfirmed ? "bg-emerald-600" : "bg-[#E0E0E0]"
           }`}
         />
 
@@ -101,12 +113,20 @@ export default function OrderStatusStepper({
         <div className="flex items-center">
           <div
             className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm border-2 select-none shrink-0 transition-colors duration-300 shadow-xs ${
-              isStep2Active
+              isCompleted
+                ? "bg-emerald-600 text-white border-emerald-600"
+                : isConfirmed
                 ? "bg-secondary text-white border-secondary"
                 : "bg-[#E0E0E0] text-gray-400 border-[#E0E0E0]"
             }`}
           >
-            2
+            {isCompleted ? (
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              "2"
+            )}
           </div>
         </div>
       </div>
@@ -117,21 +137,21 @@ export default function OrderStatusStepper({
         <div className="text-left space-y-1">
           <span
             className={`text-[11px] font-mono font-bold uppercase tracking-wider block transition-colors duration-300 ${
-              isStep2Active ? "text-primary/70" : "text-primary"
+              isConfirmed ? "text-emerald-700" : "text-secondary"
             }`}
           >
             {t("step_number", { step: 1 })}
           </span>
           <h4
             className={`text-xs sm:text-sm md:text-base font-bold transition-colors duration-300 ${
-              isStep2Active ? "text-primary/80" : "text-primary"
+              isConfirmed ? "text-gray-800" : "text-secondary"
             }`}
           >
             <span className="block leading-snug">{step1Title}</span>
           </h4>
           <p
             className={`text-xs sm:text-sm leading-relaxed transition-colors duration-300 ${
-              isStep2Active ? "text-gray-500" : "text-gray-600"
+              isConfirmed ? "text-gray-500" : "text-gray-600"
             }`}
           >
             <span className="block leading-snug">{step1Desc}</span>
@@ -142,21 +162,29 @@ export default function OrderStatusStepper({
         <div className="text-right space-y-1">
           <span
             className={`text-[11px] font-mono font-bold uppercase tracking-wider block transition-colors duration-300 ${
-              isStep2Active ? "text-secondary" : "text-gray-400"
+              isCompleted
+                ? "text-emerald-700"
+                : isConfirmed
+                ? "text-secondary"
+                : "text-gray-400"
             }`}
           >
             {t("step_number", { step: 2 })}
           </span>
           <h4
             className={`text-xs sm:text-sm md:text-base font-bold transition-colors duration-300 ${
-              isStep2Active ? "text-primary font-bold" : "text-gray-400"
+              isCompleted
+                ? "text-emerald-700 font-bold"
+                : isConfirmed
+                ? "text-secondary font-bold"
+                : "text-gray-400"
             }`}
           >
             <span className="block leading-snug">{step2Title}</span>
           </h4>
           <p
             className={`text-xs sm:text-sm leading-relaxed transition-colors duration-300 ${
-              isStep2Active ? "text-gray-600" : "text-gray-400"
+              isCompleted || isConfirmed ? "text-gray-600" : "text-gray-400"
             }`}
           >
             <span className="block leading-snug">{step2Desc}</span>

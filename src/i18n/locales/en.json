@@ -66,7 +66,9 @@
     "item_note": "Special instructions",
     "item_note_placeholder": "Extra notes...",
     "order_now": "Order now",
-    "order_now_with_price": "Order now • {price}"
+    "order_now_with_price": "Order now • {price}",
+    "buy_more_gift_prompt": "Spend <strong>{amount}</strong> more to receive <strong>1 free gift</strong> ({name})!",
+    "buy_more_combo_prompt": "Buy <strong>{count} more items</strong> to receive offer (<strong>{name}</strong>)!"
   },
   "breadcrumb": {
     "home": "Home",
@@ -143,10 +145,10 @@
     "order_gift_tag": "Order Gift Item",
     "change_gift": "Change ({count} options)",
     "remove_gift": "[Remove]",
-    "reclaim_gift": "+ Reclaim gift",
+    "reclaim_gift": "Reclaim gift",
     "reclaim_gift_eligible": "You are eligible for a free gift ({name})",
     "combo_tag": "Special Offer",
-    "reclaim_combo": "+ Reclaim offer",
+    "reclaim_combo": "Reclaim offer",
     "reclaim_combo_eligible": "You are eligible for offer ({name})",
     "buy_more_gift_prompt": "Spend <strong>{amount}</strong> more to receive <strong>1 free gift</strong> ({name})!",
     "buy_more_combo_prompt": "Buy <strong>{count} more items</strong> to receive offer (<strong>{name}</strong>)!",
@@ -159,6 +161,7 @@
     "select_voucher_btn": "Select code",
     "reapply_voucher": "Reapply",
     "voucher_prereq_note": "* Applicable for orders from {amount} and above.",
+    "auto_voucher_applied": "Best voucher automatically applied for your order",
     "best_deal_applied": "Best deal automatically applied for your order.",
     "best_deal_item_better": "Item promotional price is better than this voucher, optimal discount has been retained.",
     "member_discount_gold": "Gold Member Discount (-5%)",
@@ -184,11 +187,11 @@
       "copy": "Copy",
       "copied": "Copied",
       "mobile_guide_title": "Mobile Banking Payment Instructions:",
-      "mobile_step_1": "Click <strong key=\"1\">\"{btn}\"</strong> above.",
-      "mobile_step_2": "Open your <strong key=\"1\">Banking App</strong> (Vietcombank, MB, Techcombank...).",
-      "mobile_step_3": "Select <strong key=\"1\">Scan QR</strong> > select <strong key=\"2\">Upload image from gallery</strong>.",
+      "mobile_step_1": "Click <strong>\"{btn}\"</strong> above.",
+      "mobile_step_2": "Open your <strong>Banking App</strong> (Vietcombank, MB, Techcombank...).",
+      "mobile_step_3": "Select <strong>Scan QR</strong> > select <strong>Upload image from gallery</strong>.",
       "note_title": "Important Note",
-      "note_content": "Enter <strong key=\"1\">exact transfer note</strong>: <code key=\"2\">{content}</code>",
+      "note_content": "Enter <strong>exact transfer note</strong>: <code>{content}</code>",
       "note_amount": "Transfer the exact amount for automated order confirmation",
       "note_processing": "Your order will be processed within seconds after receiving payment"
     }
@@ -236,7 +239,8 @@
     "order_already_freeship": "Order already received automatic Free Shipping",
     "order_voucher_no_freeship": "Current order discount cannot be combined with Free Shipping vouchers",
     "auto_freeship_badge": "Auto Free Shipping",
-    "auto_freeship_friendly_tip": "Your order already qualified for automatic Free Shipping! Please save this voucher for your next order."
+    "auto_freeship_friendly_tip": "Your order already qualified for automatic Free Shipping! Please save this voucher for your next order.",
+    "auto_voucher_applied": "Best voucher automatically applied for your order"
   },
   "gift_selector": {
     "default_title": "Choose your free gift",
@@ -258,10 +262,15 @@
   "progress_bar": {
     "buy_more": "Spend",
     "to_get": "more to get",
-    "to_freeship": "more to get Freeship",
-    "reward_freeship": "Spend {amount} more for Freeship",
+    "to_get_reduced_shipping": "more to get",
+    "shipping_fee_suffix": "off shipping.",
+    "to_freeship": "more to get Free shipping.",
+    "applied_reduced_shipping": "🎉 Applied {amount} off shipping fee.",
+    "applied_freeship": "🎉 Free shipping applied.",
+    "reward_freeship": "Spend {amount} more for Free shipping.",
     "reward_custom": "Spend {amount} more for {reward} ({label})",
-    "voucher_btn": "Offers"
+    "voucher_btn": "Offers",
+    "cannot_combine_voucher": "Cannot apply shipping support because a voucher is already in use (Cannot be combined)."
   },
   "orderSuccess": {
     "title": "Order placed successfully!",
@@ -339,7 +348,9 @@
     "price": "Price",
     "cancel_order": "Cancel Order",
     "cancel_request": "Request Cancellation",
-    "cancel_window_expired": "Automatic cancellation window has expired",
+    "cancel_window_expired": "Automatic cancellation window has expired (over 15 minutes)",
+    "cancel_order_confirmed": "The order has been confirmed, please contact the hotline for cancellation support",
+    "order_confirmed_btn": "Confirmed",
     "cancel_modal_title": "Confirm Order Cancellation",
     "cancel_modal_desc": "Are you sure you want to cancel this order?",
     "cancel_reason_placeholder": "Enter cancellation reason (optional)...",
@@ -361,7 +372,8 @@
       "completed": "Completed",
       "cancel_requested": "Cancellation Requested",
       "cancelled": "Cancelled",
-      "expired": "Expired"
+      "expired": "Expired",
+      "error": "Order error"
     },
     "payment_status_text": {
       "paid": "Paid",
@@ -384,6 +396,9 @@
     "step2_title": "Confirmed & Invoiced.",
     "step2_desc": "Currently being delivered to you.",
     "step2_desc_pickup": "The restaurant is preparing your order.",
+    "step2_title_completed": "Delivered successfully.",
+    "step2_desc_completed": "Order has been delivered.",
+    "step2_desc_completed_pickup": "Order has been picked up.",
     "step_number": "Step {step}",
     "cancelled_badge": "Cancelled",
     "cancelled_title": "Order has been cancelled",
@@ -476,7 +491,8 @@
     "related_posts": "Related Posts",
     "toc_button": "Table of Contents",
     "toc_title": "Table of Contents",
-    "toc_count": "{count} sections"
+    "toc_count": "{count} sections",
+    "no_posts": "No posts found"
   },
   "contact": {
     "title": "Contact",

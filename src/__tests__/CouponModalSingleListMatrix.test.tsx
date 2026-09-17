@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import React from 'react';
-import CouponModal from '@/components/Voucher/CouponModal';
+import CouponModal, { resetCouponModalCache } from '@/components/Voucher/CouponModal';
 import { PublicVoucherItem, ActivePromotion } from '@/services/orderService';
 import { formatPrice } from '@/lib/format';
 import viMessages from '@/i18n/locales/vi.json';
@@ -68,16 +68,18 @@ vi.mock('@/services/campaignService', () => ({
 
 let mockVouchersList: PublicVoucherItem[] = [];
 vi.mock('@/services/orderService', async () => {
-  const actual = await vi.importActual('@/services/orderService');
+  const actual = await vi.importActual<typeof import('@/services/orderService')>('@/services/orderService');
   return {
     ...actual,
     getAvailableVouchers: vi.fn().mockImplementation(() => Promise.resolve(mockVouchersList)),
+    getShippingSettings: vi.fn().mockResolvedValue(null),
   };
 });
 
 describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetCouponModalCache();
     mockCurrentUser = null;
     mockVouchersList = [];
   });

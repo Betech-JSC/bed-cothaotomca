@@ -66,7 +66,9 @@
     "item_note": "Ghi chú món ăn",
     "item_note_placeholder": "Ghi chú thêm...",
     "order_now": "Đặt món",
-    "order_now_with_price": "Đặt món • {price}"
+    "order_now_with_price": "Đặt món • {price}",
+    "buy_more_gift_prompt": "Mua thêm <strong>{amount}</strong> để được tặng <strong>1 món quà miễn phí</strong> ({name})!",
+    "buy_more_combo_prompt": "Mua thêm <strong>{count} món</strong> để nhận ưu đãi (<strong>{name}</strong>)!"
   },
   "breadcrumb": {
     "home": "Trang chủ",
@@ -143,10 +145,10 @@
     "order_gift_tag": "Món quà tặng theo đơn",
     "change_gift": "Đổi món ({count} lựa chọn)",
     "remove_gift": "[Xoá]",
-    "reclaim_gift": "+ Nhận lại quà",
+    "reclaim_gift": "Nhận lại quà",
     "reclaim_gift_eligible": "Bạn đủ điều kiện nhận quà tặng ({name})",
     "combo_tag": "Ưu đãi",
-    "reclaim_combo": "+ Nhận lại ưu đãi",
+    "reclaim_combo": "Nhận lại ưu đãi",
     "reclaim_combo_eligible": "Bạn đủ điều kiện nhận ưu đãi ({name})",
     "buy_more_gift_prompt": "Mua thêm <strong>{amount}</strong> để được tặng <strong>1 món quà miễn phí</strong> ({name})!",
     "buy_more_combo_prompt": "Mua thêm <strong>{count} món</strong> để nhận ưu đãi (<strong>{name}</strong>)!",
@@ -159,6 +161,7 @@
     "select_voucher_btn": "Chọn mã",
     "reapply_voucher": "Áp dụng lại",
     "voucher_prereq_note": "* Áp dụng cho đơn hàng từ {amount} trở lên.",
+    "auto_voucher_applied": "Đã tự động áp dụng mã ưu đãi tốt nhất cho bạn",
     "best_deal_applied": "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng.",
     "best_deal_item_better": "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất.",
     "member_discount_gold": "Ưu đãi thành viên Gold (-5%)",
@@ -236,7 +239,8 @@
     "order_already_freeship": "Đơn hàng đã được Freeship tự động",
     "order_voucher_no_freeship": "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship",
     "auto_freeship_badge": "Freeship tự động",
-    "auto_freeship_friendly_tip": "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé."
+    "auto_freeship_friendly_tip": "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.",
+    "auto_voucher_applied": "Đã tự động áp dụng mã ưu đãi tốt nhất cho bạn"
   },
   "gift_selector": {
     "default_title": "Chọn món quà tặng miễn phí",
@@ -258,10 +262,15 @@
   "progress_bar": {
     "buy_more": "Mua thêm",
     "to_get": "để nhận",
-    "to_freeship": "để được Freeship",
-    "reward_freeship": "Mua thêm {amount} để được Freeship",
+    "to_get_reduced_shipping": "để được giảm",
+    "shipping_fee_suffix": "phí ship.",
+    "to_freeship": "để được Miễn phí ship.",
+    "applied_reduced_shipping": "🎉 Đã áp dụng giảm {amount} phí ship.",
+    "applied_freeship": "🎉 Đã áp dụng Miễn phí ship.",
+    "reward_freeship": "Mua thêm {amount} để được Miễn phí ship.",
     "reward_custom": "Mua thêm {amount} để được {reward} ({label})",
-    "voucher_btn": "Mã ưu đãi"
+    "voucher_btn": "Mã ưu đãi",
+    "cannot_combine_voucher": "Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá (Không áp dụng đồng thời)."
   },
   "orderSuccess": {
     "title": "Đặt hàng thành công!",
@@ -339,7 +348,9 @@
     "price": "Đơn giá",
     "cancel_order": "Hủy đơn hàng",
     "cancel_request": "Gửi yêu cầu hủy",
-    "cancel_window_expired": "Đã hết thời gian hủy đơn tự động",
+    "cancel_window_expired": "Đã hết thời gian hủy đơn tự động (quá 15 phút)",
+    "cancel_order_confirmed": "Đơn hàng đã được xác nhận, vui lòng liên hệ hotline để hỗ trợ hủy",
+    "order_confirmed_btn": "Đã xác nhận",
     "cancel_modal_title": "Xác nhận hủy đơn hàng",
     "cancel_modal_desc": "Bạn có chắc chắn muốn hủy đơn hàng này không?",
     "cancel_reason_placeholder": "Nhập lý do hủy đơn hàng (không bắt buộc)...",
@@ -361,7 +372,8 @@
       "completed": "Hoàn thành",
       "cancel_requested": "Đã gửi yêu cầu hủy",
       "cancelled": "Đã hủy",
-      "expired": "Hết hạn"
+      "expired": "Hết hạn",
+      "error": "Lỗi đơn hàng"
     },
     "payment_status_text": {
       "paid": "Đã thanh toán",
@@ -384,6 +396,9 @@
     "step2_title": "Đã xác nhận & xuất hoá đơn.",
     "step2_desc": "Đang vận chuyển đến quý khách.",
     "step2_desc_pickup": "Quán đang chuẩn bị món.",
+    "step2_title_completed": "Giao hàng thành công.",
+    "step2_desc_completed": "Đơn hàng đã được giao hoàn tất.",
+    "step2_desc_completed_pickup": "Quý khách đã nhận món thành công.",
     "step_number": "Bước {step}",
     "cancelled_badge": "Đã huỷ",
     "cancelled_title": "Đơn hàng đã được huỷ",
@@ -476,7 +491,8 @@
     "related_posts": "Bài viết liên quan",
     "toc_button": "Mục lục",
     "toc_title": "Mục lục bài viết",
-    "toc_count": "{count} phần"
+    "toc_count": "{count} phần",
+    "no_posts": "Không có bài viết nào"
   },
   "contact": {
     "title": "Liên hệ",
@@ -586,7 +602,7 @@
     "account_label": "TÀI KHOẢN"
   },
   "forgot_password": {
-    "title": "Quên Mật Khẩu - Cô Thảo Tôm Cá",
+    "title": "Quên Mật Khẩu",
     "description": "Nhập địa chỉ email liên kết với tài khoản của bạn. Chúng tôi sẽ gửi một liên kết để bạn đặt lại mật khẩu mới.",
     "email_label": "Địa chỉ Email",
     "email_placeholder": "Nhập email của bạn (ví dụ: name@gmail.com)",

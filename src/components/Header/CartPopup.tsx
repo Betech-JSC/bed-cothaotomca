@@ -104,89 +104,110 @@ export default function CartPopup({ onClose }: CartPopupProps) {
           <>
             {/* Cart Items List */}
             <div className="max-h-[300px] overflow-y-auto pr-1 divide-y divide-gray-100 pt-1">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex gap-3 py-3 items-start">
-                  {/* Product Image */}
-                  <div className="relative size-16 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
-                    <Image
-                      src={item.imageUrl}
-                      alt={item.title}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-
-                  {/* Details */}
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex justify-between items-start gap-2">
-                      <h4 className="title-3 text-primary font-bold font-display line-clamp-1">
-                        {item.title}
-                      </h4>
-                      <div className="text-right shrink-0">
-                        {item.originalPrice && item.originalPrice > item.unitPrice ? (
-                          <p className="text-[11px] font-semibold text-gray-400 line-through leading-tight">
-                            {formatPrice(item.originalPrice)}
-                          </p>
-                        ) : null}
-                        <span className="title-3 text-primary font-bold whitespace-nowrap leading-tight">
-                          {formatPrice(item.unitPrice)}
-                        </span>
-                      </div>
+              {cartItems.map((item) => {
+                const isOut = Boolean(item.isOutOfStock);
+                return (
+                  <div
+                    key={item.id}
+                    className={`flex gap-3 py-3 items-start transition-opacity ${isOut ? "opacity-50" : ""}`}
+                  >
+                    {/* Product Image */}
+                    <div className="relative size-16 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                      />
+                      {isOut && (
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <span className="text-[10px] font-bold text-white bg-red-600/90 px-1 py-0.5 rounded text-center leading-none">
+                            Hết hàng
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    {!isDefaultVariant(item.variant) && (
-                      <p className="text-[11px] text-gray-500 font-semibold uppercase">
-                        {cleanVariantName(item.variant)}
-                      </p>
-                    )}
 
-                    <div className="flex items-center justify-between pt-1">
-                      {/* Quantity Selector */}
-                      <div className="flex items-center border border-gray-200 rounded-full px-1.5 py-0.5 bg-white">
+                    {/* Details */}
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <h4 className="title-3 text-primary font-bold font-display line-clamp-1">
+                            {item.title}
+                          </h4>
+                          {isOut && (
+                            <span className="inline-block text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.2 rounded mt-0.5">
+                              [Tạm hết hàng]
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          {item.originalPrice && item.originalPrice > item.unitPrice ? (
+                            <p className="text-[11px] font-semibold text-gray-400 line-through leading-tight">
+                              {formatPrice(item.originalPrice)}
+                            </p>
+                          ) : null}
+                          <span className="title-3 text-primary font-bold whitespace-nowrap leading-tight">
+                            {formatPrice(item.unitPrice)}
+                          </span>
+                        </div>
+                      </div>
+                      {!isDefaultVariant(item.variant) && (
+                        <p className="text-[11px] text-gray-500 font-semibold uppercase">
+                          {cleanVariantName(item.variant)}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1">
+                        {/* Quantity Selector */}
+                        <div className="flex items-center border border-gray-200 rounded-full px-1.5 py-0.5 bg-white">
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs select-none disabled:opacity-30"
+                            disabled={isOut || item.quantity <= 1}
+                          >
+                            &minus;
+                          </button>
+                          <span className="w-8 text-center text-xs font-bold text-primary">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs select-none disabled:opacity-30"
+                            disabled={isOut}
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Delete Button */}
                         <button
                           type="button"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs select-none"
-                          disabled={item.quantity <= 1}
+                          onClick={() => removeFromCart(item.id)}
+                          className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 font-semibold transition-colors cursor-pointer"
                         >
-                          &minus;
-                        </button>
-                        <span className="w-8 text-center text-xs font-bold text-primary">
-                          {item.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs select-none"
-                        >
-                          +
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                          {t("delete")}
                         </button>
                       </div>
-
-                      {/* Delete Button */}
-                      <button
-                        type="button"
-                        onClick={() => removeFromCart(item.id)}
-                        className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 font-semibold transition-colors cursor-pointer"
-                      >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                        {t("delete")}
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Bottom Actions */}

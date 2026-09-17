@@ -62,7 +62,8 @@ const POPULAR_DISTRICTS = [
 ];
 
 export default function MobileCartFlow({ onClose, inline = false }: { onClose?: () => void; inline?: boolean }) {
-  const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen, hasOutOfStockItems } = useCart();
+  const isOutOfStockOverall = hasOutOfStockItems ?? cartItems.some((i) => i.isOutOfStock);
   const { user, token, refreshUser } = useAuth();
   const memberTier = getMemberTier(user?.points || 0);
   const router = useRouter();
@@ -926,6 +927,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       return;
     }
 
+    if (isOutOfStockOverall) {
+      setError("Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng.");
+      setLoading(false);
+      return;
+    }
+
     const opCheck = checkOperatingHours(config?.operating_hours, undefined, deliveryType);
 
     if (!name.trim()) {
@@ -1204,83 +1211,101 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 </div>
               ) : (
                 <div className="space-y-4 divide-y divide-gray-100">
-                  {cartItems.map((item) => (
-                    <div key={item.id} className="flex gap-3 py-3 first:pt-0 last:pb-0 items-start">
-                      <div className="relative size-16 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.title}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
+                  {cartItems.map((item) => {
+                    const isOut = Boolean(item.isOutOfStock);
+                    return (
+                      <div key={item.id} className={`flex gap-3 py-3 first:pt-0 last:pb-0 items-start transition-opacity ${isOut ? "opacity-50" : ""}`}>
+                        <div className="relative size-16 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
+                          <Image
+                            src={item.imageUrl}
+                            alt={item.title}
+                            fill
+                            className="object-cover"
+                          />
+                          {isOut && (
+                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                              <span className="text-[10px] font-bold text-white bg-red-600/90 px-1 py-0.5 rounded text-center leading-none">
+                                Hết hàng
+                              </span>
+                            </div>
+                          )}
+                        </div>
 
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex justify-between items-start gap-2">
-                          <h4 className="title-3 text-primary font-bold font-display line-clamp-1">
-                            {item.title}
-                          </h4>
-                          <div className="text-right shrink-0">
-                            {!isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice ? (
-                              <p className="text-xs font-semibold text-gray-400 line-through leading-tight">
-                                {formatPrice(item.originalPrice)}
-                              </p>
-                            ) : null}
-                            <span className="title-3 text-primary font-bold whitespace-nowrap leading-tight">
-                              {formatPrice(
-                                isBestDealVoucherApplied
-                                  ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
-                                  : item.unitPrice
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex justify-between items-start gap-2">
+                            <div>
+                              <h4 className="title-3 text-primary font-bold font-display line-clamp-1">
+                                {item.title}
+                              </h4>
+                              {isOut && (
+                                <span className="inline-block text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.2 rounded mt-0.5">
+                                  [Tạm hết hàng]
+                                </span>
                               )}
-                            </span>
+                            </div>
+                            <div className="text-right shrink-0">
+                              {!isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice ? (
+                                <p className="text-xs font-semibold text-gray-400 line-through leading-tight">
+                                  {formatPrice(item.originalPrice)}
+                                </p>
+                              ) : null}
+                              <span className="title-3 text-primary font-bold whitespace-nowrap leading-tight">
+                                {formatPrice(
+                                  isBestDealVoucherApplied
+                                    ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
+                                    : item.unitPrice
+                                )}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        {!isDefaultVariant(item.variant) && (
-                          <p className="text-sm text-gray-500 font-semibold uppercase">
-                            {cleanVariantName(item.variant)}
-                          </p>
-                        )}
-                        {isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice && (
-                          <p className="text-[11px] text-secondary mt-1">
-                            Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
-                          </p>
-                        )}
+                          {!isDefaultVariant(item.variant) && (
+                            <p className="text-sm text-gray-500 font-semibold uppercase">
+                              {cleanVariantName(item.variant)}
+                            </p>
+                          )}
+                          {isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice && (
+                            <p className="text-[11px] text-secondary mt-1">
+                              Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
+                            </p>
+                          )}
 
-                        <div className="flex items-center justify-between pt-1">
-                          {/* Quantity selectors */}
-                          <div className="flex items-center border border-gray-200 rounded-full px-1.5 py-0.5 bg-white">
+                          <div className="flex items-center justify-between pt-1">
+                            {/* Quantity selectors */}
+                            <div className="flex items-center border border-gray-200 rounded-full px-1.5 py-0.5 bg-white">
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs disabled:opacity-30"
+                                disabled={isOut || item.quantity <= 1}
+                              >
+                                &minus;
+                              </button>
+                              <span className="w-8 text-center text-sm font-bold text-primary">
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs disabled:opacity-30"
+                                disabled={isOut}
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            {/* Delete button */}
                             <button
                               type="button"
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs"
-                              disabled={item.quantity <= 1}
+                              onClick={() => removeFromCart(item.id)}
+                              className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 font-semibold transition-colors cursor-pointer"
                             >
-                              &minus;
-                            </button>
-                            <span className="w-8 text-center text-sm font-bold text-primary">
-                              {item.quantity}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs"
-                            >
-                              +
+                              [Xóa]
                             </button>
                           </div>
-
-                          {/* Delete button */}
-                          <button
-                            type="button"
-                            onClick={() => removeFromCart(item.id)}
-                            className="flex items-center gap-1 text-sm text-gray-400 hover:text-red-500 font-semibold transition-colors"
-                          >
-                            {t("remove_voucher")}
-                          </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1290,17 +1315,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 {/* Voucher Code */}
                 <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="body-1 text-primary font-bold">
+                    <label className="text-sm font-bold text-primary font-display">
                       {t("voucher_label")}
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsVoucherModalOpen(true)}
-                      className="text-xs font-bold text-secondary hover:text-secondary/80 flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <span>{t("select_or_view_voucher")}</span>
-                      <span className="text-sm leading-none">›</span>
-                    </button>
                   </div>
                   <div className="flex items-center rounded-full border border-gray-200 bg-white p-1 pl-4 focus-within:border-primary transition-all">
                     <input
@@ -1408,10 +1425,20 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 </div>
 
                 {/* Submit button step 1 */}
+                {isOutOfStockOverall && (
+                  <p className="text-red-500 text-xs text-center font-medium">
+                    Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2"
+                  disabled={isOutOfStockOverall}
+                  className={`w-full font-bold rounded-full py-4 text-center transition-all font-display title-2 ${
+                    isOutOfStockOverall
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
+                      : "bg-secondary hover:bg-secondary/95 text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)]"
+                  }`}
                 >
                   {t("checkout")}
                 </button>
@@ -1458,7 +1485,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   <div className="space-y-4 pt-0.5">
                     <div className="space-y-3 divide-y divide-gray-100">
                       {cartItems.map((item) => (
-                        <div key={item.id} className="flex gap-3 py-2.5 first:pt-0 last:pb-0 items-start">
+                        <div key={item.id} className={`flex gap-3 py-2.5 first:pt-0 last:pb-0 items-start ${item.isOutOfStock ? "opacity-50" : ""}`}>
                           <div className="relative size-12 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
                             <Image
                               src={item.imageUrl}
@@ -1469,7 +1496,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start gap-2">
-                              <p className="body-2 text-primary font-bold font-display line-clamp-1">{item.title}</p>
+                              <div>
+                                <p className="body-2 text-primary font-bold font-display line-clamp-1">{item.title}</p>
+                                {item.isOutOfStock && (
+                                  <span className="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold text-red-600 bg-red-100 rounded-full">
+                                    Tạm hết hàng
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-right shrink-0">
                                 {!isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice ? (
                                   <p className="text-[10px] font-semibold text-gray-400 line-through leading-tight">
@@ -1485,9 +1519,20 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 </span>
                               </div>
                             </div>
-                            <p className="text-[10px] text-gray-500 font-semibold uppercase">
-                              {isDefaultVariant(item.variant) ? `x${item.quantity}` : `${cleanVariantName(item.variant)} x${item.quantity}`}
-                            </p>
+                            <div className="flex items-center justify-between mt-1">
+                              <p className="text-[10px] text-gray-500 font-semibold uppercase">
+                                {isDefaultVariant(item.variant) ? `x${item.quantity}` : `${cleanVariantName(item.variant)} x${item.quantity}`}
+                              </p>
+                              {item.isOutOfStock && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeFromCart(item.id)}
+                                  className="text-[11px] font-medium text-red-600 hover:text-red-700 underline ml-2 cursor-pointer"
+                                >
+                                  Xóa
+                                </button>
+                              )}
+                            </div>
                             {isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice && (
                               <p className="text-[11px] text-secondary mt-1">
                                 Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
@@ -1764,6 +1809,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               <div className="bg-primary/5 rounded-[14px] p-3 border border-primary/20 flex items-center gap-2.5 text-xs text-primary animate-fade-in">
                 <span>
                   {t.rich("buy_more_combo_prompt", {
+                    count: Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity),
                     quantity: Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity),
                     buyQty: upcomingBuyXGetYPromo.settings?.buy_quantity || 2,
                     action: upcomingBuyXGetYPromo.discount_type === 'percent' && upcomingBuyXGetYPromo.discount_value === 100 ? 'tặng' : 'giảm',
@@ -2217,10 +2263,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             </div>
 
             {/* Submit checkout button */}
+            {isOutOfStockOverall && (
+              <p className="text-red-500 text-xs text-center font-medium">
+                Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng
+              </p>
+            )}
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable)}
+              disabled={loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || isOutOfStockOverall}
               className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50 disabled:pointer-events-none"
             >
               {loading

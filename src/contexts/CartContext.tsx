@@ -15,6 +15,7 @@ export interface CartItem {
   originalPrice?: number;
   quantity: number;
   note?: string;
+  isOutOfStock?: boolean;
 }
 
 interface CartContextType {
@@ -27,9 +28,36 @@ interface CartContextType {
   clearCart: () => void;
   totalItems: number;
   subtotal: number;
+  hasOutOfStockItems: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+
+export function checkItemOutOfStock(item: CartItem, cache: any[]): boolean {
+  if (!item.productCode || !item.productCode.trim()) return true;
+  if (!cache || cache.length === 0) return Boolean(item.isOutOfStock);
+
+  const p = cache.find(
+    (x: any) => x.id === item.productId || x.kiotviet_id === item.productId || x.slug === item.slug
+  );
+  if (!p) return true;
+
+  if (p.variants && p.variants.length > 0) {
+    const v = p.variants.find(
+      (vObj: any) =>
+        vObj.size === item.variant ||
+        vObj.id === item.productId ||
+        vObj.kiotviet_id === item.productId ||
+        vObj.code === item.productCode
+    );
+    if (!v) return true;
+    if (!v.code || !v.code.trim()) return true;
+    return false;
+  }
+
+  if (!p.code || !p.code.trim()) return true;
+  return false;
+}
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -75,27 +103,43 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   // Fetch products once to power dynamic price calculation
   useEffect(() => {
     if (!isLoaded) return;
-    fetch("/api/products?per_page=all")
-      .then((res) => res.json())
+    const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://cms.cothaotomca.vn/api/v1").replace(/\/$/, "");
+    fetch(`${API_BASE}/products?per_page=all`, {
+      headers: {
+        Accept: "application/json",
+      },
+    })
       .then((res) => {
-        if (res.data && Array.isArray(res.data)) {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch products: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then((res) => {
+        if (res && res.data && Array.isArray(res.data)) {
           setProductsCache(res.data);
+        } else if (Array.isArray(res)) {
+          setProductsCache(res);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn("Could not fetch products for CartContext cache:", err);
+      });
   }, [isLoaded]);
 
-  // Dynamic price evaluation based on subtotal and campaign conditions
+  // Dynamic price and stock evaluation based on subtotal and campaign conditions
   useEffect(() => {
     if (!isLoaded || productsCache.length === 0 || cartItems.length === 0) return;
 
-    // 1. Calculate gross subtotal (using base prices)
+    // 1. Calculate gross subtotal (using base prices of in-stock items)
     const grossSubtotal = cartItems.reduce((sum, item) => {
+      const isOut = checkItemOutOfStock(item, productsCache);
+      if (isOut) return sum;
       const p = productsCache.find(x => x.id === item.productId || x.kiotviet_id === item.productId || x.slug === item.slug);
       let basePrice = item.originalPrice || item.unitPrice;
       if (p) {
         if (p.variants && p.variants.length > 0) {
-          const v = p.variants.find((vObj: any) => vObj.size === item.variant || vObj.id === item.productId || vObj.kiotviet_id === item.productId);
+          const v = p.variants.find((vObj: any) => vObj.size === item.variant || vObj.id === item.productId || vObj.kiotviet_id === item.productId || vObj.code === item.productCode);
           if (v) basePrice = parseFloat(String(v.original_price || v.price || 0));
         } else if (p.original_price || p.price) {
           basePrice = parseFloat(String(p.original_price || p.price));
@@ -104,13 +148,20 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return sum + basePrice * item.quantity;
     }, 0);
 
-    // 2. Re-evaluate prices for all items
+    // 2. Re-evaluate prices and stock for all items
     let changed = false;
     const updated = cartItems.map((item) => {
+      const isOut = checkItemOutOfStock(item, productsCache);
       const p = productsCache.find(
         (x: any) => x.id === item.productId || x.kiotviet_id === item.productId || x.slug === item.slug
       );
-      if (!p) return item;
+      if (!p) {
+        if (item.isOutOfStock !== isOut) {
+          changed = true;
+          return { ...item, isOutOfStock: isOut };
+        }
+        return item;
+      }
 
       let origPrice: number | undefined = undefined;
       let currentPrice: number | undefined = undefined;
@@ -128,7 +179,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (p.variants && p.variants.length > 0) {
         const v = p.variants.find(
-          (vObj: any) => vObj.size === item.variant || vObj.id === item.productId || vObj.kiotviet_id === item.productId
+          (vObj: any) => vObj.size === item.variant || vObj.id === item.productId || vObj.kiotviet_id === item.productId || vObj.code === item.productCode
         );
         if (v) {
           const vBase = parseFloat(String(v.original_price || v.price || 0));
@@ -162,12 +213,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       const newUnit = currentPrice || item.unitPrice;
       const newOrig = origPrice && origPrice > newUnit ? origPrice : newUnit;
 
-      if (item.unitPrice !== newUnit || item.originalPrice !== newOrig) {
+      if (item.unitPrice !== newUnit || item.originalPrice !== newOrig || item.isOutOfStock !== isOut) {
         changed = true;
         return {
           ...item,
           unitPrice: newUnit,
           originalPrice: newOrig,
+          isOutOfStock: isOut,
         };
       }
       return item;
@@ -179,14 +231,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   }, [isLoaded, productsCache, cartItems]);
 
   const addToCart = (item: Omit<CartItem, "quantity">, quantity = 1) => {
+    const isOutOfStock = checkItemOutOfStock(item as CartItem, productsCache);
     setCartItems((prev) => {
       const existing = prev.find((i) => i.id === item.id);
       if (existing) {
         return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + quantity } : i
+          i.id === item.id ? { ...i, quantity: i.quantity + quantity, isOutOfStock } : i
         );
       }
-      return [...prev, { ...item, quantity }];
+      return [...prev, { ...item, quantity, isOutOfStock }];
     });
   };
 
@@ -205,7 +258,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  const subtotal = cartItems.reduce((sum, item) => {
+    if (item.isOutOfStock) return sum;
+    return sum + item.unitPrice * item.quantity;
+  }, 0);
+  const hasOutOfStockItems = cartItems.some((item) => item.isOutOfStock);
 
   return (
     <CartContext.Provider
@@ -219,6 +276,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         clearCart,
         totalItems,
         subtotal,
+        hasOutOfStockItems,
       }}
     >
       {children}

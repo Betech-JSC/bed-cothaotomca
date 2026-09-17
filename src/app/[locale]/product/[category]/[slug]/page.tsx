@@ -142,9 +142,21 @@ export default async function ProductDetailsPage({
     images: galleryImages,
     sizes: product.variants && product.variants.length > 0
       ? product.variants.map((v: any) => {
-        const basePrice = typeof v.price === "number" ? v.price : parseFloat(v.price) || 0;
+        const varOriginalPrice = v.original_price != null ? parseFloat(String(v.original_price)) : null;
+        const varPrice = typeof v.price === "number" ? v.price : parseFloat(v.price) || 0;
+        const basePrice = varOriginalPrice && varOriginalPrice > 0 ? varOriginalPrice : varPrice;
+
         let campaignPrice: number | null = v.campaign_price ? parseFloat(String(v.campaign_price)) : null;
-        if (!campaignPrice && product.active_campaign) {
+        if (campaignPrice === null && varOriginalPrice && varPrice > 0 && varPrice < varOriginalPrice) {
+          campaignPrice = varPrice;
+        }
+
+        const canInheritCampaign = !v.campaign_price && (
+          Boolean(v.active_campaign) ||
+          (!product.variants || product.variants.length <= 1)
+        );
+
+        if (!campaignPrice && canInheritCampaign && product.active_campaign) {
           if (product.active_campaign.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0) {
             campaignPrice = Math.round(basePrice * (1.0 - (Number(product.active_campaign.discount_value) / 100.0)));
           } else if (product.active_campaign.discount_type === 'fixed' && Number(product.active_campaign.discount_value) > 0) {
@@ -153,9 +165,10 @@ export default async function ProductDetailsPage({
             campaignPrice = Number(product.active_campaign.campaign_price);
           }
         }
-        const finalPrice = campaignPrice && campaignPrice < basePrice ? campaignPrice : basePrice;
+
         const isCamp = campaignPrice !== null && campaignPrice < basePrice;
-        const activeCamp = v.active_campaign || product.active_campaign;
+        const finalPrice = isCamp ? campaignPrice : (typeof v.price === "number" ? v.price : parseFloat(v.price) || basePrice);
+        const activeCamp = v.active_campaign || (isCamp ? product.active_campaign : null);
         const configuredPercent = activeCamp?.discount_type === 'percent' && Number(activeCamp.discount_value) > 0
           ? Math.round(Number(activeCamp.discount_value))
           : (activeCamp?.discount_percent ? Math.round(Number(activeCamp.discount_percent)) : undefined);
@@ -163,25 +176,52 @@ export default async function ProductDetailsPage({
 
         return {
           id: v.id,
-          code: v.code || product.code || (v.id ? `SP-${v.id}` : (product.id ? `SP-${product.id}` : "")),
+          code: v.code || "",
+          stock: v.stock !== undefined ? Number(v.stock) : (product.stock !== undefined ? Number(product.stock) : 0),
           title: locale === "vi" ? v.size : (v.size_en || v.size),
           price: finalPrice,
           original_price: isCamp ? basePrice : undefined,
           discount_percent: isCamp ? (configuredPercent || calcPercent) : undefined,
         };
       })
-      : [{
-        id: product.id,
-        code: product.code || (product.id ? `SP-${product.id}` : ""),
-        title: t("product.standard"),
-        price: product.campaign_price && parseFloat(String(product.campaign_price)) < parseFloat(product.price) ? parseFloat(String(product.campaign_price)) : parseInt(product.price),
-        original_price: product.campaign_price && parseFloat(String(product.campaign_price)) < parseFloat(product.price) ? parseInt(product.price) : undefined,
-        discount_percent: product.campaign_price && parseFloat(String(product.campaign_price)) < parseFloat(product.price)
-          ? (product.active_campaign?.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0
-              ? Math.round(Number(product.active_campaign.discount_value))
-              : (product.active_campaign?.discount_percent || Math.round(((parseFloat(product.price) - parseFloat(String(product.campaign_price))) / parseFloat(product.price)) * 100)))
-          : undefined,
-      }],
+      : (() => {
+        const prodOriginalPrice = product.original_price != null ? parseFloat(String(product.original_price)) : null;
+        const prodPrice = typeof product.price === "number" ? product.price : parseFloat(product.price) || 0;
+        const prodBasePrice = prodOriginalPrice && prodOriginalPrice > 0 ? prodOriginalPrice : prodPrice;
+
+        let prodCampPrice: number | null = product.campaign_price ? parseFloat(String(product.campaign_price)) : null;
+        if (prodCampPrice === null && prodOriginalPrice && prodPrice > 0 && prodPrice < prodOriginalPrice) {
+          prodCampPrice = prodPrice;
+        }
+
+        if (!prodCampPrice && product.active_campaign) {
+          if (product.active_campaign.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0) {
+            prodCampPrice = Math.round(prodBasePrice * (1.0 - (Number(product.active_campaign.discount_value) / 100.0)));
+          } else if (product.active_campaign.discount_type === 'fixed' && Number(product.active_campaign.discount_value) > 0) {
+            prodCampPrice = Math.max(0, prodBasePrice - Number(product.active_campaign.discount_value));
+          } else if (product.active_campaign.campaign_price) {
+            prodCampPrice = Number(product.active_campaign.campaign_price);
+          }
+        }
+
+        const isProdCamp = prodCampPrice !== null && prodCampPrice < prodBasePrice;
+        const prodFinalPrice = isProdCamp ? prodCampPrice : (typeof product.price === "number" ? product.price : parseFloat(product.price) || prodBasePrice);
+        const activeCamp = product.active_campaign;
+        const configuredPercent = activeCamp?.discount_type === 'percent' && Number(activeCamp.discount_value) > 0
+          ? Math.round(Number(activeCamp.discount_value))
+          : (activeCamp?.discount_percent ? Math.round(Number(activeCamp.discount_percent)) : undefined);
+        const calcPercent = isProdCamp && prodBasePrice > 0 ? Math.round(((prodBasePrice - prodFinalPrice) / prodBasePrice) * 100) : undefined;
+
+        return [{
+          id: product.id,
+          code: product.code || "",
+          stock: product.stock !== undefined ? Number(product.stock) : 0,
+          title: t("product.standard"),
+          price: prodFinalPrice,
+          original_price: isProdCamp ? prodBasePrice : undefined,
+          discount_percent: isProdCamp ? (configuredPercent || calcPercent) : undefined,
+        }];
+      })(),
 
 
     category: {
@@ -203,7 +243,7 @@ export default async function ProductDetailsPage({
     })) || [],
     checkout: {
       productId: product.id,
-      productCode: product.code || (product.variants?.[0]?.code ?? "") || (product.id ? `SP-${product.id}` : ""),
+      productCode: product.code || (product.variants?.[0]?.code ?? "") || "",
       slug: product.slug || slug,
       categorySlug: (() => {
         const cat = product.categories && product.categories.length > 0 ? product.categories[0] : product.category;

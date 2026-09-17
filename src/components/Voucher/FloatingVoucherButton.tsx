@@ -1,15 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { usePathname } from "@/i18n/routing";
 import CouponModal from "./CouponModal";
-import { getAvailableVouchers, PublicVoucherItem } from "@/services/orderService";
+import { getAvailableVouchers, PublicVoucherItem, getShippingSettings, ShippingSettings } from "@/services/orderService";
 import { getActiveCampaigns, PublicCampaignItem } from "@/services/campaignService";
 import { useCart } from "@/contexts/CartContext";
 
 export default function FloatingVoucherButton() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [vouchers, setVouchers] = useState<PublicVoucherItem[]>([]);
   const [campaigns, setCampaigns] = useState<PublicCampaignItem[]>([]);
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   const { subtotal } = useCart();
 
   useEffect(() => {
@@ -20,9 +23,25 @@ export default function FloatingVoucherButton() {
     getActiveCampaigns()
       .then((data) => setCampaigns(data))
       .catch(() => setCampaigns([]));
+
+    getShippingSettings()
+      .then((data) => setShippingSettings(data))
+      .catch(() => setShippingSettings(null));
   }, []);
 
-  const totalPromotions = vouchers.length + campaigns.length;
+  // Hide floating widget when on /cart or /checkout routes (supporting locale prefixes like /vi/cart, /en/checkout)
+  const isExcluded = Boolean(
+    pathname &&
+      (/(^|\/)(cart|checkout)(\/|$)/.test(pathname) ||
+        pathname.endsWith("/cart") ||
+        pathname.endsWith("/checkout") ||
+        pathname.includes("/cart") ||
+        pathname.includes("/checkout"))
+  );
+  if (isExcluded) return null;
+
+  const hasShippingCard = Boolean(shippingSettings?.is_min_amount_enabled && shippingSettings?.card_title);
+  const totalPromotions = vouchers.length + campaigns.length + (hasShippingCard ? 1 : 0);
 
   return (
     <>
@@ -72,6 +91,7 @@ export default function FloatingVoucherButton() {
         onClose={() => setIsOpen(false)}
         subtotal={subtotal}
         isBrowseOnly={true}
+        shippingSettings={shippingSettings}
       />
     </>
   );

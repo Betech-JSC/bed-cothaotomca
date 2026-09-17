@@ -14,6 +14,7 @@ import { mapProductToCardItem, normalizeProductDetail, mapProductToDetailView } 
 import { calcOrderTotal, calculateShippingFee } from '@/services/orderService';
 import { formatPrice } from '@/lib/format';
 import { checkOperatingHours } from '@/lib/operatingHours';
+import { resetCouponModalCache } from '@/components/Voucher/CouponModal';
 
 import viMessages from '@/i18n/locales/vi.json';
 
@@ -107,6 +108,8 @@ vi.mock('@/services/orderService', async () => {
     calculateShippingFee: vi.fn(),
     validateVoucher: vi.fn(),
     createOrder: vi.fn(),
+    getShippingSettings: vi.fn().mockResolvedValue(null),
+    getAvailableVouchers: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -118,6 +121,7 @@ vi.mock('@/services/campaignService', () => ({
 describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetCouponModalCache();
   });
 
   it('Luồng 1 Component: Biến thể đã gán SKU -> Nút mua enabled, hiển thị "Thêm vào giỏ hàng" & kích hoạt addToCart', () => {
@@ -414,6 +418,96 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(detailView.sizes[2].original_price).toBe(435000);
   });
 
+  it('Luồng 11: Fix variant discount strikethrough & chống rò rỉ campaign sang biến thể không trong Sale', () => {
+    // Mô phỏng payload thực tế từ ProductApiController backend
+    const rawBackendProduct: any = {
+      id: 45,
+      name: 'Cá Hồi Ngâm Tương',
+      slug: 'ca-hoi-ngam-tuong',
+      price: '160000.00',
+      campaign_price: 160000,
+      original_price: 180000,
+      active_campaign: {
+        id: 38,
+        name: 'Flash Sale Cá Hồi Size S: Giảm Ngay 20.000đ',
+        discount_type: 'fixed',
+        discount_value: 20000,
+        campaign_price: 160000,
+      },
+      variants: [
+        // Biến thể Size S tham gia Flash Sale: backend đã ghi đè price = 160000
+        {
+          id: 1136,
+          size: 'Size S: 120g (6-7 miếng)',
+          code: 'CAS-S',
+          price: '160000.00',
+          campaign_price: 160000,
+          original_price: 180000,
+          active_campaign: {
+            id: 38,
+            name: 'Flash Sale Cá Hồi Size S: Giảm Ngay 20.000đ',
+            discount_type: 'fixed',
+            discount_value: 20000,
+            campaign_price: 160000,
+          },
+        },
+        // Biến thể Size M KHÔNG tham gia Flash Sale: campaign_price null, price = original_price = 290000
+        {
+          id: 1137,
+          size: 'Size M: 240g (10-12 miếng)',
+          code: 'CAM-M',
+          price: '290000.00',
+          campaign_price: null,
+          original_price: 290000,
+          active_campaign: null,
+        },
+      ],
+    };
+
+    const normalized = normalizeProductDetail(rawBackendProduct);
+    const detailView = mapProductToDetailView(normalized, 'vi', { standard: 'Tiêu chuẩn' });
+
+    // 1. Xác nhận biến thể tham gia Sale có price: 160000 và original_price: 180000
+    expect(detailView.sizes[0].price).toBe(160000);
+    expect(detailView.sizes[0].original_price).toBe(180000);
+
+    // 2. Xác nhận biến thể không tham gia Sale có price: 290000 và original_price: undefined
+    expect(detailView.sizes[1].price).toBe(290000);
+    expect(detailView.sizes[1].original_price).toBeUndefined();
+
+    // 3. Render ProductDetailsInfo xác minh hiển thị UI giá gạch ngang
+    const productDataForComponent: any = {
+      title: 'Cá Hồi Ngâm Tương',
+      description: 'Mô tả cá hồi',
+      images: [{ url: '/cover.jpg' }],
+      variant_type: 'Size',
+      sizes: detailView.sizes,
+      checkout: {
+        productId: 45,
+        productCode: 'CAS-S',
+        slug: 'ca-hoi-ngam-tuong',
+        categorySlug: 'hai-san',
+      },
+      infos: [],
+    };
+
+    render(<ProductDetailsInfo productData={productDataForComponent} />);
+
+    // Mặc định chọn Size S: Hiển thị giá bán 160.000 ₫ và giá gạch ngang 180.000 ₫
+    expect(screen.getByText(formatPrice(160000))).toBeInTheDocument();
+    const strikethroughS = screen.getByText(formatPrice(180000));
+    expect(strikethroughS).toBeInTheDocument();
+    expect(strikethroughS.className).toContain('line-through');
+
+    // Chuyển sang chọn Size M:
+    const sizeMButton = screen.getByText('Size M: 240g (10-12 miếng)');
+    fireEvent.click(sizeMButton);
+
+    // Hiển thị giá bán 290.000 ₫, KHÔNG còn giá gạch ngang 180.000đ hay 290.000đ
+    expect(screen.getByText(formatPrice(290000))).toBeInTheDocument();
+    expect(screen.queryByText(formatPrice(180000))).not.toBeInTheDocument();
+  });
+
   it('UX Enhancement 1: SmartCartProgressBar tính chính xác số tiền cần mua thêm để đạt Freeship và Voucher', async () => {
     const { default: SmartCartProgressBar } = await import('@/components/Cart/SmartCartProgressBar');
 
@@ -426,7 +520,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     );
     expect(screen.getByText(/Mua thêm/i)).toBeInTheDocument();
     expect(screen.getByText(formatPrice(200000))).toBeInTheDocument();
-    expect(screen.getByText(/Freeship/i)).toBeInTheDocument();
+    expect(screen.getByText(/Miễn phí ship|Freeship/i)).toBeInTheDocument();
 
     // 2. Case: Đã đạt Freeship (đơn 600k, freeship 500k) -> Hiển thị đạt ưu đãi thành công
     rerender(
@@ -436,7 +530,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
         isFreeship={true}
       />
     );
-    expect(screen.getByText(/Chúc mừng/i)).toBeInTheDocument();
+    expect(screen.getByText(/Miễn phí ship/i)).toBeInTheDocument();
 
     // 3. Case: Đã đạt Freeship (đơn 200k) nhưng có voucher mốc 300k (mã GIAM30K) -> Cần mua thêm 100k
     rerender(
@@ -471,7 +565,8 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
       />
     );
     expect(screen.getByText(formatPrice(150000))).toBeInTheDocument();
-    expect(screen.getByText(`Hỗ trợ ${formatPrice(20000)} phí ship`)).toBeInTheDocument();
+    expect(screen.getByText(formatPrice(20000))).toBeInTheDocument();
+    expect(screen.getByText(/phí ship/i)).toBeInTheDocument();
 
     // 5. Case: Áp dụng voucher khi can_combine_with_promotions === false -> Re-render an toàn, KHÔNG vi phạm React hook count
     rerender(
@@ -487,6 +582,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
           code: 'TEST_SHIP_30K',
           discount_type: 'freeship',
           value: 30000,
+          can_combine_with_freeship: false,
         } as any}
       />
     );
@@ -508,11 +604,15 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
   });
 
   it('UX Enhancement 2: CouponModal phân loại rõ mã đủ điều kiện và mã chưa đủ điều kiện kèm gợi ý mua thêm', async () => {
+    resetCouponModalCache();
     const { default: CouponModal } = await import('@/components/Voucher/CouponModal');
     const mockOnApply = vi.fn();
 
-    // Mock getAvailableVouchers
+    // Mock getAvailableVouchers & dependencies
     const orderService = await import('@/services/orderService');
+    const campaignService = await import('@/services/campaignService');
+    vi.spyOn(campaignService, 'getActiveCampaigns').mockResolvedValue([]);
+    vi.spyOn(orderService, 'getShippingSettings').mockResolvedValue(null);
     vi.spyOn(orderService, 'getAvailableVouchers').mockResolvedValue([
       {
         id: 1,

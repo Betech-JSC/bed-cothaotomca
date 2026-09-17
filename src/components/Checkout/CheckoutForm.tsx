@@ -26,6 +26,11 @@ import {
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
+import {
+  getCustomerAddressesApi,
+  createCustomerAddressApi,
+  type CustomerAddress,
+} from "@/services/authService";
 import { useAuth, getMemberTier, calculateMemberDiscount } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getVietnamDate, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
@@ -82,7 +87,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const { user, token, refreshUser } = useAuth();
   const t = useTranslations("checkout");
   const router = useRouter();
-  const { cartItems, updateQuantity, removeFromCart, clearCart, addToCart } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, clearCart, addToCart, hasOutOfStockItems } = useCart();
+  const isOutOfStockOverall = hasOutOfStockItems ?? cartItems.some((i) => i.isOutOfStock);
   const isCartCheckout = !order;
 
   // Refresh điểm KiotViet khi vào trang checkout
@@ -134,13 +140,61 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
+  // Customer Address Book states (for logged in customers)
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  const [saveToAddressBook, setSaveToAddressBook] = useState(false);
+  const hasAutoFilledDefaultAddressRef = useRef(false);
+
   useEffect(() => {
     if (user) {
       setName(user.name || "");
       setPhone(user.phone || "");
       setEmail(user.email || "");
+
+      // Load saved addresses and auto-fill default
+      getCustomerAddressesApi().then((addrs) => {
+        setCustomerAddresses(addrs);
+        if (!hasAutoFilledDefaultAddressRef.current && addrs.length > 0) {
+          const defaultAddr = addrs.find((a) => a.is_default) || addrs[0];
+          if (defaultAddr) {
+            hasAutoFilledDefaultAddressRef.current = true;
+            setSelectedAddressId(defaultAddr.id);
+            if (defaultAddr.recipient_name) setName(defaultAddr.recipient_name);
+            if (defaultAddr.phone) setPhone(defaultAddr.phone);
+            if (defaultAddr.province) setSelectedProvince(defaultAddr.province);
+            if (defaultAddr.district) setSelectedDistrict(defaultAddr.district);
+            if (defaultAddr.ward) setSelectedWard(defaultAddr.ward);
+            if (defaultAddr.ward_id) setSelectedWardId(defaultAddr.ward_id);
+            if (defaultAddr.street_address) setStreetAddress(defaultAddr.street_address);
+          }
+        }
+      }).catch((err) => {
+        console.warn("Failed to load customer addresses:", err);
+      });
     }
   }, [user]);
+
+  const handleSelectCustomerAddress = (addrId: number | "new") => {
+    if (addrId === "new") {
+      setSelectedAddressId(null);
+      setStreetAddress("");
+      setSelectedWard("");
+      setSelectedWardId("");
+      return;
+    }
+    const addr = customerAddresses.find((a) => a.id === addrId);
+    if (addr) {
+      setSelectedAddressId(addr.id);
+      if (addr.recipient_name) setName(addr.recipient_name);
+      if (addr.phone) setPhone(addr.phone);
+      if (addr.province) setSelectedProvince(addr.province);
+      if (addr.district) setSelectedDistrict(addr.district);
+      if (addr.ward) setSelectedWard(addr.ward);
+      if (addr.ward_id) setSelectedWardId(addr.ward_id);
+      if (addr.street_address) setStreetAddress(addr.street_address);
+    }
+  };
 
   // COD/Transfer selection (CARD removed)
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
@@ -201,6 +255,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   } | null>(null);
   const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
   const [validatingVoucher, setValidatingVoucher] = useState(false);
+  const [isAutoVoucherApplied, setIsAutoVoucherApplied] = useState(false);
   const [confirmInfo, setConfirmInfo] = useState(false);
 
   useEffect(() => {
@@ -300,6 +355,62 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // Opt-out state for promotions (allowing user to remove if desired)
   const [optOutOrderDiscount, setOptOutOrderDiscount] = useState(false);
+
+  // Campaign G1 trong giỏ hàng (nhận diện theo config.active_promotions và mức giá đơn hàng)
+  const cartCampaignG1 = useMemo(() => {
+    if (!config.active_promotions || config.active_promotions.length === 0) return null;
+    const checkAmount = originalSubtotal > 0 ? originalSubtotal : subtotal;
+    const orderDiscountPromo = config.active_promotions.find(
+      (p) => p.promotion_type === "order_discount" && checkAmount >= (p.min_order_value || 0)
+    );
+    if (orderDiscountPromo) return orderDiscountPromo;
+
+    return (
+      config.active_promotions.find(
+        (p) => (p.min_order_value || 0) <= checkAmount
+      ) || null
+    );
+  }, [config.active_promotions, originalSubtotal, subtotal]);
+
+  // Ma trận Khuyến mãi & Giảm giá (Promotion Matrix 6 Cases)
+  const promotionMatrixVoucherNotice = useMemo(() => {
+    if (!appliedVoucher) return null;
+
+    // Case 6: G1 chặn ship, khách add G2 [promo: false, ship: true]
+    if (
+      cartCampaignG1 &&
+      cartCampaignG1.can_combine_with_freeship === false &&
+      appliedVoucher.canCombineWithPromotions === false &&
+      appliedVoucher.canCombineWithFreeship !== false
+    ) {
+      return `Mã ${appliedVoucher.code} không áp dụng đồng thời với CTKM khác. Đã kích hoạt lại ưu đãi giảm phí vận chuyển cho bạn.`;
+    }
+
+    // Case 2 & Case 4: G1 active + G2 [promo: false]
+    if (cartCampaignG1 && appliedVoucher.canCombineWithPromotions === false) {
+      return `Mã ${appliedVoucher.code} không áp dụng đồng thời với CTKM khác. Đã ưu tiên áp dụng theo mã của bạn.`;
+    }
+
+    return null;
+  }, [appliedVoucher, cartCampaignG1]);
+
+  const promotionMatrixShippingNotice = useMemo(() => {
+    // Case 3 & Case 4: Mã G2 cấm giảm phí ship
+    if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false) {
+      return `Mã ${appliedVoucher.code} không áp dụng cùng chương trình giảm phí vận chuyển.`;
+    }
+
+    // Case 5: Campaign G1 can_combine_with_freeship = false, chưa add G2 (hoặc G2 không override)
+    if (
+      cartCampaignG1 &&
+      cartCampaignG1.can_combine_with_freeship === false &&
+      (!appliedVoucher || appliedVoucher.canCombineWithPromotions !== false)
+    ) {
+      return `CTKM ${cartCampaignG1.name} không áp dụng cùng chương trình giảm phí vận chuyển.`;
+    }
+
+    return null;
+  }, [appliedVoucher, cartCampaignG1]);
 
   // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn)
   const eligibleOrderDiscountPromo = useMemo(() => {
@@ -518,19 +629,35 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       subtotal,
       voucher_code: appliedVoucher?.code,
       can_combine_with_freeship: appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined,
+      campaign_id: appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.id,
+      campaign_can_combine_with_freeship: appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.can_combine_with_freeship,
     })
       .then((res) => {
         if (!isSubscribed) return;
-        const cannotCombine = appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false;
-        const finalFreeship = cannotCombine ? false : res.is_freeship;
-        const finalFee = cannotCombine ? res.original_fee : res.shipping_fee;
-        const finalDiscount = cannotCombine ? 0 : (res.shipping_discount ?? (res.original_fee > res.shipping_fee ? res.original_fee - res.shipping_fee : 0));
+
+        // Freeship G3 bị chặn khi:
+        // 1. Voucher G2 cấm freeship (Case 3, Case 4)
+        // 2. Hoặc Campaign G1 cấm freeship VÀ Voucher G2 không ghi đè (Case 5)
+        // Lưu ý Case 6: Voucher G2 cấm combo (promo: false) nhưng cho phép freeship (ship: true) -> tạm gỡ G1, G1 không còn chặn ship nữa!
+        const isG1BlockingFreeship = Boolean(
+          cartCampaignG1 &&
+          cartCampaignG1.can_combine_with_freeship === false &&
+          !(appliedVoucher && appliedVoucher.canCombineWithPromotions === false && appliedVoucher.canCombineWithFreeship !== false)
+        );
+        const isG2BlockingFreeship = Boolean(
+          appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false
+        );
+        const isFreeshipBlocked = isG1BlockingFreeship || isG2BlockingFreeship;
+
+        const finalFreeship = isFreeshipBlocked ? false : res.is_freeship;
+        const finalFee = isFreeshipBlocked ? res.original_fee : res.shipping_fee;
+        const finalDiscount = isFreeshipBlocked ? 0 : (res.shipping_discount ?? (res.original_fee > res.shipping_fee ? res.original_fee - res.shipping_fee : 0));
 
         setShippingFee(finalFee);
         setOriginalFee(res.original_fee);
         setShippingDiscount(finalDiscount);
         setIsFreeship(finalFreeship);
-        setFreeshipReason(cannotCombine ? null : (res.freeship_reason || null));
+        setFreeshipReason(isFreeshipBlocked ? null : (res.freeship_reason || null));
 
         const hasWard = !!selectedWard || !!selectedWardId;
         setIsDeliverable(hasWard ? res.is_deliverable : true);
@@ -562,7 +689,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return () => {
       isSubscribed = false;
     };
-  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, subtotal, appliedVoucher, config.branches]);
+  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, subtotal, appliedVoucher, config.branches, cartCampaignG1]);
 
   // Store Pickup input & Auto-assigned delivery branch
   const [selectedBranchId, setSelectedBranchId] = useState<number>(() => {
@@ -786,7 +913,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount - memberDiscount + shipping);
 
-  const handleApplyVoucher = async (codeOverride?: string) => {
+  const handleApplyVoucher = async (codeOverride?: string, isAuto = false) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
     if (!code) {
       setVoucherError("Vui lòng nhập mã giảm giá.");
@@ -795,13 +922,18 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       return;
     }
 
+    setIsAutoVoucherApplied(isAuto);
     setVoucherCode(code);
     setValidatingVoucher(true);
     setVoucherError(null);
     setVoucherSuccess(null);
     setBestDealNotice(null);
 
-    const isOrderAutoFreeship = Boolean(
+    const isG1BlockingFreeship = Boolean(
+      cartCampaignG1 && cartCampaignG1.can_combine_with_freeship === false
+    );
+
+    const isOrderAutoFreeship = !isG1BlockingFreeship && Boolean(
       (deliveryType === "delivery" && isFreeship && shippingFee === 0) ||
       (deliveryType === "delivery" &&
         shippingSettings?.is_min_amount_enabled &&
@@ -810,7 +942,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         (shippingSettings.shipping_discount_type === "free" || !shippingSettings.shipping_discount_type || (shippingSettings.shipping_discount_value ?? 0) >= originalFee))
     );
 
-    const isCodeFreeship = code.includes("FREESHIP") || code.includes("SHIP");
+    const isCodeFreeship = code.includes("FREESHIP") || code.includes("PHISHIP") || /^SHIP(\d+|K)?$/i.test(code);
 
     if (isOrderAutoFreeship && isCodeFreeship) {
       const friendlyMsg = "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.";
@@ -819,7 +951,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       setVoucherSuccess(null);
       setAppliedVoucher(null);
       setValidatingVoucher(false);
-      throw new Error(friendlyMsg);
+      return;
     }
 
     if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false && isCodeFreeship) {
@@ -828,7 +960,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       setBestDealNotice(null);
       setVoucherSuccess(null);
       setValidatingVoucher(false);
-      throw new Error(msg);
+      return;
     }
 
     try {
@@ -846,8 +978,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         const isCandidateFreeship = Boolean(
           res.voucher.discount_type === "freeship" ||
           res.voucher.is_freeship ||
-          code.includes("FREESHIP") ||
-          code.includes("SHIP")
+          isCodeFreeship
         );
 
         if (isOrderAutoFreeship && isCandidateFreeship) {
@@ -856,7 +987,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           setVoucherError(null);
           setVoucherSuccess(null);
           setAppliedVoucher(null);
-          throw new Error(friendlyMsg);
+          return;
         }
 
         if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false && isCandidateFreeship) {
@@ -864,7 +995,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           setVoucherError(msg);
           setBestDealNotice(null);
           setVoucherSuccess(null);
-          throw new Error(msg);
+          return;
         }
 
         const canCombine = res.voucher.can_combine_with_promotions !== false;
@@ -1018,6 +1149,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     setVoucherSuccess(null);
     setVoucherError(null);
     setBestDealNotice(null);
+    setIsAutoVoucherApplied(false);
   };
 
   // Address concatenation
@@ -1047,6 +1179,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
     if (isCartCheckout && cartItems.length === 0) {
       setError("Giỏ hàng của bạn đang trống.");
+      setLoading(false);
+      return;
+    }
+
+    if (isCartCheckout && isOutOfStockOverall) {
+      setError("Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng.");
       setLoading(false);
       return;
     }
@@ -1246,6 +1384,24 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
       if (isCartCheckout) {
         clearCart();
+      }
+
+      // Tự động lưu địa chỉ mới vào Sổ địa chỉ nếu khách hàng chọn checkbox
+      if (user && saveToAddressBook && streetAddress.trim() && selectedWard.trim()) {
+        const full_addr = [streetAddress.trim(), selectedWard, selectedDistrict, selectedProvince].filter(Boolean).join(", ");
+        createCustomerAddressApi({
+          recipient_name: name.trim() || user.name,
+          phone: phone.trim() || user.phone || "",
+          province: selectedProvince,
+          district: selectedDistrict,
+          ward: selectedWard,
+          ward_id: selectedWardId || null,
+          street_address: streetAddress.trim(),
+          full_address: full_addr,
+          is_default: customerAddresses.length === 0,
+        }).catch((err) => {
+          console.warn("Could not auto-save address to address book:", err);
+        });
       }
 
       if (paymentMethod === "COD") {
@@ -1473,6 +1629,37 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
                 <p className="body-1 text-gray-700 font-bold">{t("delivery_home")}</p>
 
+                {/* Khối Chọn từ Sổ địa chỉ (dành cho khách hàng đã đăng nhập) */}
+                {user && customerAddresses.length > 0 && (
+                  <div className="space-y-2 p-3.5 bg-yellow/40 rounded-xl border border-secondary/20 font-serif">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                        <span>📍</span>
+                        <span>Chọn từ sổ địa chỉ nhận hàng</span>
+                      </span>
+                      <Link href="/profile" className="text-xs text-secondary hover:underline font-semibold">
+                        Quản lý sổ địa chỉ →
+                      </Link>
+                    </div>
+                    <select
+                      value={selectedAddressId || "new"}
+                      onChange={(e) =>
+                        handleSelectCustomerAddress(
+                          e.target.value === "new" ? "new" : Number(e.target.value)
+                        )
+                      }
+                      className="w-full h-10 rounded-[6px] border border-gray-300 px-3 bg-white text-gray-900 text-xs sm:text-sm font-serif cursor-pointer focus:border-primary focus:outline-none"
+                    >
+                      {customerAddresses.map((addr) => (
+                        <option key={addr.id} value={addr.id}>
+                          {addr.recipient_name} ({addr.phone}) - {addr.full_address || `${addr.street_address}, ${addr.ward}, ${addr.district}, ${addr.province}`} {addr.is_default ? "★ Mặc định" : ""}
+                        </option>
+                      ))}
+                      <option value="new">+ Nhập địa chỉ nhận hàng khác</option>
+                    </select>
+                  </div>
+                )}
+
                 {/* Chọn Tỉnh/Thành & Phường/Xã (Danh mục chuẩn) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2">
@@ -1550,6 +1737,21 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   {fieldError("delivery.address") ? (
                     <p className="text-sm text-red-600 mt-1">{fieldError("delivery.address")}</p>
                   ) : null}
+
+                  {/* Checkbox lưu địa chỉ cho khách đã đăng nhập */}
+                  {user && (
+                    <div className="pt-1">
+                      <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700 select-none">
+                        <input
+                          type="checkbox"
+                          checked={saveToAddressBook}
+                          onChange={(e) => setSaveToAddressBook(e.target.checked)}
+                          className="rounded text-secondary focus:ring-secondary size-4 accent-secondary cursor-pointer"
+                        />
+                        <span>Lưu địa chỉ này vào sổ địa chỉ nhận hàng</span>
+                      </label>
+                    </div>
+                  )}
                 </div>
 
                 {/* Thông báo chi nhánh tự động được chọn & thông tin ship */}
@@ -1560,20 +1762,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       strong: (chunks) => <strong>{chunks}</strong>,
                     })}
                   </div>
-                )}
-
-
-                {/* Thẻ thông báo phí tiêu chuẩn hoặc trợ giá */}
-                {isDeliverable && (
-                  freeshipReason ? (
-                    <div className="text-xs text-secondary font-semibold italic px-1">
-                      {freeshipReason}
-                    </div>
-                  ) : shippingMessage && !isFreeship ? (
-                    <div className="text-xs text-gray-500 font-medium italic px-1">
-                      {shippingMessage}
-                    </div>
-                  ) : null
                 )}
               </div>
             )}
@@ -1874,7 +2062,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   </div>
                 ) : (
                   cartItems.map((item) => (
-                    <div key={item.id} className="flex gap-3 2xl:gap-4 items-start py-3 first:pt-0 last:pb-0">
+                    <div key={item.id} className={`flex gap-3 2xl:gap-4 items-start py-3 first:pt-0 last:pb-0 ${item.isOutOfStock ? "opacity-50" : ""}`}>
                       {/* Ảnh */}
                       <div className="relative size-16 2xl:size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
                         <Image
@@ -1888,9 +2076,16 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       {/* Thông tin ở giữa */}
                       <div className="flex-1 min-w-0 space-y-1.5 2xl:space-y-2">
                         <div className="flex justify-between items-start gap-2">
-                          <p className="title-3 font-display text-primary font-bold whitespace-pre-line line-clamp-2">
-                            {item.title}
-                          </p>
+                          <div>
+                            <p className="title-3 font-display text-primary font-bold whitespace-pre-line line-clamp-2">
+                              {item.title}
+                            </p>
+                            {item.isOutOfStock && (
+                              <span className="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold text-red-600 bg-red-100 rounded-full">
+                                Tạm hết hàng
+                              </span>
+                            )}
+                          </div>
                           <div className="text-right shrink-0">
                             {!isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice ? (
                               <p className="text-xs font-semibold text-gray-400 line-through leading-tight">
@@ -1926,7 +2121,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                               type="button"
                               aria-label="Decrease quantity"
                               className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer"
-                              disabled={item.quantity <= 1}
+                              disabled={item.quantity <= 1 || item.isOutOfStock}
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
                             >
                               −
@@ -1937,7 +2132,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                             <button
                               type="button"
                               aria-label="Increase quantity"
-                              className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer"
+                              className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer"
+                              disabled={item.isOutOfStock}
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
                             >
                               +
@@ -1950,7 +2146,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                             onClick={() => removeFromCart(item.id)}
                             className="text-gray-400 hover:text-red-500 transition-colors text-xs 2xl:text-sm font-semibold cursor-pointer"
                           >
-                            {t("remove_voucher")}
+                            Xóa
                           </button>
                         </div>
                       </div>
@@ -2226,6 +2422,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               <div className="bg-primary/5 rounded-[14px] p-3 border border-primary/20 flex items-center gap-2.5 text-xs text-primary animate-fade-in">
                 <span>
                   {t.rich("buy_more_combo_prompt", {
+                    count: Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity),
                     quantity: Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity),
                     buyQty: upcomingBuyXGetYPromo.settings?.buy_quantity || 2,
                     action: upcomingBuyXGetYPromo.discount_type === 'percent' && upcomingBuyXGetYPromo.discount_value === 100 ? 'tặng' : 'giảm',
@@ -2243,14 +2440,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 <label className="body-1 font-display text-primary font-bold">
                   {t("voucher_label")}
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setIsVoucherModalOpen(true)}
-                  className="text-xs font-bold text-secondary hover:text-secondary/80 flex items-center gap-0.5 cursor-pointer"
-                >
-                  <span>{t("select_or_view_voucher")}</span>
-                  <span className="text-sm leading-none">›</span>
-                </button>
               </div>
 
               <div className="flex items-center border border-gray-300 rounded-full p-1 bg-white focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all overflow-hidden">
@@ -2306,8 +2495,30 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {bestDealNotice && (
                 <p className="text-xs text-secondary font-semibold px-2">{bestDealNotice}</p>
               )}
-              {voucherSuccess && (
-                <div className="text-xs text-secondary font-semibold px-2 space-y-0.5">
+              {appliedVoucher && promotionMatrixVoucherNotice ? (
+                <div className="text-xs text-secondary font-semibold px-2 space-y-0.5 animate-fade-in">
+                  <p className="flex items-center gap-1.5">
+                    <span>{promotionMatrixVoucherNotice}</span>
+                  </p>
+                  {appliedVoucher?.prereqPrice ? (
+                    <p className="text-[11px] text-gray-500 font-normal">
+                      {t("voucher_prereq_note", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })}
+                    </p>
+                  ) : null}
+                </div>
+              ) : appliedVoucher && isAutoVoucherApplied ? (
+                <div className="text-xs text-emerald-600 font-semibold px-2 space-y-0.5 animate-fade-in">
+                  <p className="flex items-center gap-1.5">
+                    <span>✓</span> <span>{t("auto_voucher_applied") || "Đã tự động áp dụng mã ưu đãi tốt nhất cho bạn"}</span>
+                  </p>
+                  {appliedVoucher?.prereqPrice ? (
+                    <p className="text-[11px] text-gray-500 font-normal">
+                      {t("voucher_prereq_note", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })}
+                    </p>
+                  ) : null}
+                </div>
+              ) : voucherSuccess ? (
+                <div className="text-xs text-emerald-600 font-semibold px-2 space-y-0.5 animate-fade-in">
                   <p className="flex items-center gap-1.5">
                     <span>✓</span> <span>{voucherSuccess}</span>
                   </p>
@@ -2317,7 +2528,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     </p>
                   ) : null}
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}
@@ -2328,6 +2539,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               freeshipReason={freeshipReason}
               vouchers={availableVouchers}
               appliedVoucher={appliedVoucher as any}
+              appliedCampaign={cartCampaignG1}
               onOpenVouchers={() => setIsVoucherModalOpen(true)}
             />
 
@@ -2340,17 +2552,61 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </span>
               </div>
 
-              {isBestDealVoucherApplied ? (
-                <p className="text-secondary font-medium text-xs">
-                  Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
-                </p>
-              ) : ( ((config?.active_promotions?.length ?? 0) > 0 || isFreeship) && (
-                <p className="text-secondary font-medium text-xs">
-                  {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
-                </p>
-              ))}
+              {/* Giảm giá chiến dịch đơn hàng (order_discount) */}
+              {autoOrderDiscountAmount > 0 && (
+                <div className="flex justify-between items-start gap-3 text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 animate-fade-in">
+                  <div className="flex-1 min-w-0 pr-1 leading-snug">
+                    <span>{eligibleOrderDiscountPromo?.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setOptOutOrderDiscount(true)}
+                      className="text-xs text-red-500 hover:text-red-700 hover:underline font-semibold cursor-pointer ml-1.5 whitespace-nowrap inline-block"
+                      title={t("remove_gift")}
+                    >
+                      [{t("remove_voucher")}]
+                    </button>
+                  </div>
+                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right leading-snug">
+                    -{formatPrice(autoOrderDiscountAmount)}
+                  </span>
+                </div>
+              )}
 
-              <div className="flex justify-between items-center text-sm font-medium">
+              {eligibleOrderDiscountPromo && optOutOrderDiscount && (
+                <div className="flex items-center justify-between py-1 text-xs text-gray-500 border-t border-gray-200/60 pt-2 animate-fade-in gap-2">
+                  <span className="flex-1 min-w-0 leading-snug truncate">Đã bỏ giảm KM ({eligibleOrderDiscountPromo.name})</span>
+                  <button
+                    type="button"
+                    onClick={() => setOptOutOrderDiscount(false)}
+                    className="text-primary hover:underline font-bold cursor-pointer shrink-0 whitespace-nowrap"
+                  >
+                    {t("reapply_voucher")}
+                  </button>
+                </div>
+              )}
+
+              {/* Chiết khấu thành viên (Member Tier Discount) */}
+              {user && memberDiscount > 0 && (
+                <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                  <span className="flex-1 min-w-0 leading-snug">
+                    {memberDiscountLabel}
+                  </span>
+                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                    -{formatPrice(memberDiscount)}
+                  </span>
+                </div>
+              )}
+
+              {appliedVoucher && voucherDiscount > 0 && (
+                <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2">
+                  <span className="flex-1 min-w-0 leading-snug">{t("voucher_label")}</span>
+                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                    -{formatPrice(voucherDiscount)}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-sm font-medium border-t border-gray-200/60 pt-2.5">
                 <span className="text-gray-600 flex items-center gap-1.5">
                   <span>{t("shipping_fee")}</span>
                   {calculatingShipping && (
@@ -2416,6 +2672,13 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </div>
               </div>
 
+              {/* Thông báo inline đỏ dưới dòng phí ship theo Promotion Matrix */}
+              {promotionMatrixShippingNotice && (
+                <p className="text-xs text-red-600 font-semibold px-1 pt-1 animate-fade-in">
+                  {promotionMatrixShippingNotice}
+                </p>
+              )}
+
               {/* Thẻ Cảnh báo Chưa hỗ trợ giao hàng */}
               {deliveryType === "delivery" && !isDeliverable && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs text-red-800 font-medium space-y-1.5 animate-fade-in">
@@ -2432,63 +2695,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </div>
               )}
 
-              {/* Giảm giá chiến dịch đơn hàng (order_discount) */}
-              {autoOrderDiscountAmount > 0 && (
-                <div className="flex justify-between items-start gap-3 text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 animate-fade-in">
-                  <div className="flex-1 min-w-0 pr-1 leading-snug">
-                    <span>{eligibleOrderDiscountPromo?.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setOptOutOrderDiscount(true)}
-                      className="text-xs text-red-500 hover:text-red-700 hover:underline font-semibold cursor-pointer ml-1.5 whitespace-nowrap inline-block"
-                      title={t("remove_gift")}
-                    >
-                      [{t("remove_voucher")}]
-                    </button>
-                  </div>
-                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right leading-snug">
-                    -{formatPrice(autoOrderDiscountAmount)}
-                  </span>
-                </div>
-              )}
-
-              {eligibleOrderDiscountPromo && optOutOrderDiscount && (
-                <div className="flex items-center justify-between py-1 text-xs text-gray-500 border-t border-gray-200/60 pt-2 animate-fade-in gap-2">
-                  <span className="flex-1 min-w-0 leading-snug truncate">Đã bỏ giảm KM ({eligibleOrderDiscountPromo.name})</span>
-                  <button
-                    type="button"
-                    onClick={() => setOptOutOrderDiscount(false)}
-                    className="text-primary hover:underline font-bold cursor-pointer shrink-0 whitespace-nowrap"
-                  >
-                    {t("reapply_voucher")}
-                  </button>
-                </div>
-              )}
-
-              {/* Chiết khấu thành viên (Member Tier Discount) */}
-              {user && memberDiscount > 0 && (
-                <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
-                  <span className="flex-1 min-w-0 leading-snug">
-                    {memberDiscountLabel}
-                  </span>
-                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
-                    -{formatPrice(memberDiscount)}
-                  </span>
-                </div>
-              )}
-
-              {appliedVoucher && voucherDiscount > 0 && (
-                <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2">
-                  <span className="flex-1 min-w-0 leading-snug">{t("voucher_label")}</span>
-                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
-                    -{formatPrice(voucherDiscount)}
-                  </span>
-                </div>
-              )}
-
               <div className="flex justify-between items-center border-t border-gray-200/80 pt-3 gap-2">
                 <span className="text-gray-900 font-bold text-sm 2xl:text-base flex-1 min-w-0">{t("total")}</span>
-                <span className="text-lg 2xl:text-xl font-display text-primary font-bold shrink-0 whitespace-nowrap text-right">
+                <span className="text-xl 2xl:text-2xl font-display text-secondary font-extrabold shrink-0 whitespace-nowrap text-right tracking-tight">
                   {formatPrice(total)}
                 </span>
               </div>
@@ -2537,11 +2746,18 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               </label>
             </div>
 
+            {/* Cảnh báo tạm hết hàng */}
+            {isCartCheckout && isOutOfStockOverall && (
+              <p className="text-red-500 text-xs text-center font-medium">
+                Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng
+              </p>
+            )}
+
             {/* Nút submit */}
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable)}
+              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || (isCartCheckout && isOutOfStockOverall)}
               className="w-full bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white font-bold rounded-full py-3.5 2xl:py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none"
             >
               {loading
@@ -2572,7 +2788,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
         appliedVoucherCode={appliedVoucher?.code || ""}
-        onApplyVoucher={(code) => handleApplyVoucher(code)}
+        onApplyVoucher={(code) => handleApplyVoucher(code, false)}
         onRemoveVoucher={handleRemoveVoucher}
         activePromotions={appliedCartPromotions}
         user={user}

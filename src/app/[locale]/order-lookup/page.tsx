@@ -186,6 +186,7 @@ export default function OrderLookupPage() {
       currentStatus === "pending" ||
       currentStatus === "pending_payment" ||
       currentStatus === "pending_sync" ||
+      currentStatus === "synced" ||
       currentSyncStatus === "pending";
 
     if (!shouldPoll) return;
@@ -615,45 +616,81 @@ export default function OrderLookupPage() {
             {order.status !== "cancelled" &&
               order.status !== "expired" &&
               order.status !== "cancel_requested" && (
-                <div className="p-6 border-b border-gray-100 bg-yellow/40 relative">
+                <div
+                  className={`p-6 border-b border-gray-100 relative ${
+                    order.can_cancel && secondsLeft > 0
+                      ? "bg-yellow/40"
+                      : !order.can_cancel
+                      ? "bg-gray-50/80"
+                      : "bg-yellow/20"
+                  }`}
+                >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      <div className="flex items-center gap-2 text-brown font-bold text-sm">
-                        <svg className="w-5 h-5 text-secondary animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {t("cancel_order")} (15m)
-                      </div>
-                      {secondsLeft > 0 && order.can_cancel ? (
-                        <p className="text-xs text-brown/80 mt-1">
-                          {t("cancel_modal_desc")}
-                        </p>
+                      {order.can_cancel && secondsLeft > 0 ? (
+                        <>
+                          <div className="flex items-center gap-2 text-brown font-bold text-sm">
+                            <svg className="w-5 h-5 text-secondary animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {t("cancel_order")} (15m)
+                          </div>
+                          <p className="text-xs text-brown/80 mt-1">
+                            {t("cancel_modal_desc")}
+                          </p>
+                        </>
+                      ) : !order.can_cancel ? (
+                        <>
+                          <div className="flex items-center gap-2 text-gray-800 font-bold text-sm">
+                            <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {t("order_confirmed_btn")}
+                          </div>
+                          <p className="text-xs text-gray-600 mt-1 font-medium">
+                            {t("cancel_order_confirmed")}
+                          </p>
+                        </>
                       ) : (
-                        <p className="text-xs text-rose-700 mt-1 font-semibold flex items-center gap-1">
-                          <svg className="w-3.5 h-3.5 shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                          </svg>
-                          {t("cancel_window_expired")}
-                        </p>
+                        <>
+                          <div className="flex items-center gap-2 text-brown font-bold text-sm">
+                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {t("cancel_order")} (15m)
+                          </div>
+                          <p className="text-xs text-rose-700 mt-1 font-semibold flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5 shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            {t("cancel_window_expired")}
+                          </p>
+                        </>
                       )}
                     </div>
 
                     <div className="flex items-center gap-4">
-                      {secondsLeft > 0 && order.can_cancel && (
-                        <div className="bg-white text-secondary font-mono font-bold text-lg px-4 py-2 rounded-xl border border-secondary/20 shadow-xs">
-                          {formatTimer(secondsLeft)}
-                        </div>
-                      )}
-
                       {order.can_cancel && secondsLeft > 0 ? (
+                        <>
+                          <div className="bg-white text-secondary font-mono font-bold text-lg px-4 py-2 rounded-xl border border-secondary/20 shadow-xs">
+                            {formatTimer(secondsLeft)}
+                          </div>
+                          <button
+                            onClick={() => {
+                              setModalError(null);
+                              setShowCancelModal(true);
+                            }}
+                            className="bg-secondary hover:bg-secondary/90 text-yellow text-sm font-bold py-2.5 px-5 rounded-xl transition-all shadow-md shadow-secondary/20 whitespace-nowrap cursor-pointer"
+                          >
+                            {isOnlinePaid ? t("cancel_request") : t("cancel_order")}
+                          </button>
+                        </>
+                      ) : !order.can_cancel ? (
                         <button
-                          onClick={() => {
-                            setModalError(null);
-                            setShowCancelModal(true);
-                          }}
-                          className="bg-secondary hover:bg-secondary/90 text-yellow text-sm font-bold py-2.5 px-5 rounded-xl transition-all shadow-md shadow-secondary/20 whitespace-nowrap cursor-pointer"
+                          disabled
+                          className="bg-gray-100 text-gray-400 border border-gray-200 text-sm font-medium py-2.5 px-5 rounded-xl cursor-not-allowed whitespace-nowrap"
                         >
-                          {isOnlinePaid ? t("cancel_request") : t("cancel_order")}
+                          {t("order_confirmed_btn")}
                         </button>
                       ) : (
                         <button

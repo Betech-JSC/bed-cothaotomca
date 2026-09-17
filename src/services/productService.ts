@@ -52,6 +52,7 @@ export interface Product {
   custom_name?: string;
   description: string;
   price: string;
+  original_price?: string | number | null;
   campaign_price?: string | number | null;
   active_campaign?: any;
   image: string | null;
@@ -77,6 +78,7 @@ export interface Product {
   images?: ProductImage[];
   sections?: ProductSection[];
   related_products?: Product[];
+  stock?: number;
   code?: string;
   unit?: string;
   seo_title?: string;
@@ -98,7 +100,7 @@ export interface ProductDetailView {
   code?: string;
   unit?: string;
   images: { url: string; alt: string }[];
-  sizes: { id?: number; code?: string; title: string; price: number; original_price?: number }[];
+  sizes: { id?: number; code?: string; title: string; price: number; original_price?: number; stock?: number; discount_percent?: number }[];
   infos: { title: string; content: string }[];
   category: { title: string; slug: string };
   checkout: {
@@ -223,8 +225,25 @@ export function mapProductToDetailView(
   }
 
   const variants = product.variants ?? [];
-  const mainBasePrice = unitPrice;
-  const mainCampPrice = product.campaign_price ? parseFloat(String(product.campaign_price)) : null;
+  const prodOrigPrice = product.original_price ? parseFloat(String(product.original_price)) : null;
+  const prodBasePrice = prodOrigPrice && prodOrigPrice > 0 ? prodOrigPrice : unitPrice;
+  let prodCampPrice = product.campaign_price ? parseFloat(String(product.campaign_price)) : null;
+  if (prodCampPrice === null && prodOrigPrice && unitPrice > 0 && unitPrice < prodOrigPrice) {
+    prodCampPrice = unitPrice;
+  }
+
+  if (!prodCampPrice && product.active_campaign) {
+    if (product.active_campaign.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0) {
+      prodCampPrice = Math.round(prodBasePrice * (1.0 - (Number(product.active_campaign.discount_value) / 100.0)));
+    } else if (product.active_campaign.discount_type === 'fixed' && Number(product.active_campaign.discount_value) > 0) {
+      prodCampPrice = Math.max(0, prodBasePrice - Number(product.active_campaign.discount_value));
+    } else if (product.active_campaign.campaign_price) {
+      prodCampPrice = Number(product.active_campaign.campaign_price);
+    }
+  }
+
+  const isProdCamp = prodCampPrice !== null && prodCampPrice < prodBasePrice;
+  const prodFinalPrice = isProdCamp ? prodCampPrice : unitPrice;
 
   const sizes =
     variants.length > 0
@@ -233,9 +252,21 @@ export function mapProductToDetailView(
             locale === "en"
               ? v.size_en || v.size || labels.standard
               : v.size || v.size_en || labels.standard;
-          const baseP = parseFloat(String(v.price)) || unitPrice;
+          const varOrigPrice = v.original_price ? parseFloat(String(v.original_price)) : null;
+          const vPriceNum = parseFloat(String(v.price)) || unitPrice;
+          const baseP = varOrigPrice && varOrigPrice > 0 ? varOrigPrice : vPriceNum;
+
           let campP = v.campaign_price ? parseFloat(String(v.campaign_price)) : null;
-          if (!campP && product.active_campaign) {
+          if (campP === null && varOrigPrice && vPriceNum > 0 && vPriceNum < varOrigPrice) {
+            campP = vPriceNum;
+          }
+
+          const canInherit = !v.campaign_price && (
+            Boolean(v.active_campaign) ||
+            variants.length === 1
+          );
+
+          if (!campP && canInherit && product.active_campaign) {
             if (product.active_campaign.discount_type === 'percent' && Number(product.active_campaign.discount_value) > 0) {
               campP = Math.round(baseP * (1.0 - (Number(product.active_campaign.discount_value) / 100.0)));
             } else if (product.active_campaign.discount_type === 'fixed' && Number(product.active_campaign.discount_value) > 0) {
@@ -244,21 +275,25 @@ export function mapProductToDetailView(
               campP = Number(product.active_campaign.campaign_price);
             }
           }
+
           const isCamp = campP !== null && campP < baseP;
+          const finalPrice = isCamp ? campP : vPriceNum;
+          const original_price = isCamp ? baseP : undefined;
+
           return {
             id: v.id,
             code: v.code,
             title: title || labels.standard,
-            price: isCamp ? campP : baseP,
-            original_price: isCamp ? baseP : undefined,
+            price: finalPrice,
+            original_price,
           };
         })
       : [{
           id: product.id,
           code: product.code,
           title: labels.standard,
-          price: mainCampPrice && mainCampPrice < mainBasePrice ? mainCampPrice : mainBasePrice,
-          original_price: mainCampPrice && mainCampPrice < mainBasePrice ? mainBasePrice : undefined,
+          price: prodFinalPrice,
+          original_price: isProdCamp ? prodBasePrice : undefined,
         }];
 
   const infos = (product.sections ?? []).map((section) => ({
@@ -359,7 +394,9 @@ export function mapProductToCardItem(
   }
 
   if (lowestEffectivePrice === Infinity) {
-    const basePrice = parseFloat(String(item.price || 0)) || 0;
+    const itemOrig = item.original_price ? parseFloat(String(item.original_price)) : null;
+    const unitPrice = parseFloat(String(item.price || 0)) || 0;
+    const basePrice = itemOrig || unitPrice;
     let campPrice = item.campaign_price ? parseFloat(String(item.campaign_price)) : null;
     if (!campPrice && item.active_campaign && basePrice > 0) {
       if (item.active_campaign.discount_type === 'percent' && Number(item.active_campaign.discount_value) > 0) {
@@ -370,8 +407,8 @@ export function mapProductToCardItem(
         campPrice = Number(item.active_campaign.campaign_price);
       }
     }
-    const isCamp = campPrice !== null && campPrice > 0 && campPrice < basePrice;
-    lowestEffectivePrice = isCamp ? campPrice : basePrice;
+    const isCamp = (campPrice !== null && campPrice > 0 && campPrice < basePrice) || (itemOrig !== null && itemOrig > unitPrice);
+    lowestEffectivePrice = campPrice !== null && campPrice > 0 && campPrice < basePrice ? campPrice : unitPrice;
     matchingOriginalPrice = isCamp ? basePrice : undefined;
 
     const fallbackCamp = item.active_campaign;
@@ -379,7 +416,7 @@ export function mapProductToCardItem(
       ? Math.round(Number(fallbackCamp.discount_value))
       : (fallbackCamp?.discount_percent ? Math.round(Number(fallbackCamp.discount_percent)) : 0);
 
-    matchingDiscountPercent = isCamp ? (fallbackPercent || Math.round(((basePrice - campPrice!) / basePrice) * 100)) : 0;
+    matchingDiscountPercent = isCamp ? (fallbackPercent || Math.round(((basePrice - lowestEffectivePrice) / basePrice) * 100)) : 0;
   }
 
   const hasDiscount = Boolean(matchingOriginalPrice && matchingOriginalPrice > lowestEffectivePrice);

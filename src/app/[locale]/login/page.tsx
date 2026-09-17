@@ -1,6 +1,7 @@
 import SignInContainer from "@/components/Auth/SignInContainer";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
 
 export async function generateMetadata({
   params,
@@ -19,7 +20,15 @@ export async function generateMetadata({
 export default async function LoginPage() {
   return (
     <main>
-      <SignInContainer />
+      <Suspense
+        fallback={
+          <div className="w-full min-h-[90vh] bg-yellow flex items-center justify-center">
+            <div className="animate-pulse text-primary font-bold text-lg font-serif">Đang tải...</div>
+          </div>
+        }
+      >
+        <SignInContainer />
+      </Suspense>
     </main>
   );
 }

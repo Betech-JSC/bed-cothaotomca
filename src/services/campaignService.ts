@@ -3,7 +3,7 @@ const API_BASE = (
 ).replace(/\/$/, "");
 
 export interface PublicCampaignItem {
-  id: number;
+  id: number | string;
   name: string;
   code?: string;
   special_note?: string;

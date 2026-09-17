@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import React from 'react';
-import CouponModal from '@/components/Voucher/CouponModal';
+import CouponModal, { resetCouponModalCache } from '@/components/Voucher/CouponModal';
 import {
   PublicVoucherItem,
   calculateVoucherDiscount,
@@ -67,12 +67,14 @@ vi.mock('@/services/orderService', async () => {
   return {
     ...actual,
     getAvailableVouchers: vi.fn().mockImplementation(() => Promise.resolve(mockVouchersList)),
+    getShippingSettings: vi.fn().mockResolvedValue(null),
   };
 });
 
 describe('Checkout Freeship Guard & Anti-waste Tests (Tasks 3.1, 3.2, 3.3)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetCouponModalCache();
     mockCurrentUser = null;
     mockVouchersList = [];
   });

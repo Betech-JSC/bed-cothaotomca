@@ -49,9 +49,10 @@ export interface StorefrontUser {
   last_name: string;
   email: string | null;
   phone: string | null;
+  status?: string;
   points: number;
   dob: string | null;
-  gender: boolean | null;
+  gender: string | boolean | null;
   kiotviet_customer_id: number | null;
   photo_url?: string | null;
   tier?: string;
@@ -63,23 +64,32 @@ interface AuthContextType {
   user: StorefrontUser | null;
   token: string | null;
   loading: boolean;
-  login: (phone: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (phone: string, password: string) => Promise<{ success: boolean; message?: string; error_code?: string; data?: any }>;
   loginWithGoogle: (credential: string) => Promise<{ success: boolean; message?: string }>;
+  loginWithToken: (token: string, user: StorefrontUser) => void;
+  setAuthSession: (token: string, user: StorefrontUser) => void;
   register: (data: {
     name: string;
     phone: string;
     password: string;
     email?: string;
     dob?: string;
-    gender?: boolean | null;
-  }) => Promise<{ success: boolean; message?: string }>;
+    gender?: string | boolean | null;
+  }) => Promise<{
+    success: boolean;
+    message?: string;
+    requires_activation?: boolean;
+    errors?: Record<string, string[]>;
+    suggestions?: any;
+    data?: any;
+  }>;
   logout: () => void;
   updateProfile: (data: {
     name: string;
     email?: string;
     phone?: string;
     dob?: string;
-    gender?: boolean | null;
+    gender?: string | boolean | null;
   }) => Promise<{ success: boolean; message?: string }>;
   refreshUser: () => Promise<void>;
 }
@@ -128,24 +138,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
   }, []);
 
+  const setAuthSession = useCallback((newToken: string, newUser: StorefrontUser) => {
+    localStorage.setItem("auth_token", newToken);
+    setToken(newToken);
+    setUser(newUser);
+  }, []);
+
+  const loginWithToken = setAuthSession;
+
   const login = async (phone: string, password: string) => {
     try {
-      const res = await postApi<any>("auth/login", { phone, password });
-      if (res?.data?.token) {
-        const userToken = res.data.token;
-        const userProfile = res.data.user;
-        
+      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
+      const res = await fetch(`${BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ phone, password }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && (body?.data?.token || body?.token)) {
+        const userToken = body.data?.token || body.token;
+        const userProfile = body.data?.user || body.user;
+
         localStorage.setItem("auth_token", userToken);
         setToken(userToken);
         setUser(userProfile);
-        
+
         return { success: true };
       }
-      console.error("Login failed: Unexpected response structure", res);
-      return { success: false, message: "Đăng nhập thất bại. Định dạng dữ liệu không khớp." };
+
+      return {
+        success: false,
+        message: body.message || "Số điện thoại hoặc mật khẩu không chính xác.",
+        error_code: body.error_code,
+        data: body.data,
+      };
     } catch (e: any) {
       console.error("Login API Error:", e);
-      return { success: false, message: e.message || "Số điện thoại hoặc mật khẩu không chính xác." };
+      return { success: false, message: e.message || "Lỗi mạng. Vui lòng thử lại sau." };
     }
   };
 
@@ -172,19 +205,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: any) => {
     try {
-      const res = await postApi<any>("auth/register", data);
-      if (res?.data?.token) {
-        const userToken = res.data.token;
-        const userProfile = res.data.user;
+      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
+      const res = await fetch(`${BASE_URL}/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(data),
+      });
 
-        localStorage.setItem("auth_token", userToken);
-        setToken(userToken);
-        setUser(userProfile);
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        if (body?.data?.token || body?.token) {
+          const userToken = body.data?.token || body.token;
+          const userProfile = body.data?.user || body.user;
 
-        return { success: true };
+          localStorage.setItem("auth_token", userToken);
+          setToken(userToken);
+          setUser(userProfile);
+        }
+
+        return {
+          success: true,
+          message: body.message,
+          requires_activation: Boolean(body?.data?.requires_activation || body?.requires_activation),
+          data: body.data,
+        };
       }
-      console.error("Register failed: Unexpected response structure", res);
-      return { success: false, message: "Đăng ký thất bại. Vui lòng kiểm tra lại thông tin." };
+
+      let errorMsg = body.message || "Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.";
+      if (body.errors) {
+        errorMsg = Object.values(body.errors).flat().join("\n");
+      }
+      return {
+        success: false,
+        message: errorMsg,
+        errors: body.errors,
+        suggestions: body.suggestions || body.suggestion,
+        data: body,
+      };
     } catch (e: any) {
       console.error("Register API Error:", e);
       return { success: false, message: e.message || "Đăng ký thất bại. Số điện thoại đã tồn tại hoặc dữ liệu không hợp lệ." };
@@ -255,7 +315,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, register, logout, updateProfile, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, loginWithToken, setAuthSession, register, logout, updateProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

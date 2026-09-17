@@ -71,18 +71,24 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
             </div>
             <div className="flex-1 w-full">
               <div className="flex items-center flex-wrap md:gap-4 gap-3 xl:gap-3">
-                {productData.sizes.map((size, index) => (
-                  <div
-                    key={index}
-                    onClick={() => setSelectedSizeIndex(index)}
-                    className={`w-max px-3 min-w-[48px] min-h[48px] flex items-center justify-center button-1 size-12 rounded-full duration-300 ease-in-out cursor-pointer ${selectedSizeIndex === index
-                      ? "bg-primary text-yellow"
-                      : "bg-white text-gray-900 lg:hover:bg-primary lg:hover:text-yellow"
+                {productData.sizes.map((size, index) => {
+                  const isOutOfStockSize = !size.code || !size.code.trim();
+                  return (
+                    <div
+                      key={index}
+                      onClick={() => setSelectedSizeIndex(index)}
+                      className={`w-max px-3 min-w-[48px] min-h[48px] flex items-center justify-center button-1 size-12 rounded-full duration-300 ease-in-out cursor-pointer ${
+                        isOutOfStockSize ? "opacity-50 cursor-not-allowed line-through " : ""
+                      }${
+                        selectedSizeIndex === index
+                          ? "bg-primary text-yellow"
+                          : "bg-white text-gray-900 lg:hover:bg-primary lg:hover:text-yellow"
                       }`}
-                  >
-                    <span>{size.title}</span>
-                  </div>
-                ))}
+                    >
+                      <span>{size.title}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -132,49 +138,46 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          {(() => {
-            const hasCode = Boolean(selectedSize?.code);
-            return (
+        {(() => {
+          const isSelectedOutOfStock = !selectedSize?.code || !selectedSize.code.trim();
+          return (
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                disabled={!hasCode}
+                disabled={isSelectedOutOfStock}
                 onClick={handleAddToCart}
-                className={`btn flex items-center justify-center gap-2 ${hasCode
-                  ? "btn-primary"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
-                  }`}
+                className={`btn flex items-center justify-center gap-2 ${
+                  !isSelectedOutOfStock
+                    ? "btn-primary"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
+                }`}
               >
                 <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <span>{hasCode ? t("button.add_to_cart") : t("product.out_of_stock")}</span>
+                <span>{isSelectedOutOfStock ? (t("product.out_of_stock") || "Tạm hết hàng") : t("button.add_to_cart")}</span>
               </button>
-            );
-          })()}
 
-          {(() => {
-            const hasCode = Boolean(selectedSize?.code);
-            return (
               <button
                 type="button"
-                disabled={!hasCode}
+                disabled={isSelectedOutOfStock}
                 onClick={() => {
-                  if (hasCode) {
+                  if (!isSelectedOutOfStock) {
                     handleAddToCart();
                     window.location.href = "/checkout";
                   }
                 }}
-                className={`btn flex items-center justify-center gap-2 ${hasCode
-                  ? "btn-secondary font-bold"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
-                  }`}
+                className={`btn flex items-center justify-center gap-2 ${
+                  !isSelectedOutOfStock
+                    ? "btn-secondary font-bold"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
+                }`}
               >
                 <span>{t("button.buy-now")}</span>
               </button>
-            );
-          })()}
-        </div>
+            </div>
+          );
+        })()}
 
         {isAdded && (
           <div className="text-secondary font-semibold text-sm flex items-center gap-1.5 animate-fade-in py-1">

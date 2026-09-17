@@ -505,6 +505,8 @@ export async function calculateShippingFee(params: {
   subtotal: number;
   voucher_code?: string;
   can_combine_with_freeship?: boolean;
+  campaign_id?: number;
+  campaign_can_combine_with_freeship?: boolean;
 }): Promise<ShippingCalculationResult> {
   try {
     const res = await fetch(`${API_BASE}/shipping/calculate`, {
@@ -546,6 +548,10 @@ export interface ShippingSettings {
   is_voucher_enabled: boolean;
   default_shipping_fee: number;
   unconfigured_area_action: string;
+  card_title?: string | null;
+  card_badge?: string | null;
+  card_description?: string | null;
+  card_banner?: string | null;
 }
 
 export async function getShippingSettings(): Promise<ShippingSettings | null> {
