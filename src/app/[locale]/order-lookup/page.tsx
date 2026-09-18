@@ -69,7 +69,7 @@ export default function OrderLookupPage() {
   const searchParams = useSearchParams();
   const [orderCode, setOrderCode] = useState(searchParams.get("order") || searchParams.get("code") || "");
   const [phone, setPhone] = useState(searchParams.get("phone") || "");
-  const [hotline, setHotline] = useState("0987 654 321");
+  const [hotline, setHotline] = useState("024.9999.7122");
 
   useEffect(() => {
     getGeneralSettings()
@@ -290,91 +290,65 @@ export default function OrderLookupPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const renderStatusBadge = (status: string, paymentMethod?: string, paymentStatus?: string) => {
+  const renderStatusBadge = (status: string, paymentMethod?: string, paymentStatus?: string, deliveryType?: string) => {
+    const isPickup = (deliveryType || "").toLowerCase() === "pickup";
     switch (status) {
       case "pending_payment":
-        return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-yellow/30 text-yellow border border-yellow/40 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-yellow animate-pulse"></span>
-            {t("status.pending_payment")}
-          </span>
-        );
       case "pending_sync":
       case "pending":
+      case "synced":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-primary/40 text-yellow border border-yellow/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-yellow"></span>
-            {t("status.pending_sync")}
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-secondary/15 text-secondary border border-secondary/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+            {t("status.pending")}
           </span>
         );
       case "processing":
-        return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-secondary text-white shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-            {t("status.processing")}
-          </span>
-        );
       case "shipping":
       case "delivering":
+      case "confirmed":
+      case "paid":
         return (
           <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-secondary text-white shadow-xs flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-            {t("status.shipping")}
+            {isPickup ? t("status.preparing") : t("status.shipping")}
           </span>
         );
-      case "confirmed":
-      case "synced":
-      case "paid":
       case "completed":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-primary text-white shadow-xs flex items-center gap-1.5 border border-white/20">
-            <span className="w-2 h-2 rounded-full bg-yellow"></span>
-            {paymentMethod === "COD" && paymentStatus !== "paid" ? t("status.confirmed") : t("status.paid")}
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-emerald-600 text-white shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-white"></span>
+            {t("status.completed")}
           </span>
         );
       case "error":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-secondary text-white shadow-xs flex items-center gap-1.5">
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-rose-600 text-white shadow-xs flex items-center gap-1.5">
             <span>{t("status.error") || "Lỗi đơn hàng"}</span>
           </span>
         );
       case "cancel_requested":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-yellow/20 text-yellow border border-yellow/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-yellow"></span>
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-yellow/30 text-brown border border-secondary/30 backdrop-blur-sm shadow-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-secondary"></span>
             {t("status.cancel_requested")}
           </span>
         );
       case "cancelled":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-red-900/40 text-red-200 border border-red-500/30 backdrop-blur-sm shadow-xs">
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-100 text-gray-600 border border-gray-300 backdrop-blur-sm shadow-xs">
             {t("status.cancelled")}
           </span>
         );
-      case "expired": {
-        const isPaid = paymentStatus === "paid" || paymentStatus === "success";
-        if (isPaid) {
-          return (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-500/20 text-gray-300 border border-gray-400/30 backdrop-blur-sm shadow-xs">
-                {t("status.expired")}
-              </span>
-              <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-primary text-white shadow-xs flex items-center gap-1.5 border border-white/20">
-                <span className="w-2 h-2 rounded-full bg-yellow"></span>
-                {t("status.paid")}
-              </span>
-            </div>
-          );
-        }
+      case "expired":
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-500/20 text-gray-300 border border-gray-400/30 backdrop-blur-sm shadow-xs">
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-100 text-gray-500 border border-gray-300 backdrop-blur-sm shadow-xs">
             {t("status.expired")}
           </span>
         );
-      }
       default:
         return (
-          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-white/10 text-white border border-white/20 backdrop-blur-sm">
+          <span className="px-3.5 py-1.5 text-xs font-bold rounded-full bg-secondary/15 text-secondary border border-secondary/30 backdrop-blur-sm">
             {status}
           </span>
         );
@@ -498,7 +472,7 @@ export default function OrderLookupPage() {
                         {item.order_code}
                       </span>
                       <div className="sm:hidden">
-                        {renderStatusBadge(item.status, item.payment?.method, item.payment_status)}
+                        {renderStatusBadge(item.status, item.payment?.method, item.payment_status, item.delivery_type)}
                       </div>
                     </div>
                     <div className="text-xs text-gray-500">
@@ -517,7 +491,7 @@ export default function OrderLookupPage() {
 
                   <div className="flex items-center gap-3 justify-between sm:justify-end">
                     <div className="hidden sm:block">
-                      {renderStatusBadge(item.status, item.payment?.method, item.payment_status)}
+                      {renderStatusBadge(item.status, item.payment?.method, item.payment_status, item.delivery_type)}
                     </div>
                     <button
                       type="button"
@@ -566,7 +540,7 @@ export default function OrderLookupPage() {
                 </div>
               </div>
               <div className="relative z-10 flex flex-col items-start sm:items-end gap-2.5">
-                <div>{renderStatusBadge(order.status, order.payment?.method, order.payment_status)}</div>
+                <div>{renderStatusBadge(order.status, order.payment?.method, order.payment_status, order.delivery_type)}</div>
                 <div className="text-xs text-yellow/90 flex items-center gap-1.5">
                   <span>{t("payment_method")}:</span>
                   <span className="font-bold text-yellow px-2.5 py-0.5 rounded bg-white/10 backdrop-blur-xs border border-white/15">
@@ -575,6 +549,15 @@ export default function OrderLookupPage() {
                 </div>
               </div>
             </div>
+
+            {/* Khung cảnh báo cố định trên trang Tra cứu (Đặt ngay dưới mã đơn theo tài liệu vận hành) */}
+            {order.status !== "cancelled" && order.status !== "expired" && (
+              <div className="px-6 sm:px-8 py-3.5 bg-yellow/60 border-b border-secondary/20 text-center">
+                <p className="text-brown text-xs sm:text-sm md:text-base leading-relaxed font-medium">
+                  {t("notice_message")}
+                </p>
+              </div>
+            )}
 
             {/* Order Progress Stepper or Expired CSKH Notice */}
             {order.status === "expired" ? (
@@ -787,15 +770,6 @@ export default function OrderLookupPage() {
                     <span className="text-secondary font-display text-xl font-extrabold">{formatMoney(order.total)}</span>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Confirmation Notice Box inside Order Card */}
-            <div className="px-6 sm:px-8 py-4 border-b border-gray-100 bg-secondary/5">
-              <div className="bg-yellow/60 border border-secondary/30 rounded-2xl p-4 md:p-5 text-center shadow-xs">
-                <p className="text-brown text-sm md:text-base leading-relaxed font-medium">
-                  {t("notice_message")}
-                </p>
               </div>
             </div>
 

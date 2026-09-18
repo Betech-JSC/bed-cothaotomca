@@ -3,6 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
+import { Link } from "@/i18n/i18n-navigation";
+import { useCart } from "@/contexts/CartContext";
 import { StorefrontUser } from "@/contexts/AuthContext";
 import {
   changePasswordApi,
@@ -52,15 +54,21 @@ interface OrderItem {
     total_payment: string;
   } | null;
   items?: {
+    product_id?: number;
+    product_code?: string;
     product_name: string;
     quantity: number;
     price: string;
+    discount?: string;
     note: string | null;
+    image?: string | null;
+    variant_size?: string | null;
   }[];
 }
 
 const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: ProfileDashboardProps) => {
   const t = useTranslations("profile");
+  const { addToCart, setIsCartOpen } = useCart();
   const [activeTab, setActiveTab] = useState<"orders" | "info" | "password" | "addresses">("orders");
 
   // Personal Info Form State
@@ -463,11 +471,92 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
   const tier = getTierInfo(user.points);
 
-  const mapStatus = (status: string): string => {
-    if (status === "synced" || status === "completed" || status === "paid") return "completed";
-    if (status === "shipping" || status === "delivering") return "shipping";
-    if (status === "cancelled" || status === "cancel_requested") return "cancelled";
-    return "processing";
+  const renderOrderStatusBadge = (order: OrderItem) => {
+    const isPickup = (order.delivery_type || "").toLowerCase() === "pickup";
+    const status = (order.status || "").toLowerCase();
+
+    switch (status) {
+      case "pending":
+      case "pending_payment":
+      case "pending_sync":
+      case "synced":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/15 text-secondary border border-secondary/30 text-[0.8125rem] font-bold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+            {t("status_pending_confirmation") || "Chờ xác nhận"}
+          </span>
+        );
+      case "confirmed":
+      case "processing":
+      case "shipping":
+      case "delivering":
+      case "paid":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary text-white text-[0.8125rem] font-bold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            {isPickup
+              ? (t("status_preparing") || "Đang chuẩn bị")
+              : (t("status_delivering") || "Đang giao hàng")}
+          </span>
+        );
+      case "completed":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white text-[0.8125rem] font-bold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-white" />
+            {t("status_completed") || "Hoàn thành"}
+          </span>
+        );
+      case "cancelled":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-300 text-[0.8125rem] font-bold shadow-xs">
+            {t("status_cancelled") || "Đã hủy"}
+          </span>
+        );
+      case "expired":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-300 text-[0.8125rem] font-bold shadow-xs">
+            {t("status_expired") || "Hết hạn"}
+          </span>
+        );
+      case "cancel_requested":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow/30 text-brown border border-secondary/30 text-[0.8125rem] font-bold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-secondary" />
+            {t("status_cancel_requested") || "Yêu cầu hủy"}
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/15 text-secondary border border-secondary/30 text-[0.8125rem] font-bold shadow-xs">
+            {status}
+          </span>
+        );
+    }
+  };
+
+  const handleReorder = (order: OrderItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!order.items || order.items.length === 0) return;
+
+    order.items.forEach((it) => {
+      const variantStr = it.variant_size ? `Size ${it.variant_size}` : "Tiêu chuẩn";
+      const itemPayload = {
+        id: `${it.product_id || it.product_code || it.product_name}-${it.variant_size || "std"}`,
+        productId: it.product_id ? Number(it.product_id) : 1,
+        productCode: it.product_code || "",
+        slug: "",
+        categorySlug: "",
+        title: it.product_name,
+        imageUrl: it.image || "/images/placeholder.png",
+        variant: variantStr,
+        unitPrice: parseFloat(String(it.price)) || 0,
+        originalPrice: parseFloat(String(it.price)) || 0,
+        note: it.note || "",
+      };
+      addToCart(itemPayload, it.quantity || 1);
+    });
+
+    setIsCartOpen(true);
   };
 
   const formatDate = (dateStr: string) => {
@@ -661,20 +750,19 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 </div>
               ) : (
                 orders.map((order, idx) => {
-                  const mappedStatus = mapStatus(order.status);
-                  const isCompleted = mappedStatus === "completed";
-                  const isShipping = mappedStatus === "shipping";
+                  const isExpanded = expandedOrderCode === order.order_code;
+                  const statusLower = (order.status || "").toLowerCase();
+                  const isCompleted = statusLower === "completed";
                   const formattedCode = order.order_code.startsWith("#") ? order.order_code : `#${order.order_code}`;
 
                   return (
                     <div
                       key={idx}
-                      className={`border rounded-[1rem] p-5 md:p-6 flex flex-col gap-4 transition-all cursor-pointer hover:shadow-md ${
+                      className={`border rounded-[1rem] p-5 md:p-6 flex flex-col gap-4 transition-all duration-200 ${
                         isCompleted
                           ? "bg-gray-50 border-gray-100 hover:border-gray-200"
                           : "bg-yellow/20 border-yellow/60 hover:border-secondary/40"
                       }`}
-                      onClick={() => setExpandedOrderCode(expandedOrderCode === order.order_code ? null : order.order_code)}
                     >
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
                         <div className="flex flex-wrap items-center gap-y-3">
@@ -700,28 +788,16 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                           <div className="hidden sm:block h-10 w-px bg-gray-200/90 self-center mx-2 md:mx-4" />
 
-                          <div className="pl-2 md:pl-4">
+                          <div className="pl-2 md:px-4">
                             <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1">
                               {t("status") || "Trạng thái"}
                             </span>
-                            {isShipping ? (
-                              <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-secondary text-white text-[0.875rem] font-medium shadow-sm">
-                                Đang giao
-                              </span>
-                            ) : isCompleted ? (
-                              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#3BB77E] text-white text-[0.875rem] font-medium">
-                                Hoàn thành
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-yellow text-primary border border-secondary/20 text-[0.875rem] font-semibold">
-                                Đang chuẩn bị
-                              </span>
-                            )}
+                            <div>{renderOrderStatusBadge(order)}</div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4 self-end md:self-center">
-                          <div className="text-right">
+                        <div className="flex items-center gap-3 self-end md:self-center flex-wrap">
+                          <div className="text-right mr-1">
                             <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1">
                               Tổng cộng
                             </span>
@@ -729,8 +805,195 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                               {formatPrice(order.total)}
                             </span>
                           </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedOrderCode(isExpanded ? null : order.order_code)}
+                              className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-secondary/40 hover:bg-amber-50/50 text-xs font-bold text-gray-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                            >
+                              <span>{isExpanded ? (t("hide_details") || "Thu gọn") : (t("view_details") || "Xem chi tiết")}</span>
+                              <svg
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleReorder(order, e)}
+                              className="px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/90 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                              </svg>
+                              <span>{t("reorder") || "Mua lại"}</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Expandable Order Details */}
+                      {isExpanded && (
+                        <div className="border-t border-gray-200/80 pt-4 mt-2 flex flex-col gap-4">
+                          {/* Items Section */}
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                              Danh sách món đã đặt ({order.items?.length || 0})
+                            </h4>
+                            <div className="bg-white/90 rounded-xl border border-gray-100 divide-y divide-gray-100 overflow-hidden">
+                              {order.items && order.items.length > 0 ? (
+                                order.items.map((item, itemIdx) => (
+                                  <div key={itemIdx} className="p-3 sm:p-4 flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                                        {item.image ? (
+                                          <img
+                                            src={item.image}
+                                            alt={item.product_name}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-bold text-gray-900 truncate">
+                                          {item.product_name}
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-gray-500">
+                                          {item.variant_size && (
+                                            <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 font-medium">
+                                              Size: {item.variant_size}
+                                            </span>
+                                          )}
+                                          <span>
+                                            Số lượng: <strong className="text-gray-900">{item.quantity}</strong>
+                                          </span>
+                                          <span>x {formatPrice(item.price)}</span>
+                                        </div>
+                                        {item.note && (
+                                          <p className="text-xs text-amber-700 bg-amber-50/70 px-2 py-0.5 rounded mt-1 inline-block">
+                                            Ghi chú: {item.note}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      <span className="text-sm font-bold text-gray-900 font-mono">
+                                        {formatPrice(String(parseFloat(item.price || "0") * item.quantity))}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="p-4 text-center text-sm text-gray-400">
+                                  Không có dữ liệu chi tiết món ăn.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Delivery & Payment Summary */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Delivery Info */}
+                            <div className="bg-white/90 rounded-xl border border-gray-100 p-4 space-y-2">
+                              <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <svg className="w-4 h-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Thông tin giao nhận
+                              </h5>
+                              <div className="text-xs text-gray-700 space-y-1">
+                                <p>
+                                  <span className="text-gray-400">Người nhận:</span>{" "}
+                                  <strong>{order.delivery?.receiver || user.name}</strong>
+                                  {(order.delivery?.contact_number || user.phone) && (
+                                    <span className="text-gray-500"> - {order.delivery?.contact_number || user.phone}</span>
+                                  )}
+                                </p>
+                                <p>
+                                  <span className="text-gray-400">Hình thức:</span>{" "}
+                                  <span className="font-semibold text-primary">
+                                    {order.delivery_type === "pickup" ? "Tự đến lấy tại chi nhánh" : "Giao hàng tận nơi"}
+                                  </span>
+                                </p>
+                                <p>
+                                  <span className="text-gray-400">Địa chỉ:</span>{" "}
+                                  <span>{order.delivery?.address || "Nhận tại cửa hàng"}</span>
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Payment Summary */}
+                            <div className="bg-white/90 rounded-xl border border-gray-100 p-4 space-y-2">
+                              <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <svg className="w-4 h-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Chi tiết thanh toán
+                              </h5>
+                              <div className="text-xs text-gray-700 space-y-1.5">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Tạm tính:</span>
+                                  <span className="font-medium">{formatPrice(order.subtotal || order.total)}</span>
+                                </div>
+                                {parseFloat(order.discount || "0") > 0 && (
+                                  <div className="flex justify-between text-emerald-600">
+                                    <span>Giảm giá / Ưu đãi:</span>
+                                    <span className="font-medium">- {formatPrice(order.discount || "0")}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Phí giao hàng:</span>
+                                  <span className="font-medium">
+                                    {parseFloat(order.delivery?.price || "0") > 0
+                                      ? formatPrice(order.delivery?.price || "0")
+                                      : "Miễn phí"}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between border-t border-gray-100 pt-1.5 text-sm">
+                                  <span className="font-bold text-gray-900">Tổng thanh toán:</span>
+                                  <span className="font-bold text-secondary font-mono">{formatPrice(order.total)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Bottom Actions within expanded card */}
+                          <div className="pt-2 border-t border-gray-200/50 flex items-center justify-between flex-wrap gap-2 text-xs">
+                            <Link
+                              href={`/order-lookup?order=${order.order_code}&phone=${order.delivery?.contact_number || user.phone || ""}`}
+                              className="text-secondary hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>Theo dõi tiến trình & tra cứu chi tiết</span>
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </Link>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleReorder(order, e)}
+                              className="text-secondary hover:text-secondary/80 font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                              </svg>
+                              <span>{t("reorder") || "Mua lại đơn này"}</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })
