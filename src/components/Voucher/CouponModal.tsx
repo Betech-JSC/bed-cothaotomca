@@ -25,7 +25,9 @@ export interface CouponModalProps {
   isAutoFreeship?: boolean;
   canCombineWithFreeship?: boolean;
   appliedVoucherCode?: string;
+  appliedVoucherCodes?: string[];
   onApplyVoucher?: (code: string) => Promise<boolean | void> | void;
+  onApplyVouchers?: (codes: string[]) => Promise<boolean | void> | void;
   onRemoveVoucher?: () => void;
   isBrowseOnly?: boolean;
   activePromotions?: ActivePromotion[];
@@ -65,6 +67,20 @@ function formatCampaignDuration(startAt?: string | null, endAt?: string | null):
   return `Đến hết ngày ${formatDate(endAt!).full}`;
 }
 
+export function isShipVoucher(v: { code: string; discount_type?: string; is_freeship?: boolean }): boolean {
+  return Boolean(
+    v.is_freeship ||
+    v.discount_type === "freeship" ||
+    v.code.toUpperCase().includes("FREESHIP") ||
+    v.code.toUpperCase().includes("PHISHIP") ||
+    /^SHIP(\d+|K)?$/i.test(v.code)
+  );
+}
+
+export function isFoodVoucher(v: { code: string; discount_type?: string; is_freeship?: boolean }): boolean {
+  return !isShipVoucher(v);
+}
+
 export default function CouponModal({
   isOpen,
   onClose,
@@ -75,7 +91,9 @@ export default function CouponModal({
   isAutoFreeship,
   canCombineWithFreeship,
   appliedVoucherCode = "",
+  appliedVoucherCodes,
   onApplyVoucher,
+  onApplyVouchers,
   onRemoveVoucher,
   isBrowseOnly = false,
   activePromotions,
@@ -102,10 +120,11 @@ export default function CouponModal({
     : Boolean(isFreeship && shippingFee === 0);
 
   const [activeTab, setActiveTab] = useState<"campaigns" | "vouchers">(
-    !isBrowseOnly || onApplyVoucher ? "vouchers" : "campaigns"
+    !isBrowseOnly || onApplyVoucher || onApplyVouchers ? "vouchers" : "campaigns"
   );
   const [campaigns, setCampaigns] = useState<PublicCampaignItem[]>(cachedCampaigns || []);
   const [vouchers, setVouchers] = useState<PublicVoucherItem[]>(cachedVouchers || []);
+  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [shippingSettingsState, setShippingSettingsState] = useState<ShippingSettings | null>(shippingSettings || null);
   const [selectedCampaign, setSelectedCampaign] = useState<PublicCampaignItem | null>(null);
   const [loading, setLoading] = useState(false);
@@ -117,9 +136,10 @@ export default function CouponModal({
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
   const appliedVoucherItem = useMemo(() => {
-    if (!appliedVoucherCode) return null;
-    return vouchers.find((v) => v.code.toUpperCase() === appliedVoucherCode.toUpperCase()) || null;
-  }, [appliedVoucherCode, vouchers]);
+    const primaryCode = selectedCodes[0] || appliedVoucherCode;
+    if (!primaryCode) return null;
+    return vouchers.find((v) => v.code.toUpperCase() === primaryCode.toUpperCase()) || null;
+  }, [selectedCodes, appliedVoucherCode, vouchers]);
 
   useEffect(() => {
     if (isOpen) {
@@ -127,6 +147,12 @@ export default function CouponModal({
       setFeedbackNotice(null);
       setFeedbackSuccess(null);
       setSelectedCampaign(null);
+      const initialCodes = (appliedVoucherCodes && appliedVoucherCodes.length > 0)
+        ? appliedVoucherCodes
+        : appliedVoucherCode
+          ? [appliedVoucherCode]
+          : [];
+      setSelectedCodes(initialCodes);
 
       // If we don't have cached data yet, show smooth loading
       if (!cachedCampaigns || !cachedVouchers) {
@@ -161,7 +187,7 @@ export default function CouponModal({
         setLoading(false);
       });
     }
-  }, [isOpen, isBrowseOnly, onApplyVoucher, shippingSettings]);
+  }, [isOpen, isBrowseOnly, onApplyVoucher, shippingSettings, appliedVoucherCode, appliedVoucherCodes]);
 
   // Virtual campaign item for shipping discount card (FB-04)
   const shippingPromotionItem: PublicCampaignItem | null = useMemo(() => {
@@ -318,7 +344,63 @@ export default function CouponModal({
     return vouchers.filter((v) => !checkVoucherEligibility(v).eligible);
   }, [vouchers, checkVoucherEligibility]);
 
-  if (!isOpen) return null;
+  const selectedVoucherItems = useMemo(() => {
+    return vouchers.filter((v) => selectedCodes.some((code) => code.toUpperCase() === v.code.toUpperCase()));
+  }, [vouchers, selectedCodes]);
+
+  const checkRealtimeLock = useCallback(
+    (v: PublicVoucherItem): { locked: boolean; reason?: string } => {
+      const isSelected = selectedCodes.some((c) => c.toUpperCase() === v.code.toUpperCase());
+      if (isSelected) {
+        return { locked: false };
+      }
+
+      const isShip = isShipVoucher(v);
+      const isFood = isFoodVoucher(v);
+
+      const selectedFood = selectedVoucherItems.find(isFoodVoucher);
+      const selectedShip = selectedVoucherItems.find(isShipVoucher);
+
+      // Nếu v là mã tiền món:
+      if (isFood) {
+        if (selectedFood && selectedFood.code.toUpperCase() !== v.code.toUpperCase()) {
+          return {
+            locked: true,
+            reason: "Không thể sử dụng với những ưu đãi đã chọn khác.",
+          };
+        }
+        if (selectedShip) {
+          if (selectedShip.can_combine_with_promotions === false || v.can_combine_with_freeship === false) {
+            return {
+              locked: true,
+              reason: "Không thể sử dụng với những ưu đãi đã chọn khác.",
+            };
+          }
+        }
+      }
+
+      // Nếu v là mã Freeship:
+      if (isShip) {
+        if (selectedShip && selectedShip.code.toUpperCase() !== v.code.toUpperCase()) {
+          return {
+            locked: true,
+            reason: "Không thể sử dụng với những ưu đãi đã chọn khác.",
+          };
+        }
+        if (selectedFood) {
+          if (selectedFood.can_combine_with_freeship === false || v.can_combine_with_promotions === false) {
+            return {
+              locked: true,
+              reason: "Không thể sử dụng với những ưu đãi đã chọn khác.",
+            };
+          }
+        }
+      }
+
+      return { locked: false };
+    },
+    [selectedCodes, selectedVoucherItems]
+  );
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -366,6 +448,65 @@ export default function CouponModal({
     }
   };
 
+  const handleToggleVoucher = useCallback(
+    (code: string) => {
+      const targetVoucher = vouchers.find((v) => v.code.toUpperCase() === code.toUpperCase());
+      if (!targetVoucher) return;
+
+      const eligibility = checkVoucherEligibility(targetVoucher);
+      if (!eligibility.eligible) return;
+
+      const lockState = checkRealtimeLock(targetVoucher);
+      if (lockState.locked) return;
+
+      setSelectedCodes((prev) => {
+        const isSelected = prev.some((c) => c.toUpperCase() === code.toUpperCase());
+        if (isSelected) {
+          return prev.filter((c) => c.toUpperCase() !== code.toUpperCase());
+        } else {
+          const isShip = isShipVoucher(targetVoucher);
+          const filtered = prev.filter((c) => {
+            const existing = vouchers.find((v) => v.code.toUpperCase() === c.toUpperCase());
+            if (!existing) return true;
+            return isShip ? !isShipVoucher(existing) : !isFoodVoucher(existing);
+          });
+          return [...filtered, targetVoucher.code];
+        }
+      });
+    },
+    [vouchers, checkVoucherEligibility, checkRealtimeLock]
+  );
+
+  const handleSkipAndContinue = useCallback(() => {
+    if (appliedVoucherCode || (appliedVoucherCodes && appliedVoucherCodes.length > 0)) {
+      onRemoveVoucher?.();
+    }
+    onClose();
+  }, [appliedVoucherCode, appliedVoucherCodes, onRemoveVoucher, onClose]);
+
+  const handleApplySelected = useCallback(async () => {
+    if (selectedCodes.length === 0) {
+      handleSkipAndContinue();
+      return;
+    }
+    setLoading(true);
+    setFeedbackError(null);
+    try {
+      if (onApplyVouchers) {
+        await onApplyVouchers(selectedCodes);
+      } else if (onApplyVoucher) {
+        for (const code of selectedCodes) {
+          await onApplyVoucher(code);
+        }
+      }
+      onClose();
+    } catch (err: any) {
+      setFeedbackError(err.message || "Áp dụng ưu đãi thất bại");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedCodes, onApplyVouchers, onApplyVoucher, handleSkipAndContinue, onClose]);
+
   const handleManualApply = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = manualCode.trim().toUpperCase();
@@ -399,22 +540,12 @@ export default function CouponModal({
 
   const renderVoucherCard = (v: PublicVoucherItem, isEligible: boolean) => {
     const eligibility = checkVoucherEligibility(v);
-    const isApplied = appliedVoucherCode.toUpperCase() === v.code.toUpperCase();
-    const isFreeship = Boolean(
-      v.is_freeship ||
-      v.discount_type === "freeship" ||
-      v.code.toUpperCase().includes("FREESHIP") ||
-      v.code.toUpperCase().includes("SHIP")
-    );
-    const appliedIsNonCombinable = Boolean(
-      appliedVoucherItem &&
-      (appliedVoucherItem.allow_stack_promo === false || appliedVoucherItem.can_combine_with_promotions === false)
-    );
-    const isDimmedByNonCombinableVoucher = Boolean(
-      appliedIsNonCombinable &&
-      !isApplied &&
-      !isFreeship
-    );
+    const isSelected = selectedCodes.some((c) => c.toUpperCase() === v.code.toUpperCase());
+    const isApplied = isSelected;
+    const isFreeship = isShipVoucher(v);
+    const lockState = checkRealtimeLock(v);
+    const isLocked = lockState.locked;
+    const isDimmedByNonCombinableVoucher = isLocked;
 
     // 1. Voucher KHÔNG ĐỦ ĐIỀU KIỆN
     if (!isEligible) {
@@ -487,18 +618,22 @@ export default function CouponModal({
               )}
             </div>
 
-            <div className="flex items-center justify-end pt-1.5 border-t border-gray-200/60 gap-2">
-              {!isBrowseOnly && onApplyVoucher && (
-                <button
-                  type="button"
-                  disabled
-                  className="font-display title-4 font-bold text-gray-400 bg-gray-200 px-4 py-1.5 rounded-full cursor-not-allowed"
-                >
-                  {t("apply")}
-                </button>
-              )}
+            <div className="flex items-center justify-between pt-1 border-t border-gray-200/60">
+              <span className="text-[11px] text-gray-400 font-medium">Mã không khả dụng</span>
             </div>
           </div>
+
+          {/* Right Checkbox (Grab-style disabled) */}
+          {!isBrowseOnly && (
+            <div className="flex items-center justify-center pl-2 pr-3.5 py-3 shrink-0">
+              <div
+                role="checkbox"
+                aria-checked={false}
+                aria-disabled={true}
+                className="w-5 h-5 rounded-md border border-gray-200 bg-gray-100/80 cursor-not-allowed text-transparent"
+              />
+            </div>
+          )}
         </div>
       );
     }
@@ -508,13 +643,13 @@ export default function CouponModal({
       <div
         key={v.code}
         onClick={() => {
-          if (!isBrowseOnly && onApplyVoucher && !isApplied && !isDimmedByNonCombinableVoucher) {
-            handleApply(v.code);
+          if (!isBrowseOnly && !isLocked) {
+            handleToggleVoucher(v.code);
           }
         }}
         className={`relative rounded-2xl border transition-all overflow-hidden flex flex-col sm:flex-row bg-white shadow-xs ${
-          isDimmedByNonCombinableVoucher
-            ? "opacity-50 border-gray-200 cursor-not-allowed bg-gray-50/70"
+          isLocked
+            ? "opacity-50 border-gray-200 cursor-not-allowed bg-gray-50/70 select-none"
             : isApplied
               ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40 cursor-pointer"
               : "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer"
@@ -522,7 +657,7 @@ export default function CouponModal({
       >
         {/* Left Badge */}
         <div className={`sm:w-28 py-3 px-3 flex sm:flex-col items-center justify-center gap-1 text-center shrink-0 text-white ${
-          isDimmedByNonCombinableVoucher ? "bg-gray-400" : "bg-secondary"
+          isLocked ? "bg-gray-400" : "bg-secondary"
         }`}>
           <span className="title-3 font-display font-bold uppercase tracking-wider leading-tight text-white">
             {isFreeship
@@ -581,14 +716,14 @@ export default function CouponModal({
               </p>
             )}
 
-            {isDimmedByNonCombinableVoucher && (
+            {isLocked && (
               <p className="text-secondary text-xs font-semibold mt-1 animate-fade-in">
-                Không áp dụng đồng thời với ưu đãi bạn đang chọn
+                {lockState.reason || "Không thể sử dụng với những ưu đãi đã chọn khác."}
               </p>
             )}
           </div>
 
-          {/* Action Buttons */}
+          {/* Card Footer: Copy Code */}
           <div className="flex items-center justify-between pt-1.5 border-t border-gray-100 gap-2">
             <button
               type="button"
@@ -600,44 +735,43 @@ export default function CouponModal({
             >
               <span>{copiedCode === v.code ? t("copied_code") : t("copy_code")}</span>
             </button>
-
-            {!isBrowseOnly && onApplyVoucher && (
-              isApplied ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveVoucher?.();
-                  }}
-                  className="body-3 font-display font-bold text-secondary bg-yellow/60 hover:bg-yellow px-3 py-1 rounded-full border border-secondary/30 transition-all cursor-pointer"
-                >
-                  {t("unapply")}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={applyingCode === v.code || isDimmedByNonCombinableVoucher}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isDimmedByNonCombinableVoucher) {
-                      handleApply(v.code);
-                    }
-                  }}
-                  className={`font-display title-4 font-bold rounded-full transition-all shadow-xs ${
-                    isDimmedByNonCombinableVoucher
-                      ? "text-gray-400 bg-gray-200 px-4 py-1.5 cursor-not-allowed"
-                      : "text-white bg-secondary hover:bg-secondary/95 px-4 py-1.5 cursor-pointer"
-                  }`}
-                >
-                  {applyingCode === v.code ? "..." : t("apply")}
-                </button>
-              )
-            )}
           </div>
         </div>
+
+        {/* Right side Checkbox (Grab-style) */}
+        {!isBrowseOnly && (
+          <div className="flex items-center justify-center pl-2 pr-4 py-3 shrink-0">
+            <div
+              role="checkbox"
+              aria-checked={isSelected}
+              aria-disabled={isLocked}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isLocked) {
+                  handleToggleVoucher(v.code);
+                }
+              }}
+              className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                isLocked
+                  ? "border-gray-200 bg-gray-100 cursor-not-allowed text-transparent"
+                  : isSelected
+                    ? "border-secondary bg-secondary text-white shadow-xs cursor-pointer"
+                    : "border-gray-300 bg-white hover:border-secondary/60 cursor-pointer text-transparent"
+              }`}
+            >
+              {isSelected && (
+                <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2.5 7L5.5 10L11.5 3.5" />
+                </svg>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
+
+  if (!isOpen) return null;
 
   return (
     <div
@@ -1014,10 +1148,36 @@ export default function CouponModal({
               )}
             </div>
 
-            {/* Footer */}
-            <div className="p-3.5 bg-gray-50 border-t border-gray-100 flex items-center body-3 font-sans text-gray-500 shrink-0">
-              <span>{t("system_wide")}</span>
-            </div>
+            {/* Bottom Bar: Pinned CTA button (Grab-style) */}
+            {!isBrowseOnly && (
+              <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 shadow-lg shrink-0 z-20">
+                {selectedCodes.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleSkipAndContinue}
+                    className="w-full py-3.5 px-4 rounded-2xl text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-center cursor-pointer active:scale-[0.99]"
+                  >
+                    Bỏ qua ưu đãi và tiếp tục
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleApplySelected}
+                    disabled={loading}
+                    className="w-full py-3.5 px-4 rounded-2xl text-sm font-bold text-white bg-secondary hover:bg-secondary/95 shadow-sm transition-all text-center cursor-pointer active:scale-[0.99] flex items-center justify-center gap-2"
+                  >
+                    <span>Áp dụng • {selectedCodes.length} ưu đãi</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Footer for browse mode */}
+            {isBrowseOnly && (
+              <div className="p-3.5 bg-gray-50 border-t border-gray-100 flex items-center body-3 font-sans text-gray-500 shrink-0">
+                <span>{t("system_wide")}</span>
+              </div>
+            )}
           </>
         )}
       </div>

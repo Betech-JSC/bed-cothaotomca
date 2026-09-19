@@ -45,6 +45,11 @@ export interface CreateOrderPayload {
     can_combine_with_freeship?: boolean;
   } | null;
   voucher_code?: string;
+  shipping_voucher_code?: string;
+  shipping_voucher?: {
+    voucher_id?: number;
+    amount?: number;
+  } | null;
   applied_deal_type?: "campaign" | "voucher" | "stacked" | null;
   payment_method?: "COD" | "TRANSFER" | "CARD";
   branch_id?: number;

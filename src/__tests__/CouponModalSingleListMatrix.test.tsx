@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import React from 'react';
@@ -255,13 +255,26 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     const disabledCard = container.querySelector('.opacity-60.bg-gray-100\\/70.pointer-events-none.cursor-not-allowed.select-none');
     expect(disabledCard).toBeNull();
 
-    // Có nút Áp dụng của voucher hoạt động
-    const applyButtons = screen.getAllByRole('button', { name: /Áp dụng/i });
-    expect(applyButtons.length).toBeGreaterThan(0);
-    // Nút áp dụng trên card voucher enabled
-    const voucherApplyBtn = applyButtons.find((btn) => btn.getAttribute('type') === 'button');
-    expect(voucherApplyBtn).toBeDefined();
-    expect(voucherApplyBtn).toBeEnabled();
+    // Grab-style: Ban đầu chưa chọn mã thì nút bottom bar là "Bỏ qua ưu đãi và tiếp tục"
+    const skipBtn = screen.getByRole('button', { name: /Bỏ qua ưu đãi và tiếp tục/i });
+    expect(skipBtn).toBeInTheDocument();
+
+    // Checkbox khả dụng và chưa tích
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+
+    // Tích chọn voucher
+    fireEvent.click(checkbox);
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
+
+    // Nút bottom bar đổi thành "Áp dụng • 1 ưu đãi"
+    const applyBtn = screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i });
+    expect(applyBtn).toBeInTheDocument();
+
+    // Click nút áp dụng
+    fireEvent.click(applyBtn);
+    expect(mockApply).toHaveBeenCalledWith('VALID20K');
   });
 
   it('Matrix 6: Gộp thành 1 danh sách duy nhất, không có tab lọc Tất cả/Khả dụng/Không khả dụng', async () => {
@@ -286,5 +299,182 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(screen.queryByRole('button', { name: /^Tất cả$/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Khả dụng$/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Không khả dụng$/i })).toBeNull();
+  });
+
+  it('Matrix 7: Real-time Disabled - Mã không cộng dồn khóa các mã khác với text chuẩn và mở khóa khi bỏ chọn', async () => {
+    mockVouchersList = [
+      {
+        id: 1,
+        code: 'MON_A',
+        discount_type: 'fixed',
+        value: 10000,
+        prereq_price: 50000,
+        can_combine_with_promotions: false,
+        can_combine_with_freeship: true,
+      },
+      {
+        id: 2,
+        code: 'MON_B',
+        discount_type: 'fixed',
+        value: 15000,
+        prereq_price: 50000,
+        can_combine_with_promotions: false,
+        can_combine_with_freeship: true,
+      },
+      {
+        id: 3,
+        code: 'FREESHIP15K',
+        discount_type: 'freeship',
+        value: 15000,
+        prereq_price: 50000,
+        can_combine_with_promotions: true,
+        can_combine_with_freeship: true,
+      },
+    ];
+
+    const mockApplyVouchers = vi.fn();
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={100000}
+        onApplyVouchers={mockApplyVouchers}
+      />
+    );
+
+    expect(await screen.findByText('MON_A')).toBeInTheDocument();
+    expect(screen.getByText('MON_B')).toBeInTheDocument();
+    expect(screen.getByText('FREESHIP15K')).toBeInTheDocument();
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(3);
+
+    // 1. Tick MON_A (allow_stack_promo = false, allow_stack_ship = true)
+    fireEvent.click(checkboxes[0]);
+    expect(checkboxes[0]).toHaveAttribute('aria-checked', 'true');
+
+    // MON_B lập tức bị khóa và hiện text chuẩn
+    expect(checkboxes[1]).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText('Không thể sử dụng với những ưu đãi đã chọn khác.')).toBeInTheDocument();
+
+    // Mã FREESHIP15K vẫn sáng cho khách tích thêm
+    expect(checkboxes[2]).not.toHaveAttribute('aria-disabled', 'true');
+
+    // 2. Tick thêm FREESHIP15K -> Áp dụng • 2 ưu đãi
+    fireEvent.click(checkboxes[2]);
+    expect(checkboxes[2]).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('button', { name: /Áp dụng • 2 ưu đãi/i })).toBeInTheDocument();
+
+    // 3. Bỏ chọn MON_A -> MON_B tự động mở khóa theo thời gian thực
+    fireEvent.click(checkboxes[0]);
+    expect(checkboxes[0]).toHaveAttribute('aria-checked', 'false');
+    expect(checkboxes[1]).not.toHaveAttribute('aria-disabled', 'true');
+    expect(screen.queryByText('Không thể sử dụng với những ưu đãi đã chọn khác.')).toBeNull();
+    expect(screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i })).toBeInTheDocument();
+  });
+
+  it('Matrix 8: React Rules of Hooks - Tuân thủ thứ tự hooks khi toggle isOpen false sang true', async () => {
+    mockVouchersList = [
+      { id: 1, code: 'TEST_HOOKS', discount_type: 'fixed', value: 10000, prereq_price: 50000 },
+    ];
+
+    const { rerender } = render(
+      <CouponModal
+        isOpen={false}
+        onClose={vi.fn()}
+        subtotal={100000}
+      />
+    );
+
+    // Khi đóng, modal không render DOM
+    expect(screen.queryByText('TEST_HOOKS')).toBeNull();
+
+    // Mở modal (tương tự như bấm FloatingVoucherButton)
+    rerender(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={100000}
+      />
+    );
+
+    // Không throw lỗi React #300 / change in hook order
+    expect(await screen.findByText('TEST_HOOKS')).toBeInTheDocument();
+  });
+
+  it('Matrix 9: Bấm nút [Áp dụng • X ưu đãi] gọi onApplyVouchers và kích hoạt onClose đóng popup', async () => {
+    mockVouchersList = [
+      { id: 1, code: 'MON_DISCOUNT', discount_type: 'fixed', value: 10000, prereq_price: 50000 },
+      { id: 2, code: 'SHIP_DISCOUNT', discount_type: 'freeship', is_freeship: true, value: 15000, prereq_price: 0 },
+    ];
+
+    const mockApplyVouchers = vi.fn().mockResolvedValue(undefined);
+    const mockOnClose = vi.fn();
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={mockOnClose}
+        subtotal={100000}
+        onApplyVouchers={mockApplyVouchers}
+      />
+    );
+
+    expect(await screen.findByText('MON_DISCOUNT')).toBeInTheDocument();
+    expect(screen.getByText('SHIP_DISCOUNT')).toBeInTheDocument();
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    // Tick cả 2 mã
+    fireEvent.click(checkboxes[0]);
+    fireEvent.click(checkboxes[1]);
+
+    const applyButton = screen.getByRole('button', { name: /Áp dụng • 2 ưu đãi/i });
+    expect(applyButton).toBeInTheDocument();
+
+    // Bấm nút Áp dụng
+    await fireEvent.click(applyButton);
+
+    // Kiểm tra onApplyVouchers được gọi với đúng danh sách mã
+    expect(mockApplyVouchers).toHaveBeenCalledWith(['MON_DISCOUNT', 'SHIP_DISCOUNT']);
+
+    // Kiểm tra onClose được gọi để đóng modal
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Matrix 10: Đồng bộ mã đang dùng khi mở popup và bấm [Bỏ qua ưu đãi và tiếp tục]', async () => {
+    mockVouchersList = [
+      { id: 1, code: 'APPLIED_CODE', discount_type: 'fixed', value: 10000, prereq_price: 50000 },
+    ];
+
+    const mockRemoveVoucher = vi.fn();
+    const mockOnClose = vi.fn();
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={mockOnClose}
+        subtotal={100000}
+        appliedVoucherCode="APPLIED_CODE"
+        appliedVoucherCodes={['APPLIED_CODE']}
+        onRemoveVoucher={mockRemoveVoucher}
+      />
+    );
+
+    expect(await screen.findByText('APPLIED_CODE')).toBeInTheDocument();
+
+    // Bỏ chọn mã đang có
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(checkbox);
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+
+    // Nút đổi thành "Bỏ qua ưu đãi và tiếp tục"
+    const skipButton = screen.getByRole('button', { name: /Bỏ qua ưu đãi và tiếp tục/i });
+    expect(skipButton).toBeInTheDocument();
+
+    fireEvent.click(skipButton);
+
+    expect(mockRemoveVoucher).toHaveBeenCalledTimes(1);
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 });

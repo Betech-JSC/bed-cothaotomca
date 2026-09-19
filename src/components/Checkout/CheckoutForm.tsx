@@ -276,6 +276,19 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     canCombineWithFreeship?: boolean;
     discountAmount?: number;
   } | null>(null);
+  const [appliedShippingVoucher, setAppliedShippingVoucher] = useState<{
+    id: number;
+    code: string;
+    value: number;
+    discountType?: "fixed" | "percent" | "freeship";
+    maxDiscount?: number | null;
+    campaignId: number;
+    prereqPrice?: number;
+    isFreeship?: boolean;
+    canCombineWithPromotions?: boolean;
+    canCombineWithFreeship?: boolean;
+    discountAmount?: number;
+  } | null>(null);
   const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
   const [validatingVoucher, setValidatingVoucher] = useState(false);
   const [isAutoVoucherApplied, setIsAutoVoucherApplied] = useState(false);
@@ -958,10 +971,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     }
   }, [appliedVoucher, originalSubtotal, saleSubtotal, totalItemDiscount, shipping]);
 
-  const voucherDiscount = useMemo(
-    () => calculateVoucherDiscount(appliedVoucher, subtotal, shipping),
-    [appliedVoucher, subtotal, shipping]
-  );
+  const voucherDiscount = useMemo(() => {
+    const food = calculateVoucherDiscount(appliedVoucher, subtotal, shipping);
+    const ship = calculateVoucherDiscount(appliedShippingVoucher, subtotal, shipping);
+    return food + ship;
+  }, [appliedVoucher, appliedShippingVoucher, subtotal, shipping]);
 
   // Member Tier Discount - Web không áp dụng tự động, vận hành thủ công bên Fanpage
   const memberTier = useMemo(() => getMemberTier(user?.points || 0), [user?.points]);
@@ -1202,11 +1216,91 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   const handleRemoveVoucher = () => {
     setAppliedVoucher(null);
+    setAppliedShippingVoucher(null);
     setVoucherCode("");
     setVoucherSuccess(null);
     setVoucherError(null);
     setBestDealNotice(null);
     setIsAutoVoucherApplied(false);
+  };
+
+  const handleApplyVouchers = async (codes: string[]) => {
+    if (!codes || codes.length === 0) {
+      handleRemoveVoucher();
+      return;
+    }
+    setValidatingVoucher(true);
+    setVoucherError(null);
+    setVoucherSuccess(null);
+    setBestDealNotice(null);
+    try {
+      let nextFood = null;
+      let nextShip = null;
+      for (const rawCode of codes) {
+        const c = rawCode.trim().toUpperCase();
+        const res = await validateVoucher(
+          c,
+          originalSubtotal,
+          shipping,
+          false,
+          0,
+          phone || user?.phone || undefined,
+          token || undefined,
+          false
+        );
+        if (res.valid && res.voucher) {
+          const isCandidateFreeship = Boolean(
+            res.voucher.discount_type === "freeship" ||
+            res.voucher.is_freeship ||
+            c.includes("FREESHIP") || c.includes("PHISHIP") || /^SHIP(\d+|K)?$/i.test(c)
+          );
+          const canCombine = res.voucher.can_combine_with_promotions !== false;
+          const subtotalForCalc = canCombine ? saleSubtotal : originalSubtotal;
+          const candidate = {
+            id: res.voucher.id,
+            code: res.voucher.code,
+            value: res.voucher.value,
+            discountType: res.voucher.discount_type,
+            maxDiscount: res.voucher.max_discount,
+            campaignId: res.voucher.campaign_id,
+            prereqPrice: res.voucher.prereq_price,
+            isFreeship: res.voucher.is_freeship,
+            canCombineWithPromotions: canCombine,
+            canCombineWithFreeship: res.voucher.can_combine_with_freeship,
+            discountAmount: calculateVoucherDiscount(
+              {
+                id: res.voucher.id,
+                code: res.voucher.code,
+                value: res.voucher.value,
+                discountType: res.voucher.discount_type,
+                maxDiscount: res.voucher.max_discount,
+                prereqPrice: res.voucher.prereq_price,
+                isFreeship: res.voucher.is_freeship,
+              },
+              subtotalForCalc,
+              shipping
+            ),
+          };
+          if (isCandidateFreeship) nextShip = candidate;
+          else nextFood = candidate;
+        }
+      }
+      setAppliedVoucher(nextFood);
+      setAppliedShippingVoucher(nextShip);
+      const appliedCount = (nextFood ? 1 : 0) + (nextShip ? 1 : 0);
+      if (appliedCount > 0) {
+        setVoucherCode([nextFood?.code, nextShip?.code].filter(Boolean).join(", "));
+        setVoucherSuccess(`Đã áp dụng thành công ${appliedCount} ưu đãi!`);
+        setIsVoucherModalOpen(false);
+      } else {
+        handleRemoveVoucher();
+        setIsVoucherModalOpen(false);
+      }
+    } catch (err: any) {
+      setVoucherError(err?.message || "Không thể áp dụng ưu đãi.");
+    } finally {
+      setValidatingVoucher(false);
+    }
   };
 
   // Address concatenation
@@ -1425,8 +1519,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             : [],
         discount: voucherDiscount + autoOrderDiscountAmount,
         description: description.trim() || undefined,
-        is_apply_voucher: !!appliedVoucher,
+        is_apply_voucher: !!(appliedVoucher || appliedShippingVoucher),
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
+        shipping_voucher_code: appliedShippingVoucher ? appliedShippingVoucher.code : undefined,
         applied_deal_type: isBestDealVoucherApplied ? "voucher" : undefined,
         voucher: appliedVoucher
           ? {
@@ -1436,6 +1531,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             can_combine_with_freeship: appliedVoucher.canCombineWithFreeship,
           }
           : null,
+        shipping_voucher: appliedShippingVoucher
+          ? {
+            voucher_id: appliedShippingVoucher.id,
+            amount: appliedShippingVoucher.value,
+          }
+          : undefined,
         payment_method: paymentMethod, // CASH (COD) or TRANSFER (SePay)
         branch_id: selectedBranchId,
       });
@@ -2514,20 +2615,29 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       }
                     }
                   }}
-                  readOnly={!!appliedVoucher}
+                  readOnly={Boolean(appliedVoucher || appliedShippingVoucher)}
                   disabled={validatingVoucher}
                   style={{ backgroundColor: "transparent" }}
                   className="flex-1 min-w-0 !bg-transparent px-3 2xl:px-4 py-1.5 2xl:py-2 text-gray-900 focus:outline-none text-sm 2xl:text-base uppercase placeholder-gray-400 font-semibold tracking-wider"
                   placeholder={t("voucher_input_placeholder")}
                 />
-                {appliedVoucher ? (
-                  <button
-                    type="button"
-                    onClick={handleRemoveVoucher}
-                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3.5 2xl:px-5 py-1.5 2xl:py-2 rounded-full text-xs 2xl:text-sm transition-all border border-red-200/60 shrink-0 cursor-pointer whitespace-nowrap"
-                  >
-                    {t("remove_voucher")}
-                  </button>
+                {appliedVoucher || appliedShippingVoucher ? (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsVoucherModalOpen(true)}
+                      className="bg-yellow/70 hover:bg-yellow text-primary font-bold px-2.5 2xl:px-3.5 py-1.5 2xl:py-2 rounded-full text-xs transition-all border border-primary/20 cursor-pointer whitespace-nowrap"
+                    >
+                      {t("select_voucher_btn")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveVoucher}
+                      className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 2xl:px-4 py-1.5 2xl:py-2 rounded-full text-xs transition-all border border-red-200/60 shrink-0 cursor-pointer whitespace-nowrap"
+                    >
+                      {t("remove_voucher")}
+                    </button>
+                  </div>
                 ) : (
                   <div className="flex items-center gap-1 shrink-0">
                     <button
@@ -2667,7 +2777,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     <span className="text-secondary font-bold">0đ ({t("delivery_pickup")})</span>
                   ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                     <span className="text-gray-500 font-bold text-base">--</span>
-                  ) : appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") && appliedVoucher.maxDiscount && appliedVoucher.maxDiscount > 0 ? (
+                  ) : (appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship"))) && (appliedShippingVoucher?.maxDiscount || appliedVoucher?.maxDiscount) ? (
                     <div className="flex flex-col items-end gap-0.5">
                       <div className="flex items-center gap-2">
                         {originalFee > shippingFee && originalFee > 0 && (
@@ -2680,7 +2790,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         </span>
                       </div>
                       <span className="text-xs text-secondary font-semibold">
-                        Giảm {formatPrice(appliedVoucher.maxDiscount)} phí vận chuyển
+                        Giảm {formatPrice((appliedShippingVoucher || appliedVoucher)?.maxDiscount || 0)} phí vận chuyển
                       </span>
                     </div>
                   ) : isFreeship ? (
@@ -2692,9 +2802,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       )}
                       <span className="text-secondary font-bold text-base">0đ</span>
                       <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
-                        {appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship")
-                          ? `Mã ${appliedVoucher.code}`
-                          : "Freeship tự động"}
+                        {appliedShippingVoucher
+                          ? `Mã ${appliedShippingVoucher.code}`
+                          : appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship")
+                            ? `Mã ${appliedVoucher.code}`
+                            : "Freeship tự động"}
                       </span>
                     </div>
                   ) : shippingDiscount > 0 && shippingFee < originalFee ? (
@@ -2836,7 +2948,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         isFreeship={isFreeship}
         isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
-        appliedVoucherCode={appliedVoucher?.code || ""}
+        appliedVoucherCode={appliedVoucher?.code || appliedShippingVoucher?.code || ""}
+        appliedVoucherCodes={[appliedVoucher?.code, appliedShippingVoucher?.code].filter(Boolean) as string[]}
+        onApplyVouchers={handleApplyVouchers}
         onApplyVoucher={(code) => handleApplyVoucher(code, false)}
         onRemoveVoucher={handleRemoveVoucher}
         activePromotions={appliedCartPromotions}
