@@ -62,17 +62,20 @@ vi.mock('@/contexts/AuthContext', () => ({
 }));
 
 // Mock campaignService & orderService
+let mockCampaignsList: any[] = [];
 vi.mock('@/services/campaignService', () => ({
-  getActiveCampaigns: vi.fn().mockResolvedValue([]),
+  getActiveCampaigns: vi.fn().mockImplementation(() => Promise.resolve(mockCampaignsList)),
 }));
 
 let mockVouchersList: PublicVoucherItem[] = [];
+let mockValidateVoucherResult: any = { valid: false, message: 'Mã không tồn tại' };
 vi.mock('@/services/orderService', async () => {
   const actual = await vi.importActual<typeof import('@/services/orderService')>('@/services/orderService');
   return {
     ...actual,
     getAvailableVouchers: vi.fn().mockImplementation(() => Promise.resolve(mockVouchersList)),
     getShippingSettings: vi.fn().mockResolvedValue(null),
+    validateVoucher: vi.fn().mockImplementation(() => Promise.resolve(mockValidateVoucherResult)),
   };
 });
 
@@ -82,6 +85,8 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     resetCouponModalCache();
     mockCurrentUser = null;
     mockVouchersList = [];
+    mockCampaignsList = [];
+    mockValidateVoucherResult = { valid: false, message: 'Mã không tồn tại' };
   });
 
   it('Matrix 1: Voucher chưa đạt đơn tối thiểu -> Mờ 60%, chặn click, hiển thị lý do chuẩn', async () => {
@@ -476,5 +481,138 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
 
     expect(mockRemoveVoucher).toHaveBeenCalledTimes(1);
     expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Matrix 11: Danh sách duy nhất - hiển thị cả Chương trình ưu đãi và Mã giảm giá trong cùng một màn hình (không có tab)', async () => {
+    mockCampaignsList = [
+      {
+        id: 101,
+        name: 'Giảm 10% toàn menu',
+        description: 'Chương trình khuyến mãi mùa hè',
+        start_date: '2026-06-01T00:00:00Z',
+        end_date: '2026-08-31T23:59:59Z',
+      },
+    ];
+    mockVouchersList = [
+      {
+        id: 1,
+        code: 'VOUCHER10K',
+        discount_type: 'fixed',
+        value: 10000,
+        prereq_price: 50000,
+        description: 'Giảm 10K',
+      },
+    ];
+
+    render(<CouponModal isOpen={true} onClose={vi.fn()} subtotal={100000} />);
+
+    // Kiểm tra không còn các nút tab chuyển đổi "Chương trình ưu đãi" / "Mã giảm giá"
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+
+    // Cả campaign và voucher đều hiển thị đồng thời
+    expect(await screen.findByText('Giảm 10% toàn menu')).toBeInTheDocument();
+    expect(screen.getByText('VOUCHER10K')).toBeInTheDocument();
+
+    // Headers các phần hiển thị rõ
+    expect(screen.getByText(/Chương trình ưu đãi/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mã giảm giá khả dụng/i)).toBeInTheDocument();
+  });
+
+  it('Matrix 12: Nhập mã hợp lệ - tự động thêm thẻ ưu đãi mới vào danh sách và tự động tích chọn', async () => {
+    mockVouchersList = [
+      {
+        id: 1,
+        code: 'PUBLIC10K',
+        discount_type: 'fixed',
+        value: 10000,
+        prereq_price: 50000,
+      },
+    ];
+
+    mockValidateVoucherResult = {
+      valid: true,
+      voucher: {
+        id: 99,
+        code: 'PRIVATE50K',
+        discount_type: 'fixed',
+        value: 50000,
+        prereq_price: 100000,
+        campaign_id: 1,
+        campaign_name: 'Chiến dịch riêng',
+      },
+      discount_amount: 50000,
+      message: 'Áp dụng mã giảm giá thành công!',
+    };
+
+    const mockAddPrivateVoucher = vi.fn();
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={150000}
+        onAddPrivateVoucher={mockAddPrivateVoucher}
+      />
+    );
+
+    expect(await screen.findByText('PUBLIC10K')).toBeInTheDocument();
+
+    const input = screen.getByPlaceholderText(/Nhập mã/i);
+    fireEvent.change(input, { target: { value: 'PRIVATE50K' } });
+
+    const applyBtn = screen.getByRole('button', { name: /Áp dụng/i });
+    fireEvent.click(applyBtn);
+
+    // Kiểm tra gọi onAddPrivateVoucher với đúng thông tin
+    await screen.findByText(/Đã thêm mã "PRIVATE50K" vào ví của bạn!/i);
+    expect(mockAddPrivateVoucher).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'PRIVATE50K',
+        value: 50000,
+        prereq_price: 100000,
+      })
+    );
+  });
+
+  it('Matrix 13: Nhập mã không hợp lệ (sai mã/hết hạn) - hiển thị câu thông báo lỗi chuẩn', async () => {
+    mockValidateVoucherResult = {
+      valid: false,
+      message: 'Mã giảm giá không tồn tại trên hệ thống.',
+    };
+
+    render(<CouponModal isOpen={true} onClose={vi.fn()} subtotal={150000} />);
+
+    await screen.findByPlaceholderText(/Nhập mã/i);
+
+    const input = screen.getByPlaceholderText(/Nhập mã/i);
+    fireEvent.change(input, { target: { value: 'SAICODE' } });
+
+    const applyBtn = screen.getByRole('button', { name: /Áp dụng/i });
+    fireEvent.click(applyBtn);
+
+    expect(
+      await screen.findByText('Mã giảm giá không hợp lệ hoặc đã hết lượt sử dụng.')
+    ).toBeInTheDocument();
+  });
+
+  it('Matrix 14: Nhập mã khi đơn chưa đủ điều kiện - hiển thị câu thông báo lỗi chuẩn', async () => {
+    mockValidateVoucherResult = {
+      valid: false,
+      message: 'Mã giảm giá chỉ áp dụng cho đơn hàng từ 500.000đ trở lên.',
+    };
+
+    render(<CouponModal isOpen={true} onClose={vi.fn()} subtotal={100000} />);
+
+    await screen.findByPlaceholderText(/Nhập mã/i);
+
+    const input = screen.getByPlaceholderText(/Nhập mã/i);
+    fireEvent.change(input, { target: { value: 'MIN500K' } });
+
+    const applyBtn = screen.getByRole('button', { name: /Áp dụng/i });
+    fireEvent.click(applyBtn);
+
+    expect(
+      await screen.findByText('Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.')
+    ).toBeInTheDocument();
   });
 });

@@ -132,6 +132,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [voucherCode, setVoucherCode] = useState("");
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [availableVouchers, setAvailableVouchers] = useState<PublicVoucherItem[]>([]);
+  const [sessionPrivateVouchers, setSessionPrivateVouchers] = useState<PublicVoucherItem[]>([]);
   const [appliedVoucher, setAppliedVoucher] = useState<{
     id: number;
     code: string;
@@ -2426,6 +2427,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         activePromotions={appliedCartPromotions}
         user={user}
         memberTier={memberTier.tier}
+        privateVouchers={sessionPrivateVouchers}
+        onAddPrivateVoucher={(v) => {
+          setSessionPrivateVouchers((prev) =>
+            prev.some((x) => x.code === v.code) ? prev : [...prev, v]
+          );
+        }}
       />
 
       {/* Order Gift Selector Modal */}

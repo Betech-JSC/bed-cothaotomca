@@ -6,6 +6,7 @@ import { formatPrice, formatImageUrl } from "@/lib/format";
 import {
   PublicVoucherItem,
   getAvailableVouchers,
+  validateVoucher,
   ActivePromotion,
   getShippingSettings,
   ShippingSettings,
@@ -14,6 +15,29 @@ import { PublicCampaignItem, getActiveCampaigns } from "@/services/campaignServi
 import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useAuth, StorefrontUser } from "@/contexts/AuthContext";
+
+export function formatPrivateVoucherError(errMsg: string): string {
+  const msgLower = (errMsg || "").toLowerCase();
+  if (
+    msgLower.includes("chỉ dành cho khách hàng thành viên") ||
+    msgLower.includes("chỉ dành riêng cho thành viên") ||
+    msgLower.includes("vui lòng đăng nhập") ||
+    msgLower.includes("đạt hạng") ||
+    msgLower.includes("hạng") ||
+    msgLower.includes("chỉ áp dụng cho đơn hàng từ") ||
+    msgLower.includes("tối thiểu") ||
+    msgLower.includes("chưa đủ điều kiện") ||
+    msgLower.includes("chương trình khuyến mãi hiện tại không áp dụng") ||
+    msgLower.includes("không áp dụng đồng thời") ||
+    msgLower.includes("miễn phí vận chuyển tự động") ||
+    msgLower.includes("sản phẩm") ||
+    msgLower.includes("món") ||
+    msgLower.includes("danh mục")
+  ) {
+    return "Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.";
+  }
+  return "Mã giảm giá không hợp lệ hoặc đã hết lượt sử dụng.";
+}
 
 export interface CouponModalProps {
   isOpen: boolean;
@@ -34,6 +58,8 @@ export interface CouponModalProps {
   user?: StorefrontUser | null;
   memberTier?: string;
   shippingSettings?: ShippingSettings | null;
+  privateVouchers?: PublicVoucherItem[];
+  onAddPrivateVoucher?: (voucher: PublicVoucherItem) => void;
 }
 
 // Module-level in-memory cache to prevent layout shift / flickering on open
@@ -100,6 +126,8 @@ export default function CouponModal({
   user,
   memberTier,
   shippingSettings,
+  privateVouchers,
+  onAddPrivateVoucher,
 }: CouponModalProps) {
   const t = useTranslations("voucher");
   const router = useRouter();
@@ -119,11 +147,9 @@ export default function CouponModal({
     ? isAutoFreeship
     : Boolean(isFreeship && shippingFee === 0);
 
-  const [activeTab, setActiveTab] = useState<"campaigns" | "vouchers">(
-    !isBrowseOnly || onApplyVoucher || onApplyVouchers ? "vouchers" : "campaigns"
-  );
   const [campaigns, setCampaigns] = useState<PublicCampaignItem[]>(cachedCampaigns || []);
   const [vouchers, setVouchers] = useState<PublicVoucherItem[]>(cachedVouchers || []);
+  const [localPrivateVouchers, setLocalPrivateVouchers] = useState<PublicVoucherItem[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [shippingSettingsState, setShippingSettingsState] = useState<ShippingSettings | null>(shippingSettings || null);
   const [selectedCampaign, setSelectedCampaign] = useState<PublicCampaignItem | null>(null);
@@ -135,11 +161,25 @@ export default function CouponModal({
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
+  const effectivePrivateVouchers = useMemo(() => {
+    return privateVouchers !== undefined ? privateVouchers : localPrivateVouchers;
+  }, [privateVouchers, localPrivateVouchers]);
+
+  const allVouchers = useMemo(() => {
+    const list: PublicVoucherItem[] = [...effectivePrivateVouchers];
+    for (const v of vouchers) {
+      if (!list.some((pv) => pv.code.toUpperCase() === v.code.toUpperCase())) {
+        list.push(v);
+      }
+    }
+    return list;
+  }, [vouchers, effectivePrivateVouchers]);
+
   const appliedVoucherItem = useMemo(() => {
     const primaryCode = selectedCodes[0] || appliedVoucherCode;
     if (!primaryCode) return null;
-    return vouchers.find((v) => v.code.toUpperCase() === primaryCode.toUpperCase()) || null;
-  }, [selectedCodes, appliedVoucherCode, vouchers]);
+    return allVouchers.find((v) => v.code.toUpperCase() === primaryCode.toUpperCase()) || null;
+  }, [selectedCodes, appliedVoucherCode, allVouchers]);
 
   useEffect(() => {
     if (isOpen) {
@@ -173,16 +213,6 @@ export default function CouponModal({
         setCampaigns(camps);
         setVouchers(vows);
         setShippingSettingsState(sSettings);
-
-        const hasShippingCard = Boolean(sSettings?.is_min_amount_enabled && sSettings?.card_title);
-
-        if (!isBrowseOnly || onApplyVoucher) {
-          setActiveTab("vouchers");
-        } else if (camps.length > 0 || hasShippingCard) {
-          setActiveTab("campaigns");
-        } else {
-          setActiveTab("vouchers");
-        }
       }).finally(() => {
         setLoading(false);
       });
@@ -337,16 +367,16 @@ export default function CouponModal({
 
   // Split vouchers into 2 distinct tiers (FB-06)
   const eligibleVouchers = useMemo(() => {
-    return vouchers.filter((v) => checkVoucherEligibility(v).eligible);
-  }, [vouchers, checkVoucherEligibility]);
+    return allVouchers.filter((v) => checkVoucherEligibility(v).eligible);
+  }, [allVouchers, checkVoucherEligibility]);
 
   const ineligibleVouchers = useMemo(() => {
-    return vouchers.filter((v) => !checkVoucherEligibility(v).eligible);
-  }, [vouchers, checkVoucherEligibility]);
+    return allVouchers.filter((v) => !checkVoucherEligibility(v).eligible);
+  }, [allVouchers, checkVoucherEligibility]);
 
   const selectedVoucherItems = useMemo(() => {
-    return vouchers.filter((v) => selectedCodes.some((code) => code.toUpperCase() === v.code.toUpperCase()));
-  }, [vouchers, selectedCodes]);
+    return allVouchers.filter((v) => selectedCodes.some((code) => code.toUpperCase() === v.code.toUpperCase()));
+  }, [allVouchers, selectedCodes]);
 
   const checkRealtimeLock = useCallback(
     (v: PublicVoucherItem): { locked: boolean; reason?: string } => {
@@ -450,7 +480,7 @@ export default function CouponModal({
 
   const handleToggleVoucher = useCallback(
     (code: string) => {
-      const targetVoucher = vouchers.find((v) => v.code.toUpperCase() === code.toUpperCase());
+      const targetVoucher = allVouchers.find((v) => v.code.toUpperCase() === code.toUpperCase());
       if (!targetVoucher) return;
 
       const eligibility = checkVoucherEligibility(targetVoucher);
@@ -466,7 +496,7 @@ export default function CouponModal({
         } else {
           const isShip = isShipVoucher(targetVoucher);
           const filtered = prev.filter((c) => {
-            const existing = vouchers.find((v) => v.code.toUpperCase() === c.toUpperCase());
+            const existing = allVouchers.find((v) => v.code.toUpperCase() === c.toUpperCase());
             if (!existing) return true;
             return isShip ? !isShipVoucher(existing) : !isFoodVoucher(existing);
           });
@@ -474,7 +504,7 @@ export default function CouponModal({
         }
       });
     },
-    [vouchers, checkVoucherEligibility, checkRealtimeLock]
+    [allVouchers, checkVoucherEligibility, checkRealtimeLock]
   );
 
   const handleSkipAndContinue = useCallback(() => {
@@ -513,24 +543,100 @@ export default function CouponModal({
     if (!trimmed) {
       setFeedbackError("Vui lòng nhập mã giảm giá.");
       setFeedbackNotice(null);
+      setFeedbackSuccess(null);
       return;
     }
-    const isCodeFreeship = trimmed.includes("FREESHIP") || trimmed.includes("SHIP");
-    if (orderIsAutoFreeship && isCodeFreeship) {
-      setFeedbackNotice(
-        "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé."
+
+    setApplyingCode(trimmed);
+    setFeedbackError(null);
+    setFeedbackNotice(null);
+    setFeedbackSuccess(null);
+
+    try {
+      const isCodeFreeship = trimmed.includes("FREESHIP") || trimmed.includes("SHIP");
+      if (orderIsAutoFreeship && isCodeFreeship) {
+        setFeedbackError("Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.");
+        return;
+      }
+      if (canCombineWithFreeship === false && isCodeFreeship) {
+        setFeedbackError("Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.");
+        return;
+      }
+
+      const effectiveSubtotal = originalSubtotal !== undefined && originalSubtotal > 0 ? originalSubtotal : subtotal;
+      const res = await validateVoucher(
+        trimmed,
+        effectiveSubtotal,
+        shippingFee,
+        activeCartPromos.length > 0,
+        0,
+        currentUser?.phone,
+        typeof window !== "undefined" ? localStorage.getItem("auth_token") || undefined : undefined,
+        orderIsAutoFreeship
       );
-      setFeedbackError(null);
-      return;
+
+      if (res.valid && res.voucher) {
+        const isShip = Boolean(
+          res.voucher.discount_type === "freeship" ||
+          res.voucher.is_freeship ||
+          trimmed.includes("FREESHIP") ||
+          trimmed.includes("SHIP")
+        );
+        const newVoucher: PublicVoucherItem = {
+          id: res.voucher.id,
+          code: res.voucher.code,
+          discount_type: res.voucher.discount_type || (isShip ? "freeship" : "fixed"),
+          value: res.voucher.value,
+          max_discount: res.voucher.max_discount,
+          prereq_price: res.voucher.prereq_price,
+          campaign_id: res.voucher.campaign_id,
+          campaign_name: res.voucher.campaign_name,
+          is_freeship: isShip,
+          customer_scope: res.voucher.customer_scope || "all",
+          min_member_tier: res.voucher.min_member_tier,
+          can_combine_with_promotions: res.voucher.can_combine_with_promotions !== false,
+          can_combine_with_freeship: res.voucher.can_combine_with_freeship !== false,
+        };
+
+        const eligibility = checkVoucherEligibility(newVoucher);
+        if (!eligibility.eligible) {
+          setFeedbackError("Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.");
+          return;
+        }
+
+        if (onAddPrivateVoucher) {
+          onAddPrivateVoucher(newVoucher);
+        } else {
+          setLocalPrivateVouchers((prev) => {
+            if (prev.some((v) => v.code.toUpperCase() === newVoucher.code.toUpperCase())) return prev;
+            return [...prev, newVoucher];
+          });
+        }
+
+        // Tự động tích chọn checkbox cho mã mới
+        setSelectedCodes((prev) => {
+          const filtered = prev.filter((c) => {
+            const existing = allVouchers.find((v) => v.code.toUpperCase() === c.toUpperCase());
+            if (!existing) return true;
+            return isShip ? !isShipVoucher(existing) : !isFoodVoucher(existing);
+          });
+          return [...filtered, newVoucher.code];
+        });
+
+        setManualCode("");
+        setFeedbackError(null);
+        setFeedbackSuccess(`Đã thêm mã "${newVoucher.code}" vào ví của bạn!`);
+        setTimeout(() => setFeedbackSuccess(null), 3000);
+      } else {
+        const rawMsg = res.message || "Mã giảm giá không hợp lệ.";
+        setFeedbackError(formatPrivateVoucherError(rawMsg));
+      }
+    } catch (err: any) {
+      const rawMsg = err?.message || "Mã giảm giá không hợp lệ.";
+      setFeedbackError(formatPrivateVoucherError(rawMsg));
+    } finally {
+      setApplyingCode(null);
     }
-    if (canCombineWithFreeship === false && isCodeFreeship) {
-      setFeedbackError(
-        "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship"
-      );
-      setFeedbackNotice(null);
-      return;
-    }
-    await handleApply(trimmed);
   };
 
   const handleGoShopping = () => {
@@ -906,8 +1012,8 @@ export default function CouponModal({
                   {t("modal_title")}
                 </h3>
                 <p className="body-3 font-sans text-gray-500 font-medium">
-                  {allCampaigns.length + vouchers.length > 0
-                    ? t("active_promos", { count: allCampaigns.length + vouchers.length })
+                  {allCampaigns.length + allVouchers.length > 0
+                    ? t("active_promos", { count: allCampaigns.length + allVouchers.length })
                     : t("explore_promos")}
                 </p>
               </div>
@@ -925,46 +1031,9 @@ export default function CouponModal({
               </button>
             </div>
 
-            {/* Segmented Tabs: Chương trình ưu đãi & Mã giảm giá */}
-            <div className="flex border-b border-gray-100 bg-gray-50/60 p-1.5 gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab("campaigns")}
-                className={`flex-1 py-2 px-3 font-display title-4 font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  activeTab === "campaigns"
-                    ? "bg-white text-secondary shadow-xs border border-gray-200/80"
-                    : "text-gray-500 hover:text-gray-800"
-                }`}
-              >
-                <span>{t("tab_campaigns")}</span>
-                {allCampaigns.length > 0 && (
-                  <span className="bg-secondary/10 text-secondary text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
-                    {allCampaigns.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("vouchers")}
-                className={`flex-1 py-2 px-3 font-display title-4 font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  activeTab === "vouchers"
-                    ? "bg-white text-secondary shadow-xs border border-gray-200/80"
-                    : "text-gray-500 hover:text-gray-800"
-                }`}
-              >
-                <span>{t("tab_vouchers")}</span>
-                {vouchers.length > 0 && (
-                  <span className="bg-secondary/10 text-secondary text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
-                    {vouchers.length}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* Manual Voucher Input (when on Vouchers tab) */}
-            {activeTab === "vouchers" && (
-              <div className="p-3 bg-white border-b border-gray-100 shrink-0">
+            {/* Manual Voucher Input (Fixed below header for Private Codes) */}
+            {!isBrowseOnly && (
+              <div className="p-3.5 bg-white border-b border-gray-100 shrink-0">
                 <form onSubmit={handleManualApply} className="flex gap-2">
                   <div className="relative flex-1">
                     <input
@@ -975,7 +1044,7 @@ export default function CouponModal({
                         setFeedbackError(null);
                         setFeedbackNotice(null);
                       }}
-                      placeholder={t("input_placeholder")}
+                      placeholder={t("input_placeholder") || "Nhập mã voucher..."}
                       className="w-full h-10 px-3.5 body-2 font-sans font-semibold uppercase rounded-full border border-gray-300 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/20 placeholder:text-gray-400 placeholder:normal-case transition-all"
                     />
                     {manualCode && (
@@ -1002,18 +1071,18 @@ export default function CouponModal({
                 </form>
 
                 {/* Feedback alerts */}
-                {feedbackNotice && (
-                  <p className="body-3 font-sans text-secondary font-semibold mt-2 px-2">
-                    {feedbackNotice}
-                  </p>
-                )}
                 {feedbackError && (
-                  <p className="body-3 font-sans text-secondary font-semibold mt-2 px-2">
+                  <p className="body-3 font-sans text-red-600 font-semibold mt-2 px-2 animate-fade-in">
                     {feedbackError}
                   </p>
                 )}
+                {feedbackNotice && (
+                  <p className="body-3 font-sans text-secondary font-semibold mt-2 px-2 animate-fade-in">
+                    {feedbackNotice}
+                  </p>
+                )}
                 {feedbackSuccess && (
-                  <p className="body-3 font-sans text-secondary font-semibold mt-2 px-2">
+                  <p className="body-3 font-sans text-green-600 font-semibold mt-2 px-2 animate-fade-in">
                     ✓ {feedbackSuccess}
                   </p>
                 )}
@@ -1025,126 +1094,114 @@ export default function CouponModal({
               </div>
             )}
 
-            {/* List Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {loading && allCampaigns.length === 0 && vouchers.length === 0 ? (
+            {/* List Content - Single Scrollable View */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-5">
+              {loading && allCampaigns.length === 0 && allVouchers.length === 0 ? (
                 <div className="py-12 text-center space-y-3">
                   <div className="inline-block size-8 border-3 border-secondary border-t-transparent rounded-full animate-spin" />
                   <p className="body-3 font-sans text-gray-500 font-medium">Đang tải...</p>
                 </div>
-              ) : activeTab === "campaigns" ? (
-                /* ================================================================= */
-                /* TAB 1: CAMPAIGNS LIST (Bao gồm Card Ưu Đãi Ship nếu có - FB-04) */
-                /* ================================================================= */
-                allCampaigns.length === 0 ? (
-                  <div className="py-12 text-center space-y-2">
-                    <p className="body-2 font-sans font-semibold text-gray-600">{t("no_vouchers")}</p>
-                    <p className="body-3 font-sans text-gray-400">{t("no_vouchers_hint")}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="title-4 font-display text-gray-500 uppercase tracking-wider font-bold">
-                      {t("tab_campaigns")}
-                    </div>
-
+              ) : allCampaigns.length === 0 && allVouchers.length === 0 ? (
+                <div className="py-12 text-center space-y-2">
+                  <p className="body-2 font-sans font-semibold text-gray-600">{t("no_vouchers")}</p>
+                  <p className="body-3 font-sans text-gray-400">{t("no_vouchers_hint")}</p>
+                </div>
+              ) : (
+                <>
+                  {/* Nhóm 1: CHƯƠNG TRÌNH ƯU ĐÃI */}
+                  {allCampaigns.length > 0 && (
                     <div className="space-y-3">
-                      {allCampaigns.map((camp) => (
-                        <div
-                          key={camp.id}
-                          onClick={() => setSelectedCampaign(camp)}
-                          className="group relative rounded-2xl border border-gray-200 bg-white p-3 hover:border-secondary/60 hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 active:scale-[0.99]"
-                        >
-                          {/* Left: Square Banner (1:1) */}
-                          <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden bg-yellow/60 shrink-0 relative border border-secondary/20 flex items-center justify-center">
-                            {camp.banner ? (
-                              <Image
-                                src={formatImageUrl(camp.banner)}
-                                alt={camp.name}
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                unoptimized
-                              />
-                            ) : (
-                              <div className="flex flex-col items-center justify-center text-center p-1 text-secondary">
-                                <span className="title-4 font-display font-bold uppercase">{t("promo_tag")}</span>
-                              </div>
-                            )}
-                          </div>
+                      <div className="title-4 font-display text-primary uppercase tracking-wider font-bold flex items-center justify-between">
+                        <span>Chương trình ưu đãi ({allCampaigns.length})</span>
+                      </div>
 
-                          {/* Right: 3 distinct rows */}
-                          <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
-                            {/* Row 1: Tên chương trình */}
-                            <h4 className="title-3 font-display text-primary font-bold leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
-                              {camp.name}
-                            </h4>
-
-                            {/* Row 2: Thời gian diễn ra */}
-                            <div className="body-2 font-sans font-bold text-gray-800">
-                              <span className="line-clamp-1">
-                                {t("duration")}{" "}
-                                <span className="text-secondary font-bold font-sans">
-                                  {formatCampaignDuration(camp.start_at, camp.end_at)}
-                                </span>
-                              </span>
+                      <div className="space-y-3">
+                        {allCampaigns.map((camp) => (
+                          <div
+                            key={camp.id}
+                            onClick={() => setSelectedCampaign(camp)}
+                            className="group relative rounded-2xl border border-gray-200 bg-white p-3 hover:border-secondary/60 hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 active:scale-[0.99]"
+                          >
+                            {/* Left: Square Banner (1:1) */}
+                            <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden bg-yellow/60 shrink-0 relative border border-secondary/20 flex items-center justify-center">
+                              {camp.banner ? (
+                                <Image
+                                  src={formatImageUrl(camp.banner)}
+                                  alt={camp.name}
+                                  fill
+                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                  unoptimized
+                                />
+                              ) : (
+                                <div className="flex flex-col items-center justify-center text-center p-1 text-secondary">
+                                  <span className="title-4 font-display font-bold uppercase">{t("promo_tag")}</span>
+                                </div>
+                              )}
                             </div>
 
-                            {/* Row 3: Ghi chú đặc biệt */}
-                            {camp.special_note ? (
-                              <div className="body-3 font-sans text-gray-500 italic">
-                                <span className="line-clamp-1">{camp.special_note}</span>
-                              </div>
-                            ) : (
-                              <div className="body-3 font-sans text-gray-400 italic">
-                                {t("click_to_view_terms")}
-                              </div>
-                            )}
-                          </div>
+                            {/* Right: 3 distinct rows */}
+                            <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
+                              {/* Row 1: Tên chương trình */}
+                              <h4 className="title-3 font-display text-primary font-bold leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
+                                {camp.name}
+                              </h4>
 
-                          {/* Right Arrow indicator */}
-                          <div className="text-gray-300 group-hover:text-secondary text-sm shrink-0 pr-1">
-                            ›
+                              {/* Row 2: Thời gian diễn ra */}
+                              <div className="body-2 font-sans font-bold text-gray-800">
+                                <span className="line-clamp-1">
+                                  {t("duration")}{" "}
+                                  <span className="text-secondary font-bold font-sans">
+                                    {formatCampaignDuration(camp.start_at, camp.end_at)}
+                                  </span>
+                                </span>
+                              </div>
+
+                              {/* Row 3: Ghi chú đặc biệt */}
+                              {camp.special_note ? (
+                                <div className="body-3 font-sans text-gray-500 italic">
+                                  <span className="line-clamp-1">{camp.special_note}</span>
+                                </div>
+                              ) : (
+                                <div className="body-3 font-sans text-gray-400 italic">
+                                  {t("click_to_view_terms")}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Right Arrow indicator */}
+                            <div className="text-gray-300 group-hover:text-secondary text-sm shrink-0 pr-1">
+                              ›
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )
-              ) : (
-                /* ================================================================= */
-                /* TAB 2: VOUCHERS LIST - PHÂN TÁCH 2 TẦNG RÕ RỆT (FB-06) */
-                /* ================================================================= */
-                vouchers.length === 0 ? (
-                  <div className="py-12 text-center space-y-2">
-                    <p className="body-2 font-sans font-semibold text-gray-600">{t("no_vouchers")}</p>
-                    <p className="body-3 font-sans text-gray-400">{t("no_vouchers_hint")}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-5">
-                    {/* Tầng 1: Mã giảm giá khả dụng */}
-                    {eligibleVouchers.length > 0 && (
-                      <div className="space-y-3">
-                        <div className="title-4 font-display text-primary uppercase tracking-wider font-bold flex items-center justify-between">
-                          <span>Mã giảm giá khả dụng ({eligibleVouchers.length})</span>
-                        </div>
-                        <div className="space-y-3">
-                          {eligibleVouchers.map((v) => renderVoucherCard(v, true))}
-                        </div>
-                      </div>
-                    )}
+                  )}
 
-                    {/* Tầng 2: Mã chưa đủ điều kiện */}
-                    {ineligibleVouchers.length > 0 && (
-                      <div className="space-y-3 pt-1">
-                        <div className="title-4 font-display text-gray-500 uppercase tracking-wider font-bold flex items-center justify-between">
-                          <span>Mã chưa đủ điều kiện ({ineligibleVouchers.length})</span>
-                        </div>
-                        <div className="space-y-3">
-                          {ineligibleVouchers.map((v) => renderVoucherCard(v, false))}
-                        </div>
+                  {/* Nhóm 2: MÃ GIẢM GIÁ KHẢ DỤNG */}
+                  {eligibleVouchers.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="title-4 font-display text-primary uppercase tracking-wider font-bold flex items-center justify-between">
+                        <span>Mã giảm giá khả dụng ({eligibleVouchers.length})</span>
                       </div>
-                    )}
-                  </div>
-                )
+                      <div className="space-y-3">
+                        {eligibleVouchers.map((v) => renderVoucherCard(v, true))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Nhóm 3: MÃ CHƯA ĐỦ ĐIỀU KIỆN */}
+                  {ineligibleVouchers.length > 0 && (
+                    <div className="space-y-3 pt-1">
+                      <div className="title-4 font-display text-gray-500 uppercase tracking-wider font-bold flex items-center justify-between">
+                        <span>Mã chưa đủ điều kiện ({ineligibleVouchers.length})</span>
+                      </div>
+                      <div className="space-y-3">
+                        {ineligibleVouchers.map((v) => renderVoucherCard(v, false))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
