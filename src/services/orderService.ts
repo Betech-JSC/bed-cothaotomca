@@ -474,6 +474,21 @@ export interface AdministrativeProvince {
   wards: AdministrativeWard[];
 }
 
+export const FALLBACK_ADMINISTRATIVE_UNITS: AdministrativeProvince[] = [
+  {
+    id: "prov_tp_ho_chi_minh",
+    name: "TP. Hồ Chí Minh",
+    wards: [
+      { id: "ward_hcm_go_vap_an_hoi_tay", name: "An Hội Tây", district: "Gò Vấp", province: "TP. Hồ Chí Minh", old_ward: "P.14" },
+      { id: "ward_hcm_binh_thanh_gia_dinh", name: "Gia Định", district: "Bình Thạnh", province: "TP. Hồ Chí Minh", old_ward: "P.1, P.2" },
+      { id: "ward_hcm_q3_ban_co", name: "Bàn Cờ", district: "Quận 3", province: "TP. Hồ Chí Minh", old_ward: "P.1, P.2, P.3" },
+      { id: "ward_hcm_q5_an_dong", name: "An Đông", district: "Quận 5", province: "TP. Hồ Chí Minh", old_ward: "P.9, P.10" },
+      { id: "ward_hcm_binh_thanh_cau_kieu", name: "Cầu Kiệu", district: "Bình Thạnh", province: "TP. Hồ Chí Minh", old_ward: "P.15, P.17" },
+      { id: "ward_hcm_q1_sai_gon", name: "Sài Gòn", district: "Quận 1", province: "TP. Hồ Chí Minh", old_ward: "P. Bến Nghé" },
+    ],
+  },
+];
+
 export async function getAdministrativeUnits(): Promise<AdministrativeProvince[]> {
   try {
     const res = await fetch(`${API_BASE}/administrative-units`, {
@@ -481,12 +496,15 @@ export async function getAdministrativeUnits(): Promise<AdministrativeProvince[]
       cache: "no-store",
     });
 
-    if (!res.ok) return [];
+    if (!res.ok) return FALLBACK_ADMINISTRATIVE_UNITS;
     const json = await res.json();
-    return json.data as AdministrativeProvince[];
-  } catch (err) {
-    console.error("Failed to fetch administrative units:", err);
-    return [];
+    if (Array.isArray(json.data) && json.data.length > 0) {
+      return json.data as AdministrativeProvince[];
+    }
+    return FALLBACK_ADMINISTRATIVE_UNITS;
+  } catch (err: any) {
+    console.warn("Failed to fetch administrative units, using fallback:", err?.message || err);
+    return FALLBACK_ADMINISTRATIVE_UNITS;
   }
 }
 
@@ -532,8 +550,8 @@ export async function calculateShippingFee(params: {
 
     const json = await res.json();
     return json.data as ShippingCalculationResult;
-  } catch (err) {
-    console.error("Failed to calculate shipping fee:", err);
+  } catch (err: any) {
+    console.warn("Failed to calculate shipping fee:", err?.message || err);
     return {
       shipping_fee: 50000,
       original_fee: 50000,
@@ -572,8 +590,8 @@ export async function getShippingSettings(): Promise<ShippingSettings | null> {
     if (!res.ok) return null;
     const json = await res.json();
     return json.data as ShippingSettings;
-  } catch (err) {
-    console.error("Failed to fetch shipping settings:", err);
+  } catch (err: any) {
+    console.warn("Failed to fetch shipping settings:", err?.message || err);
     return null;
   }
 }

@@ -17,6 +17,7 @@ import {
 } from "@/services/authService";
 import {
   getAdministrativeUnits,
+  FALLBACK_ADMINISTRATIVE_UNITS,
   type AdministrativeProvince,
 } from "@/services/orderService";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
@@ -127,7 +128,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   });
 
   // Administrative units for address picker
-  const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>([]);
+  const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>(FALLBACK_ADMINISTRATIVE_UNITS);
   useEffect(() => {
     getAdministrativeUnits().then((units) => {
       if (units && units.length > 0) {

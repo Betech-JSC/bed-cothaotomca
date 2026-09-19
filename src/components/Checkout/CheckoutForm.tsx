@@ -16,6 +16,7 @@ import {
   getShippingSettings,
   OrderApiError,
   validateVoucher,
+  FALLBACK_ADMINISTRATIVE_UNITS,
   type AdministrativeProvince,
   type AdministrativeWard,
   type CheckoutConfig,
@@ -222,7 +223,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
 
   // Regional Shipping & Freeship calculation states
-  const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>([]);
+  const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>(FALLBACK_ADMINISTRATIVE_UNITS);
   const [selectedProvince, setSelectedProvince] = useState("TP. Hồ Chí Minh");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedWard, setSelectedWard] = useState("");
@@ -413,7 +414,16 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       return `Mã ${appliedVoucher.code} không áp dụng đồng thời với CTKM khác. Đã kích hoạt lại ưu đãi giảm phí vận chuyển cho bạn.`;
     }
 
-    // Case 2 & Case 4: G1 active + G2 [promo: false]
+    // Case 4: G1 active + G2 [promo: false, ship: false]
+    if (
+      cartCampaignG1 &&
+      appliedVoucher.canCombineWithPromotions === false &&
+      appliedVoucher.canCombineWithFreeship === false
+    ) {
+      return `Mã ${appliedVoucher.code} không áp dụng đồng thời với CTKM khác.`;
+    }
+
+    // Case 2: G1 active + G2 [promo: false]
     if (cartCampaignG1 && appliedVoucher.canCombineWithPromotions === false) {
       return `Mã ${appliedVoucher.code} không áp dụng đồng thời với CTKM khác. Đã ưu tiên áp dụng theo mã của bạn.`;
     }
@@ -422,7 +432,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   }, [appliedVoucher, cartCampaignG1]);
 
   const promotionMatrixShippingNotice = useMemo(() => {
-    // Case 3 & Case 4: Mã G2 cấm giảm phí ship
+    // Case 4: Mã G2 cấm cả promo & ship
+    if (
+      appliedVoucher &&
+      !appliedVoucher.isFreeship &&
+      appliedVoucher.canCombineWithPromotions === false &&
+      appliedVoucher.canCombineWithFreeship === false
+    ) {
+      return `Mã ${appliedVoucher.code} không hỗ trợ giảm phí ship.`;
+    }
+
+    // Case 3: Mã G2 cấm giảm phí ship
     if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false) {
       return `Mã ${appliedVoucher.code} không áp dụng cùng chương trình giảm phí vận chuyển.`;
     }
@@ -1416,6 +1436,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         description: description.trim() || undefined,
         is_apply_voucher: !!appliedVoucher,
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
+        applied_deal_type: isBestDealVoucherApplied ? "voucher" : undefined,
         voucher: appliedVoucher
           ? {
             voucher_id: appliedVoucher.id,
@@ -1604,7 +1625,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     setGuestTierDismissed(true);
                     setGuestTierHint(null);
                   }}
-                  autoDismissMs={2000}
                 />
               )}
               {!user && guestTierChecking && (

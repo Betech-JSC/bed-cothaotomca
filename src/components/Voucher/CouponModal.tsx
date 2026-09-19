@@ -116,6 +116,11 @@ export default function CouponModal({
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
+  const appliedVoucherItem = useMemo(() => {
+    if (!appliedVoucherCode) return null;
+    return vouchers.find((v) => v.code.toUpperCase() === appliedVoucherCode.toUpperCase()) || null;
+  }, [appliedVoucherCode, vouchers]);
+
   useEffect(() => {
     if (isOpen) {
       setFeedbackError(null);
@@ -401,6 +406,12 @@ export default function CouponModal({
       v.code.toUpperCase().includes("FREESHIP") ||
       v.code.toUpperCase().includes("SHIP")
     );
+    const isDimmedByNonCombinableVoucher = Boolean(
+      appliedVoucherItem &&
+      appliedVoucherItem.can_combine_with_promotions === false &&
+      !isApplied &&
+      !isFreeship
+    );
 
     // 1. Voucher KHÔNG ĐỦ ĐIỀU KIỆN
     if (!isEligible) {
@@ -494,18 +505,22 @@ export default function CouponModal({
       <div
         key={v.code}
         onClick={() => {
-          if (!isBrowseOnly && onApplyVoucher && !isApplied) {
+          if (!isBrowseOnly && onApplyVoucher && !isApplied && !isDimmedByNonCombinableVoucher) {
             handleApply(v.code);
           }
         }}
-        className={`relative rounded-2xl border transition-all overflow-hidden flex flex-col sm:flex-row bg-white shadow-xs cursor-pointer ${
-          isApplied
-            ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40"
-            : "border-gray-200 hover:border-secondary/40 hover:shadow-md"
+        className={`relative rounded-2xl border transition-all overflow-hidden flex flex-col sm:flex-row bg-white shadow-xs ${
+          isDimmedByNonCombinableVoucher
+            ? "opacity-50 border-gray-200 cursor-not-allowed bg-gray-50/70"
+            : isApplied
+              ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40 cursor-pointer"
+              : "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer"
         }`}
       >
         {/* Left Badge */}
-        <div className="sm:w-28 py-3 px-3 flex sm:flex-col items-center justify-center gap-1 text-center shrink-0 bg-secondary text-white">
+        <div className={`sm:w-28 py-3 px-3 flex sm:flex-col items-center justify-center gap-1 text-center shrink-0 text-white ${
+          isDimmedByNonCombinableVoucher ? "bg-gray-400" : "bg-secondary"
+        }`}>
           <span className="title-3 font-display font-bold uppercase tracking-wider leading-tight text-white">
             {isFreeship
               ? "FREESHIP"
@@ -562,6 +577,12 @@ export default function CouponModal({
                 {t("all_orders")}
               </p>
             )}
+
+            {isDimmedByNonCombinableVoucher && (
+              <p className="text-secondary text-xs font-semibold mt-1 animate-fade-in">
+                Không áp dụng đồng thời với ưu đãi bạn đang chọn
+              </p>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -592,12 +613,18 @@ export default function CouponModal({
               ) : (
                 <button
                   type="button"
-                  disabled={applyingCode === v.code}
+                  disabled={applyingCode === v.code || isDimmedByNonCombinableVoucher}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleApply(v.code);
+                    if (!isDimmedByNonCombinableVoucher) {
+                      handleApply(v.code);
+                    }
                   }}
-                  className="font-display title-4 font-bold text-white bg-secondary hover:bg-secondary/95 px-4 py-1.5 rounded-full transition-all cursor-pointer shadow-xs"
+                  className={`font-display title-4 font-bold rounded-full transition-all shadow-xs ${
+                    isDimmedByNonCombinableVoucher
+                      ? "text-gray-400 bg-gray-200 px-4 py-1.5 cursor-not-allowed"
+                      : "text-white bg-secondary hover:bg-secondary/95 px-4 py-1.5 cursor-pointer"
+                  }`}
                 >
                   {applyingCode === v.code ? "..." : t("apply")}
                 </button>

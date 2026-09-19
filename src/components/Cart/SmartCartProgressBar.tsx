@@ -18,7 +18,12 @@ export interface SmartCartProgressBarProps {
   isFreeship?: boolean;
   freeshipReason?: string | null;
   vouchers?: PublicVoucherItem[];
-  appliedVoucher?: (PublicVoucherItem & { canCombineWithFreeship?: boolean; can_combine_with_freeship?: boolean }) | null;
+  appliedVoucher?: (PublicVoucherItem & {
+    canCombineWithFreeship?: boolean;
+    can_combine_with_freeship?: boolean;
+    canCombineWithPromotions?: boolean;
+    can_combine_with_promotions?: boolean;
+  }) | null;
   appliedCampaign?: {
     name?: string;
     can_combine_with_freeship?: boolean;
@@ -126,17 +131,31 @@ export default function SmartCartProgressBar({
     };
   }, [subtotal, shippingSettings, isFreeship, vouchers, t]);
 
-  const isFreeshipBlocked = Boolean(
-    (appliedCampaign && appliedCampaign.can_combine_with_freeship === false) ||
-    (appliedVoucher &&
-      (appliedVoucher.canCombineWithFreeship === false ||
-        appliedVoucher.can_combine_with_freeship === false))
+  const isVoucherOverridingG1 = Boolean(
+    appliedVoucher &&
+    (appliedVoucher.canCombineWithPromotions === false || (appliedVoucher as any).can_combine_with_promotions === false) &&
+    appliedVoucher.canCombineWithFreeship !== false &&
+    appliedVoucher.can_combine_with_freeship !== false
   );
 
+  const isG1BlockingFreeship = Boolean(
+    appliedCampaign &&
+    appliedCampaign.can_combine_with_freeship === false &&
+    !isVoucherOverridingG1
+  );
+
+  const isG2BlockingFreeship = Boolean(
+    appliedVoucher &&
+    !appliedVoucher.is_freeship &&
+    (appliedVoucher.canCombineWithFreeship === false || appliedVoucher.can_combine_with_freeship === false)
+  );
+
+  const isFreeshipBlocked = isG1BlockingFreeship || isG2BlockingFreeship;
+
   if (isFreeshipBlocked) {
-    const message = (appliedCampaign && appliedCampaign.can_combine_with_freeship === false)
-      ? `Không thể áp dụng Hỗ trợ phí ship do CTKM ${appliedCampaign.name || ""} không áp dụng cùng giảm phí ship.`
-      : t("cannot_combine_voucher");
+    const message = isG1BlockingFreeship
+      ? `CTKM ${appliedCampaign?.name || ""} không áp dụng cùng chương trình giảm phí vận chuyển.`
+      : (t("cannot_combine_voucher") || `Mã ${appliedVoucher?.code || ""} không áp dụng cùng chương trình giảm phí vận chuyển.`);
 
     return (
       <div className={`rounded-2xl p-3.5 border transition-all bg-red-50 border-red-200 text-red-800 text-xs font-semibold ${className}`}>

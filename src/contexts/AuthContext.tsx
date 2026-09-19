@@ -149,13 +149,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (phone: string, password: string) => {
     try {
       const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
+      const cleanPhone = phone.trim();
       const res = await fetch(`${BASE_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ phone, password }),
+        body: JSON.stringify({
+          phone: cleanPhone,
+          ...(cleanPhone.includes("@") ? { email: cleanPhone } : {}),
+          username: cleanPhone,
+          password,
+        }),
       });
 
       const body = await res.json().catch(() => ({}));
@@ -170,11 +176,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true };
       }
 
+      let errorMsg = body.message || "Email / Số điện thoại hoặc mật khẩu không chính xác.";
+      if (body.errors) {
+        errorMsg = Object.values(body.errors).flat().join("\n");
+      }
+
       return {
         success: false,
-        message: body.message || "Số điện thoại hoặc mật khẩu không chính xác.",
-        error_code: body.error_code,
-        data: body.data,
+        message: errorMsg,
+        error_code: body.error_code || body.error,
+        data: body.data || body,
       };
     } catch (e: any) {
       console.error("Login API Error:", e);

@@ -16,15 +16,17 @@ export default function GuestTierHintBanner({
   discountPercent,
   loginHref,
   onDismiss,
-  autoDismissMs = 2000,
+  autoDismissMs = 0,
 }: GuestTierHintBannerProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const startTimer = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      onDismiss();
-    }, autoDismissMs);
+    if (autoDismissMs > 0) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        onDismiss();
+      }, autoDismissMs);
+    }
   };
 
   const resetTimer = () => {
@@ -38,7 +40,7 @@ export default function GuestTierHintBanner({
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [autoDismissMs]);
 
   const tierLabel = tier === "diamond" ? "Diamond" : "Gold";
 
