@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "@/i18n/routing";
 import React from "react";
 import { formatPrice } from "@/lib/format";
@@ -33,9 +34,18 @@ interface CardProductProps {
 
 const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const { cartItems } = useCart();
+  const { user } = useAuth();
   const cartGrossSubtotal = React.useMemo(() => cartItems.reduce((sum, i) => sum + (i.originalPrice || i.unitPrice) * i.quantity, 0), [cartItems]);
   const t = useTranslations();
   const imageSrc = item.image?.url || '/cover.jpg';
+
+  const userTier = React.useMemo(() => {
+    if (!user) return "ALL";
+    const pts = user.points || 0;
+    if (pts >= 800 || (user.tier && user.tier.toLowerCase() === "diamond")) return "DIAMOND";
+    if (pts >= 400 || (user.tier && user.tier.toLowerCase() === "gold")) return "GOLD";
+    return "MEMBER";
+  }, [user]);
 
   const pricing = React.useMemo(() => {
     // 0. If item already has price and original_price explicitly calculated from service
@@ -92,8 +102,11 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
 
         const activeCamp = (v as any).active_campaign || (item as any).active_campaign;
         let isEligible = true;
-        if (activeCamp?.min_order_value) {
-          isEligible = cartGrossSubtotal >= parseFloat(String(activeCamp.min_order_value));
+        const targetGroup = (activeCamp?.target_customer_group || activeCamp?.customer_group || "ALL").toUpperCase();
+        if (targetGroup === "GOLD" && userTier !== "GOLD" && userTier !== "DIAMOND") {
+          isEligible = false;
+        } else if (targetGroup === "DIAMOND" && userTier !== "DIAMOND") {
+          isEligible = false;
         }
         const isDiscounted = campPrice !== null && campPrice > 0 && campPrice < basePrice && isEligible;
         const effectivePrice = isDiscounted ? campPrice : basePrice;
@@ -149,8 +162,11 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
 
     const fallbackActiveCamp = (item as any).active_campaign;
     let isEligible = true;
-    if (fallbackActiveCamp?.min_order_value) {
-      isEligible = cartGrossSubtotal >= parseFloat(String(fallbackActiveCamp.min_order_value));
+    const fallbackTargetGroup = (fallbackActiveCamp?.target_customer_group || fallbackActiveCamp?.customer_group || "ALL").toUpperCase();
+    if (fallbackTargetGroup === "GOLD" && userTier !== "GOLD" && userTier !== "DIAMOND") {
+      isEligible = false;
+    } else if (fallbackTargetGroup === "DIAMOND" && userTier !== "DIAMOND") {
+      isEligible = false;
     }
     const isDiscounted = campPrice !== null && campPrice > 0 && campPrice < basePrice && isEligible;
     const price = isDiscounted ? campPrice : (directPrice > 0 ? directPrice : basePrice);
@@ -170,7 +186,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
       hasDiscount,
       discountPercent,
     };
-  }, [item, cartGrossSubtotal]);
+  }, [item, cartGrossSubtotal, userTier]);
 
   const { price, originalPrice, hasDiscount, discountPercent } = pricing;
 

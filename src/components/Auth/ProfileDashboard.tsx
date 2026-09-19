@@ -973,7 +973,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                           {/* Bottom Actions within expanded card */}
                           <div className="pt-2 border-t border-gray-200/50 flex items-center justify-between flex-wrap gap-2 text-xs">
                             <Link
-                              href={`/order-lookup?order=${order.order_code}&phone=${order.delivery?.contact_number || user.phone || ""}`}
+                              href={`/order-lookup?order=${order.order_code}&phone=${order.delivery?.contact_number || user.phone || ""}` as any}
                               className="text-secondary hover:underline font-bold flex items-center gap-1 cursor-pointer"
                             >
                               <span>Theo dõi tiến trình & tra cứu chi tiết</span>

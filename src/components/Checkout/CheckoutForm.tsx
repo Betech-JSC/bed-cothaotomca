@@ -963,21 +963,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     [appliedVoucher, subtotal, shipping]
   );
 
-  // Member Tier Discount (Gold: 5%, Diamond: 8%)
+  // Member Tier Discount - Web không áp dụng tự động, vận hành thủ công bên Fanpage
   const memberTier = useMemo(() => getMemberTier(user?.points || 0), [user?.points]);
-  const memberDiscount = useMemo(() => {
-    if (!user || (user.points || 0) < 400) return 0;
-    return calculateMemberDiscount(user.points, subtotal);
-  }, [user, subtotal]);
+  const memberDiscount = 0;
+  const memberDiscountLabel = "";
 
-  const memberDiscountLabel = useMemo(() => {
-    if (!user || (user.points || 0) < 400) return "";
-    return (user.points || 0) >= 800
-      ? (t("member_discount_diamond") || "Ưu đãi thành viên Diamond (-8%)")
-      : (t("member_discount_gold") || "Ưu đãi thành viên Gold (-5%)");
-  }, [user, t]);
-
-  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount - memberDiscount + shipping);
+  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount + shipping);
 
   const handleApplyVoucher = async (codeOverride?: string, isAuto = false) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
@@ -1432,7 +1423,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               })),
             ]
             : [],
-        discount: voucherDiscount + autoOrderDiscountAmount + memberDiscount,
+        discount: voucherDiscount + autoOrderDiscountAmount,
         description: description.trim() || undefined,
         is_apply_voucher: !!appliedVoucher,
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
@@ -1616,20 +1607,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {fieldError("customer.phone") ? (
                 <p className="text-sm text-secondary font-medium mt-1">{fieldError("customer.phone")}</p>
               ) : null}
-              {!user && !guestTierDismissed && guestTierHint && guestTierHint.hasBenefit && (
-                <GuestTierHintBanner
-                  tier={guestTierHint.tier as "gold" | "diamond"}
-                  discountPercent={guestTierHint.discountPercent}
-                  loginHref={`/vi/login?redirect=/vi/checkout`}
-                  onDismiss={() => {
-                    setGuestTierDismissed(true);
-                    setGuestTierHint(null);
-                  }}
-                />
-              )}
-              {!user && guestTierChecking && (
-                <p className="text-xs text-primary/50 font-serif mt-1 animate-pulse">Đang kiểm tra ưu đãi...</p>
-              )}
+
             </div>
 
             {/* Email (Optional) */}
@@ -2666,17 +2644,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </div>
               )}
 
-              {/* Chiết khấu thành viên (Member Tier Discount) */}
-              {user && memberDiscount > 0 && (
-                <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
-                  <span className="flex-1 min-w-0 leading-snug">
-                    {memberDiscountLabel}
-                  </span>
-                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
-                    -{formatPrice(memberDiscount)}
-                  </span>
-                </div>
-              )}
+
 
               {appliedVoucher && voucherDiscount > 0 && (
                 <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2">

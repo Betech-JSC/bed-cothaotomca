@@ -406,9 +406,12 @@ export default function CouponModal({
       v.code.toUpperCase().includes("FREESHIP") ||
       v.code.toUpperCase().includes("SHIP")
     );
-    const isDimmedByNonCombinableVoucher = Boolean(
+    const appliedIsNonCombinable = Boolean(
       appliedVoucherItem &&
-      appliedVoucherItem.can_combine_with_promotions === false &&
+      (appliedVoucherItem.allow_stack_promo === false || appliedVoucherItem.can_combine_with_promotions === false)
+    );
+    const isDimmedByNonCombinableVoucher = Boolean(
+      appliedIsNonCombinable &&
       !isApplied &&
       !isFreeship
     );

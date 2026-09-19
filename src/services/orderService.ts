@@ -45,6 +45,7 @@ export interface CreateOrderPayload {
     can_combine_with_freeship?: boolean;
   } | null;
   voucher_code?: string;
+  applied_deal_type?: "campaign" | "voucher" | "stacked" | null;
   payment_method?: "COD" | "TRANSFER" | "CARD";
   branch_id?: number;
 }
@@ -389,6 +390,7 @@ export interface PublicVoucherItem {
   customer_scope?: "all" | "member_only" | "tier_only";
   min_member_tier?: string | null;
   can_combine_with_promotions?: boolean;
+  allow_stack_promo?: boolean;
   can_combine_with_freeship?: boolean;
   start_date?: string | null;
   end_date?: string | null;
