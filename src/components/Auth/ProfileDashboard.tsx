@@ -454,18 +454,40 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   const getTierInfo = (points: number) => {
     if (points >= 800) {
       return {
-        name: t("diamond_member"),
-        bgBadge: "bg-primary/10 text-primary border-primary/20",
+        name: t("diamond_member") || "DIAMOND",
+        icon: "💎",
+        cardBg: "bg-gradient-to-br from-primary/10 via-rose-50/40 to-primary/5 border-primary/25",
+        badgeStyle: "bg-primary text-white shadow-xs border-transparent",
+        accentText: "text-primary",
+        progressColor: "bg-primary",
+        progressPercent: 100,
+        nextTierText: "Hạng thành viên cao cấp nhất",
       };
     } else if (points >= 400) {
+      const needed = Math.max(0, 800 - points);
+      const percent = Math.min(100, Math.max(0, Math.round(((points - 400) / 400) * 100)));
       return {
-        name: t("gold_member"),
-        bgBadge: "bg-yellow text-brown border-secondary/30",
+        name: t("gold_member") || "GOLD",
+        icon: "⭐",
+        cardBg: "bg-gradient-to-br from-amber-500/10 via-amber-50/50 to-yellow-500/10 border-amber-300/60",
+        badgeStyle: "bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-xs border-transparent",
+        accentText: "text-amber-800",
+        progressColor: "bg-gradient-to-r from-amber-500 to-yellow-500",
+        progressPercent: percent,
+        nextTierText: `Còn ${needed} điểm để lên DIAMOND`,
       };
     } else {
+      const needed = Math.max(0, 400 - points);
+      const percent = Math.min(100, Math.max(0, Math.round((points / 400) * 100)));
       return {
-        name: t("member"),
-        bgBadge: "bg-gray-100 text-gray-700 border-gray-200/50",
+        name: t("member") || "MEMBER",
+        icon: "",
+        cardBg: "bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100/70 border-gray-200",
+        badgeStyle: "bg-gray-700 text-white shadow-xs border-transparent",
+        accentText: "text-gray-700",
+        progressColor: "bg-gray-700",
+        progressPercent: percent,
+        nextTierText: `Còn ${needed} điểm để lên GOLD`,
       };
     }
   };
@@ -630,21 +652,61 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
             {user.phone ? user.phone.replace(/(\d{4})(\d{3})(\d{3})/, "$1 $2 $3") : ""}
           </p>
 
-          {/* Badges */}
-          <div className="flex items-center justify-between w-full border-t border-gray-100 pt-4">
-            <span className={`border text-[12px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${tier.bgBadge}`}>
-              {tier.name}
-            </span>
-            <button
-              onClick={handleRefreshPoints}
-              disabled={refreshingPoints}
-              className="text-primary font-bold text-[14px] flex items-center gap-1 hover:text-secondary duration-300 cursor-pointer"
-            >
-              <svg className={`h-4 w-4 overflow-visible ${refreshingPoints ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.247 7H16" />
-              </svg>
-              {t("points", { count: user.points })}
-            </button>
+          {/* Membership Tier & Loyalty Points Card */}
+          <div className={`w-full rounded-2xl p-3.5 border transition-all duration-300 text-left shadow-xs ${tier.cardBg}`}>
+            {/* Top row: Badge & Points with interactive refresh */}
+            <div className="flex items-center justify-between gap-2">
+              <span className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider ${tier.badgeStyle}`}>
+                {tier.icon ? <span>{tier.icon}</span> : null}
+                <span>{tier.name}</span>
+              </span>
+
+              <button
+                onClick={handleRefreshPoints}
+                disabled={refreshingPoints}
+                title={refreshingPoints ? "Đang đồng bộ điểm..." : "Bấm để cập nhật lại điểm"}
+                className={`group inline-flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:text-secondary bg-white/90 hover:bg-white px-3 py-1.5 rounded-full border border-gray-200/80 shadow-xs transition-all duration-200 cursor-pointer active:scale-95 disabled:cursor-wait ${
+                  refreshingPoints ? "opacity-75" : ""
+                }`}
+              >
+                <span className={`font-extrabold text-secondary text-sm leading-none transition-opacity duration-300 ${refreshingPoints ? "animate-pulse" : ""}`}>
+                  {user.points?.toLocaleString("vi-VN") || 0}
+                </span>
+                <span className="text-[11px] font-medium text-gray-500 group-hover:text-gray-700">Điểm</span>
+                <svg
+                  className={`w-3.5 h-3.5 transition-all duration-500 ease-in-out shrink-0 ${
+                    refreshingPoints
+                      ? "animate-spin text-secondary"
+                      : "text-gray-400 group-hover:text-secondary group-hover:rotate-180"
+                  }`}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                  <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                  <path d="M16 21h5v-5" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Progress Bar & Next Tier Target */}
+            <div className="mt-3 pt-2.5 border-t border-black/5">
+              <div className="flex items-center justify-between text-[11px] font-medium text-gray-500 mb-1.5">
+                <span className="text-gray-600 font-semibold">{tier.nextTierText}</span>
+                <span className="font-bold text-gray-700">{tier.progressPercent}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-black/5 rounded-full overflow-hidden p-0.5">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ease-out ${tier.progressColor}`}
+                  style={{ width: `${tier.progressPercent}%` }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Menu Items */}

@@ -42,7 +42,7 @@ export default function GuestTierHintBanner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoDismissMs]);
 
-  const tierLabel = tier === "diamond" ? "Diamond" : "Gold";
+  const tierLabel = tier === "diamond" ? "DIAMOND" : "GOLD";
 
   return (
     <div

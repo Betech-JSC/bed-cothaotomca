@@ -255,7 +255,7 @@ export default function CouponModal({
           const userRank = tierRank[currentUserTier] ?? 1;
           const reqRank = tierRank[reqTier] ?? 1;
           if (userRank < reqRank) {
-            const tierName = reqTier === "diamond" ? "Kim Cương" : reqTier === "gold" ? "Vàng" : "Thành viên";
+            const tierName = reqTier === "diamond" ? "DIAMOND" : reqTier === "gold" ? "GOLD" : "MEMBER";
             return {
               eligible: false,
               reason:
@@ -448,7 +448,7 @@ export default function CouponModal({
                 )}
                 {v.customer_scope === "tier_only" && (
                   <span className="body-3 font-sans font-medium text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">
-                    Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "Kim Cương" : "Vàng") : "VIP"}
+                    Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "DIAMOND" : "GOLD") : "VIP"}
                   </span>
                 )}
                 {v.can_combine_with_promotions === false && (
@@ -547,7 +547,7 @@ export default function CouponModal({
               )}
               {v.customer_scope === "tier_only" && (
                 <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
-                  Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "Kim Cương" : "Vàng") : "VIP"}
+                  Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "DIAMOND" : "GOLD") : "VIP"}
                 </span>
               )}
               {v.can_combine_with_promotions === false && (

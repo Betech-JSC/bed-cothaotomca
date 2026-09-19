@@ -14,22 +14,22 @@ export function getMemberTier(points: number = 0): MemberTierInfo {
   if (points >= 800) {
     return {
       tier: "diamond",
-      name: "Diamond",
+      name: "DIAMOND",
       discountPercent: 8,
-      label: "Ưu đãi thành viên Diamond (-8%)",
+      label: "Ưu đãi thành viên DIAMOND (-8%)",
     };
   }
   if (points >= 400) {
     return {
       tier: "gold",
-      name: "Gold",
+      name: "GOLD",
       discountPercent: 5,
-      label: "Ưu đãi thành viên Gold (-5%)",
+      label: "Ưu đãi thành viên GOLD (-5%)",
     };
   }
   return {
     tier: "member",
-    name: "Member",
+    name: "MEMBER",
     discountPercent: 0,
     label: "",
   };

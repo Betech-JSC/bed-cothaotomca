@@ -190,7 +190,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(disabledCard).toBeInTheDocument();
   });
 
-  it('Matrix 4: Mã Tier-Only (Hạng Kim Cương) khi khách chỉ đạt hạng Vàng -> Bị mờ và hiển thị lý do hạng', async () => {
+  it('Matrix 4: Mã Tier-Only (Hạng DIAMOND) khi khách chỉ đạt hạng GOLD -> Bị mờ và hiển thị lý do hạng', async () => {
     const diamondVoucher: PublicVoucherItem = {
       id: 4,
       code: 'DIAMONDONLY',
@@ -199,13 +199,13 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
       customer_scope: 'tier_only',
       min_member_tier: 'diamond',
       prereq_price: 100000,
-      description: 'Đặc quyền thành viên Kim Cương',
+      description: 'Đặc quyền thành viên DIAMOND',
     };
     mockVouchersList = [diamondVoucher];
     mockCurrentUser = {
       id: 10,
       name: 'Nguyen Van A',
-      points: 500, // Hạng Gold (< 800)
+      points: 500, // Hạng GOLD (< 800)
       tier: 'gold',
     };
 
@@ -221,7 +221,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     );
 
     expect(await screen.findByText('DIAMONDONLY')).toBeInTheDocument();
-    expect(screen.getByText('Chỉ dành riêng cho thành viên đạt hạng Kim Cương trở lên')).toBeInTheDocument();
+    expect(screen.getByText('Chỉ dành riêng cho thành viên đạt hạng DIAMOND trở lên')).toBeInTheDocument();
 
     const disabledCard = container.querySelector('.opacity-60.bg-gray-100\\/70.pointer-events-none.cursor-not-allowed.select-none');
     expect(disabledCard).toBeInTheDocument();
