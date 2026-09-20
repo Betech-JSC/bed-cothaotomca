@@ -1709,7 +1709,23 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {fieldError("customer.phone") ? (
                 <p className="text-sm text-secondary font-medium mt-1">{fieldError("customer.phone")}</p>
               ) : null}
-
+              {!user && !guestTierDismissed && guestTierHint && guestTierHint.hasBenefit && (
+                <GuestTierHintBanner
+                  tier={guestTierHint.tier as "gold" | "diamond"}
+                  discountPercent={guestTierHint.discountPercent}
+                  loginHref="/vi/login?redirect=/vi/checkout"
+                  onDismiss={() => {
+                    setGuestTierDismissed(true);
+                    setGuestTierHint(null);
+                  }}
+                  autoDismissMs={0}
+                />
+              )}
+              {!user && guestTierChecking && (
+                <p className="text-xs text-primary/50 font-serif mt-1 animate-pulse">
+                  Đang kiểm tra ưu đãi...
+                </p>
+              )}
             </div>
 
             {/* Email (Optional) */}
