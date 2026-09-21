@@ -1938,6 +1938,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <span className="flex-1 min-w-0">{t("total")}</span>
                         <span className="text-secondary shrink-0 whitespace-nowrap text-right">{formatPrice(total)}</span>
                       </div>
+                      {user && total > 0 && Math.floor(total / 10000) > 0 && (
+                        <div className="text-xs text-secondary font-semibold text-right flex items-center justify-end gap-1.5 pt-1.5 border-t border-dashed border-gray-200">
+                          <span>Đơn hàng này sẽ tích lũy thêm {Math.floor(total / 10000)} điểm</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

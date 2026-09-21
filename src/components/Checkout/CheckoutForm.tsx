@@ -2957,9 +2957,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 </span>
               </div>
 
-              {user && total > 0 && (
+              {user && total > 0 && Math.floor(total / 10000) > 0 && (
                 <div className="text-xs text-secondary font-semibold text-right flex items-center justify-end gap-1.5 pt-2 border-t border-dashed border-gray-200">
-                  <span>Đơn hàng này sẽ tích lũy thêm ~{Math.floor(total / 100000)} điểm!</span>
+                  <span>Đơn hàng này sẽ tích lũy thêm {Math.floor(total / 10000)} điểm</span>
                 </div>
               )}
             </div>
