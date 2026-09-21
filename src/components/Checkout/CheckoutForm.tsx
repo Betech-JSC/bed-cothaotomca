@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
@@ -1350,6 +1350,21 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       setValidatingVoucher(false);
     }
   };
+
+  const modalAppliedVoucherCodes = useMemo(
+    () => [appliedVoucher?.code, appliedShippingVoucher?.code].filter(Boolean) as string[],
+    [appliedVoucher?.code, appliedShippingVoucher?.code]
+  );
+
+  const handleApplyVoucherFromModal = useCallback((code: string) => {
+    return handleApplyVoucher(code, false);
+  }, [handleApplyVoucher]);
+
+  const handleAddPrivateVoucherFromModal = useCallback((v: PublicVoucherItem) => {
+    setSessionPrivateVouchers((prev) =>
+      prev.some((x) => x.code === v.code) ? prev : [...prev, v]
+    );
+  }, []);
 
   // Address concatenation
   const finalAddress = useMemo(() => {
@@ -3028,19 +3043,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
         appliedVoucherCode={appliedVoucher?.code || appliedShippingVoucher?.code || ""}
-        appliedVoucherCodes={[appliedVoucher?.code, appliedShippingVoucher?.code].filter(Boolean) as string[]}
+        appliedVoucherCodes={modalAppliedVoucherCodes}
         onApplyVouchers={handleApplyVouchers}
-        onApplyVoucher={(code) => handleApplyVoucher(code, false)}
+        onApplyVoucher={handleApplyVoucherFromModal}
         onRemoveVoucher={handleRemoveVoucher}
         activePromotions={appliedCartPromotions}
         user={user}
         memberTier={memberTier.tier}
         privateVouchers={sessionPrivateVouchers}
-        onAddPrivateVoucher={(v) => {
-          setSessionPrivateVouchers((prev) =>
-            prev.some((x) => x.code === v.code) ? prev : [...prev, v]
-          );
-        }}
+        onAddPrivateVoucher={handleAddPrivateVoucherFromModal}
       />
 
       {/* Order Gift Selector Modal */}

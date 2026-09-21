@@ -615,4 +615,52 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
       await screen.findByText('Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.')
     ).toBeInTheDocument();
   });
+
+  it('Matrix 15: Trạng thái chọn voucher duy trì ổn định khi component re-render (ngăn lỗi bỏ chọn khi cuộn chuột)', async () => {
+    const voucher: PublicVoucherItem = {
+      id: 88,
+      code: 'SCROLL_TEST_10K',
+      discount_type: 'fixed',
+      value: 10000,
+      prereq_price: 0,
+      description: 'Giảm 10k kiểm tra cuộn trang',
+    };
+    mockVouchersList = [voucher];
+
+    const { rerender } = render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={100000}
+        appliedVoucherCodes={[]}
+        onApplyVoucher={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText('SCROLL_TEST_10K')).toBeInTheDocument();
+
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+
+    // Người dùng tick chọn voucher
+    fireEvent.click(checkbox);
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i })).toBeInTheDocument();
+
+    // Giả lập hiện tượng parent re-render khi cuộn chuột (window scroll / sticky header update):
+    // Parent truyền reference mới của appliedVoucherCodes ([] !== []) và onApplyVoucher (() => {})
+    rerender(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={100000}
+        appliedVoucherCodes={[]}
+        onApplyVoucher={vi.fn()}
+      />
+    );
+
+    // Voucher PHẢI giữ nguyên trạng thái đã chọn, không bị reset hay tự động bỏ chọn
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i })).toBeInTheDocument();
+  });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Image from "next/image";
 import { formatPrice, formatImageUrl } from "@/lib/format";
 import {
@@ -181,43 +181,65 @@ export default function CouponModal({
     return allVouchers.find((v) => v.code.toUpperCase() === primaryCode.toUpperCase()) || null;
   }, [selectedCodes, appliedVoucherCode, allVouchers]);
 
+  const wasOpenRef = useRef(false);
+
+  // Lock background scroll when modal is open to prevent scroll propagation
   useEffect(() => {
     if (isOpen) {
-      setFeedbackError(null);
-      setFeedbackNotice(null);
-      setFeedbackSuccess(null);
-      setSelectedCampaign(null);
-      const initialCodes = (appliedVoucherCodes && appliedVoucherCodes.length > 0)
-        ? appliedVoucherCodes
-        : appliedVoucherCode
-          ? [appliedVoucherCode]
-          : [];
-      setSelectedCodes(initialCodes);
-
-      // If we don't have cached data yet, show smooth loading
-      if (!cachedCampaigns || !cachedVouchers) {
-        setLoading(true);
-      }
-
-      const fetchShipping = shippingSettings !== undefined
-        ? Promise.resolve(shippingSettings)
-        : getShippingSettings().catch(() => null);
-
-      Promise.all([
-        getActiveCampaigns().catch(() => []),
-        getAvailableVouchers().catch(() => []),
-        fetchShipping,
-      ]).then(([camps, vows, sSettings]) => {
-        cachedCampaigns = camps;
-        cachedVouchers = vows;
-        setCampaigns(camps);
-        setVouchers(vows);
-        setShippingSettingsState(sSettings);
-      }).finally(() => {
-        setLoading(false);
-      });
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
     }
-  }, [isOpen, isBrowseOnly, onApplyVoucher, shippingSettings, appliedVoucherCode, appliedVoucherCodes]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const wasOpen = wasOpenRef.current;
+      wasOpenRef.current = true;
+
+      // Only initialize selected codes and fetch data when the modal FIRST opens (transition from closed to open)
+      // Never wipe selected codes or re-fetch on parent re-renders while the modal remains open!
+      if (!wasOpen) {
+        setFeedbackError(null);
+        setFeedbackNotice(null);
+        setFeedbackSuccess(null);
+        setSelectedCampaign(null);
+        const initialCodes = (appliedVoucherCodes && appliedVoucherCodes.length > 0)
+          ? appliedVoucherCodes
+          : appliedVoucherCode
+            ? [appliedVoucherCode]
+            : [];
+        setSelectedCodes(initialCodes);
+
+        // If we don't have cached data yet, show smooth loading
+        if (!cachedCampaigns || !cachedVouchers) {
+          setLoading(true);
+        }
+
+        const fetchShipping = shippingSettings !== undefined
+          ? Promise.resolve(shippingSettings)
+          : getShippingSettings().catch(() => null);
+
+        Promise.all([
+          getActiveCampaigns().catch(() => []),
+          getAvailableVouchers().catch(() => []),
+          fetchShipping,
+        ]).then(([camps, vows, sSettings]) => {
+          cachedCampaigns = camps;
+          cachedVouchers = vows;
+          setCampaigns(camps);
+          setVouchers(vows);
+          setShippingSettingsState(sSettings);
+        }).finally(() => {
+          setLoading(false);
+        });
+      }
+    } else {
+      wasOpenRef.current = false;
+    }
+  }, [isOpen, appliedVoucherCode, appliedVoucherCodes, shippingSettings]);
 
   // Virtual campaign item for shipping discount card (FB-04)
   const shippingPromotionItem: PublicCampaignItem | null = useMemo(() => {
@@ -939,7 +961,7 @@ export default function CouponModal({
             </div>
 
             {/* Detail Scrollable Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-4">
               {/* Square Banner Image */}
               {selectedCampaign.banner && (
                 <div className="w-full flex justify-center">
@@ -1095,7 +1117,7 @@ export default function CouponModal({
             )}
 
             {/* List Content - Single Scrollable View */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-5">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5">
               {loading && allCampaigns.length === 0 && allVouchers.length === 0 ? (
                 <div className="py-12 text-center space-y-3">
                   <div className="inline-block size-8 border-3 border-secondary border-t-transparent rounded-full animate-spin" />

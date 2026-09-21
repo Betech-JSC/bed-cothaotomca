@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
@@ -1025,6 +1025,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     setVoucherError(null);
     setBestDealNotice(null);
   };
+
+  const handleApplyVoucherFromModal = useCallback((code: string) => {
+    return handleApplyVoucher(code);
+  }, [handleApplyVoucher]);
+
+  const handleAddPrivateVoucherFromModal = useCallback((v: PublicVoucherItem) => {
+    setSessionPrivateVouchers((prev) =>
+      prev.some((x) => x.code === v.code) ? prev : [...prev, v]
+    );
+  }, []);
 
   // Submit Order
   const handleSubmit = async () => {
@@ -2443,17 +2453,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
         appliedVoucherCode={appliedVoucher?.code || ""}
-        onApplyVoucher={(code) => handleApplyVoucher(code)}
+        onApplyVoucher={handleApplyVoucherFromModal}
         onRemoveVoucher={handleRemoveVoucher}
         activePromotions={appliedCartPromotions}
         user={user}
         memberTier={memberTier.tier}
         privateVouchers={sessionPrivateVouchers}
-        onAddPrivateVoucher={(v) => {
-          setSessionPrivateVouchers((prev) =>
-            prev.some((x) => x.code === v.code) ? prev : [...prev, v]
-          );
-        }}
+        onAddPrivateVoucher={handleAddPrivateVoucherFromModal}
       />
 
       {/* Order Gift Selector Modal */}
