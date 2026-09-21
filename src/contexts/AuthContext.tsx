@@ -3,20 +3,63 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { postApi } from "@/services/apiService";
 
+export interface CustomerTierStatus {
+  tier: "member" | "gold" | "diamond";
+  tier_name: string;
+  points: number;
+  has_prefix: boolean;
+  is_upgrade_celebration: boolean;
+  discount_percent: number;
+  has_benefit: boolean;
+  celebration_tier?: "gold" | "diamond" | null;
+}
+
 export interface MemberTierInfo {
   tier: "member" | "gold" | "diamond";
   name: string;
   discountPercent: number;
   label: string;
+  isUpgradeCelebration?: boolean;
+  celebrationTier?: "gold" | "diamond" | null;
 }
 
-export function getMemberTier(points: number = 0): MemberTierInfo {
+export function getMemberTier(userOrPoints: StorefrontUser | number = 0): MemberTierInfo {
+  if (typeof userOrPoints === "object" && userOrPoints !== null) {
+    const tierStatus = userOrPoints.tier_status;
+    if (tierStatus?.is_upgrade_celebration) {
+      const isDiamond = tierStatus.celebration_tier === "diamond" || tierStatus.tier === "diamond";
+      return {
+        tier: isDiamond ? "diamond" : "gold",
+        name: isDiamond ? "DIAMOND" : "GOLD",
+        discountPercent: tierStatus.discount_percent || (isDiamond ? 15 : 10),
+        label: isDiamond ? "Mừng lên hạng DIAMOND (-15%)" : "Mừng lên hạng GOLD (-10%)",
+        isUpgradeCelebration: true,
+        celebrationTier: isDiamond ? "diamond" : "gold",
+      };
+    }
+    if (tierStatus?.has_benefit) {
+      const isDiamond = tierStatus.tier === "diamond";
+      return {
+        tier: isDiamond ? "diamond" : "gold",
+        name: isDiamond ? "DIAMOND" : "GOLD",
+        discountPercent: tierStatus.discount_percent || (isDiamond ? 8 : 5),
+        label: isDiamond ? "Ưu đãi thành viên DIAMOND (-8%)" : "Ưu đãi thành viên GOLD (-5%)",
+        isUpgradeCelebration: false,
+        celebrationTier: null,
+      };
+    }
+    return getMemberTier(userOrPoints.points || 0);
+  }
+
+  const points = typeof userOrPoints === "number" ? userOrPoints : 0;
   if (points >= 800) {
     return {
       tier: "diamond",
       name: "DIAMOND",
       discountPercent: 8,
       label: "Ưu đãi thành viên DIAMOND (-8%)",
+      isUpgradeCelebration: false,
+      celebrationTier: null,
     };
   }
   if (points >= 400) {
@@ -25,6 +68,8 @@ export function getMemberTier(points: number = 0): MemberTierInfo {
       name: "GOLD",
       discountPercent: 5,
       label: "Ưu đãi thành viên GOLD (-5%)",
+      isUpgradeCelebration: false,
+      celebrationTier: null,
     };
   }
   return {
@@ -32,14 +77,19 @@ export function getMemberTier(points: number = 0): MemberTierInfo {
     name: "MEMBER",
     discountPercent: 0,
     label: "",
+    isUpgradeCelebration: false,
+    celebrationTier: null,
   };
 }
 
-export function calculateMemberDiscount(points: number = 0, subtotal: number = 0): number {
-  if (subtotal <= 0 || points < 400) return 0;
-  const tier = getMemberTier(points);
+export function calculateMemberDiscount(
+  userOrPoints: StorefrontUser | number = 0,
+  eligibleSubtotal: number = 0
+): number {
+  if (eligibleSubtotal <= 0) return 0;
+  const tier = getMemberTier(userOrPoints);
   if (tier.discountPercent <= 0) return 0;
-  return Math.ceil((subtotal * (tier.discountPercent / 100)) / 1000) * 1000;
+  return Math.ceil((eligibleSubtotal * (tier.discountPercent / 100)) / 1000) * 1000;
 }
 
 export interface StorefrontUser {
@@ -58,6 +108,7 @@ export interface StorefrontUser {
   tier?: string;
   tier_name?: string;
   tier_info?: any;
+  tier_status?: CustomerTierStatus | null;
 }
 
 interface AuthContextType {

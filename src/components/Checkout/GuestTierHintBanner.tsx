@@ -9,6 +9,7 @@ interface GuestTierHintBannerProps {
   loginHref: string;
   onDismiss: () => void;
   autoDismissMs?: number;
+  isUpgradeCelebration?: boolean;
 }
 
 export default function GuestTierHintBanner({
@@ -17,6 +18,7 @@ export default function GuestTierHintBanner({
   loginHref,
   onDismiss,
   autoDismissMs = 0,
+  isUpgradeCelebration = false,
 }: GuestTierHintBannerProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -52,18 +54,37 @@ export default function GuestTierHintBanner({
       aria-live="polite"
     >
       <p className="font-serif text-sm text-primary leading-snug flex-1 min-w-0">
-        🎁{" "}
-        Số điện thoại này đang có ưu đãi giảm{" "}
-        <span className="font-bold text-secondary">{discountPercent}%</span>{" "}
-        hạng{" "}
-        <span className="font-bold text-secondary">{tierLabel}</span>.{" "}
-        <Link
-          href={loginHref}
-          className="font-bold text-primary underline-offset-2 hover:underline"
-        >
-          Đăng nhập
-        </Link>{" "}
-        để nhận ưu đãi ngay.
+        {isUpgradeCelebration ? (
+          <>
+            🎉 Chúc mừng bạn vừa thăng hạng{" "}
+            <span className="font-bold text-secondary">{tierLabel}</span>!{" "}
+            <Link
+              href={loginHref}
+              className="font-bold text-primary underline-offset-2 hover:underline"
+            >
+              Đăng nhập
+            </Link>{" "}
+            để nhận ngay ưu đãi{" "}
+            <span className="font-bold text-secondary">
+              Mừng lên hạng giảm {discountPercent}%
+            </span>{" "}
+            cho đơn hàng này.
+          </>
+        ) : (
+          <>
+            🎁 Số điện thoại này đang có ưu đãi giảm{" "}
+            <span className="font-bold text-secondary">{discountPercent}%</span>{" "}
+            hạng{" "}
+            <span className="font-bold text-secondary">{tierLabel}</span>.{" "}
+            <Link
+              href={loginHref}
+              className="font-bold text-primary underline-offset-2 hover:underline"
+            >
+              Đăng nhập
+            </Link>{" "}
+            để nhận ưu đãi ngay.
+          </>
+        )}
       </p>
       <button
         type="button"

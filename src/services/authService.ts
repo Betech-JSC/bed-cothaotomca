@@ -375,6 +375,8 @@ export interface GuestTierHint {
   tier: "member" | "gold" | "diamond";
   discountPercent: number;
   hasBenefit: boolean;
+  isUpgradeCelebration?: boolean;
+  celebrationTier?: "gold" | "diamond" | null;
 }
 
 /**
@@ -411,6 +413,8 @@ export async function checkGuestTierByPhone(
       tier: data.tier || "member",
       discountPercent: data.discount_percent ?? 0,
       hasBenefit: Boolean(data.has_benefit),
+      isUpgradeCelebration: Boolean(data.is_upgrade_celebration),
+      celebrationTier: data.celebration_tier ?? null,
     };
   } catch {
     clearTimeout(timeoutId);

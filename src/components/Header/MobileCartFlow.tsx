@@ -30,7 +30,7 @@ import {
 } from "@/services/orderService";
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
-import { useAuth, getMemberTier } from "@/contexts/AuthContext";
+import { useAuth, getMemberTier, calculateMemberDiscount } from "@/contexts/AuthContext";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getVietnamDate, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
@@ -66,7 +66,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen, hasOutOfStockItems } = useCart();
   const isOutOfStockOverall = hasOutOfStockItems ?? cartItems.some((i) => i.isOutOfStock);
   const { user, token, refreshUser } = useAuth();
-  const memberTier = getMemberTier(user?.points || 0);
+  const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
   const router = useRouter();
   const t = useTranslations("checkout");
 
@@ -776,7 +776,20 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     return extra;
   }, [selectedOrderGiftItem, activeBuyXGetYItems]);
 
-  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount + shipping);
+  const regularPriceSubtotal = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      const isSale = Boolean(item.originalPrice && item.originalPrice > item.unitPrice);
+      return isSale ? sum : sum + item.unitPrice * item.quantity;
+    }, 0);
+  }, [cartItems]);
+
+  const memberDiscount = useMemo(() => {
+    if (!user) return 0;
+    return calculateMemberDiscount(user, regularPriceSubtotal);
+  }, [user, regularPriceSubtotal]);
+  const memberDiscountLabel = memberTier.label;
+
+  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount - memberDiscount + shipping);
 
   // Apply Voucher
   const handleApplyVoucher = async (codeOverride?: string) => {
@@ -1158,6 +1171,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             price: isBestDealVoucherApplied
               ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
               : item.unitPrice,
+            original_price: item.originalPrice ?? undefined,
             discount: 0,
           })),
           ...(selectedOrderGiftItem
@@ -1183,7 +1197,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             note: `${tag} (${promo.name})`,
           }))),
         ],
-        discount: voucherDiscount + autoOrderDiscountAmount,
+        discount: voucherDiscount + autoOrderDiscountAmount + memberDiscount,
+        member_discount: memberDiscount,
         description: [
           cartItems.map((item) => `${item.title} (${item.variant}) x${item.quantity}`).join(", "),
           autoOrderDiscountAmount > 0 ? `KM đơn hàng: -${autoOrderDiscountAmount.toLocaleString("vi-VN")}đ (${eligibleOrderDiscountPromo?.name || ""})` : "",
@@ -1903,6 +1918,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <span className="text-gray-500 flex-1 min-w-0">{t("voucher_label")}</span>
                         <span className="font-semibold shrink-0 whitespace-nowrap text-right">{formatPrice(voucherDiscount)}</span>
                       </div>
+                      {memberDiscount > 0 && (
+                        <div className="flex justify-between items-center gap-2 text-secondary font-semibold animate-fade-in">
+                          <span className="flex-1 min-w-0 leading-snug">{memberDiscountLabel || "Ưu đãi thành viên"}</span>
+                          <span className="shrink-0 whitespace-nowrap text-right">-{formatPrice(memberDiscount)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center text-sm font-bold border-t border-gray-100 pt-2 text-primary gap-2">
                         <span className="flex-1 min-w-0">{t("total")}</span>
                         <span className="text-secondary shrink-0 whitespace-nowrap text-right">{formatPrice(total)}</span>

@@ -10,6 +10,7 @@ export interface CreateOrderItem {
   product_name: string;
   quantity: number;
   price: number;
+  original_price?: number;
   discount?: number;
   note?: string;
 }
@@ -36,6 +37,7 @@ export interface CreateOrderPayload {
   } | null;
   items: CreateOrderItem[];
   discount?: number;
+  member_discount?: number;
   description?: string;
   is_apply_voucher?: boolean;
   voucher?: {

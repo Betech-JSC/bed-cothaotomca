@@ -300,6 +300,35 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [guestTierChecking, setGuestTierChecking] = useState(false);
   const [guestTierDismissed, setGuestTierDismissed] = useState(false);
 
+  // Auto-check guest VIP tier hint as soon as 10+ digits are typed
+  useEffect(() => {
+    const cleanPhone = phone.trim().replace(/\s/g, "");
+    if (user || guestTierDismissed || cleanPhone.length < 10) {
+      if (guestTierHint && cleanPhone.length < 10) {
+        setGuestTierHint(null);
+      }
+      return;
+    }
+    const err = validatePhoneInput(cleanPhone);
+    if (err) return;
+
+    const timer = setTimeout(() => {
+      setGuestTierChecking(true);
+      checkGuestTierByPhone(cleanPhone)
+        .then((hint) => {
+          setGuestTierHint(hint && hint.hasBenefit ? hint : null);
+        })
+        .catch(() => {
+          setGuestTierHint(null);
+        })
+        .finally(() => {
+          setGuestTierChecking(false);
+        });
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [phone, user, guestTierDismissed]);
+
   useEffect(() => {
     getAvailableVouchers().then(setAvailableVouchers).catch(() => setAvailableVouchers([]));
   }, []);
@@ -349,6 +378,21 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     }
     if (order) {
       return order.unitPrice * quantity;
+    }
+    return 0;
+  }, [isCartCheckout, cartItems, order, quantity]);
+
+  // Tạm tính các món nguyên giá (không có giảm giá món), dùng để tính chiết khấu thành viên
+  const regularPriceSubtotal = useMemo(() => {
+    if (isCartCheckout) {
+      return cartItems.reduce((sum, item) => {
+        const isSale = Boolean(item.originalPrice && item.originalPrice > item.unitPrice);
+        return isSale ? sum : sum + item.unitPrice * item.quantity;
+      }, 0);
+    }
+    if (order) {
+      const isSale = Boolean(order.originalPrice && order.originalPrice > order.unitPrice);
+      return isSale ? 0 : order.unitPrice * quantity;
     }
     return 0;
   }, [isCartCheckout, cartItems, order, quantity]);
@@ -978,12 +1022,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return food + ship;
   }, [appliedVoucher, appliedShippingVoucher, subtotal, shipping]);
 
-  // Member Tier Discount - Web không áp dụng tự động, vận hành thủ công bên Fanpage
-  const memberTier = useMemo(() => getMemberTier(user?.points || 0), [user?.points]);
-  const memberDiscount = 0;
-  const memberDiscountLabel = "";
+  // Member Tier Discount - Tự động áp dụng chiết khấu hạng thành viên / Mừng lên hạng trên các món nguyên giá
+  const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
+  const memberDiscount = useMemo(() => {
+    if (!user) return 0;
+    return calculateMemberDiscount(user, regularPriceSubtotal);
+  }, [user, regularPriceSubtotal]);
+  const memberDiscountLabel = memberTier.label;
 
-  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount + shipping);
+  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount - memberDiscount + shipping);
 
   const handleApplyVoucher = async (codeOverride?: string, isAuto = false) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
@@ -1455,6 +1502,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               price: isBestDealVoucherApplied
                 ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
                 : item.unitPrice,
+              original_price: item.originalPrice ?? undefined,
               discount: 0,
               note: undefined,
             })),
@@ -1491,6 +1539,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 price: isBestDealVoucherApplied
                   ? ((order.originalPrice && order.originalPrice > order.unitPrice) ? order.originalPrice : order.unitPrice)
                   : order.unitPrice,
+                original_price: order.originalPrice ?? undefined,
                 discount: 0,
                 note: itemNote.trim() || undefined,
               },
@@ -1518,7 +1567,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               })),
             ]
             : [],
-        discount: voucherDiscount + autoOrderDiscountAmount,
+        discount: voucherDiscount + autoOrderDiscountAmount + memberDiscount,
+        member_discount: memberDiscount,
         description: description.trim() || undefined,
         is_apply_voucher: !!(appliedVoucher || appliedShippingVoucher),
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
@@ -1714,6 +1764,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   tier={guestTierHint.tier as "gold" | "diamond"}
                   discountPercent={guestTierHint.discountPercent}
                   loginHref="/vi/login?redirect=/vi/checkout"
+                  isUpgradeCelebration={guestTierHint.isUpgradeCelebration}
                   onDismiss={() => {
                     setGuestTierDismissed(true);
                     setGuestTierHint(null);
@@ -2778,6 +2829,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   <span className="flex-1 min-w-0 leading-snug">{t("voucher_label")}</span>
                   <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                     -{formatPrice(voucherDiscount)}
+                  </span>
+                </div>
+              )}
+
+              {memberDiscount > 0 && (
+                <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                  <span className="flex-1 min-w-0 leading-snug">
+                    {memberDiscountLabel || "Ưu đãi thành viên"}
+                  </span>
+                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                    -{formatPrice(memberDiscount)}
                   </span>
                 </div>
               )}
