@@ -26,6 +26,7 @@ import {
   type PublicVoucherItem,
   type ShippingSettings,
   type ActivePromotion,
+  type PromotionGiftItem,
   OrderApiError,
 } from "@/services/orderService";
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
@@ -655,19 +656,20 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [optOutOrderGift, setOptOutOrderGift] = useState(false);
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
   const [isOrderGiftModalOpen, setIsOrderGiftModalOpen] = useState(false);
-  const [selectedBuyXGetYPromoForModal, setSelectedBuyXGetYPromoForModal] = useState<any | null>(null);
+  const [selectedBuyXGetYPromoForModal, setSelectedBuyXGetYPromoForModal] = useState<ActivePromotion | null>(null);
 
   useEffect(() => {
-    if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.items.length > 0) {
-      if (
-        !selectedOrderGiftId ||
-        !eligibleOrderGiftPromo.items.some((i) => i.id === selectedOrderGiftId)
-      ) {
-        setSelectedOrderGiftId(eligibleOrderGiftPromo.items[0].id);
-      }
+    if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.items && eligibleOrderGiftPromo.items.length > 0) {
+      setSelectedOrderGiftId((prev) => {
+        // State retention: giữ nguyên quà đã chọn nếu vẫn hợp lệ trong campaign
+        if (prev && eligibleOrderGiftPromo.items.some((i) => i.id === prev)) {
+          return prev;
+        }
+        return eligibleOrderGiftPromo.items[0].id;
+      });
     } else {
+      // Chỉ reset null khi đơn hàng không còn thỏa mãn min_order_value hoặc không còn campaign quà khả dụng
       setSelectedOrderGiftId(null);
-      setOptOutOrderGift(false);
     }
   }, [eligibleOrderGiftPromo]);
 
@@ -725,8 +727,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         const selectedId = selectedBuyXGetYMap[promo.id] || promo.items[0]?.id;
         const item = promo.items.find((i) => i.id === selectedId) || promo.items[0];
         const buyQty = promo.settings?.buy_quantity || 2;
-        const giftQty = promo.settings?.gift_quantity || 1;
-        const isFree = item?.campaign_price === 0;
+        const giftQty = promo.settings?.gift_quantity || promo.settings?.get_quantity || 1;
+        const isFree = item?.campaign_price === 0 || Boolean(item?.is_free);
         const tag = isFree
           ? `Mua ${buyQty} tặng ${giftQty}`
           : `Mua ${buyQty} giảm ${giftQty}`;
@@ -736,7 +738,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           tag,
         };
       })
-      .filter((x) => Boolean(x.item));
+      .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string } => Boolean(x.item));
   }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap, optOutBuyXGetYSet]);
 
   const appliedCartPromotions = useMemo(() => {
@@ -1188,10 +1190,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             ? [
               {
                 product_id: selectedOrderGiftItem.product_id,
-                product_code: selectedOrderGiftItem.product_code,
+                product_code: selectedOrderGiftItem.product_code || `GIFT-${selectedOrderGiftItem.product_id}`,
                 product_name: `[QUÀ TẶNG] ${selectedOrderGiftItem.product_name}`,
                 quantity: 1,
-                price: selectedOrderGiftItem.campaign_price,
+                price: 0,
                 discount: 0,
                 note: `Quà tặng đơn hàng (${eligibleOrderGiftPromo?.name || "Chiến dịch"})`,
               },
@@ -1199,10 +1201,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             : []),
           ...(activeBuyXGetYItems.map(({ promo, item, tag }) => ({
             product_id: item.product_id,
-            product_code: item.product_code,
+            product_code: item.product_code || `GIFT-${item.product_id}`,
             product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
             quantity: 1,
-            price: item.campaign_price,
+            price: item.is_free || item.campaign_price === 0 ? 0 : item.campaign_price,
             discount: 0,
             note: `${tag} (${promo.name})`,
           }))),
@@ -1518,15 +1520,17 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 </div>
 
                 {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}
-                <SmartCartProgressBar
-                  subtotal={subtotal}
-                  shippingSettings={shippingSettings}
-                  isFreeship={isFreeship}
-                  freeshipReason={freeshipReason}
-                  vouchers={availableVouchers}
-              appliedVoucher={appliedVoucher as any}
-                  onOpenVouchers={() => setIsVoucherModalOpen(true)}
-                />
+                {shippingSettings?.is_min_amount_enabled && (
+                  <SmartCartProgressBar
+                    subtotal={subtotal}
+                    shippingSettings={shippingSettings}
+                    isFreeship={isFreeship}
+                    freeshipReason={freeshipReason}
+                    vouchers={availableVouchers}
+                    appliedVoucher={appliedVoucher as any}
+                    onOpenVouchers={() => setIsVoucherModalOpen(true)}
+                  />
+                )}
 
                 {/* Summary Panel */}
                 <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
@@ -2476,7 +2480,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           subtitle={`Chương trình: ${eligibleOrderGiftPromo.name}`}
           items={eligibleOrderGiftPromo.items || []}
           selectedId={selectedOrderGiftId}
-          onSelect={(item) => setSelectedOrderGiftId(item.id)}
+          onSelect={(item) => {
+            setSelectedOrderGiftId(item.id);
+            setOptOutOrderGift(false);
+          }}
         />
       )}
 
@@ -2493,6 +2500,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             setSelectedBuyXGetYMap((prev) => ({
               ...prev,
               [selectedBuyXGetYPromoForModal.id]: item.id,
+            }));
+            setOptOutBuyXGetYSet((prev) => ({
+              ...prev,
+              [selectedBuyXGetYPromoForModal.id]: false,
             }));
           }}
         />

@@ -107,37 +107,28 @@ export interface OperatingHoursConfig {
   message?: string | null;
 }
 
-export interface PromotionGiftItem {
-  id: number;
-  product_id: number;
-  product_variant_id?: number | null;
-  product_code: string;
-  product_name: string;
-  image: string;
-  original_price: number;
-  campaign_price: number;
-  is_free: boolean;
-}
+import type {
+  PromotionType,
+  DiscountType,
+  PromotionGiftItem,
+  CampaignSettings,
+  ActivePromotion,
+  CheckoutConfigData,
+} from "@/types/campaign";
 
-export interface ActivePromotion {
-  id: number;
-  name: string;
-  description?: string | null;
-  promotion_type: "order_discount" | "order_gift_discount" | "buy_x_get_y" | "same_price_discount";
-  min_order_value: number;
-  discount_type: string;
-  discount_value: number;
-  max_discount?: number | null;
-  settings?: Record<string, any>;
-  items: PromotionGiftItem[];
-  can_combine_with_promotions?: boolean;
-  can_combine_with_freeship?: boolean;
-}
+export type {
+  PromotionType,
+  DiscountType,
+  PromotionGiftItem,
+  CampaignSettings,
+  ActivePromotion,
+  CheckoutConfigData,
+};
 
-export interface CheckoutConfig {
-  delivery_types: { value: DeliveryType; label: string }[];
-  default_shipping_fee: string;
-  branches: Branch[];
+export interface CheckoutConfig extends CheckoutConfigData {
+  delivery_types?: { value: DeliveryType; label: string }[];
+  default_shipping_fee?: string;
+  branches?: Branch[];
   operating_hours?: OperatingHoursConfig;
   active_promotions?: ActivePromotion[];
 }
@@ -511,8 +502,9 @@ export async function getAdministrativeUnits(): Promise<AdministrativeProvince[]
       return json.data as AdministrativeProvince[];
     }
     return FALLBACK_ADMINISTRATIVE_UNITS;
-  } catch (err: any) {
-    console.warn("Failed to fetch administrative units, using fallback:", err?.message || err);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("Failed to fetch administrative units, using fallback:", msg);
     return FALLBACK_ADMINISTRATIVE_UNITS;
   }
 }
@@ -559,8 +551,9 @@ export async function calculateShippingFee(params: {
 
     const json = await res.json();
     return json.data as ShippingCalculationResult;
-  } catch (err: any) {
-    console.warn("Failed to calculate shipping fee:", err?.message || err);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("Failed to calculate shipping fee:", msg);
     return {
       shipping_fee: 50000,
       original_fee: 50000,
@@ -599,8 +592,9 @@ export async function getShippingSettings(): Promise<ShippingSettings | null> {
     if (!res.ok) return null;
     const json = await res.json();
     return json.data as ShippingSettings;
-  } catch (err: any) {
-    console.warn("Failed to fetch shipping settings:", err?.message || err);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("Failed to fetch shipping settings:", msg);
     return null;
   }
 }

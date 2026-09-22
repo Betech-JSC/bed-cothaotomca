@@ -25,6 +25,7 @@ import {
   type PublicVoucherItem,
   type ShippingSettings,
   type ActivePromotion,
+  type PromotionGiftItem,
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
@@ -101,7 +102,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // SSR fallback: fetch config once on mount (no cartItems — works without JS cart context)
   useEffect(() => {
-    getCheckoutConfig().then(setConfigState).catch(() => {});
+    getCheckoutConfig().then(setConfigState).catch(() => { });
   }, []);
 
   // Cart-aware refetch: re-fetch with cartItems whenever cart changes (debounced 300ms)
@@ -109,7 +110,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     if (!cartItems || cartItems.length === 0) return;
     const items = cartItems.map((item) => ({ product_id: item.productId }));
     const timer = setTimeout(() => {
-      getCheckoutConfig(items).then(setConfigState).catch(() => {});
+      getCheckoutConfig(items).then(setConfigState).catch(() => { });
     }, 300);
     return () => clearTimeout(timer);
   }, [cartItems]);
@@ -165,7 +166,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // Customer Address Book states (for logged in customers)
   const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(null);
   const [saveToAddressBook, setSaveToAddressBook] = useState(false);
   const hasAutoFilledDefaultAddressRef = useRef(false);
 
@@ -206,6 +207,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       setSelectedWardId("");
       return;
     }
+    setSaveToAddressBook(false);
     const addr = customerAddresses.find((a) => a.id === addrId);
     if (addr) {
       setSelectedAddressId(addr.id);
@@ -577,19 +579,20 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [optOutOrderGift, setOptOutOrderGift] = useState(false);
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
   const [isOrderGiftModalOpen, setIsOrderGiftModalOpen] = useState(false);
-  const [selectedBuyXGetYPromoForModal, setSelectedBuyXGetYPromoForModal] = useState<any | null>(null);
+  const [selectedBuyXGetYPromoForModal, setSelectedBuyXGetYPromoForModal] = useState<ActivePromotion | null>(null);
 
   useEffect(() => {
-    if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.items.length > 0) {
-      if (
-        !selectedOrderGiftId ||
-        !eligibleOrderGiftPromo.items.some((i) => i.id === selectedOrderGiftId)
-      ) {
-        setSelectedOrderGiftId(eligibleOrderGiftPromo.items[0].id);
-      }
+    if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.items && eligibleOrderGiftPromo.items.length > 0) {
+      setSelectedOrderGiftId((prev) => {
+        // State retention: giữ nguyên lựa chọn quà nếu món vẫn còn hợp lệ trong danh sách quà của campaign
+        if (prev && eligibleOrderGiftPromo.items.some((i) => i.id === prev)) {
+          return prev;
+        }
+        return eligibleOrderGiftPromo.items[0].id;
+      });
     } else {
+      // Chỉ reset quà về null khi đơn hàng không còn thỏa mãn min_order_value hoặc không còn campaign quà khả dụng
       setSelectedOrderGiftId(null);
-      setOptOutOrderGift(false);
     }
   }, [eligibleOrderGiftPromo]);
 
@@ -647,8 +650,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         const selectedId = selectedBuyXGetYMap[promo.id] || promo.items[0]?.id;
         const item = promo.items.find((i) => i.id === selectedId) || promo.items[0];
         const buyQty = promo.settings?.buy_quantity || 2;
-        const giftQty = promo.settings?.gift_quantity || 1;
-        const isFree = item?.campaign_price === 0;
+        const giftQty = promo.settings?.gift_quantity || promo.settings?.get_quantity || 1;
+        const isFree = item?.campaign_price === 0 || Boolean(item?.is_free);
         const tag = isFree
           ? `Mua ${buyQty} tặng ${giftQty}`
           : `Mua ${buyQty} giảm ${giftQty}`;
@@ -658,7 +661,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           tag,
         };
       })
-      .filter((x) => Boolean(x.item));
+      .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string } => Boolean(x.item));
   }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap, optOutBuyXGetYSet]);
 
   const appliedCartPromotions = useMemo(() => {
@@ -1525,10 +1528,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               ? [
                 {
                   product_id: selectedOrderGiftItem.product_id,
-                  product_code: selectedOrderGiftItem.product_code,
+                  product_code: selectedOrderGiftItem.product_code || `GIFT-${selectedOrderGiftItem.product_id}`,
                   product_name: `[QUÀ TẶNG] ${selectedOrderGiftItem.product_name}`,
                   quantity: 1,
-                  price: selectedOrderGiftItem.campaign_price,
+                  price: 0,
                   discount: 0,
                   note: `Quà tặng đơn hàng (${eligibleOrderGiftPromo?.name || "Chiến dịch"})`,
                 },
@@ -1536,10 +1539,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               : []),
             ...(activeBuyXGetYItems.map(({ promo, item, tag }) => ({
               product_id: item.product_id,
-              product_code: item.product_code,
+              product_code: item.product_code || `GIFT-${item.product_id}`,
               product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
               quantity: 1,
-              price: item.campaign_price,
+              price: item.is_free || item.campaign_price === 0 ? 0 : item.campaign_price,
               discount: 0,
               note: `${tag} (${promo.name})`,
             }))),
@@ -1562,10 +1565,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 ? [
                   {
                     product_id: selectedOrderGiftItem.product_id,
-                    product_code: selectedOrderGiftItem.product_code,
+                    product_code: selectedOrderGiftItem.product_code || `GIFT-${selectedOrderGiftItem.product_id}`,
                     product_name: `[QUÀ TẶNG] ${selectedOrderGiftItem.product_name}`,
                     quantity: 1,
-                    price: selectedOrderGiftItem.campaign_price,
+                    price: 0,
                     discount: 0,
                     note: `Quà tặng đơn hàng (${eligibleOrderGiftPromo?.name || "Chiến dịch"})`,
                   },
@@ -1573,10 +1576,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 : []),
               ...activeBuyXGetYItems.map(({ promo, item, tag }) => ({
                 product_id: item.product_id,
-                product_code: item.product_code,
+                product_code: item.product_code || `GIFT-${item.product_id}`,
                 product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
                 quantity: 1,
-                price: item.campaign_price,
+                price: item.is_free || item.campaign_price === 0 ? 0 : item.campaign_price,
                 discount: 0,
                 note: `${tag} (${promo?.name || "Chiến dịch"})`,
               })),
@@ -1612,7 +1615,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       }
 
       // Tự động lưu địa chỉ mới vào Sổ địa chỉ nếu khách hàng chọn checkbox
-      if (user && saveToAddressBook && streetAddress.trim() && selectedWard.trim()) {
+      if (user && saveToAddressBook && (!selectedAddressId || selectedAddressId === "new") && streetAddress.trim() && selectedWard.trim()) {
         const full_addr = [streetAddress.trim(), selectedWard, selectedDistrict, selectedProvince].filter(Boolean).join(", ");
         createCustomerAddressApi({
           recipient_name: name.trim() || user.name,
@@ -1732,9 +1735,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   }
                 }}
                 onBlur={() => handleBlurField("customer.name")}
-                className={`w-full h-11 rounded-[4px] border ${
-                  fieldError("customer.name") ? "border-secondary" : "border-gray-300"
-                } shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]`}
+                className={`w-full h-11 rounded-[4px] border ${fieldError("customer.name") ? "border-secondary" : "border-gray-300"
+                  } shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]`}
                 placeholder={t("name_placeholder")}
               />
               {fieldError("customer.name") ? (
@@ -1766,9 +1768,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   }
                 }}
                 onBlur={() => handleBlurField("customer.phone")}
-                className={`w-full h-11 rounded-[4px] border ${
-                  fieldError("customer.phone") ? "border-secondary" : "border-gray-300"
-                } shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]`}
+                className={`w-full h-11 rounded-[4px] border ${fieldError("customer.phone") ? "border-secondary" : "border-gray-300"
+                  } shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]`}
                 placeholder={t("phone_placeholder")}
               />
               {fieldError("customer.phone") ? (
@@ -1814,9 +1815,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   }
                 }}
                 onBlur={() => handleBlurField("customer.email")}
-                className={`w-full h-11 rounded-[4px] border ${
-                  fieldError("customer.email") ? "border-secondary" : "border-gray-300"
-                } shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]`}
+                className={`w-full h-11 rounded-[4px] border ${fieldError("customer.email") ? "border-secondary" : "border-gray-300"
+                  } shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base font-serif font-normal leading-[150%] tracking-[0%]`}
                 placeholder={t("email_placeholder")}
               />
               {fieldError("customer.email") ? (
@@ -1880,7 +1880,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                         <span>📍</span>
                         <span>Chọn từ sổ địa chỉ nhận hàng</span>
                       </span>
-                      <Link href="/profile" className="text-xs text-secondary hover:underline font-semibold">
+                      <Link href={"/profile?tab=addresses" as any} className="text-xs text-secondary hover:underline font-semibold">
                         Quản lý sổ địa chỉ →
                       </Link>
                     </div>
@@ -1895,7 +1895,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     >
                       {customerAddresses.map((addr) => (
                         <option key={addr.id} value={addr.id}>
-                          {addr.recipient_name} ({addr.phone}) - {addr.full_address || `${addr.street_address}, ${addr.ward}, ${addr.district}, ${addr.province}`} {addr.is_default ? "★ Mặc định" : ""}
+                          {addr.recipient_name} ({addr.phone}) - {addr.full_address || `${addr.street_address}, ${addr.ward}, ${addr.district}, ${addr.province}`} {addr.is_default ? "Mặc định" : ""}
                         </option>
                       ))}
                       <option value="new">+ Nhập địa chỉ nhận hàng khác</option>
@@ -1982,7 +1982,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   ) : null}
 
                   {/* Checkbox lưu địa chỉ cho khách đã đăng nhập */}
-                  {user && (
+                  {user && (!selectedAddressId || selectedAddressId === "new") && (
                     <div className="pt-1">
                       <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700 select-none">
                         <input
@@ -2152,92 +2152,92 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 {/* Ô chọn Ngày và Giờ (UI đẹp, Step 15 phút) */}
                 {(deliverySchedule === "schedule" || !operatingStatus.canOrderNow) && (
                   <>
-                  <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 animate-fade-in pl-7">
-                    {/* Chọn Ngày */}
-                    <div>
-                      <label className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                        <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 002-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span>Chọn ngày nhận hàng</span>
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={deliveryDate}
-                          onChange={(e) => setDeliveryDate(e.target.value)}
-                          className="w-full h-11 rounded-lg border border-gray-300 shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none"
-                        >
-                          {availableDeliveryDates.map((item) => (
-                            <option key={item.iso} value={item.iso}>
-                              {item.label}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
-                          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 animate-fade-in pl-7">
+                      {/* Chọn Ngày */}
+                      <div>
+                        <label className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                          <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 002-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Chọn Giờ (Step 15 phút) */}
-                    <div>
-                      <label className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                        <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Chọn giờ nhận hàng (10:00 - 23:00)</span>
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={expectedDeliveryTime}
-                          disabled={availableTimeSlots.length === 0}
-                          onChange={(e) => {
-                            setExpectedDeliveryTime(e.target.value);
-                            if (fieldErrors["delivery.expected_delivery"]) {
-                              setFieldErrors((prev) => {
-                                const next = { ...prev };
-                                delete next["delivery.expected_delivery"];
-                                return next;
-                              });
-                            }
-                          }}
-                          className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none ${fieldError("delivery.expected_delivery") ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"
-                            }`}
-                        >
-                          {availableTimeSlots.length > 0 ? (
-                            availableTimeSlots.map((slot) => (
-                              <option key={slot.value} value={slot.value}>
-                                {slot.label}
+                          <span>Chọn ngày nhận hàng</span>
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={deliveryDate}
+                            onChange={(e) => setDeliveryDate(e.target.value)}
+                            className="w-full h-11 rounded-lg border border-gray-300 shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none"
+                          >
+                            {availableDeliveryDates.map((item) => (
+                              <option key={item.iso} value={item.iso}>
+                                {item.label}
                               </option>
-                            ))
-                          ) : (
-                            <option value="" disabled>
-                              Hôm nay đã hết khung giờ (Vui lòng chọn ngày mai)
-                            </option>
-                          )}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
-                          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
+                            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
                         </div>
                       </div>
-                      {fieldError("delivery.expected_delivery") && (
-                        <p className="mt-1 text-xs text-red-500 font-semibold italic animate-fade-in">
-                          *{fieldError("delivery.expected_delivery")}
+
+                      {/* Chọn Giờ (Step 15 phút) */}
+                      <div>
+                        <label className="text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                          <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>Chọn giờ nhận hàng (10:00 - 23:00)</span>
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={expectedDeliveryTime}
+                            disabled={availableTimeSlots.length === 0}
+                            onChange={(e) => {
+                              setExpectedDeliveryTime(e.target.value);
+                              if (fieldErrors["delivery.expected_delivery"]) {
+                                setFieldErrors((prev) => {
+                                  const next = { ...prev };
+                                  delete next["delivery.expected_delivery"];
+                                  return next;
+                                });
+                              }
+                            }}
+                            className={`w-full h-11 rounded-lg border shadow-sm px-3 pr-8 bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-sm font-semibold cursor-pointer appearance-none ${fieldError("delivery.expected_delivery") ? "border-red-500 ring-1 ring-red-500" : "border-gray-300"
+                              }`}
+                          >
+                            {availableTimeSlots.length > 0 ? (
+                              availableTimeSlots.map((slot) => (
+                                <option key={slot.value} value={slot.value}>
+                                  {slot.label}
+                                </option>
+                              ))
+                            ) : (
+                              <option value="" disabled>
+                                Hôm nay đã hết khung giờ (Vui lòng chọn ngày mai)
+                              </option>
+                            )}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
+                            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                        {fieldError("delivery.expected_delivery") && (
+                          <p className="mt-1 text-xs text-red-500 font-semibold italic animate-fade-in">
+                            *{fieldError("delivery.expected_delivery")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {!operatingStatus.canOrderNow && operatingStatus.message && (
+                      <div className="pl-7 mt-2 animate-fade-in">
+                        <p className="text-xs text-rose-700 font-medium italic bg-rose-50 border border-rose-100 p-2 rounded-md whitespace-pre-line">
+                          * {operatingStatus.message}
                         </p>
-                      )}
-                    </div>
-                  </div>
-                  {!operatingStatus.canOrderNow && operatingStatus.message && (
-                    <div className="pl-7 mt-2 animate-fade-in">
-                      <p className="text-xs text-rose-700 font-medium italic bg-rose-50 border border-rose-100 p-2 rounded-md whitespace-pre-line">
-                        * {operatingStatus.message}
-                      </p>
-                    </div>
-                  )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -2784,16 +2784,18 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             </div>
 
             {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}
-            <SmartCartProgressBar
-              subtotal={subtotal}
-              shippingSettings={shippingSettings}
-              isFreeship={isFreeship}
-              freeshipReason={freeshipReason}
-              vouchers={availableVouchers}
-              appliedVoucher={appliedVoucher as any}
-              appliedCampaign={cartCampaignG1}
-              onOpenVouchers={() => setIsVoucherModalOpen(true)}
-            />
+            {shippingSettings?.is_min_amount_enabled && (
+              <SmartCartProgressBar
+                subtotal={subtotal}
+                shippingSettings={shippingSettings}
+                isFreeship={isFreeship}
+                freeshipReason={freeshipReason}
+                vouchers={availableVouchers}
+                appliedVoucher={appliedVoucher as any}
+                appliedCampaign={cartCampaignG1}
+                onOpenVouchers={() => setIsVoucherModalOpen(true)}
+              />
+            )}
 
             {/* Hộp tính giá (Blue-Gray rounded container) */}
             <div className="bg-gray-50 rounded-[16px] p-4 2xl:p-5 space-y-2.5 2xl:space-y-3 border border-gray-100/80">
@@ -3063,7 +3065,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           subtitle={`Chương trình: ${eligibleOrderGiftPromo.name}`}
           items={eligibleOrderGiftPromo.items || []}
           selectedId={selectedOrderGiftId}
-          onSelect={(item) => setSelectedOrderGiftId(item.id)}
+          onSelect={(item) => {
+            setSelectedOrderGiftId(item.id);
+            setOptOutOrderGift(false);
+          }}
         />
       )}
 
@@ -3080,6 +3085,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             setSelectedBuyXGetYMap((prev) => ({
               ...prev,
               [selectedBuyXGetYPromoForModal.id]: item.id,
+            }));
+            setOptOutBuyXGetYSet((prev) => ({
+              ...prev,
+              [selectedBuyXGetYPromoForModal.id]: false,
             }));
           }}
         />
