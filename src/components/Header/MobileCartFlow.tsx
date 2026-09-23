@@ -824,6 +824,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     return extra;
   }, [selectedOrderGiftItem, activeBuyXGetYItems]);
 
+  const displaySubtotal = useMemo(() => {
+    return subtotal + promoItemsExtraPrice;
+  }, [subtotal, promoItemsExtraPrice]);
+
   const regularPriceSubtotal = useMemo(() => {
     return cartItems.reduce((sum, item) => {
       const isSale = Boolean(item.originalPrice && item.originalPrice > item.unitPrice);
@@ -837,7 +841,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }, [user, regularPriceSubtotal]);
   const memberDiscountLabel = memberTier.label;
 
-  const total = Math.max(0, subtotal + promoItemsExtraPrice - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
+  const total = Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
   // Apply Voucher
   const handleApplyVoucher = async (codeOverride?: string) => {
@@ -1389,7 +1393,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 product_code: selectedOrderGiftItem.product_code || `GIFT-${selectedOrderGiftItem.product_id}`,
                 product_name: `[QUÀ TẶNG] ${selectedOrderGiftItem.product_name}`,
                 quantity: 1,
-                price: 0,
+                price: selectedOrderGiftItem.campaign_price > 0 ? selectedOrderGiftItem.campaign_price : 0,
                 discount: 0,
                 note: `Quà tặng đơn hàng (${eligibleOrderGiftPromo?.name || "Chiến dịch"})`,
               },
@@ -1739,7 +1743,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
                   <div className="flex justify-between items-center text-base">
                     <span className="text-gray-500 font-medium">{t("subtotal")}</span>
-                    <span className="text-primary font-bold font-display">{formatPrice(subtotal)}</span>
+                    <span className="text-primary font-bold font-display">{formatPrice(displaySubtotal)}</span>
                   </div>
                   {isBestDealVoucherApplied ? (
                     <p className="text-secondary font-medium text-xs">
@@ -1980,7 +1984,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     <div className="space-y-2 border-t border-gray-100 pt-3 text-xs">
                       <div className="flex justify-between">
                         <span className="text-gray-500">{t("subtotal")}</span>
-                        <span className="font-semibold">{formatPrice(subtotal)}</span>
+                        <span className="font-semibold">{formatPrice(displaySubtotal)}</span>
                       </div>
                       {isBestDealVoucherApplied ? (
                         <p className="text-secondary font-medium text-xs">

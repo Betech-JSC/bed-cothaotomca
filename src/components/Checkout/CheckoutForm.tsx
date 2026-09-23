@@ -711,6 +711,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return extra;
   }, [selectedOrderGiftItem, activeBuyXGetYItems]);
 
+  const displaySubtotal = useMemo(() => {
+    return subtotal + promoItemsExtraPrice;
+  }, [subtotal, promoItemsExtraPrice]);
+
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   const [hotline, setHotline] = useState<string>("024.9999.7122");
 
@@ -1050,7 +1054,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   }, [user, regularPriceSubtotal]);
   const memberDiscountLabel = memberTier.label;
 
-  const total = Math.max(0, subtotal + promoItemsExtraPrice - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
+  const total = Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
   const handleApplyVoucher = async (codeOverride?: string, isAuto = false) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
@@ -1630,7 +1634,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                   product_code: selectedOrderGiftItem.product_code || `GIFT-${selectedOrderGiftItem.product_id}`,
                   product_name: `[QUÀ TẶNG] ${selectedOrderGiftItem.product_name}`,
                   quantity: 1,
-                  price: 0,
+                  price: selectedOrderGiftItem.campaign_price > 0 ? selectedOrderGiftItem.campaign_price : 0,
                   discount: 0,
                   note: `Quà tặng đơn hàng (${eligibleOrderGiftPromo?.name || "Chiến dịch"})`,
                 },
@@ -1667,7 +1671,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     product_code: selectedOrderGiftItem.product_code || `GIFT-${selectedOrderGiftItem.product_id}`,
                     product_name: `[QUÀ TẶNG] ${selectedOrderGiftItem.product_name}`,
                     quantity: 1,
-                    price: 0,
+                    price: selectedOrderGiftItem.campaign_price > 0 ? selectedOrderGiftItem.campaign_price : 0,
                     discount: 0,
                     note: `Quà tặng đơn hàng (${eligibleOrderGiftPromo?.name || "Chiến dịch"})`,
                   },
@@ -2849,7 +2853,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               <div className="flex justify-between items-center text-sm font-medium">
                 <span className="text-gray-600">{t("subtotal")}</span>
                 <span className="text-primary font-bold text-base">
-                  {formatPrice(subtotal)}
+                  {formatPrice(displaySubtotal)}
                 </span>
               </div>
 
