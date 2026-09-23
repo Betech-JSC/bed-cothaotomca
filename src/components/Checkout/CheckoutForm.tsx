@@ -745,7 +745,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       ward: selectedWard,
       ward_id: selectedWardId,
       subtotal,
-      voucher_code: appliedVoucher?.code,
+      voucher_code: appliedShippingVoucher?.code || appliedVoucher?.code,
       can_combine_with_freeship: appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined,
       campaign_id: appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.id,
       campaign_can_combine_with_freeship: appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.can_combine_with_freeship,
@@ -807,7 +807,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return () => {
       isSubscribed = false;
     };
-  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, subtotal, appliedVoucher, config.branches, cartCampaignG1]);
+  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, subtotal, appliedVoucher, appliedShippingVoucher, config.branches, cartCampaignG1]);
 
   // Store Pickup input & Auto-assigned delivery branch
   const [selectedBranchId, setSelectedBranchId] = useState<number>(() => {
@@ -1029,11 +1029,18 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     }
   }, [appliedVoucher, originalSubtotal, saleSubtotal, totalItemDiscount, shipping]);
 
-  const voucherDiscount = useMemo(() => {
-    const food = calculateVoucherDiscount(appliedVoucher, subtotal, shipping);
-    const ship = calculateVoucherDiscount(appliedShippingVoucher, subtotal, shipping);
-    return food + ship;
-  }, [appliedVoucher, appliedShippingVoucher, subtotal, shipping]);
+  const foodVoucherDiscount = useMemo(() => {
+    if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") return 0;
+    return calculateVoucherDiscount(appliedVoucher, subtotal, shipping);
+  }, [appliedVoucher, subtotal, shipping]);
+
+  const shippingVoucherDiscount = useMemo(() => {
+    const shipVoucher = appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") ? appliedVoucher : null);
+    return calculateVoucherDiscount(shipVoucher, subtotal, shipping);
+  }, [appliedShippingVoucher, appliedVoucher, subtotal, shipping]);
+
+  const effectiveShippingFee = Math.max(0, shipping - shippingVoucherDiscount);
+  const voucherDiscount = foodVoucherDiscount + shippingVoucherDiscount;
 
   // Member Tier Discount - Tự động áp dụng chiết khấu hạng thành viên / Mừng lên hạng trên các món nguyên giá
   const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
@@ -1043,7 +1050,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   }, [user, regularPriceSubtotal]);
   const memberDiscountLabel = memberTier.label;
 
-  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount - memberDiscount + shipping);
+  const total = Math.max(0, subtotal + promoItemsExtraPrice - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
   const handleApplyVoucher = async (codeOverride?: string, isAuto = false) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
@@ -1177,7 +1184,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           // -> Áp dụng voucher!
           // -> Tạm tính chuyển sang tính theo originalSubtotal (các món hiển thị giá gốc).
           // -> Giảm trừ tiền theo voucherDiscountAmount.
-          setAppliedVoucher({
+          const candidateData = {
             id: res.voucher.id,
             code: res.voucher.code,
             value: res.voucher.value,
@@ -1189,11 +1196,25 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             canCombineWithPromotions: false,
             canCombineWithFreeship: res.voucher.can_combine_with_freeship,
             discountAmount: voucherDiscountAmount,
-          });
+          };
+          if (isCandidateFreeship) {
+            setAppliedShippingVoucher(candidateData);
+            if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") {
+              setAppliedVoucher(null);
+            }
+          } else {
+            setAppliedVoucher(candidateData);
+            if (appliedShippingVoucher && res.voucher.can_combine_with_freeship === false) {
+              setAppliedShippingVoucher(null);
+            }
+          }
           setVoucherSuccess(res.message || "Áp dụng mã giảm giá thành công!");
           setBestDealNotice(null);
           try {
-            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([res.voucher.code]));
+            const codesToStore = isCandidateFreeship
+              ? [appliedVoucher && !appliedVoucher.isFreeship ? appliedVoucher.code : null, res.voucher.code].filter(Boolean) as string[]
+              : [res.voucher.code, appliedShippingVoucher?.code].filter(Boolean) as string[];
+            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify(codesToStore));
           } catch (e) {
             console.error("Error saving applied voucher to localStorage", e);
           }
@@ -1223,7 +1244,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             shipping
           );
 
-          setAppliedVoucher({
+          const candidateData = {
             id: res.voucher.id,
             code: res.voucher.code,
             value: res.voucher.value,
@@ -1235,11 +1256,25 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             canCombineWithPromotions: true,
             canCombineWithFreeship: res.voucher.can_combine_with_freeship,
             discountAmount: voucherDiscountAmount,
-          });
+          };
+          if (isCandidateFreeship) {
+            setAppliedShippingVoucher(candidateData);
+            if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") {
+              setAppliedVoucher(null);
+            }
+          } else {
+            setAppliedVoucher(candidateData);
+            if (appliedShippingVoucher && res.voucher.can_combine_with_freeship === false) {
+              setAppliedShippingVoucher(null);
+            }
+          }
           setVoucherSuccess(res.message || "Áp dụng mã giảm giá thành công!");
           setBestDealNotice(null);
           try {
-            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([res.voucher.code]));
+            const codesToStore = isCandidateFreeship
+              ? [appliedVoucher && !appliedVoucher.isFreeship ? appliedVoucher.code : null, res.voucher.code].filter(Boolean) as string[]
+              : [res.voucher.code, appliedShippingVoucher?.code].filter(Boolean) as string[];
+            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify(codesToStore));
           } catch (e) {
             console.error("Error saving applied voucher to localStorage", e);
           }
@@ -2832,11 +2867,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
 
 
-              {appliedVoucher && voucherDiscount > 0 && (
+              {appliedVoucher && foodVoucherDiscount > 0 && (
                 <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2">
                   <span className="flex-1 min-w-0 leading-snug">{t("voucher_label")}</span>
                   <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
-                    -{formatPrice(voucherDiscount)}
+                    -{formatPrice(foodVoucherDiscount)}
                   </span>
                 </div>
               )}
@@ -2864,22 +2899,37 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     <span className="text-secondary font-bold">0đ ({t("delivery_pickup")})</span>
                   ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                     <span className="text-gray-500 font-bold text-base">--</span>
-                  ) : (appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship"))) && (appliedShippingVoucher?.maxDiscount || appliedVoucher?.maxDiscount) ? (
-                    <div className="flex flex-col items-end gap-0.5">
+                  ) : (shippingVoucherDiscount > 0 || appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship"))) ? (
+                    effectiveShippingFee === 0 ? (
                       <div className="flex items-center gap-2">
-                        {originalFee > shippingFee && originalFee > 0 && (
+                        {shipping > 0 && (
                           <span className="text-xs text-gray-400 line-through">
-                            {formatPrice(originalFee)}
+                            {formatPrice(shipping)}
                           </span>
                         )}
-                        <span className={`${shippingFee === 0 ? "text-secondary" : "text-primary"} font-bold text-base`}>
-                          {shippingFee === 0 ? "0đ" : formatPrice(shippingFee)}
+                        <span className="text-secondary font-bold text-base">0đ</span>
+                        <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
+                          Mã {appliedShippingVoucher?.code || appliedVoucher?.code}
                         </span>
                       </div>
-                      <span className="text-xs text-secondary font-semibold">
-                        Giảm {formatPrice((appliedShippingVoucher || appliedVoucher)?.maxDiscount || 0)} phí vận chuyển
-                      </span>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400 line-through">
+                            {formatPrice(shipping)}
+                          </span>
+                          <span className="text-primary font-bold text-base">
+                            {formatPrice(effectiveShippingFee)}
+                          </span>
+                          <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
+                            Mã {appliedShippingVoucher?.code || appliedVoucher?.code}
+                          </span>
+                        </div>
+                        <span className="text-xs text-secondary font-semibold">
+                          Giảm {formatPrice(shippingVoucherDiscount)} phí vận chuyển
+                        </span>
+                      </div>
+                    )
                   ) : isFreeship ? (
                     <div className="flex items-center gap-2">
                       {originalFee > 0 && (

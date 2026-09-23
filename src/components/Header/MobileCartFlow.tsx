@@ -147,6 +147,19 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     canCombineWithFreeship?: boolean;
     discountAmount?: number;
   } | null>(null);
+  const [appliedShippingVoucher, setAppliedShippingVoucher] = useState<{
+    id: number;
+    code: string;
+    value: number;
+    discountType?: "fixed" | "percent" | "freeship";
+    maxDiscount?: number | null;
+    campaignId: number;
+    prereqPrice?: number;
+    isFreeship?: boolean;
+    canCombineWithPromotions?: boolean;
+    canCombineWithFreeship?: boolean;
+    discountAmount?: number;
+  } | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [bestDealNotice, setBestDealNotice] = useState<string | null>(null);
   const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
@@ -505,7 +518,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       ward: selectedWard,
       ward_id: selectedWardId,
       subtotal: rawSubtotal,
-      voucher_code: appliedVoucher?.code,
+      voucher_code: appliedShippingVoucher?.code || appliedVoucher?.code,
       can_combine_with_freeship: appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined,
       campaign_id: appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.id,
       campaign_can_combine_with_freeship: appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.can_combine_with_freeship,
@@ -554,7 +567,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       .catch((err) => {
         console.error("Failed to calculate shipping in mobile cart flow:", err);
       });
-  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, config?.branches, cartCampaignG1]);
+  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, appliedShippingVoucher, config?.branches, cartCampaignG1]);
 
   const defaultShippingFee = parseFloat(config?.default_shipping_fee || "30000") || 30000;
   const shippingFee = deliveryType === "delivery" ? (isFreeship ? 0 : (calculatedFee || defaultShippingFee)) : 0;
@@ -612,10 +625,18 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     }
   }, [appliedVoucher, originalSubtotal, saleSubtotal, totalItemDiscount, shipping]);
 
-  const voucherDiscount = useMemo(
-    () => calculateVoucherDiscount(appliedVoucher, subtotal, shipping),
-    [appliedVoucher, subtotal, shipping]
-  );
+  const foodVoucherDiscount = useMemo(() => {
+    if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") return 0;
+    return calculateVoucherDiscount(appliedVoucher, subtotal, shipping);
+  }, [appliedVoucher, subtotal, shipping]);
+
+  const shippingVoucherDiscount = useMemo(() => {
+    const shipVoucher = appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") ? appliedVoucher : null);
+    return calculateVoucherDiscount(shipVoucher, subtotal, shipping);
+  }, [appliedShippingVoucher, appliedVoucher, subtotal, shipping]);
+
+  const effectiveShippingFee = Math.max(0, shipping - shippingVoucherDiscount);
+  const voucherDiscount = foodVoucherDiscount + shippingVoucherDiscount;
 
   // Total cart items count (for buy_x_get_y check)
   const totalCartQuantity = useMemo(() => {
@@ -816,7 +837,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }, [user, regularPriceSubtotal]);
   const memberDiscountLabel = memberTier.label;
 
-  const total = Math.max(0, subtotal + promoItemsExtraPrice - voucherDiscount - autoOrderDiscountAmount - memberDiscount + shipping);
+  const total = Math.max(0, subtotal + promoItemsExtraPrice - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
   // Apply Voucher
   const handleApplyVoucher = async (codeOverride?: string) => {
@@ -947,7 +968,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           // -> Áp dụng voucher!
           // -> Tạm tính chuyển sang tính theo originalSubtotal (các món hiển thị giá gốc).
           // -> Giảm trừ tiền theo voucherDiscountAmount.
-          setAppliedVoucher({
+          const candidateData = {
             id: result.voucher.id,
             code: result.voucher.code,
             value: result.voucher.value,
@@ -959,11 +980,25 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             canCombineWithPromotions: false,
             canCombineWithFreeship: result.voucher.can_combine_with_freeship,
             discountAmount: voucherDiscountAmount,
-          });
+          };
+          if (isCandidateFreeship) {
+            setAppliedShippingVoucher(candidateData);
+            if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") {
+              setAppliedVoucher(null);
+            }
+          } else {
+            setAppliedVoucher(candidateData);
+            if (appliedShippingVoucher && result.voucher.can_combine_with_freeship === false) {
+              setAppliedShippingVoucher(null);
+            }
+          }
           setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công.");
           setBestDealNotice(null);
           try {
-            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([result.voucher.code]));
+            const codesToStore = isCandidateFreeship
+              ? [appliedVoucher && !appliedVoucher.isFreeship ? appliedVoucher.code : null, result.voucher.code].filter(Boolean) as string[]
+              : [result.voucher.code, appliedShippingVoucher?.code].filter(Boolean) as string[];
+            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify(codesToStore));
           } catch (e) {
             console.error("Error saving applied voucher to localStorage", e);
           }
@@ -993,7 +1028,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             shipping
           );
 
-          setAppliedVoucher({
+          const candidateData = {
             id: result.voucher.id,
             code: result.voucher.code,
             value: result.voucher.value,
@@ -1005,11 +1040,25 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             canCombineWithPromotions: true,
             canCombineWithFreeship: result.voucher.can_combine_with_freeship,
             discountAmount: voucherDiscountAmount,
-          });
+          };
+          if (isCandidateFreeship) {
+            setAppliedShippingVoucher(candidateData);
+            if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") {
+              setAppliedVoucher(null);
+            }
+          } else {
+            setAppliedVoucher(candidateData);
+            if (appliedShippingVoucher && result.voucher.can_combine_with_freeship === false) {
+              setAppliedShippingVoucher(null);
+            }
+          }
           setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công.");
           setBestDealNotice(null);
           try {
-            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([result.voucher.code]));
+            const codesToStore = isCandidateFreeship
+              ? [appliedVoucher && !appliedVoucher.isFreeship ? appliedVoucher.code : null, result.voucher.code].filter(Boolean) as string[]
+              : [result.voucher.code, appliedShippingVoucher?.code].filter(Boolean) as string[];
+            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify(codesToStore));
           } catch (e) {
             console.error("Error saving applied voucher to localStorage", e);
           }
@@ -1057,6 +1106,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   const handleRemoveVoucher = () => {
     setAppliedVoucher(null);
+    setAppliedShippingVoucher(null);
     setVoucherCode("");
     setVoucherSuccess(null);
     setVoucherError(null);
@@ -1077,11 +1127,86 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       handleRemoveVoucher();
       return;
     }
-    const code = codes[0];
-    if (code) {
-      await handleApplyVoucher(code);
+    setValidatingVoucher(true);
+    setVoucherError(null);
+    setVoucherSuccess(null);
+    setBestDealNotice(null);
+    try {
+      let nextFood: typeof appliedVoucher = null;
+      let nextShip: typeof appliedShippingVoucher = null;
+      for (const rawCode of codes) {
+        const c = rawCode.trim().toUpperCase();
+        const res = await validateVoucher(
+          c,
+          originalSubtotal,
+          shipping,
+          false,
+          0,
+          phone || user?.phone || undefined,
+          token || undefined,
+          false
+        );
+        if (res.valid && res.voucher) {
+          const isCandidateFreeship = Boolean(
+            res.voucher.discount_type === "freeship" ||
+            res.voucher.is_freeship ||
+            c.includes("FREESHIP") || c.includes("PHISHIP") || /^SHIP(\d+|K)?$/i.test(c)
+          );
+          const canCombine = res.voucher.can_combine_with_promotions !== false;
+          const subtotalForCalc = canCombine ? saleSubtotal : originalSubtotal;
+          const candidate = {
+            id: res.voucher.id,
+            code: res.voucher.code,
+            value: res.voucher.value,
+            discountType: res.voucher.discount_type,
+            maxDiscount: res.voucher.max_discount,
+            campaignId: res.voucher.campaign_id,
+            prereqPrice: res.voucher.prereq_price,
+            isFreeship: res.voucher.is_freeship,
+            canCombineWithPromotions: canCombine,
+            canCombineWithFreeship: res.voucher.can_combine_with_freeship,
+            discountAmount: calculateVoucherDiscount(
+              {
+                id: res.voucher.id,
+                code: res.voucher.code,
+                value: res.voucher.value,
+                discountType: res.voucher.discount_type,
+                maxDiscount: res.voucher.max_discount,
+                prereqPrice: res.voucher.prereq_price,
+                isFreeship: res.voucher.is_freeship,
+              },
+              subtotalForCalc,
+              shipping
+            ),
+          };
+          if (isCandidateFreeship) nextShip = candidate;
+          else nextFood = candidate;
+        }
+      }
+      setAppliedVoucher(nextFood);
+      setAppliedShippingVoucher(nextShip);
+      const appliedCount = (nextFood ? 1 : 0) + (nextShip ? 1 : 0);
+      if (appliedCount > 0) {
+        setVoucherCode([nextFood?.code, nextShip?.code].filter(Boolean).join(", "));
+        setVoucherSuccess(`Đã áp dụng thành công ${appliedCount} ưu đãi!`);
+        setIsVoucherModalOpen(false);
+        try {
+          const appliedCodes = [nextFood?.code, nextShip?.code].filter(Boolean) as string[];
+          localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify(appliedCodes));
+        } catch (e) {
+          console.error("Error saving applied vouchers to localStorage in MobileCartFlow", e);
+        }
+      } else {
+        handleRemoveVoucher();
+        setIsVoucherModalOpen(false);
+      }
+    } catch (e: any) {
+      console.error("Error applying vouchers from modal in MobileCartFlow:", e);
+      setVoucherError(e?.message || "Không thể áp dụng các mã ưu đãi đã chọn.");
+    } finally {
+      setValidatingVoucher(false);
     }
-  }, [handleApplyVoucher]);
+  }, [originalSubtotal, shipping, phone, user?.phone, token, saleSubtotal]);
 
   const hasLoadedStoredVoucherRef = useRef(false);
   useEffect(() => {
@@ -1091,9 +1216,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       const stored = localStorage.getItem("cothaotomca_applied_voucher_codes");
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           hasLoadedStoredVoucherRef.current = true;
-          handleApplyVoucher(parsed[0]).catch(() => {});
+          handleApplyVouchersFromModal(parsed).catch(() => {});
           return;
         }
       }
@@ -1101,7 +1226,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       console.error("Error restoring voucher from localStorage in MobileCartFlow", e);
     }
     hasLoadedStoredVoucherRef.current = true;
-  }, [originalSubtotal, handleApplyVoucher]);
+  }, [originalSubtotal, handleApplyVouchersFromModal]);
 
   const handleAddPrivateVoucherFromModal = useCallback((v: PublicVoucherItem) => {
     setSessionPrivateVouchers((prev) =>
@@ -1289,8 +1414,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         ]
           .filter(Boolean)
           .join(" | ") || undefined,
-        is_apply_voucher: !!appliedVoucher,
+        is_apply_voucher: !!(appliedVoucher || appliedShippingVoucher),
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
+        shipping_voucher_code: appliedShippingVoucher ? appliedShippingVoucher.code : (appliedVoucher?.isFreeship ? appliedVoucher.code : undefined),
+        applied_deal_type: isBestDealVoucherApplied ? "voucher" : undefined,
         voucher: appliedVoucher
           ? {
             voucher_id: appliedVoucher.id,
@@ -1299,9 +1426,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             can_combine_with_freeship: appliedVoucher.canCombineWithFreeship,
           }
           : null,
+        shipping_voucher: (appliedShippingVoucher || (appliedVoucher?.isFreeship ? appliedVoucher : null))
+          ? {
+            voucher_id: (appliedShippingVoucher || appliedVoucher)?.id,
+            amount: (appliedShippingVoucher || appliedVoucher)?.value,
+          }
+          : undefined,
         payment_method: paymentMethod,
         branch_id: selectedBranchId,
-        applied_deal_type: isBestDealVoucherApplied ? "voucher" : undefined,
       });
 
       clearCart();
@@ -1866,22 +1998,37 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             <span className="text-secondary font-bold">0đ ({t("delivery_pickup")})</span>
                           ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                             <span className="text-gray-500 font-bold">--</span>
-                          ) : appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") && appliedVoucher.maxDiscount && appliedVoucher.maxDiscount > 0 ? (
-                            <div className="flex flex-col items-end gap-0.5">
+                          ) : (shippingVoucherDiscount > 0 || appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship"))) ? (
+                            effectiveShippingFee === 0 ? (
                               <div className="flex items-center gap-2">
-                                {originalFee > shipping && originalFee > 0 && (
+                                {shipping > 0 && (
                                   <span className="text-xs text-gray-400 line-through">
-                                    {formatPrice(originalFee)}
+                                    {formatPrice(shipping)}
                                   </span>
                                 )}
-                                <span className={`${shipping === 0 ? "text-secondary" : "text-primary"} font-bold`}>
-                                  {shipping === 0 ? "0đ" : formatPrice(shipping)}
+                                <span className="text-secondary font-bold">0đ</span>
+                                <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
+                                  Mã {appliedShippingVoucher?.code || appliedVoucher?.code}
                                 </span>
                               </div>
-                              <span className="text-xs text-secondary font-semibold">
-                                Giảm {formatPrice(appliedVoucher.maxDiscount)} phí vận chuyển
-                              </span>
-                            </div>
+                            ) : (
+                              <div className="flex flex-col items-end gap-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400 line-through">
+                                    {formatPrice(shipping)}
+                                  </span>
+                                  <span className="text-primary font-bold">
+                                    {formatPrice(effectiveShippingFee)}
+                                  </span>
+                                  <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
+                                    Mã {appliedShippingVoucher?.code || appliedVoucher?.code}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-secondary font-semibold">
+                                  Giảm {formatPrice(shippingVoucherDiscount)} phí vận chuyển
+                                </span>
+                              </div>
+                            )
                           ) : isFreeship ? (
                             <div className="flex items-center gap-2">
                               {originalFee > 0 && (
@@ -1891,9 +2038,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                               )}
                               <span className="text-secondary font-bold">0đ</span>
                               <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
-                                {appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship")
-                                  ? `Mã ${appliedVoucher.code}`
-                                  : "Freeship tự động"}
+                                {appliedShippingVoucher
+                                  ? `Mã ${appliedShippingVoucher.code}`
+                                  : appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship")
+                                    ? `Mã ${appliedVoucher.code}`
+                                    : "Freeship tự động"}
                               </span>
                             </div>
                           ) : shippingDiscount > 0 && shipping < originalFee ? (
@@ -1934,10 +2083,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           </span>
                         </div>
                       )}
-                      <div className="flex justify-between items-center gap-2">
-                        <span className="text-gray-500 flex-1 min-w-0">{t("voucher_label")}</span>
-                        <span className="font-semibold shrink-0 whitespace-nowrap text-right">{formatPrice(voucherDiscount)}</span>
-                      </div>
+                      {appliedVoucher && foodVoucherDiscount > 0 && (
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="text-gray-500 flex-1 min-w-0">{t("voucher_label")}</span>
+                          <span className="font-semibold shrink-0 whitespace-nowrap text-right">-{formatPrice(foodVoucherDiscount)}</span>
+                        </div>
+                      )}
                       {memberDiscount > 0 && (
                         <div className="flex justify-between items-center gap-2 text-secondary font-semibold animate-fade-in">
                           <span className="flex-1 min-w-0 leading-snug">{memberDiscountLabel || "Ưu đãi thành viên"}</span>
@@ -2467,8 +2618,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         isFreeship={isFreeship}
         isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
-        appliedVoucherCode={appliedVoucher?.code || ""}
-        appliedVoucherCodes={appliedVoucher ? [appliedVoucher.code] : []}
+        appliedVoucherCode={appliedVoucher?.code || appliedShippingVoucher?.code || ""}
+        appliedVoucherCodes={[appliedVoucher?.code, appliedShippingVoucher?.code].filter(Boolean) as string[]}
         appliedCampaignIds={selectedCampaignIds}
         onApplyCampaigns={handleApplyCampaigns}
         onApplyVouchers={handleApplyVouchersFromModal}
