@@ -1,10 +1,10 @@
-import type { PublicCampaignItem } from "@/types/campaign";
+import type { PublicCampaignItem, CampaignEligibilityResult, CampaignLockResult } from "@/types/campaign";
 
 const API_BASE = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 ).replace(/\/$/, "");
 
-export type { PublicCampaignItem };
+export type { PublicCampaignItem, CampaignEligibilityResult, CampaignLockResult };
 
 export async function getActiveCampaigns(): Promise<PublicCampaignItem[]> {
   try {

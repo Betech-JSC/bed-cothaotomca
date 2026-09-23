@@ -240,7 +240,15 @@
     "order_voucher_no_freeship": "Current order discount cannot be combined with Free Shipping vouchers",
     "auto_freeship_badge": "Auto Free Shipping",
     "auto_freeship_friendly_tip": "Your order already qualified for automatic Free Shipping! Please save this voucher for your next order.",
-    "auto_voucher_applied": "Best voucher automatically applied for your order"
+    "auto_voucher_applied": "Best voucher automatically applied for your order",
+    "eligible_campaigns": "Eligible Promotions ({count})",
+    "ineligible_campaigns": "Ineligible Promotions ({count})",
+    "campaign_mutex_locked": "Cannot be used with selected offers.",
+    "campaign_voucher_locked": "Cannot be used with selected vouchers.",
+    "campaign_freeship_locked": "Cannot be used with selected Free Shipping vouchers.",
+    "view_terms_detail": "Terms & conditions details ›",
+    "campaign_applied_count": "Apply • {count} offers",
+    "buy_more_campaign_hint": "Minimum order value {minSpend} not met. Add {missingAmount} more to apply"
   },
   "gift_selector": {
     "default_title": "Choose your free gift",

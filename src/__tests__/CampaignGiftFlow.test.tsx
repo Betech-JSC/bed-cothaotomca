@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import React from 'react';
 import CheckoutForm from '@/components/Checkout/CheckoutForm';
+import { resetCouponModalCache } from '@/components/Voucher/CouponModal';
 import {
   createOrder,
   type ActivePromotion,
@@ -143,6 +144,12 @@ vi.mock('@/lib/operatingHours', () => ({
   toISODateString: () => '2026-09-22',
 }));
 
+// Mock campaignService
+let mockCampaignsList: any[] = [];
+vi.mock('@/services/campaignService', () => ({
+  getActiveCampaigns: vi.fn().mockImplementation(() => Promise.resolve(mockCampaignsList)),
+}));
+
 describe('Campaign & Gift Promotions Flow (Frontend Tasks 2 & 3)', () => {
   const giftItemA: PromotionGiftItem = {
     id: 101,
@@ -209,6 +216,7 @@ describe('Campaign & Gift Promotions Flow (Frontend Tasks 2 & 3)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetCouponModalCache();
     mockCartItems = [
       {
         id: 1,
@@ -219,6 +227,30 @@ describe('Campaign & Gift Promotions Flow (Frontend Tasks 2 & 3)', () => {
         quantity: 2,
         unitPrice: 65000,
         originalPrice: 65000,
+      },
+    ];
+    mockCampaignsList = [
+      {
+        id: 1,
+        name: 'Tặng món cho đơn từ 100k',
+        promotion_type: 'order_gift_discount',
+        min_order_value: 100000,
+        can_combine_with_promotions: true,
+        can_combine_with_freeship: true,
+        items: [giftItemA, giftItemB],
+      },
+      {
+        id: 2,
+        name: 'Mua 2 món tặng 1 Trà Đào',
+        promotion_type: 'buy_x_get_y',
+        min_order_value: 0,
+        settings: {
+          buy_quantity: 2,
+          gift_quantity: 1,
+        },
+        can_combine_with_promotions: true,
+        can_combine_with_freeship: true,
+        items: [comboGiftItem],
       },
     ];
     mockConfigData = {
@@ -260,21 +292,51 @@ describe('Campaign & Gift Promotions Flow (Frontend Tasks 2 & 3)', () => {
     expect(publicCampaign.settings?.buy_quantity).toBe(2);
   });
 
-  it('Task 3.1 & 3.3: Renders order gift and buy_x_get_y combo card when conditions are met', async () => {
+  it('Task 3.1 & 3.3: Pure checkbox default - no gifts applied until selected in modal', async () => {
     render(<CheckoutForm order={null} config={mockConfigData} />);
 
-    // Quà tặng đơn hàng (130k >= 100k) xuất hiện
+    // Mặc định selectedCampaignIds = [], không tự động áp dụng quà
+    expect(screen.queryByText('Canh Chua Tôm Càng')).not.toBeInTheDocument();
+    expect(screen.queryByText('Trà Đào Cam Sả')).not.toBeInTheDocument();
+
+    // Mở modal chọn ưu đãi
+    const selectButtons = screen.getAllByRole('button', { name: /Chọn mã/i });
+    fireEvent.click(selectButtons[0]);
+
+    // Chọn cả 2 ưu đãi trong modal
+    expect(await screen.findByText('Tặng món cho đơn từ 100k')).toBeInTheDocument();
+    expect(screen.getByText('Mua 2 món tặng 1 Trà Đào')).toBeInTheDocument();
+
+    const cbGift = screen.getByText('Tặng món cho đơn từ 100k').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    const cbCombo = screen.getByText('Mua 2 món tặng 1 Trà Đào').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+
+    fireEvent.click(cbGift);
+    fireEvent.click(cbCombo);
+
+    const applyBtn = screen.getByRole('button', { name: /Áp dụng • 2 ưu đãi/i });
+    fireEvent.click(applyBtn);
+
+    // Sau khi áp dụng, quà tặng đơn hàng và quà tặng combo xuất hiện
     await waitFor(() => {
       expect(screen.getAllByText('Canh Chua Tôm Càng').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Trà Đào Cam Sả').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Mua 2 tặng 1/i).length).toBeGreaterThan(0);
     });
-
-    // Quà tặng combo mua 2 tặng 1 xuất hiện
-    expect(screen.getAllByText('Trà Đào Cam Sả').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Mua 2 tặng 1/i).length).toBeGreaterThan(0);
   });
 
   it('Task 3.1: State retention keeps selected gift when config re-fetches', async () => {
     const { rerender } = render(<CheckoutForm order={null} config={mockConfigData} />);
+
+    // Mở modal chọn quà tặng đơn hàng
+    const selectButtons = screen.getAllByRole('button', { name: /Chọn mã/i });
+    fireEvent.click(selectButtons[0]);
+
+    expect(await screen.findByText('Tặng món cho đơn từ 100k')).toBeInTheDocument();
+    const cbGift = screen.getByText('Tặng món cho đơn từ 100k').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    fireEvent.click(cbGift);
+
+    const applyBtn = screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i });
+    fireEvent.click(applyBtn);
 
     await waitFor(() => {
       expect(screen.getAllByText('Canh Chua Tôm Càng').length).toBeGreaterThan(0);
@@ -312,23 +374,44 @@ describe('Campaign & Gift Promotions Flow (Frontend Tasks 2 & 3)', () => {
     });
   });
 
-  it('Task 3.1: Respects optOutOrderGift flag and does not auto re-enable gift on config update', async () => {
+  it('Task 3.1: Deselecting campaign in modal removes gift and does not auto re-enable on config update', async () => {
     const { rerender } = render(<CheckoutForm order={null} config={mockConfigData} />);
 
-    // Chờ cả desktop và mobile load xong config và hiển thị quà
-    await waitFor(async () => {
-      const items = await screen.findAllByText('Canh Chua Tôm Càng');
-      expect(items.length).toBeGreaterThanOrEqual(2);
+    // Mở modal chọn quà tặng đơn hàng
+    const selectButtons = screen.getAllByRole('button', { name: /Chọn mã/i });
+    fireEvent.click(selectButtons[0]);
+
+    expect(await screen.findByText('Tặng món cho đơn từ 100k')).toBeInTheDocument();
+    const cbGift = screen.getByText('Tặng món cho đơn từ 100k').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    fireEvent.click(cbGift);
+
+    const applyBtn = screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i });
+    fireEvent.click(applyBtn);
+
+    // Món quà hiển thị
+    await waitFor(() => {
+      expect(screen.getAllByText('Canh Chua Tôm Càng').length).toBeGreaterThan(0);
     });
 
-    // Bấm [Xóa] quà ở tất cả view
-    const removeButtons = screen.getAllByRole('button', { name: /\[Xóa\]/i });
-    removeButtons.forEach((btn) => fireEvent.click(btn));
+    // Mở lại modal và bỏ chọn ưu đãi
+    const selectButtonsAfter = screen.getAllByRole('button', { name: /Chọn mã/i });
+    fireEvent.click(selectButtonsAfter[0]);
 
-    // Món quà bị ẩn hoàn toàn và hiển thị nút nhận lại quà
+    expect(await screen.findByText('Tặng món cho đơn từ 100k')).toBeInTheDocument();
+    const cbGiftSelected = screen.getByText('Tặng món cho đơn từ 100k').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    expect(cbGiftSelected).toHaveAttribute('aria-checked', 'true');
+
+    // Click để uncheck
+    fireEvent.click(cbGiftSelected);
+    expect(cbGiftSelected).toHaveAttribute('aria-checked', 'false');
+
+    // Bấm Bỏ qua ưu đãi và tiếp tục
+    const skipBtn = screen.getByRole('button', { name: /Bỏ qua ưu đãi và tiếp tục/i });
+    fireEvent.click(skipBtn);
+
+    // Quà tặng bị gỡ khỏi đơn hàng
     await waitFor(() => {
-      expect(screen.queryAllByText('Canh Chua Tôm Càng').length).toBe(0);
-      expect(screen.getAllByRole('button', { name: /\+ Nhận lại quà/i }).length).toBeGreaterThan(0);
+      expect(screen.queryByText('Canh Chua Tôm Càng')).not.toBeInTheDocument();
     });
 
     // Giả lập config update/re-fetch
@@ -338,20 +421,23 @@ describe('Campaign & Gift Promotions Flow (Frontend Tasks 2 & 3)', () => {
     };
     rerender(<CheckoutForm order={null} config={reloadedConfig} />);
 
-    // Quà vẫn ở trạng thái opt-out, không tự ý bật lại
-    expect(screen.queryAllByText('Canh Chua Tôm Càng').length).toBe(0);
-    const reclaimButtons = screen.getAllByRole('button', { name: /\+ Nhận lại quà/i });
-    expect(reclaimButtons.length).toBeGreaterThan(0);
-
-    // Bấm nhận lại quà
-    reclaimButtons.forEach((btn) => fireEvent.click(btn));
-    await waitFor(() => {
-      expect(screen.getAllByText('Canh Chua Tôm Càng').length).toBeGreaterThan(0);
-    });
+    // Quà vẫn không xuất hiện (không tự ý bật lại khi chưa chọn)
+    expect(screen.queryByText('Canh Chua Tôm Càng')).not.toBeInTheDocument();
   });
 
   it('Task 3.1: createOrder sends gift items with price: 0, quantity: 1, and note', async () => {
     render(<CheckoutForm order={null} config={mockConfigData} />);
+
+    // Mở modal chọn quà tặng đơn hàng
+    const selectButtons = screen.getAllByRole('button', { name: /Chọn mã/i });
+    fireEvent.click(selectButtons[0]);
+
+    expect(await screen.findByText('Tặng món cho đơn từ 100k')).toBeInTheDocument();
+    const cbGift = screen.getByText('Tặng món cho đơn từ 100k').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    fireEvent.click(cbGift);
+
+    const applyBtn = screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i });
+    fireEvent.click(applyBtn);
 
     await waitFor(() => {
       expect(screen.getAllByText('Canh Chua Tôm Càng').length).toBeGreaterThan(0);

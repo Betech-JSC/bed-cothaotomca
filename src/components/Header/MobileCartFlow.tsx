@@ -397,16 +397,22 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     return lineItems.reduce((acc, curr) => acc + curr.price * curr.quantity, 0);
   }, [lineItems]);
 
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>([]);
+
   // Campaign G1 trong giỏ hàng (Mobile Flow)
   const cartCampaignG1 = useMemo(() => {
     if (!config?.active_promotions || config.active_promotions.length === 0) return null;
+    if (selectedCampaignIds.length === 0) return null;
     const checkAmount = originalSubtotal > 0 ? originalSubtotal : rawSubtotal;
-    const orderDiscountPromo = config.active_promotions.find(
+    const promos = config.active_promotions.filter((p) => {
+      return selectedCampaignIds.some((id) => String(id) === String(p.id));
+    });
+    const orderDiscountPromo = promos.find(
       (p) => p.promotion_type === "order_discount" && checkAmount >= (p.min_order_value || 0)
     );
     if (orderDiscountPromo) return orderDiscountPromo;
-    return config.active_promotions.find((p) => (p.min_order_value || 0) <= checkAmount) || null;
-  }, [config?.active_promotions, originalSubtotal, rawSubtotal]);
+    return promos.find((p) => (p.min_order_value || 0) <= checkAmount) || null;
+  }, [config?.active_promotions, originalSubtotal, rawSubtotal, selectedCampaignIds]);
 
   // Ma trận Khuyến mãi 6 Cases (Thông báo Voucher Mobile Flow)
   const promotionMatrixVoucherNotice = useMemo(() => {
@@ -593,23 +599,22 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     return cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
   }, [cartItems]);
 
-  // Opt-out state for promotions
-  const [optOutOrderDiscount, setOptOutOrderDiscount] = useState(false);
-
-  // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn)
+  // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleOrderDiscountPromo = useMemo(() => {
     if (isBestDealVoucherApplied) return null;
-    return (
+    if (selectedCampaignIds.length === 0) return null;
+    const promo =
       config?.active_promotions?.find(
         (p) =>
           p.promotion_type === "order_discount" &&
-          subtotal >= (p.min_order_value || 0)
-      ) || null
-    );
-  }, [config?.active_promotions, subtotal, isBestDealVoucherApplied]);
+          subtotal >= (p.min_order_value || 0) &&
+          selectedCampaignIds.some((id) => String(id) === String(p.id))
+      ) || null;
+    return promo;
+  }, [config?.active_promotions, subtotal, isBestDealVoucherApplied, selectedCampaignIds]);
 
   const autoOrderDiscountAmount = useMemo(() => {
-    if (!eligibleOrderDiscountPromo || optOutOrderDiscount) return 0;
+    if (!eligibleOrderDiscountPromo) return 0;
     const type = eligibleOrderDiscountPromo.discount_type;
     const val = eligibleOrderDiscountPromo.discount_value;
     let disc = 0;
@@ -625,20 +630,23 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       }
     }
     return Math.min(disc, subtotal);
-  }, [eligibleOrderDiscountPromo, optOutOrderDiscount, subtotal]);
+  }, [eligibleOrderDiscountPromo, subtotal]);
 
-  // 2. ORDER GIFT PROMOTION (Quà tặng theo giá trị đơn)
+  // 2. ORDER GIFT PROMOTION (Quà tặng theo giá trị đơn - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleOrderGiftPromo = useMemo(() => {
-    return (
+    if (isBestDealVoucherApplied) return null;
+    if (selectedCampaignIds.length === 0) return null;
+    const promo =
       config?.active_promotions?.find(
         (p) =>
           p.promotion_type === "order_gift_discount" &&
           p.items &&
           p.items.length > 0 &&
-          subtotal >= (p.min_order_value || 0)
-      ) || null
-    );
-  }, [config?.active_promotions, subtotal]);
+          subtotal >= (p.min_order_value || 0) &&
+          selectedCampaignIds.some((id) => String(id) === String(p.id))
+      ) || null;
+    return promo;
+  }, [config?.active_promotions, subtotal, isBestDealVoucherApplied, selectedCampaignIds]);
 
   const upcomingOrderGiftPromo = useMemo(() => {
     if (eligibleOrderGiftPromo || !config?.active_promotions) return null;
@@ -653,7 +661,6 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     );
   }, [config?.active_promotions, eligibleOrderGiftPromo, subtotal]);
 
-  const [optOutOrderGift, setOptOutOrderGift] = useState(false);
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
   const [isOrderGiftModalOpen, setIsOrderGiftModalOpen] = useState(false);
   const [selectedBuyXGetYPromoForModal, setSelectedBuyXGetYPromoForModal] = useState<ActivePromotion | null>(null);
@@ -674,21 +681,23 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }, [eligibleOrderGiftPromo]);
 
   const selectedOrderGiftItem = useMemo(() => {
-    if (!eligibleOrderGiftPromo || !selectedOrderGiftId || optOutOrderGift) return null;
+    if (!eligibleOrderGiftPromo || !selectedOrderGiftId) return null;
     return (
       eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId) || null
     );
-  }, [eligibleOrderGiftPromo, selectedOrderGiftId, optOutOrderGift]);
+  }, [eligibleOrderGiftPromo, selectedOrderGiftId]);
 
-  // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - Hỗ trợ nhiều chiến dịch đồng thời)
+  // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleBuyXGetYPromos = useMemo(() => {
-    if (!config?.active_promotions) return [];
+    if (isBestDealVoucherApplied || !config?.active_promotions) return [];
+    if (selectedCampaignIds.length === 0) return [];
     return config.active_promotions.filter((p) => {
       if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
       const buyQty = Number(p.settings?.buy_quantity || 2);
-      return totalCartQuantity >= buyQty;
+      if (totalCartQuantity < buyQty) return false;
+      return selectedCampaignIds.some((id) => String(id) === String(p.id));
     });
-  }, [config?.active_promotions, totalCartQuantity]);
+  }, [config?.active_promotions, totalCartQuantity, isBestDealVoucherApplied, selectedCampaignIds]);
 
   const upcomingBuyXGetYPromo = useMemo(() => {
     if (!config?.active_promotions) return null;
@@ -701,7 +710,6 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     );
   }, [config?.active_promotions, totalCartQuantity]);
 
-  const [optOutBuyXGetYSet, setOptOutBuyXGetYSet] = useState<Record<number, boolean>>({});
   const [selectedBuyXGetYMap, setSelectedBuyXGetYMap] = useState<Record<number, number>>({});
 
   useEffect(() => {
@@ -722,7 +730,6 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   const activeBuyXGetYItems = useMemo(() => {
     return eligibleBuyXGetYPromos
-      .filter((promo) => !optOutBuyXGetYSet[promo.id])
       .map((promo) => {
         const selectedId = selectedBuyXGetYMap[promo.id] || promo.items[0]?.id;
         const item = promo.items.find((i) => i.id === selectedId) || promo.items[0];
@@ -739,30 +746,25 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         };
       })
       .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string } => Boolean(x.item));
-  }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap, optOutBuyXGetYSet]);
+  }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap]);
 
   const appliedCartPromotions = useMemo(() => {
     const list: ActivePromotion[] = [];
-    if (eligibleOrderDiscountPromo && !optOutOrderDiscount) {
+    if (eligibleOrderDiscountPromo) {
       list.push(eligibleOrderDiscountPromo);
     }
-    if (eligibleOrderGiftPromo && !optOutOrderGift && selectedOrderGiftItem) {
+    if (eligibleOrderGiftPromo && selectedOrderGiftItem) {
       list.push(eligibleOrderGiftPromo);
     }
     eligibleBuyXGetYPromos.forEach((p) => {
-      if (!optOutBuyXGetYSet[p.id]) {
-        list.push(p);
-      }
+      list.push(p);
     });
     return list;
   }, [
     eligibleOrderDiscountPromo,
-    optOutOrderDiscount,
     eligibleOrderGiftPromo,
-    optOutOrderGift,
     selectedOrderGiftItem,
     eligibleBuyXGetYPromos,
-    optOutBuyXGetYSet,
   ]);
 
   const promoItemsExtraPrice = useMemo(() => {
@@ -1542,7 +1544,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     <p className="text-secondary font-medium text-xs">
                       Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
                     </p>
-                  ) : ( ((config?.active_promotions?.length ?? 0) > 0 || isFreeship) && (
+                  ) : ( ((appliedCartPromotions.length > 0 || isFreeship)) && (
                     <p className="text-secondary font-medium text-xs">
                       {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
                     </p>
@@ -1724,28 +1726,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                   </button>
                                 )}
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => setOptOutOrderGift(true)}
-                                className="text-[11px] text-gray-400 hover:text-red-500 font-semibold cursor-pointer"
-                                title={t("remove_gift")}
-                              >
-                                [{t("remove_voucher")}]
-                              </button>
                             </div>
                           </div>
-                        </div>
-                      )}
-                      {eligibleOrderGiftPromo && optOutOrderGift && (
-                        <div className="flex items-center justify-between p-2.5 bg-yellow/50 rounded-xl border border-dashed border-secondary/30 text-xs text-brown animate-fade-in">
-                          <span className="font-medium">{t("reclaim_gift_eligible", { name: eligibleOrderGiftPromo.name })}</span>
-                          <button
-                            type="button"
-                            onClick={() => setOptOutOrderGift(false)}
-                            className="font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2.5 py-0.5 rounded-full text-xs cursor-pointer"
-                          >
-                            + {t("reclaim_gift")}
-                          </button>
                         </div>
                       )}
 
@@ -1788,35 +1770,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                   </button>
                                 )}
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: true }))}
-                                className="text-[11px] text-gray-400 hover:text-red-500 font-semibold cursor-pointer"
-                                title={t("remove_gift")}
-                              >
-                                [{t("remove_voucher")}]
-                              </button>
                             </div>
                           </div>
                         </div>
                       ))}
-                      {eligibleBuyXGetYPromos
-                        .filter((promo) => optOutBuyXGetYSet[promo.id])
-                        .map((promo) => (
-                          <div
-                            key={`m-optout-${promo.id}`}
-                            className="flex items-center justify-between p-2.5 bg-yellow/50 rounded-xl border border-dashed border-primary/25 text-xs text-primary animate-fade-in"
-                          >
-                            <span className="font-medium">{t("reclaim_combo_eligible", { name: promo.name })}</span>
-                            <button
-                              type="button"
-                              onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: false }))}
-                              className="font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-0.5 rounded-full text-xs"
-                            >
-                              + {t("reclaim_combo")}
-                            </button>
-                          </div>
-                        ))}
                     </div>
 
                     <div className="space-y-2 border-t border-gray-100 pt-3 text-xs">
@@ -1828,7 +1785,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <p className="text-secondary font-medium text-xs">
                           Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
                         </p>
-                      ) : ( ((config?.active_promotions?.length ?? 0) > 0 || isFreeship) && (
+                      ) : ( ((appliedCartPromotions.length > 0 || isFreeship)) && (
                         <p className="text-secondary font-medium text-xs">
                           {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
                         </p>
@@ -1902,30 +1859,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <div className="flex justify-between items-start gap-2 text-secondary font-semibold">
                           <div className="flex-1 min-w-0 pr-1 leading-snug">
                             <span>{eligibleOrderDiscountPromo?.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => setOptOutOrderDiscount(true)}
-                              className="text-[11px] text-red-500 hover:text-red-700 hover:underline font-semibold cursor-pointer ml-1.5 whitespace-nowrap inline-block"
-                              title={t("remove_gift")}
-                            >
-                              [{t("remove_voucher")}]
-                            </button>
                           </div>
                           <span className="font-semibold shrink-0 whitespace-nowrap text-right leading-snug">
                             -{formatPrice(autoOrderDiscountAmount)}
                           </span>
-                        </div>
-                      )}
-                      {eligibleOrderDiscountPromo && optOutOrderDiscount && (
-                        <div className="flex justify-between items-center text-gray-500 text-[11px] gap-2">
-                          <span className="flex-1 min-w-0 truncate">({eligibleOrderDiscountPromo.name})</span>
-                          <button
-                            type="button"
-                            onClick={() => setOptOutOrderDiscount(false)}
-                            className="text-primary hover:underline font-bold shrink-0 whitespace-nowrap"
-                          >
-                            {t("reapply_voucher")}
-                          </button>
                         </div>
                       )}
                       <div className="flex justify-between items-center gap-2">
@@ -2462,6 +2399,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
         appliedVoucherCode={appliedVoucher?.code || ""}
+        appliedCampaignIds={selectedCampaignIds}
+        onApplyCampaigns={(ids) => setSelectedCampaignIds(ids)}
         onApplyVoucher={handleApplyVoucherFromModal}
         onRemoveVoucher={handleRemoveVoucher}
         activePromotions={appliedCartPromotions}
@@ -2482,7 +2421,6 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           selectedId={selectedOrderGiftId}
           onSelect={(item) => {
             setSelectedOrderGiftId(item.id);
-            setOptOutOrderGift(false);
           }}
         />
       )}
@@ -2500,10 +2438,6 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             setSelectedBuyXGetYMap((prev) => ({
               ...prev,
               [selectedBuyXGetYPromoForModal.id]: item.id,
-            }));
-            setOptOutBuyXGetYSet((prev) => ({
-              ...prev,
-              [selectedBuyXGetYPromoForModal.id]: false,
             }));
           }}
         />

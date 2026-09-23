@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import React from 'react';
@@ -662,5 +662,448 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     // Voucher PHẢI giữ nguyên trạng thái đã chọn, không bị reset hay tự động bỏ chọn
     expect(checkbox).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i })).toBeInTheDocument();
+  });
+
+  it('Matrix 16: Campaign phân tầng - Tier 1 (Khả dụng) và Tier 2 (Chưa đủ điều kiện với thông báo thiếu tiền)', async () => {
+    mockCampaignsList = [
+      {
+        id: 101,
+        name: 'Ưu đãi hè 10%',
+        min_order_value: 100000,
+        promotion_type: 'order_discount',
+        discount_type: 'percent',
+        discount_value: 10,
+        can_combine_with_promotions: true,
+      },
+      {
+        id: 102,
+        name: 'Tặng trà đào đơn từ 300k',
+        min_order_value: 300000,
+        promotion_type: 'order_gift_discount',
+        items: [{ id: 1, name: 'Trà đào' }],
+        can_combine_with_promotions: true,
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={200000}
+        appliedCampaignIds={[]}
+      />
+    );
+
+    expect(await screen.findByText('Ưu đãi hè 10%')).toBeInTheDocument();
+    expect(screen.getByText('Tặng trà đào đơn từ 300k')).toBeInTheDocument();
+
+    // Check tier headers
+    expect(screen.getByText(/Chương trình ưu đãi khả dụng/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chương trình chưa đủ điều kiện/i)).toBeInTheDocument();
+
+    // Campaign 102 (Tier 2) hiển thị câu thông báo thiếu tiền: 300k - 200k = 100k
+    expect(
+      screen.getByText(/Chưa đạt giá trị đơn tối thiểu 300\.000.*Mua thêm 100\.000/i)
+    ).toBeInTheDocument();
+
+    // Campaign 101 (Tier 1) có checkbox khả dụng
+    const cb101 = screen.getByText('Ưu đãi hè 10%').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    expect(cb101).toHaveAttribute('aria-checked', 'false');
+    expect(cb101).not.toHaveAttribute('aria-disabled', 'true');
+
+    // Campaign 102 (Tier 2) có checkbox disabled
+    const cb102 = screen.getByText('Tặng trà đào đơn từ 300k').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    expect(cb102).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('Matrix 17: Click checkbox toggle vs click Chi tiết điều kiện áp dụng (e.stopPropagation())', async () => {
+    mockCampaignsList = [
+      {
+        id: 101,
+        name: 'Ưu đãi hè 10%',
+        min_order_value: 100000,
+        promotion_type: 'order_discount',
+        discount_type: 'percent',
+        discount_value: 10,
+        description: 'Chi tiết mô tả ưu đãi hè 10%',
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={200000}
+        appliedCampaignIds={[]}
+      />
+    );
+
+    expect(await screen.findByText('Ưu đãi hè 10%')).toBeInTheDocument();
+
+    const termsBtn = screen.getByText(/Chi tiết điều kiện áp dụng ›/i);
+    const card = screen.getByText('Ưu đãi hè 10%').closest('div[class*="rounded-2xl"]')!;
+    const checkbox = card.querySelector('[role="checkbox"]')!;
+
+    // Bấm vào "Chi tiết điều kiện áp dụng ›"
+    fireEvent.click(termsBtn);
+
+    // Màn hình chi tiết mở ra
+    expect(await screen.findByRole('heading', { level: 3, name: 'Chi Tiết Chương Trình' })).toBeInTheDocument();
+    expect(screen.getByText(/Chi tiết mô tả ưu đãi hè 10%/i)).toBeInTheDocument();
+
+    // Bấm quay lại
+    const backBtn = screen.getByText(/Quay lại/i);
+    fireEvent.click(backBtn);
+
+    // Quay lại màn hình danh sách, checkbox vẫn chưa bị tick
+    const cardAfter = (await screen.findByText('Ưu đãi hè 10%')).closest('div[class*="rounded-2xl"]')!;
+    const checkboxAfter = cardAfter.querySelector('[role="checkbox"]')!;
+    expect(checkboxAfter).toHaveAttribute('aria-checked', 'false');
+
+    // Giờ click thẳng vào checkbox -> toggled sang true
+    fireEvent.click(checkboxAfter);
+    expect(checkboxAfter).toHaveAttribute('aria-checked', 'true');
+    // Màn hình chi tiết KHÔNG bị mở ra
+    expect(screen.queryByRole('heading', { level: 3, name: 'Chi Tiết Chương Trình' })).not.toBeInTheDocument();
+  });
+
+  it('Matrix 18: Single-choice switch mượt mà giữa các campaign không cộng dồn, không bị deadlock', async () => {
+    mockCampaignsList = [
+      {
+        id: 201,
+        name: 'Flash Sale Độc Quyền',
+        min_order_value: 50000,
+        can_combine_with_promotions: false,
+      },
+      {
+        id: 202,
+        name: 'Giảm 20k Đơn 100k',
+        min_order_value: 50000,
+        can_combine_with_promotions: true,
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={200000}
+        appliedCampaignIds={[]}
+      />
+    );
+
+    expect(await screen.findByText('Flash Sale Độc Quyền')).toBeInTheDocument();
+    expect(screen.getByText('Giảm 20k Đơn 100k')).toBeInTheDocument();
+
+    const cbFlash = screen.getByText('Flash Sale Độc Quyền').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    const cbPromo = screen.getByText('Giảm 20k Đơn 100k').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+
+    expect(cbFlash).toHaveAttribute('aria-disabled', 'false');
+    expect(cbPromo).toHaveAttribute('aria-disabled', 'false');
+
+    // Chọn Flash Sale Độc Quyền (can_combine_with_promotions = false)
+    fireEvent.click(cbFlash);
+    expect(cbFlash).toHaveAttribute('aria-checked', 'true');
+
+    // Campaign 202 KHÔNG bị khóa cứng (aria-disabled = false) để người dùng có thể switch linh hoạt
+    expect(cbPromo).toHaveAttribute('aria-disabled', 'false');
+
+    // Click vào Campaign 202 -> Tự động uncheck Flash Sale và chuyển sang chọn Campaign 202 (Single-choice switch)
+    fireEvent.click(cbPromo);
+    expect(cbPromo).toHaveAttribute('aria-checked', 'true');
+    expect(cbFlash).toHaveAttribute('aria-checked', 'false');
+
+    // Click vào Campaign 202 đang chọn -> Cho phép uncheck hoàn toàn
+    fireEvent.click(cbPromo);
+    expect(cbPromo).toHaveAttribute('aria-checked', 'false');
+    expect(cbFlash).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('Matrix 19: Cho phép chọn đồng thời nhiều ưu đãi khi can_combine_with_promotions = true', async () => {
+    mockCampaignsList = [
+      {
+        id: 301,
+        name: 'Giảm 10k',
+        min_order_value: 50000,
+        can_combine_with_promotions: true,
+      },
+      {
+        id: 302,
+        name: 'Tặng trà sen',
+        min_order_value: 50000,
+        can_combine_with_promotions: true,
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={200000}
+        appliedCampaignIds={[]}
+      />
+    );
+
+    expect(await screen.findByText('Giảm 10k')).toBeInTheDocument();
+    expect(screen.getByText('Tặng trà sen')).toBeInTheDocument();
+
+    const cb1 = screen.getByText('Giảm 10k').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    const cb2 = screen.getByText('Tặng trà sen').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+
+    // Tick ưu đãi 1
+    fireEvent.click(cb1);
+    expect(cb1).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i })).toBeInTheDocument();
+
+    // Tick ưu đãi 2 (cả 2 đều cho phép kết hợp)
+    fireEvent.click(cb2);
+    expect(cb1).toHaveAttribute('aria-checked', 'true');
+    expect(cb2).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('button', { name: /Áp dụng • 2 ưu đãi/i })).toBeInTheDocument();
+  });
+
+  it('Matrix 20: Khóa chéo 2 chiều giữa Food Voucher và Campaign', async () => {
+    mockCampaignsList = [
+      {
+        id: 401,
+        name: 'Campaign Không Cộng Dồn',
+        min_order_value: 50000,
+        can_combine_with_promotions: false,
+      },
+    ];
+    mockVouchersList = [
+      {
+        id: 11,
+        code: 'FOOD10K',
+        discount_type: 'fixed',
+        value: 10000,
+        prereq_price: 50000,
+        can_combine_with_promotions: true,
+      },
+      {
+        id: 12,
+        code: 'SOLO_VOUCHER',
+        discount_type: 'fixed',
+        value: 20000,
+        prereq_price: 50000,
+        can_combine_with_promotions: false,
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={200000}
+        appliedCampaignIds={[]}
+        appliedVoucherCodes={[]}
+      />
+    );
+
+    expect(await screen.findByText('Campaign Không Cộng Dồn')).toBeInTheDocument();
+    expect(screen.getByText('FOOD10K')).toBeInTheDocument();
+    expect(screen.getByText('SOLO_VOUCHER')).toBeInTheDocument();
+
+    const cbCampaign = screen.getByText('Campaign Không Cộng Dồn').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    const cbFoodVoucher = screen.getByText('FOOD10K').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    const cbSoloVoucher = screen.getByText('SOLO_VOUCHER').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+
+    // Chiều 1: Chọn Campaign Không Cộng Dồn -> Voucher FOOD10K bị khóa
+    fireEvent.click(cbCampaign);
+    expect(cbCampaign).toHaveAttribute('aria-checked', 'true');
+
+    // Voucher FOOD10K bị khóa với lý do
+    expect(cbFoodVoucher).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getAllByText(/Không thể sử dụng cùng ưu đãi đã chọn/i).length).toBeGreaterThanOrEqual(1);
+
+    // Bỏ chọn Campaign
+    fireEvent.click(cbCampaign);
+    expect(cbCampaign).toHaveAttribute('aria-checked', 'false');
+    expect(cbFoodVoucher).toHaveAttribute('aria-disabled', 'false');
+
+    // Chiều 2: Chọn Voucher không cộng dồn (SOLO_VOUCHER) -> Campaign bị khóa
+    fireEvent.click(cbSoloVoucher);
+    expect(cbSoloVoucher).toHaveAttribute('aria-checked', 'true');
+
+    // Campaign bị khóa với lý do
+    expect(cbCampaign).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText(/Không thể sử dụng cùng mã giảm giá đã chọn/i)).toBeInTheDocument();
+  });
+
+  it('Matrix 21: Khóa và mở Freeship Voucher theo can_combine_with_freeship của Campaign', async () => {
+    mockCampaignsList = [
+      {
+        id: 501,
+        name: 'Campaign Cấm Freeship',
+        min_order_value: 50000,
+        can_combine_with_promotions: true,
+        can_combine_with_freeship: false,
+      },
+    ];
+    mockVouchersList = [
+      {
+        id: 21,
+        code: 'FREESHIP15K',
+        discount_type: 'freeship',
+        is_freeship: true,
+        value: 15000,
+        prereq_price: 50000,
+        can_combine_with_promotions: true,
+        can_combine_with_freeship: true,
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={200000}
+        shippingFee={30000}
+        appliedCampaignIds={[]}
+        appliedVoucherCodes={[]}
+      />
+    );
+
+    expect(await screen.findByText('Campaign Cấm Freeship')).toBeInTheDocument();
+    expect(screen.getByText('FREESHIP15K')).toBeInTheDocument();
+
+    const cbCampaign = screen.getByText('Campaign Cấm Freeship').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    const cbFreeship = screen.getByText('FREESHIP15K').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+
+    // Chưa chọn Campaign -> Freeship Voucher không bị khóa
+    expect(cbFreeship).toHaveAttribute('aria-disabled', 'false');
+
+    // Chọn Campaign cấm Freeship
+    fireEvent.click(cbCampaign);
+    expect(cbCampaign).toHaveAttribute('aria-checked', 'true');
+
+    // Freeship voucher bị khóa
+    expect(cbFreeship).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText(/Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship/i)).toBeInTheDocument();
+
+    // Bỏ chọn Campaign -> Freeship Voucher mở khóa lại
+    fireEvent.click(cbCampaign);
+    expect(cbCampaign).toHaveAttribute('aria-checked', 'false');
+    expect(cbFreeship).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  it('Matrix 22: Mở modal lần đầu (appliedCampaignIds undefined/empty) hiển thị pure checkbox không tự tick', async () => {
+    mockCampaignsList = [
+      {
+        id: 601,
+        name: 'Giảm 5%',
+        min_order_value: 100000,
+        promotion_type: 'order_discount',
+        discount_type: 'percent',
+        discount_value: 5,
+      },
+      {
+        id: 602,
+        name: 'Giảm 25.000đ',
+        min_order_value: 100000,
+        promotion_type: 'order_discount',
+        discount_type: 'fixed',
+        discount_value: 25000,
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={200000}
+      />
+    );
+
+    expect(await screen.findByText('Giảm 25.000đ')).toBeInTheDocument();
+    expect(screen.getByText('Giảm 5%')).toBeInTheDocument();
+
+    const cb602 = screen.getByText('Giảm 25.000đ').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    const cb601 = screen.getByText('Giảm 5%').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+
+    // Pure Checkbox: Cả 2 ưu đãi đều để trống (aria-checked = false), không tự động tick Best Deal
+    expect(cb602).toHaveAttribute('aria-checked', 'false');
+    expect(cb601).toHaveAttribute('aria-checked', 'false');
+
+    // Nút CTA hiển thị "Bỏ qua ưu đãi và tiếp tục"
+    expect(screen.getByRole('button', { name: /Bỏ qua ưu đãi và tiếp tục/i })).toBeInTheDocument();
+  });
+
+  it('Matrix 23: Nút CTA Áp dụng • X ưu đãi gọi onApplyCampaigns + onApplyVouchers, Bỏ qua gọi onApplyCampaigns([])', async () => {
+    mockCampaignsList = [
+      {
+        id: 701,
+        name: 'Campaign 701',
+        min_order_value: 50000,
+        can_combine_with_promotions: true,
+      },
+    ];
+    mockVouchersList = [
+      {
+        id: 71,
+        code: 'VOUCHER701',
+        discount_type: 'fixed',
+        value: 10000,
+        prereq_price: 50000,
+        can_combine_with_promotions: true,
+      },
+    ];
+
+    const onApplyCampaigns = vi.fn().mockResolvedValue(undefined);
+    const onApplyVouchers = vi.fn().mockResolvedValue(undefined);
+    const onClose = vi.fn();
+
+    const { rerender } = render(
+      <CouponModal
+        isOpen={true}
+        onClose={onClose}
+        subtotal={200000}
+        appliedCampaignIds={[]}
+        appliedVoucherCodes={[]}
+        onApplyCampaigns={onApplyCampaigns}
+        onApplyVouchers={onApplyVouchers}
+      />
+    );
+
+    expect(await screen.findByText('Campaign 701')).toBeInTheDocument();
+    expect(screen.getByText('VOUCHER701')).toBeInTheDocument();
+
+    const cbCampaign = screen.getByText('Campaign 701').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    const cbVoucher = screen.getByText('VOUCHER701').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+
+    // Chọn cả Campaign và Voucher
+    fireEvent.click(cbCampaign);
+    fireEvent.click(cbVoucher);
+
+    const applyBtn = screen.getByRole('button', { name: /Áp dụng • 2 ưu đãi/i });
+    expect(applyBtn).toBeInTheDocument();
+
+    // Bấm nút [Áp dụng • 2 ưu đãi]
+    await fireEvent.click(applyBtn);
+
+    await waitFor(() => {
+      expect(onApplyCampaigns).toHaveBeenCalledWith([701]);
+      expect(onApplyVouchers).toHaveBeenCalledWith(['VOUCHER701']);
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    // Test nút Bỏ qua ưu đãi và tiếp tục (khi không chọn ưu đãi nào)
+    onApplyCampaigns.mockClear();
+    onApplyVouchers.mockClear();
+    onClose.mockClear();
+
+    // Bỏ chọn cả Campaign và Voucher
+    fireEvent.click(cbCampaign);
+    fireEvent.click(cbVoucher);
+
+    const skipBtn = screen.getByRole('button', { name: /Bỏ qua ưu đãi và tiếp tục/i });
+    expect(skipBtn).toBeInTheDocument();
+    await fireEvent.click(skipBtn);
+
+    await waitFor(() => {
+      expect(onApplyCampaigns).toHaveBeenCalledWith([]);
+      expect(onApplyVouchers).toHaveBeenCalledWith([]);
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 });

@@ -11,7 +11,12 @@ import {
   getShippingSettings,
   ShippingSettings,
 } from "@/services/orderService";
-import { PublicCampaignItem, getActiveCampaigns } from "@/services/campaignService";
+import {
+  PublicCampaignItem,
+  getActiveCampaigns,
+  CampaignEligibilityResult,
+  CampaignLockResult,
+} from "@/services/campaignService";
 import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useAuth, StorefrontUser } from "@/contexts/AuthContext";
@@ -50,8 +55,10 @@ export interface CouponModalProps {
   canCombineWithFreeship?: boolean;
   appliedVoucherCode?: string;
   appliedVoucherCodes?: string[];
+  appliedCampaignIds?: (number | string)[];
   onApplyVoucher?: (code: string) => Promise<boolean | void> | void;
   onApplyVouchers?: (codes: string[]) => Promise<boolean | void> | void;
+  onApplyCampaigns?: (ids: (number | string)[]) => Promise<void> | void;
   onRemoveVoucher?: () => void;
   isBrowseOnly?: boolean;
   activePromotions?: ActivePromotion[];
@@ -107,6 +114,24 @@ export function isFoodVoucher(v: { code: string; discount_type?: string; is_free
   return !isShipVoucher(v);
 }
 
+export function getCampaignEstimatedValue(camp: PublicCampaignItem, subtotal: number): number {
+  if (camp.discount_type === "percent" && camp.discount_value) {
+    const val = (subtotal * camp.discount_value) / 100;
+    return camp.max_discount ? Math.min(val, camp.max_discount) : val;
+  }
+  if (camp.discount_type === "fixed" && camp.discount_value) {
+    return Math.min(camp.discount_value, subtotal);
+  }
+  if (camp.promotion_type === "order_gift_discount" && camp.items && camp.items.length > 0) {
+    const gift = camp.items[0];
+    return Math.max(0, gift.original_price - (gift.campaign_price || 0));
+  }
+  if (camp.discount_value) {
+    return camp.discount_value;
+  }
+  return 0;
+}
+
 export default function CouponModal({
   isOpen,
   onClose,
@@ -118,8 +143,10 @@ export default function CouponModal({
   canCombineWithFreeship,
   appliedVoucherCode = "",
   appliedVoucherCodes,
+  appliedCampaignIds,
   onApplyVoucher,
   onApplyVouchers,
+  onApplyCampaigns,
   onRemoveVoucher,
   isBrowseOnly = false,
   activePromotions,
@@ -151,6 +178,7 @@ export default function CouponModal({
   const [vouchers, setVouchers] = useState<PublicVoucherItem[]>(cachedVouchers || []);
   const [localPrivateVouchers, setLocalPrivateVouchers] = useState<PublicVoucherItem[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>([]);
   const [shippingSettingsState, setShippingSettingsState] = useState<ShippingSettings | null>(shippingSettings || null);
   const [selectedCampaign, setSelectedCampaign] = useState<PublicCampaignItem | null>(null);
   const [loading, setLoading] = useState(false);
@@ -160,6 +188,28 @@ export default function CouponModal({
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
+
+  const checkCampaignEligibility = useCallback(
+    (c: PublicCampaignItem): CampaignEligibilityResult => {
+      const minSpend = Number(c.min_order_value || 0);
+      const effectiveSpend =
+        c.can_combine_with_promotions === false && originalSubtotal !== undefined && originalSubtotal > 0
+          ? originalSubtotal
+          : subtotal;
+
+      if (minSpend > 0 && effectiveSpend < minSpend) {
+        const missingAmount = Math.max(0, minSpend - effectiveSpend);
+        return {
+          eligible: false,
+          reason: `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missingAmount)} để áp dụng`,
+          missingAmount,
+        };
+      }
+
+      return { eligible: true };
+    },
+    [subtotal, originalSubtotal]
+  );
 
   const effectivePrivateVouchers = useMemo(() => {
     return privateVouchers !== undefined ? privateVouchers : localPrivateVouchers;
@@ -213,6 +263,11 @@ export default function CouponModal({
             : [];
         setSelectedCodes(initialCodes);
 
+        const initialCampaigns = (appliedCampaignIds && appliedCampaignIds.length > 0)
+          ? [...appliedCampaignIds]
+          : [];
+        setSelectedCampaignIds(initialCampaigns);
+
         // If we don't have cached data yet, show smooth loading
         if (!cachedCampaigns || !cachedVouchers) {
           setLoading(true);
@@ -239,7 +294,7 @@ export default function CouponModal({
     } else {
       wasOpenRef.current = false;
     }
-  }, [isOpen, appliedVoucherCode, appliedVoucherCodes, shippingSettings]);
+  }, [isOpen, appliedVoucherCode, appliedVoucherCodes, appliedCampaignIds, shippingSettings, subtotal, checkCampaignEligibility]);
 
   // Virtual campaign item for shipping discount card (FB-04)
   const shippingPromotionItem: PublicCampaignItem | null = useMemo(() => {
@@ -387,6 +442,24 @@ export default function CouponModal({
     ]
   );
 
+  const selectedCampaignItems = useMemo(() => {
+    return allCampaigns.filter((c) =>
+      selectedCampaignIds.some((id) => String(id) === String(c.id))
+    );
+  }, [allCampaigns, selectedCampaignIds]);
+
+  const eligibleCampaigns = useMemo(() => {
+    return allCampaigns.filter(
+      (c) => c.id !== "shipping-promotion-card" && checkCampaignEligibility(c).eligible
+    );
+  }, [allCampaigns, checkCampaignEligibility]);
+
+  const ineligibleCampaigns = useMemo(() => {
+    return allCampaigns.filter(
+      (c) => c.id !== "shipping-promotion-card" && !checkCampaignEligibility(c).eligible
+    );
+  }, [allCampaigns, checkCampaignEligibility]);
+
   // Split vouchers into 2 distinct tiers (FB-06)
   const eligibleVouchers = useMemo(() => {
     return allVouchers.filter((v) => checkVoucherEligibility(v).eligible);
@@ -400,6 +473,52 @@ export default function CouponModal({
     return allVouchers.filter((v) => selectedCodes.some((code) => code.toUpperCase() === v.code.toUpperCase()));
   }, [allVouchers, selectedCodes]);
 
+  const checkCampaignRealtimeLock = useCallback(
+    (camp: PublicCampaignItem): CampaignLockResult => {
+      const isSelected = selectedCampaignIds.some((id) => String(id) === String(camp.id));
+      if (isSelected) {
+        return { locked: false };
+      }
+
+      // 1. Kiểm tra khóa chéo với Voucher món ăn đang chọn
+      const selectedFoodVoucher = selectedVoucherItems.find(isFoodVoucher);
+      if (selectedFoodVoucher) {
+        if (selectedFoodVoucher.can_combine_with_promotions === false) {
+          return {
+            locked: true,
+            reason: t("campaign_voucher_locked") || "Không thể sử dụng cùng mã giảm giá đã chọn.",
+          };
+        }
+        if (camp.can_combine_with_promotions === false) {
+          return {
+            locked: true,
+            reason: t("campaign_voucher_locked") || "Không thể sử dụng cùng mã giảm giá đã chọn.",
+          };
+        }
+      }
+
+      // 2. Kiểm tra khóa chéo với Voucher Freeship đang chọn
+      const selectedShipVoucher = selectedVoucherItems.find(isShipVoucher);
+      if (selectedShipVoucher) {
+        if (selectedShipVoucher.can_combine_with_promotions === false) {
+          return {
+            locked: true,
+            reason: t("campaign_voucher_locked") || "Không thể sử dụng cùng mã giảm giá đã chọn.",
+          };
+        }
+        if (camp.can_combine_with_freeship === false) {
+          return {
+            locked: true,
+            reason: t("campaign_freeship_locked") || "Không thể sử dụng cùng mã Freeship đã chọn.",
+          };
+        }
+      }
+
+      return { locked: false };
+    },
+    [selectedCampaignIds, selectedVoucherItems, t]
+  );
+
   const checkRealtimeLock = useCallback(
     (v: PublicVoucherItem): { locked: boolean; reason?: string } => {
       const isSelected = selectedCodes.some((c) => c.toUpperCase() === v.code.toUpperCase());
@@ -412,6 +531,14 @@ export default function CouponModal({
 
       const selectedFood = selectedVoucherItems.find(isFoodVoucher);
       const selectedShip = selectedVoucherItems.find(isShipVoucher);
+
+      // Mutex locks between voucher and campaigns
+      const hasNonCombinableCampaign = selectedCampaignItems.some(
+        (c) => c.can_combine_with_promotions === false
+      );
+      const hasCampaignWithNoFreeship = selectedCampaignItems.some(
+        (c) => c.can_combine_with_freeship === false
+      );
 
       // Nếu v là mã tiền món:
       if (isFood) {
@@ -428,6 +555,18 @@ export default function CouponModal({
               reason: "Không thể sử dụng với những ưu đãi đã chọn khác.",
             };
           }
+        }
+        if (hasNonCombinableCampaign) {
+          return {
+            locked: true,
+            reason: t("campaign_mutex_locked") || "Không thể sử dụng cùng ưu đãi đã chọn.",
+          };
+        }
+        if (v.can_combine_with_promotions === false && selectedCampaignItems.length > 0) {
+          return {
+            locked: true,
+            reason: t("campaign_mutex_locked") || "Không thể sử dụng cùng ưu đãi đã chọn.",
+          };
         }
       }
 
@@ -447,11 +586,23 @@ export default function CouponModal({
             };
           }
         }
+        if (hasCampaignWithNoFreeship) {
+          return {
+            locked: true,
+            reason: t("campaign_no_freeship") || "Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship",
+          };
+        }
+        if (v.can_combine_with_promotions === false && selectedCampaignItems.length > 0) {
+          return {
+            locked: true,
+            reason: t("campaign_mutex_locked") || "Không thể sử dụng cùng ưu đãi đã chọn.",
+          };
+        }
       }
 
       return { locked: false };
     },
-    [selectedCodes, selectedVoucherItems]
+    [selectedCodes, selectedVoucherItems, selectedCampaignItems, t]
   );
 
   const handleCopyCode = (code: string) => {
@@ -529,21 +680,58 @@ export default function CouponModal({
     [allVouchers, checkVoucherEligibility, checkRealtimeLock]
   );
 
+  const handleToggleCampaign = useCallback(
+    (id: number | string) => {
+      const targetCamp = allCampaigns.find((c) => String(c.id) === String(id));
+      if (!targetCamp) return;
+
+      const eligibility = checkCampaignEligibility(targetCamp);
+      if (!eligibility.eligible) return;
+
+      const lockState = checkCampaignRealtimeLock(targetCamp);
+      if (lockState.locked) return;
+
+      setSelectedCampaignIds((prev) => {
+        const isSelected = prev.some((cId) => String(cId) === String(id));
+        if (isSelected) {
+          return prev.filter((cId) => String(cId) !== String(id));
+        } else {
+          if (targetCamp.can_combine_with_promotions === false) {
+            return [targetCamp.id];
+          }
+          const filtered = prev.filter((cId) => {
+            const existing = allCampaigns.find((c) => String(c.id) === String(cId));
+            return existing && existing.can_combine_with_promotions !== false;
+          });
+          return [...filtered, targetCamp.id];
+        }
+      });
+    },
+    [allCampaigns, checkCampaignEligibility, checkCampaignRealtimeLock]
+  );
+
   const handleSkipAndContinue = useCallback(() => {
     if (appliedVoucherCode || (appliedVoucherCodes && appliedVoucherCodes.length > 0)) {
       onRemoveVoucher?.();
     }
+    onApplyVouchers?.([]);
+    onApplyCampaigns?.([]);
     onClose();
-  }, [appliedVoucherCode, appliedVoucherCodes, onRemoveVoucher, onClose]);
+  }, [appliedVoucherCode, appliedVoucherCodes, onRemoveVoucher, onApplyVouchers, onApplyCampaigns, onClose]);
+
+  const totalAppliedCount = selectedCodes.length + selectedCampaignIds.length;
 
   const handleApplySelected = useCallback(async () => {
-    if (selectedCodes.length === 0) {
+    if (totalAppliedCount === 0) {
       handleSkipAndContinue();
       return;
     }
     setLoading(true);
     setFeedbackError(null);
     try {
+      if (onApplyCampaigns) {
+        await onApplyCampaigns(selectedCampaignIds);
+      }
       if (onApplyVouchers) {
         await onApplyVouchers(selectedCodes);
       } else if (onApplyVoucher) {
@@ -557,7 +745,16 @@ export default function CouponModal({
     } finally {
       setLoading(false);
     }
-  }, [selectedCodes, onApplyVouchers, onApplyVoucher, handleSkipAndContinue, onClose]);
+  }, [
+    totalAppliedCount,
+    selectedCodes,
+    selectedCampaignIds,
+    onApplyCampaigns,
+    onApplyVouchers,
+    onApplyVoucher,
+    handleSkipAndContinue,
+    onClose,
+  ]);
 
   const handleManualApply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -664,6 +861,257 @@ export default function CouponModal({
   const handleGoShopping = () => {
     onClose();
     router.push("/product" as any);
+  };
+
+  const renderCampaignCard = (camp: PublicCampaignItem, isEligible: boolean) => {
+    const isVirtualCard = camp.id === "shipping-promotion-card";
+    if (isVirtualCard) {
+      return (
+        <div
+          key={camp.id}
+          onClick={() => setSelectedCampaign(camp)}
+          className="group relative rounded-2xl border border-gray-200 bg-white p-3 hover:border-secondary/60 hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 active:scale-[0.99]"
+        >
+          {/* Banner */}
+          <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden bg-yellow/60 shrink-0 relative border border-secondary/20 flex items-center justify-center">
+            {camp.banner ? (
+              <Image
+                src={formatImageUrl(camp.banner)}
+                alt={camp.name}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                unoptimized
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center p-1 text-secondary">
+                <span className="title-4 font-display font-bold uppercase">{t("promo_tag")}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
+            <h4 className="title-3 font-display text-primary font-bold leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
+              {camp.name}
+            </h4>
+            {camp.description && (
+              <div className="body-3 font-sans text-gray-500 line-clamp-2">
+                {camp.description}
+              </div>
+            )}
+            <div>
+              <span className="body-3 font-sans text-secondary font-medium">
+                {t("view_terms_detail") || "Chi tiết điều kiện áp dụng ›"}
+              </span>
+            </div>
+          </div>
+          <div className="text-gray-300 group-hover:text-secondary text-sm shrink-0 pr-1">
+            ›
+          </div>
+        </div>
+      );
+    }
+
+    const isSelected = selectedCampaignIds.some((id) => String(id) === String(camp.id));
+    const lockState = checkCampaignRealtimeLock(camp);
+    const isLocked = lockState.locked;
+    const eligibility = checkCampaignEligibility(camp);
+
+    // Tầng 2: Chưa đủ điều kiện
+    if (!isEligible) {
+      const minSpend = Number(camp.min_order_value || 0);
+      const missing = eligibility.missingAmount || 0;
+      return (
+        <div
+          key={camp.id}
+          className="opacity-60 bg-gray-100/70 border border-dashed border-gray-300 cursor-not-allowed select-none relative rounded-2xl transition-all overflow-hidden flex items-center gap-3.5 p-3 shadow-xs"
+        >
+          {/* Banner */}
+          <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden bg-gray-200 shrink-0 relative border border-gray-300 flex items-center justify-center grayscale">
+            {camp.banner ? (
+              <Image
+                src={formatImageUrl(camp.banner)}
+                alt={camp.name}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center p-1 text-gray-400">
+                <span className="title-4 font-display font-bold uppercase">{t("promo_tag")}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
+            <h4 className="title-3 font-display text-gray-700 font-bold leading-snug line-clamp-2">
+              {camp.name}
+            </h4>
+
+            <div className="body-3 font-sans text-gray-500">
+              <span className="line-clamp-1">
+                {t("duration")}{" "}
+                <span className="font-semibold">
+                  {formatCampaignDuration(camp.start_at, camp.end_at)}
+                </span>
+              </span>
+            </div>
+
+            {/* Ineligible reason and missing amount hint */}
+            <p className="text-secondary text-xs font-semibold leading-normal">
+              {eligibility.reason || `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missing)} để áp dụng`}
+            </p>
+
+            {/* Terms link with e.stopPropagation() */}
+            <div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedCampaign(camp);
+                }}
+                className="body-3 font-sans text-secondary hover:underline cursor-pointer inline-flex items-center gap-1 font-medium mt-1"
+              >
+                <span>{t("view_terms_detail") || "Chi tiết điều kiện áp dụng ›"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Disabled Checkbox */}
+          {!isBrowseOnly && (
+            <div className="flex items-center justify-center pl-2 pr-3.5 py-3 shrink-0">
+              <div
+                role="checkbox"
+                aria-checked={false}
+                aria-disabled={true}
+                aria-label={camp.name}
+                className="w-5 h-5 min-w-[20px] min-h-[20px] rounded-md border border-gray-200 bg-gray-100/80 cursor-not-allowed text-transparent"
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Tầng 1: Đủ điều kiện
+    return (
+      <div
+        key={camp.id}
+        onClick={() => {
+          if (!isBrowseOnly && !isLocked) {
+            handleToggleCampaign(camp.id);
+          }
+        }}
+        className={`relative rounded-2xl border transition-all overflow-hidden flex items-center gap-3.5 p-3 shadow-xs ${
+          isLocked
+            ? "opacity-50 border-gray-200 cursor-not-allowed bg-gray-50/70 select-none"
+            : isSelected
+              ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40 cursor-pointer"
+              : "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer bg-white"
+        }`}
+      >
+        {/* Banner */}
+        <div className={`w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 relative border flex items-center justify-center ${
+          isLocked ? "bg-gray-200 border-gray-300 grayscale" : "bg-yellow/60 border-secondary/20"
+        }`}>
+          {camp.banner ? (
+            <Image
+              src={formatImageUrl(camp.banner)}
+              alt={camp.name}
+              fill
+              className="object-cover"
+              unoptimized
+            />
+          ) : (
+            <div className={`flex flex-col items-center justify-center text-center p-1 ${isLocked ? "text-gray-400" : "text-secondary"}`}>
+              <span className="title-4 font-display font-bold uppercase">{t("promo_tag")}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className={`title-3 font-display font-bold leading-snug line-clamp-2 ${
+              isLocked ? "text-gray-600" : "text-primary"
+            }`}>
+              {camp.name}
+            </h4>
+            {isSelected && (
+              <span className="body-3 font-sans font-bold text-secondary bg-secondary/15 px-2 py-0.5 rounded-full shrink-0">
+                {t("in_use")}
+              </span>
+            )}
+          </div>
+
+          <div className="body-2 font-sans font-bold text-gray-800">
+            <span className="line-clamp-1">
+              {t("duration")}{" "}
+              <span className="text-secondary font-bold font-sans">
+                {formatCampaignDuration(camp.start_at, camp.end_at)}
+              </span>
+            </span>
+          </div>
+
+          {camp.special_note && (
+            <div className="body-3 font-sans text-gray-500 italic">
+              <span className="line-clamp-1">{camp.special_note}</span>
+            </div>
+          )}
+
+          {/* Locked warning */}
+          {isLocked && (
+            <p className="text-secondary text-xs font-semibold mt-1 animate-fade-in">
+              {lockState.reason || "Không thể sử dụng cùng ưu đãi đã chọn."}
+            </p>
+          )}
+
+          {/* Detail View link with e.stopPropagation() */}
+          <div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedCampaign(camp);
+              }}
+              className="body-3 font-sans text-secondary hover:underline cursor-pointer inline-flex items-center gap-1 font-medium"
+            >
+              <span>{t("view_terms_detail") || "Chi tiết điều kiện áp dụng ›"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Checkbox */}
+        {!isBrowseOnly && (
+          <div className="flex items-center justify-center pl-2 pr-4 py-3 shrink-0">
+            <div
+              role="checkbox"
+              aria-checked={isSelected}
+              aria-disabled={isLocked}
+              aria-label={camp.name}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isLocked) {
+                  handleToggleCampaign(camp.id);
+                }
+              }}
+              className={`w-5 h-5 min-w-[20px] min-h-[20px] rounded-md border flex items-center justify-center transition-all ${
+                isLocked
+                  ? "border-gray-200 bg-gray-100 cursor-not-allowed text-transparent"
+                  : isSelected
+                    ? "border-secondary bg-secondary text-white shadow-xs cursor-pointer"
+                    : "border-gray-300 bg-white hover:border-secondary/60 cursor-pointer text-transparent"
+              }`}
+            >
+              {isSelected && (
+                <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2.5 7L5.5 10L11.5 3.5" />
+                </svg>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const renderVoucherCard = (v: PublicVoucherItem, isEligible: boolean) => {
@@ -1130,72 +1578,16 @@ export default function CouponModal({
                 </div>
               ) : (
                 <>
-                  {/* Nhóm 1: CHƯƠNG TRÌNH ƯU ĐÃI */}
-                  {allCampaigns.length > 0 && (
+                  {/* Nhóm 1: CHƯƠNG TRÌNH ƯU ĐÃI KHẢ DỤNG (TẦNG 1) */}
+                  {(eligibleCampaigns.length > 0 || shippingPromotionItem) && (
                     <div className="space-y-3">
                       <div className="title-4 font-display text-primary uppercase tracking-wider font-bold flex items-center justify-between">
-                        <span>Chương trình ưu đãi ({allCampaigns.length})</span>
+                        <span>{t("eligible_campaigns", { count: eligibleCampaigns.length + (shippingPromotionItem ? 1 : 0) }) || `Chương trình ưu đãi khả dụng (${eligibleCampaigns.length + (shippingPromotionItem ? 1 : 0)})`}</span>
                       </div>
 
                       <div className="space-y-3">
-                        {allCampaigns.map((camp) => (
-                          <div
-                            key={camp.id}
-                            onClick={() => setSelectedCampaign(camp)}
-                            className="group relative rounded-2xl border border-gray-200 bg-white p-3 hover:border-secondary/60 hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 active:scale-[0.99]"
-                          >
-                            {/* Left: Square Banner (1:1) */}
-                            <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden bg-yellow/60 shrink-0 relative border border-secondary/20 flex items-center justify-center">
-                              {camp.banner ? (
-                                <Image
-                                  src={formatImageUrl(camp.banner)}
-                                  alt={camp.name}
-                                  fill
-                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                  unoptimized
-                                />
-                              ) : (
-                                <div className="flex flex-col items-center justify-center text-center p-1 text-secondary">
-                                  <span className="title-4 font-display font-bold uppercase">{t("promo_tag")}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Right: 3 distinct rows */}
-                            <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
-                              {/* Row 1: Tên chương trình */}
-                              <h4 className="title-3 font-display text-primary font-bold leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
-                                {camp.name}
-                              </h4>
-
-                              {/* Row 2: Thời gian diễn ra */}
-                              <div className="body-2 font-sans font-bold text-gray-800">
-                                <span className="line-clamp-1">
-                                  {t("duration")}{" "}
-                                  <span className="text-secondary font-bold font-sans">
-                                    {formatCampaignDuration(camp.start_at, camp.end_at)}
-                                  </span>
-                                </span>
-                              </div>
-
-                              {/* Row 3: Ghi chú đặc biệt */}
-                              {camp.special_note ? (
-                                <div className="body-3 font-sans text-gray-500 italic">
-                                  <span className="line-clamp-1">{camp.special_note}</span>
-                                </div>
-                              ) : (
-                                <div className="body-3 font-sans text-gray-400 italic">
-                                  {t("click_to_view_terms")}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Right Arrow indicator */}
-                            <div className="text-gray-300 group-hover:text-secondary text-sm shrink-0 pr-1">
-                              ›
-                            </div>
-                          </div>
-                        ))}
+                        {eligibleCampaigns.map((camp) => renderCampaignCard(camp, true))}
+                        {shippingPromotionItem && renderCampaignCard(shippingPromotionItem, true)}
                       </div>
                     </div>
                   )}
@@ -1212,7 +1604,19 @@ export default function CouponModal({
                     </div>
                   )}
 
-                  {/* Nhóm 3: MÃ CHƯA ĐỦ ĐIỀU KIỆN */}
+                  {/* Nhóm 3: CHƯƠNG TRÌNH CHƯA ĐỦ ĐIỀU KIỆN (TẦNG 2) */}
+                  {ineligibleCampaigns.length > 0 && (
+                    <div className="space-y-3 pt-1">
+                      <div className="title-4 font-display text-gray-500 uppercase tracking-wider font-bold flex items-center justify-between">
+                        <span>{t("ineligible_campaigns", { count: ineligibleCampaigns.length }) || `Chương trình chưa đủ điều kiện (${ineligibleCampaigns.length})`}</span>
+                      </div>
+                      <div className="space-y-3">
+                        {ineligibleCampaigns.map((camp) => renderCampaignCard(camp, false))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Nhóm 4: MÃ CHƯA ĐỦ ĐIỀU KIỆN */}
                   {ineligibleVouchers.length > 0 && (
                     <div className="space-y-3 pt-1">
                       <div className="title-4 font-display text-gray-500 uppercase tracking-wider font-bold flex items-center justify-between">
@@ -1230,7 +1634,7 @@ export default function CouponModal({
             {/* Bottom Bar: Pinned CTA button (Grab-style) */}
             {!isBrowseOnly && (
               <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 shadow-lg shrink-0 z-20">
-                {selectedCodes.length === 0 ? (
+                {totalAppliedCount === 0 ? (
                   <button
                     type="button"
                     onClick={handleSkipAndContinue}
@@ -1245,7 +1649,7 @@ export default function CouponModal({
                     disabled={loading}
                     className="w-full py-3.5 px-4 rounded-2xl text-sm font-bold text-white bg-secondary hover:bg-secondary/95 shadow-sm transition-all text-center cursor-pointer active:scale-[0.99] flex items-center justify-center gap-2"
                   >
-                    <span>Áp dụng • {selectedCodes.length} ưu đãi</span>
+                    <span>{t("campaign_applied_count", { count: totalAppliedCount }) || `Áp dụng • ${totalAppliedCount} ưu đãi`}</span>
                   </button>
                 )}
               </div>

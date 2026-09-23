@@ -441,24 +441,28 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return quantity || 1;
   }, [isCartCheckout, cartItems, quantity]);
 
-  // Opt-out state for promotions (allowing user to remove if desired)
-  const [optOutOrderDiscount, setOptOutOrderDiscount] = useState(false);
+  // Pure Checkbox Selection for campaigns (default empty array [])
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>([]);
 
   // Campaign G1 trong giỏ hàng (nhận diện theo configState.active_promotions và mức giá đơn hàng)
   const cartCampaignG1 = useMemo(() => {
     if (!configState.active_promotions || configState.active_promotions.length === 0) return null;
+    if (selectedCampaignIds.length === 0) return null;
     const checkAmount = originalSubtotal > 0 ? originalSubtotal : subtotal;
-    const orderDiscountPromo = configState.active_promotions.find(
+    const promos = configState.active_promotions.filter((p) => {
+      return selectedCampaignIds.some((id) => String(id) === String(p.id));
+    });
+    const orderDiscountPromo = promos.find(
       (p) => p.promotion_type === "order_discount" && checkAmount >= (p.min_order_value || 0)
     );
     if (orderDiscountPromo) return orderDiscountPromo;
 
     return (
-      configState.active_promotions.find(
+      promos.find(
         (p) => (p.min_order_value || 0) <= checkAmount
       ) || null
     );
-  }, [configState.active_promotions, originalSubtotal, subtotal]);
+  }, [configState.active_promotions, originalSubtotal, subtotal, selectedCampaignIds]);
 
   // Ma trận Khuyến mãi & Giảm giá (Promotion Matrix 6 Cases)
   const promotionMatrixVoucherNotice = useMemo(() => {
@@ -519,20 +523,21 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return null;
   }, [appliedVoucher, cartCampaignG1]);
 
-  // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn)
+  // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleOrderDiscountPromo = useMemo(() => {
     if (isBestDealVoucherApplied) return null;
-    return (
-      configState.active_promotions?.find(
-        (p) =>
-          p.promotion_type === "order_discount" &&
-          subtotal >= (p.min_order_value || 0)
-      ) || null
-    );
-  }, [configState.active_promotions, subtotal, isBestDealVoucherApplied]);
+    if (selectedCampaignIds.length === 0) return null;
+    const promo = configState.active_promotions?.find(
+      (p) =>
+        p.promotion_type === "order_discount" &&
+        subtotal >= (p.min_order_value || 0) &&
+        selectedCampaignIds.some((id) => String(id) === String(p.id))
+    ) || null;
+    return promo;
+  }, [configState.active_promotions, subtotal, isBestDealVoucherApplied, selectedCampaignIds]);
 
   const autoOrderDiscountAmount = useMemo(() => {
-    if (!eligibleOrderDiscountPromo || optOutOrderDiscount) return 0;
+    if (!eligibleOrderDiscountPromo) return 0;
     const type = eligibleOrderDiscountPromo.discount_type;
     const val = eligibleOrderDiscountPromo.discount_value;
     let disc = 0;
@@ -548,20 +553,22 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       }
     }
     return Math.min(disc, subtotal);
-  }, [eligibleOrderDiscountPromo, optOutOrderDiscount, subtotal]);
+  }, [eligibleOrderDiscountPromo, subtotal]);
 
-  // 2. ORDER GIFT PROMOTION (Quà tặng theo giá trị đơn)
+  // 2. ORDER GIFT PROMOTION (Quà tặng theo giá trị đơn - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleOrderGiftPromo = useMemo(() => {
-    return (
-      configState.active_promotions?.find(
-        (p) =>
-          p.promotion_type === "order_gift_discount" &&
-          p.items &&
-          p.items.length > 0 &&
-          subtotal >= (p.min_order_value || 0)
-      ) || null
-    );
-  }, [configState.active_promotions, subtotal]);
+    if (isBestDealVoucherApplied) return null;
+    if (selectedCampaignIds.length === 0) return null;
+    const promo = configState.active_promotions?.find(
+      (p) =>
+        p.promotion_type === "order_gift_discount" &&
+        p.items &&
+        p.items.length > 0 &&
+        subtotal >= (p.min_order_value || 0) &&
+        selectedCampaignIds.some((id) => String(id) === String(p.id))
+    ) || null;
+    return promo;
+  }, [configState.active_promotions, subtotal, isBestDealVoucherApplied, selectedCampaignIds]);
 
   const upcomingOrderGiftPromo = useMemo(() => {
     if (eligibleOrderGiftPromo || !configState.active_promotions) return null;
@@ -576,7 +583,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     );
   }, [configState.active_promotions, eligibleOrderGiftPromo, subtotal]);
 
-  const [optOutOrderGift, setOptOutOrderGift] = useState(false);
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
   const [isOrderGiftModalOpen, setIsOrderGiftModalOpen] = useState(false);
   const [selectedBuyXGetYPromoForModal, setSelectedBuyXGetYPromoForModal] = useState<ActivePromotion | null>(null);
@@ -597,21 +603,23 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   }, [eligibleOrderGiftPromo]);
 
   const selectedOrderGiftItem = useMemo(() => {
-    if (!eligibleOrderGiftPromo || !selectedOrderGiftId || optOutOrderGift) return null;
+    if (!eligibleOrderGiftPromo || !selectedOrderGiftId) return null;
     return (
       eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId) || null
     );
-  }, [eligibleOrderGiftPromo, selectedOrderGiftId, optOutOrderGift]);
+  }, [eligibleOrderGiftPromo, selectedOrderGiftId]);
 
-  // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - Hỗ trợ nhiều chiến dịch đồng thời)
+  // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleBuyXGetYPromos = useMemo(() => {
-    if (!configState.active_promotions) return [];
+    if (isBestDealVoucherApplied || !configState.active_promotions) return [];
+    if (selectedCampaignIds.length === 0) return [];
     return configState.active_promotions.filter((p) => {
       if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
       const buyQty = Number(p.settings?.buy_quantity || 2);
-      return totalCartQuantity >= buyQty;
+      if (totalCartQuantity < buyQty) return false;
+      return selectedCampaignIds.some((id) => String(id) === String(p.id));
     });
-  }, [configState.active_promotions, totalCartQuantity]);
+  }, [configState.active_promotions, totalCartQuantity, isBestDealVoucherApplied, selectedCampaignIds]);
 
   const upcomingBuyXGetYPromo = useMemo(() => {
     if (!configState.active_promotions) return null;
@@ -624,7 +632,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     );
   }, [configState.active_promotions, totalCartQuantity]);
 
-  const [optOutBuyXGetYSet, setOptOutBuyXGetYSet] = useState<Record<number, boolean>>({});
   const [selectedBuyXGetYMap, setSelectedBuyXGetYMap] = useState<Record<number, number>>({});
 
   useEffect(() => {
@@ -645,7 +652,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   const activeBuyXGetYItems = useMemo(() => {
     return eligibleBuyXGetYPromos
-      .filter((promo) => !optOutBuyXGetYSet[promo.id])
       .map((promo) => {
         const selectedId = selectedBuyXGetYMap[promo.id] || promo.items[0]?.id;
         const item = promo.items.find((i) => i.id === selectedId) || promo.items[0];
@@ -662,30 +668,25 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         };
       })
       .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string } => Boolean(x.item));
-  }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap, optOutBuyXGetYSet]);
+  }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap]);
 
   const appliedCartPromotions = useMemo(() => {
     const list: ActivePromotion[] = [];
-    if (eligibleOrderDiscountPromo && !optOutOrderDiscount) {
+    if (eligibleOrderDiscountPromo) {
       list.push(eligibleOrderDiscountPromo);
     }
-    if (eligibleOrderGiftPromo && !optOutOrderGift && selectedOrderGiftItem) {
+    if (eligibleOrderGiftPromo && selectedOrderGiftItem) {
       list.push(eligibleOrderGiftPromo);
     }
     eligibleBuyXGetYPromos.forEach((p) => {
-      if (!optOutBuyXGetYSet[p.id]) {
-        list.push(p);
-      }
+      list.push(p);
     });
     return list;
   }, [
     eligibleOrderDiscountPromo,
-    optOutOrderDiscount,
     eligibleOrderGiftPromo,
-    optOutOrderGift,
     selectedOrderGiftItem,
     eligibleBuyXGetYPromos,
-    optOutBuyXGetYSet,
   ]);
 
   const promoItemsExtraPrice = useMemo(() => {
@@ -2542,32 +2543,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                           </button>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setOptOutOrderGift(true)}
-                        className="text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold cursor-pointer"
-                        title={t("remove_gift")}
-                      >
-                        [{t("remove_voucher")}]
-                      </button>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* Khi đã bấm bỏ quà đơn hàng nhưng vẫn đủ điều kiện -> cho phép nhận lại quà */}
-              {eligibleOrderGiftPromo && optOutOrderGift && (
-                <div className="flex items-center justify-between p-3 bg-yellow/50 rounded-xl border border-dashed border-secondary/30 text-xs text-brown animate-fade-in">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{t("reclaim_gift_eligible", { name: eligibleOrderGiftPromo.name })}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setOptOutOrderGift(false)}
-                    className="font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-3 py-1 rounded-full transition-colors cursor-pointer"
-                  >
-                    + {t("reclaim_gift")}
-                  </button>
                 </div>
               )}
 
@@ -2615,38 +2592,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                           </button>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: true }))}
-                        className="text-gray-400 hover:text-red-500 transition-colors text-xs font-semibold cursor-pointer"
-                        title={t("remove_gift")}
-                      >
-                        [{t("remove_voucher")}]
-                      </button>
                     </div>
                   </div>
                 </div>
               ))}
-
-              {/* Khi đã bấm bỏ ưu đãi combo Mua X tặng Y nhưng vẫn đủ điều kiện -> cho phép nhận lại */}
-              {eligibleBuyXGetYPromos
-                .filter((promo) => optOutBuyXGetYSet[promo.id])
-                .map((promo) => (
-                  <div
-                    key={`optout-${promo.id}`}
-                    className="flex items-center justify-between p-3 bg-yellow/50 rounded-xl border border-dashed border-primary/25 text-xs text-primary animate-fade-in">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{t("reclaim_combo_eligible", { name: promo.name })}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setOptOutBuyXGetYSet((prev) => ({ ...prev, [promo.id]: false }))}
-                      className="font-bold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1 rounded-full transition-colors cursor-pointer"
-                    >
-                      + {t("reclaim_combo")}
-                    </button>
-                  </div>
-                ))}
             </div>
 
             {upcomingOrderGiftPromo && (
@@ -2811,31 +2760,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 <div className="flex justify-between items-start gap-3 text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 animate-fade-in">
                   <div className="flex-1 min-w-0 pr-1 leading-snug">
                     <span>{eligibleOrderDiscountPromo?.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setOptOutOrderDiscount(true)}
-                      className="text-xs text-red-500 hover:text-red-700 hover:underline font-semibold cursor-pointer ml-1.5 whitespace-nowrap inline-block"
-                      title={t("remove_gift")}
-                    >
-                      [{t("remove_voucher")}]
-                    </button>
                   </div>
                   <span className="font-bold text-base shrink-0 whitespace-nowrap text-right leading-snug">
                     -{formatPrice(autoOrderDiscountAmount)}
                   </span>
-                </div>
-              )}
-
-              {eligibleOrderDiscountPromo && optOutOrderDiscount && (
-                <div className="flex items-center justify-between py-1 text-xs text-gray-500 border-t border-gray-200/60 pt-2 animate-fade-in gap-2">
-                  <span className="flex-1 min-w-0 leading-snug truncate">Đã bỏ giảm KM ({eligibleOrderDiscountPromo.name})</span>
-                  <button
-                    type="button"
-                    onClick={() => setOptOutOrderDiscount(false)}
-                    className="text-primary hover:underline font-bold cursor-pointer shrink-0 whitespace-nowrap"
-                  >
-                    {t("reapply_voucher")}
-                  </button>
                 </div>
               )}
 
@@ -3046,6 +2974,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
         appliedVoucherCode={appliedVoucher?.code || appliedShippingVoucher?.code || ""}
         appliedVoucherCodes={modalAppliedVoucherCodes}
+        appliedCampaignIds={selectedCampaignIds}
+        onApplyCampaigns={(ids) => setSelectedCampaignIds(ids)}
         onApplyVouchers={handleApplyVouchers}
         onApplyVoucher={handleApplyVoucherFromModal}
         onRemoveVoucher={handleRemoveVoucher}
@@ -3067,7 +2997,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           selectedId={selectedOrderGiftId}
           onSelect={(item) => {
             setSelectedOrderGiftId(item.id);
-            setOptOutOrderGift(false);
           }}
         />
       )}
@@ -3085,10 +3014,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             setSelectedBuyXGetYMap((prev) => ({
               ...prev,
               [selectedBuyXGetYPromoForModal.id]: item.id,
-            }));
-            setOptOutBuyXGetYSet((prev) => ({
-              ...prev,
-              [selectedBuyXGetYPromoForModal.id]: false,
             }));
           }}
         />

@@ -240,7 +240,15 @@
     "order_voucher_no_freeship": "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship",
     "auto_freeship_badge": "Freeship tự động",
     "auto_freeship_friendly_tip": "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.",
-    "auto_voucher_applied": "Đã tự động áp dụng mã ưu đãi tốt nhất cho bạn"
+    "auto_voucher_applied": "Đã tự động áp dụng mã ưu đãi tốt nhất cho bạn",
+    "eligible_campaigns": "Chương trình ưu đãi khả dụng ({count})",
+    "ineligible_campaigns": "Chương trình chưa đủ điều kiện ({count})",
+    "campaign_mutex_locked": "Không thể sử dụng cùng ưu đãi đã chọn.",
+    "campaign_voucher_locked": "Không thể sử dụng cùng mã giảm giá đã chọn.",
+    "campaign_freeship_locked": "Không thể sử dụng cùng mã Freeship đã chọn.",
+    "view_terms_detail": "Chi tiết điều kiện áp dụng ›",
+    "campaign_applied_count": "Áp dụng • {count} ưu đãi",
+    "buy_more_campaign_hint": "Chưa đạt giá trị đơn tối thiểu {minSpend}. Mua thêm {missingAmount} để áp dụng"
   },
   "gift_selector": {
     "default_title": "Chọn món quà tặng miễn phí",

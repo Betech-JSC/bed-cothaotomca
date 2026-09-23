@@ -60,6 +60,17 @@ export interface PublicCampaignItem {
   end_at?: string | null;
 }
 
+export interface CampaignEligibilityResult {
+  eligible: boolean;
+  reason?: string;
+  missingAmount?: number;
+}
+
+export interface CampaignLockResult {
+  locked: boolean;
+  reason?: string;
+}
+
 export interface CheckoutConfigDeliveryType {
   value: string;
   label: string;
