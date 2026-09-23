@@ -245,7 +245,7 @@
     "ineligible_campaigns": "Chương trình chưa đủ điều kiện ({count})",
     "campaign_mutex_locked": "Không thể sử dụng cùng ưu đãi đã chọn.",
     "campaign_voucher_locked": "Không thể sử dụng cùng mã giảm giá đã chọn.",
-    "campaign_freeship_locked": "Không thể sử dụng cùng mã Freeship đã chọn.",
+    "campaign_freeship_locked": "CTKM không áp dụng cùng giảm phí vận chuyển.",
     "view_terms_detail": "Chi tiết điều kiện áp dụng ›",
     "campaign_applied_count": "Áp dụng • {count} ưu đãi",
     "buy_more_campaign_hint": "Chưa đạt giá trị đơn tối thiểu {minSpend}. Mua thêm {missingAmount} để áp dụng"

@@ -13,7 +13,59 @@ export default function FloatingVoucherButton() {
   const [vouchers, setVouchers] = useState<PublicVoucherItem[]>([]);
   const [campaigns, setCampaigns] = useState<PublicCampaignItem[]>([]);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>([]);
+  const [appliedVoucherCodes, setAppliedVoucherCodes] = useState<string[]>([]);
   const { subtotal } = useCart();
+
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        const storedCamps = localStorage.getItem("cothaotomca_selected_campaign_ids");
+        if (storedCamps) {
+          const parsed = JSON.parse(storedCamps);
+          if (Array.isArray(parsed)) setSelectedCampaignIds(parsed);
+        } else {
+          setSelectedCampaignIds([]);
+        }
+        const storedVouchers = localStorage.getItem("cothaotomca_applied_voucher_codes");
+        if (storedVouchers) {
+          const parsed = JSON.parse(storedVouchers);
+          if (Array.isArray(parsed)) setAppliedVoucherCodes(parsed);
+        } else {
+          setAppliedVoucherCodes([]);
+        }
+      } catch (e) {
+        console.error("Error reading stored promotions in FloatingVoucherButton", e);
+      }
+    }
+  }, [isOpen]);
+
+  const handleApplyCampaigns = (ids: (number | string)[]) => {
+    setSelectedCampaignIds(ids);
+    try {
+      localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify(ids));
+    } catch (e) {
+      console.error("Error saving campaign ids to localStorage", e);
+    }
+  };
+
+  const handleApplyVouchers = (codes: string[]) => {
+    setAppliedVoucherCodes(codes);
+    try {
+      localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify(codes));
+    } catch (e) {
+      console.error("Error saving voucher codes to localStorage", e);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucherCodes([]);
+    try {
+      localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
+    } catch (e) {
+      console.error("Error clearing voucher codes from localStorage", e);
+    }
+  };
 
   useEffect(() => {
     getAvailableVouchers()
@@ -90,8 +142,12 @@ export default function FloatingVoucherButton() {
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         subtotal={subtotal}
-        isBrowseOnly={true}
         shippingSettings={shippingSettings}
+        appliedCampaignIds={selectedCampaignIds}
+        appliedVoucherCodes={appliedVoucherCodes}
+        onApplyCampaigns={handleApplyCampaigns}
+        onApplyVouchers={handleApplyVouchers}
+        onRemoveVoucher={handleRemoveVoucher}
       />
     </>
   );

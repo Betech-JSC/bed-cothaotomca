@@ -399,6 +399,29 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>([]);
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("cothaotomca_selected_campaign_ids");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSelectedCampaignIds(parsed);
+        }
+      }
+    } catch (e) {
+      console.error("Error restoring campaign IDs from localStorage in MobileCartFlow", e);
+    }
+  }, []);
+
+  const handleApplyCampaigns = useCallback((ids: (number | string)[]) => {
+    setSelectedCampaignIds(ids);
+    try {
+      localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify(ids));
+    } catch (e) {
+      console.error("Error saving campaign IDs to localStorage in MobileCartFlow", e);
+    }
+  }, []);
+
   // Campaign G1 trong giỏ hàng (Mobile Flow)
   const cartCampaignG1 = useMemo(() => {
     if (!config?.active_promotions || config.active_promotions.length === 0) return null;
@@ -939,6 +962,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           });
           setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công.");
           setBestDealNotice(null);
+          try {
+            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([result.voucher.code]));
+          } catch (e) {
+            console.error("Error saving applied voucher to localStorage", e);
+          }
           return true;
         } else {
           // can_combine_with_promotions === true
@@ -980,6 +1008,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           });
           setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công.");
           setBestDealNotice(null);
+          try {
+            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([result.voucher.code]));
+          } catch (e) {
+            console.error("Error saving applied voucher to localStorage", e);
+          }
           return true;
         }
       } else {
@@ -1028,11 +1061,47 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     setVoucherSuccess(null);
     setVoucherError(null);
     setBestDealNotice(null);
+    try {
+      localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
+    } catch (e) {
+      console.error("Error clearing applied vouchers from localStorage", e);
+    }
   };
 
   const handleApplyVoucherFromModal = useCallback((code: string) => {
     return handleApplyVoucher(code);
   }, [handleApplyVoucher]);
+
+  const handleApplyVouchersFromModal = useCallback(async (codes: string[]) => {
+    if (!codes || codes.length === 0) {
+      handleRemoveVoucher();
+      return;
+    }
+    const code = codes[0];
+    if (code) {
+      await handleApplyVoucher(code);
+    }
+  }, [handleApplyVoucher]);
+
+  const hasLoadedStoredVoucherRef = useRef(false);
+  useEffect(() => {
+    if (hasLoadedStoredVoucherRef.current) return;
+    if (originalSubtotal <= 0) return;
+    try {
+      const stored = localStorage.getItem("cothaotomca_applied_voucher_codes");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]) {
+          hasLoadedStoredVoucherRef.current = true;
+          handleApplyVoucher(parsed[0]).catch(() => {});
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Error restoring voucher from localStorage in MobileCartFlow", e);
+    }
+    hasLoadedStoredVoucherRef.current = true;
+  }, [originalSubtotal, handleApplyVoucher]);
 
   const handleAddPrivateVoucherFromModal = useCallback((v: PublicVoucherItem) => {
     setSessionPrivateVouchers((prev) =>
@@ -2399,8 +2468,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
         appliedVoucherCode={appliedVoucher?.code || ""}
+        appliedVoucherCodes={appliedVoucher ? [appliedVoucher.code] : []}
         appliedCampaignIds={selectedCampaignIds}
-        onApplyCampaigns={(ids) => setSelectedCampaignIds(ids)}
+        onApplyCampaigns={handleApplyCampaigns}
+        onApplyVouchers={handleApplyVouchersFromModal}
         onApplyVoucher={handleApplyVoucherFromModal}
         onRemoveVoucher={handleRemoveVoucher}
         activePromotions={appliedCartPromotions}
