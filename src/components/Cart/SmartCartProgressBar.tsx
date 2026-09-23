@@ -105,6 +105,17 @@ export default function SmartCartProgressBar({
     candidateMilestones.sort((a, b) => a.target - b.target);
 
     if (candidateMilestones.length === 0) {
+      const isEligibleFreeship =
+        isFreeship === true ||
+        Boolean(
+          shippingSettings?.is_min_amount_enabled &&
+          subtotal >= (shippingSettings?.min_order_amount || 0)
+        );
+
+      if (!isEligibleFreeship) {
+        return null;
+      }
+
       // Reached all milestones
       const isFixed = shippingSettings?.shipping_discount_type === "fixed";
       const discountVal = Number(shippingSettings?.shipping_discount_value || 0);
@@ -150,7 +161,9 @@ export default function SmartCartProgressBar({
     (appliedVoucher.canCombineWithFreeship === false || appliedVoucher.can_combine_with_freeship === false)
   );
 
-  const isFreeshipBlocked = isG1BlockingFreeship || isG2BlockingFreeship;
+  const isFreeshipBlocked = Boolean(
+    shippingSettings?.is_min_amount_enabled && (isG1BlockingFreeship || isG2BlockingFreeship)
+  );
 
   if (isFreeshipBlocked) {
     const message = isG1BlockingFreeship
@@ -162,6 +175,10 @@ export default function SmartCartProgressBar({
         {message}
       </div>
     );
+  }
+
+  if (!milestone) {
+    return null;
   }
 
   return (

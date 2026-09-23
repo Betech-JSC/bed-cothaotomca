@@ -19,6 +19,7 @@ interface OrderDetailData {
   status: string;
   sync_status: string;
   payment_status: string;
+  payment_method?: string;
   can_cancel: boolean;
   cancel_window_expires_at?: string;
   remaining_cancel_seconds?: number;
@@ -598,7 +599,8 @@ export default function OrderLookupPage() {
             {/* 15-Minute Countdown Banner & Action */}
             {order.status !== "cancelled" &&
               order.status !== "expired" &&
-              order.status !== "cancel_requested" && (
+              order.status !== "cancel_requested" &&
+              (order.payment?.method === "COD" || order.payment_method === "COD") && (
                 <div
                   className={`p-6 border-b border-gray-100 relative ${
                     order.can_cancel && secondsLeft > 0

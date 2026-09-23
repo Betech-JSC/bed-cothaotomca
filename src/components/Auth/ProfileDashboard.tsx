@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Link } from "@/i18n/i18n-navigation";
 import { useCart } from "@/contexts/CartContext";
@@ -70,7 +71,21 @@ interface OrderItem {
 const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: ProfileDashboardProps) => {
   const t = useTranslations("profile");
   const { addToCart, setIsCartOpen } = useCart();
-  const [activeTab, setActiveTab] = useState<"orders" | "info" | "password" | "addresses">("orders");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams?.get("tab");
+
+  const [activeTab, setActiveTab] = useState<"orders" | "info" | "password" | "addresses">(() => {
+    if (tabParam === "addresses" || tabParam === "info" || tabParam === "password" || tabParam === "orders") {
+      return tabParam;
+    }
+    return "orders";
+  });
+
+  useEffect(() => {
+    if (tabParam === "addresses" || tabParam === "info" || tabParam === "password" || tabParam === "orders") {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   // Personal Info Form State
   const [formData, setFormData] = useState({
@@ -665,20 +680,18 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 onClick={handleRefreshPoints}
                 disabled={refreshingPoints}
                 title={refreshingPoints ? "Đang đồng bộ điểm..." : "Bấm để cập nhật lại điểm"}
-                className={`group inline-flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:text-secondary bg-white/90 hover:bg-white px-3 py-1.5 rounded-full border border-gray-200/80 shadow-xs transition-all duration-200 cursor-pointer active:scale-95 disabled:cursor-wait ${
-                  refreshingPoints ? "opacity-75" : ""
-                }`}
+                className={`group inline-flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:text-secondary bg-white/90 hover:bg-white px-3 py-1.5 rounded-full border border-gray-200/80 shadow-xs transition-all duration-200 cursor-pointer active:scale-95 disabled:cursor-wait ${refreshingPoints ? "opacity-75" : ""
+                  }`}
               >
                 <span className={`font-extrabold text-secondary text-sm leading-none transition-opacity duration-300 ${refreshingPoints ? "animate-pulse" : ""}`}>
                   {user.points?.toLocaleString("vi-VN") || 0}
                 </span>
                 <span className="text-[11px] font-medium text-gray-500 group-hover:text-gray-700">Điểm</span>
                 <svg
-                  className={`w-3.5 h-3.5 transition-all duration-500 ease-in-out shrink-0 ${
-                    refreshingPoints
+                  className={`w-3.5 h-3.5 transition-all duration-500 ease-in-out shrink-0 ${refreshingPoints
                       ? "animate-spin text-secondary"
                       : "text-gray-400 group-hover:text-secondary group-hover:rotate-180"
-                  }`}
+                    }`}
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -718,11 +731,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Personal Info Tab */}
               <button
                 onClick={() => setActiveTab("info")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${
-                  activeTab === "info"
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${activeTab === "info"
                     ? "bg-secondary text-white shadow-sm"
                     : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M10 10C12.2091 10 14 8.20914 14 6C14 3.79086 12.2091 2 10 2C7.79086 2 6 3.79086 6 6C6 8.20914 7.79086 10 10 10Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -734,11 +746,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Address Book Tab */}
               <button
                 onClick={() => setActiveTab("addresses")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${
-                  activeTab === "addresses"
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${activeTab === "addresses"
                     ? "bg-secondary text-white shadow-sm"
                     : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -750,11 +761,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Change Password Tab */}
               <button
                 onClick={() => setActiveTab("password")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${
-                  activeTab === "password"
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${activeTab === "password"
                     ? "bg-secondary text-white shadow-sm"
                     : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -766,11 +776,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Order History Tab */}
               <button
                 onClick={() => setActiveTab("orders")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${
-                  activeTab === "orders"
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${activeTab === "orders"
                     ? "bg-secondary text-white shadow-sm"
                     : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -821,11 +830,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   return (
                     <div
                       key={idx}
-                      className={`border rounded-[1rem] p-5 md:p-6 flex flex-col gap-4 transition-all duration-200 ${
-                        isCompleted
+                      className={`border rounded-[1rem] p-5 md:p-6 flex flex-col gap-4 transition-all duration-200 ${isCompleted
                           ? "bg-gray-50 border-gray-100 hover:border-gray-200"
                           : "bg-yellow/20 border-yellow/60 hover:border-secondary/40"
-                      }`}
+                        }`}
                     >
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
                         <div className="flex flex-wrap items-center gap-y-3">
@@ -1137,7 +1145,6 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-primary block flex items-center justify-between">
                   <span>Ngày sinh</span>
-                  <span className="text-xs text-secondary font-normal">🎂 Nhận quà sinh nhật</span>
                 </label>
                 <input
                   type="date"
@@ -1146,9 +1153,6 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   onChange={handleInputChange}
                   className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
-                <span className="text-[11px] text-gray-500 block">
-                  Cung cấp ngày sinh chính xác để nhận quà tặng và mã ưu đãi độc quyền từ Bếp Cô Thảo.
-                </span>
               </div>
 
               {/* Giới tính (gender) */}
@@ -1173,11 +1177,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               <button
                 type="submit"
                 disabled={loading}
-                className={`btn font-bold h-[44px] rounded-full px-8 transition-all duration-300 text-sm cursor-pointer ${
-                  loading
+                className={`btn font-bold h-[44px] rounded-full px-8 transition-all duration-300 text-sm cursor-pointer ${loading
                     ? "bg-gray-200! text-gray-400! shadow-none! cursor-not-allowed"
                     : "btn-secondary text-white shadow-sm hover:shadow-md cursor-pointer"
-                } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
+                  } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
                 {loading ? "Đang lưu..." : t("save") || "Lưu thông tin"}
               </button>
@@ -1264,11 +1267,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               <button
                 type="submit"
                 disabled={passwordLoading}
-                className={`btn font-bold h-[44px] rounded-full px-8 transition-all duration-300 text-sm cursor-pointer ${
-                  passwordLoading
+                className={`btn font-bold h-[44px] rounded-full px-8 transition-all duration-300 text-sm cursor-pointer ${passwordLoading
                     ? "bg-gray-200! text-gray-400! shadow-none! cursor-not-allowed"
                     : "btn-secondary text-white shadow-sm hover:shadow-md cursor-pointer"
-                } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
+                  } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
                 {passwordLoading ? "Đang xử lý..." : "Cập nhật mật khẩu"}
               </button>
@@ -1325,11 +1327,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 {addresses.map((addr) => (
                   <div
                     key={addr.id}
-                    className={`rounded-2xl p-5 border transition-all flex flex-col justify-between gap-3 ${
-                      addr.is_default
+                    className={`rounded-2xl p-5 border transition-all flex flex-col justify-between gap-3 ${addr.is_default
                         ? "bg-emerald-50/40 border-emerald-300 shadow-xs"
                         : "bg-white border-gray-200 hover:border-gray-300"
-                    }`}
+                      }`}
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-start justify-between gap-2">
@@ -1579,9 +1580,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 <button
                   type="submit"
                   disabled={savingAddress}
-                  className={`px-6 py-2 rounded-full bg-secondary text-white font-bold text-sm shadow-sm hover:bg-secondary/90 transition-all cursor-pointer ${
-                    savingAddress ? "opacity-75 cursor-not-allowed" : ""
-                  }`}
+                  className={`px-6 py-2 rounded-full bg-secondary text-white font-bold text-sm shadow-sm hover:bg-secondary/90 transition-all cursor-pointer ${savingAddress ? "opacity-75 cursor-not-allowed" : ""
+                    }`}
                 >
                   {savingAddress ? "Đang lưu..." : "Lưu địa chỉ"}
                 </button>
