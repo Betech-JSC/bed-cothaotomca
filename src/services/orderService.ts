@@ -13,6 +13,7 @@ export interface CreateOrderItem {
   original_price?: number;
   discount?: number;
   note?: string;
+  kiotviet_id?: number | null;
 }
 
 export interface CreateOrderPayload {

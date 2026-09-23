@@ -11,6 +11,10 @@ export interface GiftItem {
   original_price: number;
   campaign_price: number;
   image?: string;
+  is_available?: boolean;
+  disabled?: boolean;
+  disabled_reason?: string;
+  kiotviet_id?: number | null;
 }
 
 interface GiftSelectorModalProps {
@@ -85,29 +89,35 @@ export default function GiftSelectorModal({
             {items.map((item) => {
               const isSelected = selectedId === item.id;
               const isFree = item.campaign_price === 0;
+              const isDisabled = item.is_available === false || item.disabled === true;
 
               return (
                 <div
                   key={item.id}
                   onClick={() => {
+                    if (isDisabled) return;
                     onSelect(item);
                     onClose();
                   }}
-                  className={`flex items-center gap-3.5 p-3 rounded-2xl border transition-all cursor-pointer select-none ${
-                    isSelected
-                      ? "border-secondary bg-yellow/50 shadow-xs ring-2 ring-secondary/20"
-                      : "border-gray-200/80 bg-white hover:border-secondary/40 hover:bg-gray-50/50"
+                  className={`flex items-center gap-3.5 p-3 rounded-2xl border transition-all select-none ${
+                    isDisabled
+                      ? "opacity-50 grayscale bg-gray-100/70 border-gray-200 cursor-not-allowed select-none"
+                      : isSelected
+                      ? "border-secondary bg-yellow/50 shadow-xs ring-2 ring-secondary/20 cursor-pointer"
+                      : "border-gray-200/80 bg-white hover:border-secondary/40 hover:bg-gray-50/50 cursor-pointer"
                   }`}
                 >
                   {/* Radio Indicator */}
                   <div
                     className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                      isSelected
+                      isDisabled
+                        ? "border-gray-200 bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : isSelected
                         ? "border-secondary bg-secondary text-white"
                         : "border-gray-300 bg-white"
                     }`}
                   >
-                    {isSelected && (
+                    {isSelected && !isDisabled && (
                       <span className="w-2 h-2 rounded-full bg-white block" />
                     )}
                   </div>
@@ -131,7 +141,7 @@ export default function GiftSelectorModal({
                   <div className="flex-1 min-w-0">
                     <h4
                       className={`title-3 font-display font-bold line-clamp-1 ${
-                        isSelected ? "text-secondary" : "text-primary"
+                        isDisabled ? "text-gray-500" : isSelected ? "text-secondary" : "text-primary"
                       }`}
                     >
                       {item.product_name}
@@ -149,12 +159,16 @@ export default function GiftSelectorModal({
                     </div>
                   </div>
 
-                  {/* Active Badge */}
-                  {isSelected && (
+                  {/* Badge */}
+                  {isDisabled ? (
+                    <span className="text-[11px] font-sans font-bold text-gray-500 bg-gray-200/90 px-2 py-0.5 rounded-full shrink-0">
+                      {item.disabled_reason || "Chưa khả dụng"}
+                    </span>
+                  ) : isSelected ? (
                     <span className="body-3 font-sans font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full shrink-0">
                       {t("selecting")}
                     </span>
-                  )}
+                  ) : null}
                 </div>
               );
             })}

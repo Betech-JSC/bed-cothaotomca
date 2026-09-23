@@ -16,6 +16,10 @@ export interface PromotionGiftItem {
   original_price: number;
   campaign_price: number;
   is_free: boolean;
+  is_available?: boolean;
+  disabled?: boolean;
+  disabled_reason?: string;
+  kiotviet_id?: number | null;
 }
 
 export interface CampaignSettings {

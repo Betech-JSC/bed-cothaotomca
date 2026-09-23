@@ -579,18 +579,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return promo;
   }, [configState.active_promotions, subtotal, isBestDealVoucherApplied, selectedCampaignIds]);
 
-  const upcomingOrderGiftPromo = useMemo(() => {
-    if (eligibleOrderGiftPromo || !configState.active_promotions) return null;
-    return (
-      configState.active_promotions.find(
-        (p) =>
-          p.promotion_type === "order_gift_discount" &&
-          p.items &&
-          p.items.length > 0 &&
-          subtotal < (p.min_order_value || 0)
-      ) || null
-    );
-  }, [configState.active_promotions, eligibleOrderGiftPromo, subtotal]);
 
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
   const [isOrderGiftModalOpen, setIsOrderGiftModalOpen] = useState(false);
@@ -599,11 +587,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   useEffect(() => {
     if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.items && eligibleOrderGiftPromo.items.length > 0) {
       setSelectedOrderGiftId((prev) => {
-        // State retention: giữ nguyên lựa chọn quà nếu món vẫn còn hợp lệ trong danh sách quà của campaign
-        if (prev && eligibleOrderGiftPromo.items.some((i) => i.id === prev)) {
+        // State retention: giữ nguyên lựa chọn quà nếu món vẫn còn hợp lệ trong danh sách quà của campaign và còn khả dụng
+        if (prev && eligibleOrderGiftPromo.items.some((i) => i.id === prev && i.is_available !== false)) {
           return prev;
         }
-        return eligibleOrderGiftPromo.items[0].id;
+        const firstAvailable = eligibleOrderGiftPromo.items.find((i) => i.is_available !== false);
+        return firstAvailable ? firstAvailable.id : null;
       });
     } else {
       // Chỉ reset quà về null khi đơn hàng không còn thỏa mãn min_order_value hoặc không còn campaign quà khả dụng
@@ -613,9 +602,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   const selectedOrderGiftItem = useMemo(() => {
     if (!eligibleOrderGiftPromo || !selectedOrderGiftId) return null;
-    return (
-      eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId) || null
-    );
+    const found = eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId);
+    if (!found || found.is_available === false) return null;
+    return found;
   }, [eligibleOrderGiftPromo, selectedOrderGiftId]);
 
   // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - chỉ kích hoạt khi nằm trong selectedCampaignIds)
@@ -630,16 +619,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     });
   }, [configState.active_promotions, totalCartQuantity, isBestDealVoucherApplied, selectedCampaignIds]);
 
-  const upcomingBuyXGetYPromo = useMemo(() => {
-    if (!configState.active_promotions) return null;
-    return (
-      configState.active_promotions.find((p) => {
-        if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
-        const buyQty = Number(p.settings?.buy_quantity || 2);
-        return totalCartQuantity < buyQty;
-      }) || null
-    );
-  }, [configState.active_promotions, totalCartQuantity]);
 
   const [selectedBuyXGetYMap, setSelectedBuyXGetYMap] = useState<Record<number, number>>({});
 
@@ -649,9 +628,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         let updated = false;
         const next = { ...prev };
         eligibleBuyXGetYPromos.forEach((promo) => {
-          if (!next[promo.id] && promo.items.length > 0) {
-            next[promo.id] = promo.items[0].id;
-            updated = true;
+          const currentId = next[promo.id];
+          const isCurrentValid = currentId && promo.items.some((i) => i.id === currentId && i.is_available !== false);
+          if (!isCurrentValid && promo.items.length > 0) {
+            const firstAvailable = promo.items.find((i) => i.is_available !== false);
+            if (firstAvailable) {
+              next[promo.id] = firstAvailable.id;
+              updated = true;
+            } else if (next[promo.id]) {
+              delete next[promo.id];
+              updated = true;
+            }
           }
         });
         return updated ? next : prev;
@@ -662,8 +649,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const activeBuyXGetYItems = useMemo(() => {
     return eligibleBuyXGetYPromos
       .map((promo) => {
-        const selectedId = selectedBuyXGetYMap[promo.id] || promo.items[0]?.id;
-        const item = promo.items.find((i) => i.id === selectedId) || promo.items[0];
+        const firstAvailable = promo.items.find((i) => i.is_available !== false);
+        const selectedId = selectedBuyXGetYMap[promo.id] || firstAvailable?.id;
+        const item = promo.items.find((i) => i.id === selectedId && i.is_available !== false) || firstAvailable;
+        if (!item) return null;
         const buyQty = promo.settings?.buy_quantity || 2;
         const giftQty = promo.settings?.gift_quantity || promo.settings?.get_quantity || 1;
         const isFree = item?.campaign_price === 0 || Boolean(item?.is_free);
@@ -676,7 +665,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           tag,
         };
       })
-      .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string } => Boolean(x.item));
+      .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string } => Boolean(x && x.item));
   }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap]);
 
   const appliedCartPromotions = useMemo(() => {
@@ -1056,6 +1045,80 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   const total = Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
+  const validateVoucherMutexLock = useCallback((voucherCandidate: {
+    discount_type?: string;
+    is_freeship?: boolean;
+    can_combine_with_promotions?: boolean;
+    can_combine_with_freeship?: boolean;
+    code?: string;
+  }): { allowed: boolean; message?: string } => {
+    const activeCampaigns = (configState.active_promotions || []).filter((c) =>
+      selectedCampaignIds.some((id) => String(id) === String(c.id))
+    );
+
+    const isShip = Boolean(
+      voucherCandidate.discount_type === "freeship" ||
+      voucherCandidate.is_freeship ||
+      voucherCandidate.code?.toUpperCase().includes("FREESHIP") ||
+      voucherCandidate.code?.toUpperCase().includes("PHISHIP") ||
+      (voucherCandidate.code && /^SHIP(\d+|K)?$/i.test(voucherCandidate.code))
+    );
+
+    // a) Nếu voucherCandidate.can_combine_with_promotions === false VÀ activeCampaigns.length > 0:
+    if (voucherCandidate.can_combine_with_promotions === false && activeCampaigns.length > 0) {
+      return {
+        allowed: false,
+        message: "Mã giảm giá này không áp dụng đồng thời với các chương trình ưu đãi đã chọn trong giỏ hàng.",
+      };
+    }
+
+    // b) Nếu là Voucher món (!isShip) VÀ có campaign trong activeCampaigns mang can_combine_with_promotions === false:
+    if (!isShip) {
+      const blockedCamp = activeCampaigns.find((c) => c.can_combine_with_promotions === false);
+      if (blockedCamp) {
+        return {
+          allowed: false,
+          message: `Chương trình "${blockedCamp?.name || "Ưu đãi"}" không áp dụng đồng thời với mã giảm giá món ăn.`,
+        };
+      }
+    }
+
+    // c) Nếu là Voucher ship (isShip) VÀ có campaign trong activeCampaigns mang can_combine_with_freeship === false:
+    if (isShip) {
+      const blockedCamp = activeCampaigns.find((c) => c.can_combine_with_freeship === false);
+      if (blockedCamp) {
+        return {
+          allowed: false,
+          message: "Chương trình ưu đãi hiện tại không áp dụng cùng mã giảm phí vận chuyển.",
+        };
+      }
+    }
+
+    // d) Nếu là Voucher ship VÀ appliedVoucher (voucher món đang áp) có canCombineWithFreeship === false:
+    if (
+      isShip &&
+      appliedVoucher &&
+      !appliedVoucher.isFreeship &&
+      appliedVoucher.discountType !== "freeship" &&
+      appliedVoucher.canCombineWithFreeship === false
+    ) {
+      return {
+        allowed: false,
+        message: "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship.",
+      };
+    }
+
+    // e) Nếu là Voucher món có can_combine_with_freeship === false VÀ đang có appliedShippingVoucher:
+    if (!isShip && voucherCandidate.can_combine_with_freeship === false && appliedShippingVoucher) {
+      return {
+        allowed: false,
+        message: "Mã giảm giá món ăn này không áp dụng cùng mã giảm phí vận chuyển đã chọn.",
+      };
+    }
+
+    return { allowed: true };
+  }, [configState.active_promotions, selectedCampaignIds, appliedVoucher, appliedShippingVoucher]);
+
   const handleApplyVoucher = async (codeOverride?: string, isAuto = false) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
     if (!code) {
@@ -1118,6 +1181,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         isOrderAutoFreeship
       );
       if (res.valid && res.voucher) {
+        const lockCheck = validateVoucherMutexLock(res.voucher);
+        if (!lockCheck.allowed) {
+          setVoucherError(lockCheck.message || "Mã giảm giá không thể sử dụng cùng các ưu đãi đã chọn.");
+          setVoucherSuccess(null);
+          setBestDealNotice(null);
+          setValidatingVoucher(false);
+          return false;
+        }
         const isCandidateFreeship = Boolean(
           res.voucher.discount_type === "freeship" ||
           res.voucher.is_freeship ||
@@ -1631,7 +1702,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               ? [
                 {
                   product_id: selectedOrderGiftItem.product_id,
-                  product_code: selectedOrderGiftItem.product_code || `GIFT-${selectedOrderGiftItem.product_id}`,
+                  product_code: selectedOrderGiftItem.product_code,
+                  kiotviet_id: selectedOrderGiftItem.kiotviet_id || undefined,
                   product_name: `[QUÀ TẶNG] ${selectedOrderGiftItem.product_name}`,
                   quantity: 1,
                   price: selectedOrderGiftItem.campaign_price > 0 ? selectedOrderGiftItem.campaign_price : 0,
@@ -1642,7 +1714,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               : []),
             ...(activeBuyXGetYItems.map(({ promo, item, tag }) => ({
               product_id: item.product_id,
-              product_code: item.product_code || `GIFT-${item.product_id}`,
+              product_code: item.product_code,
+              kiotviet_id: item.kiotviet_id || undefined,
               product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
               quantity: 1,
               price: item.is_free || item.campaign_price === 0 ? 0 : item.campaign_price,
@@ -1668,7 +1741,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 ? [
                   {
                     product_id: selectedOrderGiftItem.product_id,
-                    product_code: selectedOrderGiftItem.product_code || `GIFT-${selectedOrderGiftItem.product_id}`,
+                    product_code: selectedOrderGiftItem.product_code,
+                    kiotviet_id: selectedOrderGiftItem.kiotviet_id || undefined,
                     product_name: `[QUÀ TẶNG] ${selectedOrderGiftItem.product_name}`,
                     quantity: 1,
                     price: selectedOrderGiftItem.campaign_price > 0 ? selectedOrderGiftItem.campaign_price : 0,
@@ -1679,7 +1753,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 : []),
               ...activeBuyXGetYItems.map(({ promo, item, tag }) => ({
                 product_id: item.product_id,
-                product_code: item.product_code || `GIFT-${item.product_id}`,
+                product_code: item.product_code,
+                kiotviet_id: item.kiotviet_id || undefined,
                 product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
                 quantity: 1,
                 price: item.is_free || item.campaign_price === 0 ? 0 : item.campaign_price,
@@ -2700,33 +2775,6 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               ))}
             </div>
 
-            {upcomingOrderGiftPromo && (
-              <div className="bg-yellow/60 rounded-[14px] p-3 border border-secondary/30 flex items-center gap-2.5 text-xs text-brown animate-fade-in">
-                <span>
-                  {t.rich("buy_more_gift_prompt", {
-                    amount: formatPrice(upcomingOrderGiftPromo.min_order_value - subtotal),
-                    name: upcomingOrderGiftPromo.name,
-                    strong: (chunks) => <strong>{chunks}</strong>,
-                  })}
-                </span>
-              </div>
-            )}
-
-            {upcomingBuyXGetYPromo && (
-              <div className="bg-primary/5 rounded-[14px] p-3 border border-primary/20 flex items-center gap-2.5 text-xs text-primary animate-fade-in">
-                <span>
-                  {t.rich("buy_more_combo_prompt", {
-                    count: Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity),
-                    quantity: Math.max(1, Number(upcomingBuyXGetYPromo.settings?.buy_quantity || 2) - totalCartQuantity),
-                    buyQty: upcomingBuyXGetYPromo.settings?.buy_quantity || 2,
-                    action: upcomingBuyXGetYPromo.discount_type === 'percent' && upcomingBuyXGetYPromo.discount_value === 100 ? 'tặng' : 'giảm',
-                    giftQty: upcomingBuyXGetYPromo.settings?.gift_quantity || 1,
-                    name: upcomingBuyXGetYPromo.name,
-                    strong: (chunks) => <strong>{chunks}</strong>,
-                  })}
-                </span>
-              </div>
-            )}
 
             {/* Hộp nhập mã giảm giá & Nút chọn mã */}
             <div className="border-t border-gray-100 pt-4 space-y-2.5">
@@ -3126,7 +3174,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           title={t("combo_tag")}
           subtitle={`Chương trình: ${selectedBuyXGetYPromoForModal.name}`}
           items={selectedBuyXGetYPromoForModal.items || []}
-          selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || selectedBuyXGetYPromoForModal.items?.[0]?.id}
+          selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || selectedBuyXGetYPromoForModal.items?.find((i) => i.is_available !== false)?.id || null}
           onSelect={(item) => {
             setSelectedBuyXGetYMap((prev) => ({
               ...prev,
