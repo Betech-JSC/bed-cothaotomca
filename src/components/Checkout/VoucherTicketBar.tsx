@@ -22,7 +22,9 @@ export interface VoucherTicketBarProps {
     discountAmount?: number;
     isFreeship?: boolean;
   } | null;
+  activeCampaignName?: string | null;
   onClick: () => void;
+  onRemove?: () => void;
   className?: string;
 }
 
@@ -68,12 +70,8 @@ export function FoodTicketBadge({ text }: { text: string }) {
   return (
     <span
       data-testid="food-ticket-badge"
-      className="relative inline-flex items-center px-2.5 py-1 text-xs font-bold font-sans text-[#CD4829] bg-[#FFF5F2] border border-[#CD4829]/30 rounded-md select-none shrink-0"
+      className="inline-flex items-center rounded-full px-3 py-1 text-xs uppercase font-bold bg-[#FDF0ED] border border-[#CD4829] text-[#CD4829] select-none shrink-0"
     >
-      {/* Left notch */}
-      <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white border-r border-[#CD4829]/30" />
-      {/* Right notch */}
-      <span className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white border-l border-[#CD4829]/30" />
       <span className="truncate max-w-[120px] sm:max-w-[180px]">{text}</span>
     </span>
   );
@@ -83,12 +81,19 @@ export function FreeshipTicketBadge({ text }: { text: string }) {
   return (
     <span
       data-testid="freeship-ticket-badge"
-      className="relative inline-flex items-center px-2.5 py-1 text-xs font-bold font-sans text-[#00BFA5] bg-[#F0FDF9] border border-[#00BFA5]/30 rounded-md select-none shrink-0"
+      className="inline-flex items-center rounded-full px-3 py-1 text-xs uppercase font-bold bg-[#EBF0FA] border border-[#142A68] text-[#142A68] select-none shrink-0"
     >
-      {/* Left notch */}
-      <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white border-r border-[#00BFA5]/30" />
-      {/* Right notch */}
-      <span className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white border-l border-[#00BFA5]/30" />
+      <span className="truncate max-w-[140px] sm:max-w-[200px]">{text}</span>
+    </span>
+  );
+}
+
+export function CampaignTicketBadge({ text }: { text: string }) {
+  return (
+    <span
+      data-testid="campaign-ticket-badge"
+      className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-[#FEF9E7] border border-[#F5D585] text-[#8A5800] select-none shrink-0"
+    >
       <span className="truncate max-w-[140px] sm:max-w-[200px]">{text}</span>
     </span>
   );
@@ -97,13 +102,15 @@ export function FreeshipTicketBadge({ text }: { text: string }) {
 export default function VoucherTicketBar({
   appliedVoucher,
   appliedShippingVoucher,
+  activeCampaignName,
   onClick,
+  onRemove,
   className = "",
 }: VoucherTicketBarProps) {
   const t = useTranslations("voucher");
 
   const title = t("voucher_ticket_title") || "Mã giảm giá (Voucher)";
-  const placeholder = t("select_or_enter_voucher") || "Chọn hoặc nhập mã";
+  const placeholder = t("no_voucher_applied") || "Chưa áp dụng mã ưu đãi";
   const freeshipBadgeText = t("freeship_badge_text") || "Miễn Phí Vận Chuyển";
 
   // Determine food and shipping badges
@@ -115,63 +122,86 @@ export default function VoucherTicketBar({
     shipVoucher = appliedVoucher;
   }
 
-  const hasAnyVoucher = Boolean(foodVoucher || shipVoucher);
+  const hasAnyVoucher = Boolean(foodVoucher || shipVoucher || activeCampaignName);
+  const appliedCount = (foodVoucher ? 1 : 0) + (shipVoucher ? 1 : 0) + (activeCampaignName ? 1 : 0);
+
+  const shipBadgeText = shipVoucher
+    ? shipVoucher.isFreeship || shipVoucher.discountType === "freeship"
+      ? freeshipBadgeText
+      : formatVoucherBadgeText(shipVoucher) || freeshipBadgeText
+    : "";
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      aria-label={`${title}: ${hasAnyVoucher ? "Đã áp dụng mã" : placeholder}`}
-      className={`w-full flex items-center justify-between gap-3 p-3.5 sm:p-4 bg-white hover:bg-gray-50/80 active:bg-gray-100/90 rounded-2xl border border-gray-200 hover:border-secondary/40 transition-all cursor-pointer shadow-xs group ${className}`}
-    >
-      {/* Left side: Brand Ticket Icon + Title */}
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-6 h-6 flex items-center justify-center text-[#CD4829] shrink-0 group-hover:scale-105 transition-transform">
-          <svg
-            className="w-5 h-5 fill-none stroke-current"
-            viewBox="0 0 24 24"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2.5 2.5 0 0 0 0 5v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2.5 2.5 0 0 0 0-5V6z" />
-            <path d="M9 12h6" strokeDasharray="2 2" />
-          </svg>
+    <div className={`w-full ${className}`}>
+      {/* 1. Tiêu đề ngoài khung (phía trên) */}
+      <label className="block text-primary font-bold font-display text-base mb-2 select-none">
+        {title}
+      </label>
+
+      {/* 2. Khung chứa dạng Capsule viên thuốc */}
+      <div className="rounded-full border border-gray-300 p-1.5 bg-white flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap shadow-xs">
+        {/* Bên trái (Chips hoặc Placeholder) */}
+        <div
+          onClick={onClick}
+          className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1 cursor-pointer pl-1"
+        >
+          {hasAnyVoucher ? (
+            <>
+              {foodVoucher && (
+                <FoodTicketBadge text={formatVoucherBadgeText(foodVoucher)} />
+              )}
+              {shipVoucher && (
+                <FreeshipTicketBadge text={shipBadgeText} />
+              )}
+              {activeCampaignName && (
+                <CampaignTicketBadge text={activeCampaignName} />
+              )}
+            </>
+          ) : (
+            <span className="text-gray-400 font-medium text-xs sm:text-sm pl-3 select-none">
+              {placeholder}
+            </span>
+          )}
         </div>
-        <span className="font-display font-bold text-sm sm:text-base text-primary tracking-tight truncate">
-          {title}
-        </span>
+
+        {/* Bên phải (Nút chức năng) */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={onClick}
+            className="rounded-full px-3.5 py-1 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer select-none transition-all"
+            aria-label={t("btn_select_voucher") || "Chọn mã"}
+          >
+            {t("btn_select_voucher") || "Chọn mã"}
+          </button>
+          {hasAnyVoucher && onRemove && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              className="rounded-full px-3 py-1 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 cursor-pointer select-none transition-all"
+              aria-label={t("btn_remove_voucher") || "Xóa"}
+            >
+              {t("btn_remove_voucher") || "Xóa"}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Right side: Ticket Badges or Placeholder */}
-      <div className="flex items-center gap-2 min-w-0 shrink-0 justify-end">
-        {hasAnyVoucher ? (
-          <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap justify-end">
-            {foodVoucher && (
-              <FoodTicketBadge text={formatVoucherBadgeText(foodVoucher)} />
-            )}
-            {shipVoucher && (
-              <FreeshipTicketBadge text={freeshipBadgeText} />
-            )}
-            <span className="text-gray-400 group-hover:text-secondary text-base leading-none pl-0.5 transition-colors select-none">
-              ›
-            </span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 text-gray-400 group-hover:text-secondary transition-colors text-xs sm:text-sm font-medium select-none">
-            <span>{placeholder}</span>
-            <span className="text-base leading-none">›</span>
-          </div>
-        )}
-      </div>
+      {/* 3. Dòng trạng thái bên dưới khung */}
+      {appliedCount > 0 && (
+        <p className="text-xs text-emerald-700 font-semibold px-2 flex items-center gap-1.5 mt-1.5 animate-fade-in">
+          <span>✓</span>
+          <span>
+            {t("applied_vouchers_success_count", { count: appliedCount }) ||
+              `Đã áp dụng thành công ${appliedCount} ưu đãi!`}
+          </span>
+        </p>
+      )}
     </div>
   );
 }
+
+export { VoucherTicketBar as VoucherCapsuleBar };

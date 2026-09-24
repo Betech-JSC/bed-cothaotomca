@@ -1724,7 +1724,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   <VoucherTicketBar
                     appliedVoucher={appliedVoucher}
                     appliedShippingVoucher={appliedShippingVoucher}
+                    activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.name}
                     onClick={() => setIsVoucherModalOpen(true)}
+                    onRemove={handleRemoveVoucher}
                   />
                   {voucherError && <p className="text-sm text-red-600 font-semibold mt-1 px-2">{voucherError}</p>}
                   {bestDealNotice && <p className="text-sm text-secondary font-semibold mt-1 px-2">{bestDealNotice}</p>}

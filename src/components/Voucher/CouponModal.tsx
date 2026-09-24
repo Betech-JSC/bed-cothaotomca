@@ -1233,16 +1233,6 @@ export default function CouponModal({
                     Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "DIAMOND" : "GOLD") : "VIP"}
                   </span>
                 )}
-                {v.can_combine_with_promotions === false && (
-                  <span className="body-3 font-sans font-medium text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">
-                    {t("no_combo_with_promos")}
-                  </span>
-                )}
-                {v.can_combine_with_freeship === false && (
-                  <span className="body-3 font-sans font-medium text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">
-                    {t("no_combo_with_freeship")}
-                  </span>
-                )}
               </div>
 
               <p className="body-2 font-sans font-bold text-gray-700 mt-1 leading-snug">
@@ -1338,16 +1328,6 @@ export default function CouponModal({
               {v.customer_scope === "tier_only" && (
                 <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
                   Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "DIAMOND" : "GOLD") : "VIP"}
-                </span>
-              )}
-              {v.can_combine_with_promotions === false && (
-                <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
-                  {t("no_combo_with_promos")}
-                </span>
-              )}
-              {v.can_combine_with_freeship === false && (
-                <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
-                  {t("no_combo_with_freeship")}
                 </span>
               )}
               {isApplied && (

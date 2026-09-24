@@ -254,7 +254,12 @@
     "voucher_ticket_title": "Discount code (Voucher)",
     "freeship_badge_text": "Free Shipping",
     "campaign_applied_vouchers_count": "Apply • {count} voucher(s)",
-    "campaign_applied_mixed_count": "Apply • {vCount} voucher(s), {cCount} promo(s)"
+    "campaign_applied_mixed_count": "Apply • {vCount} voucher(s), {cCount} promo(s)",
+    "no_voucher_applied": "No voucher applied",
+    "btn_select_voucher": "Select code",
+    "btn_remove_voucher": "Remove",
+    "applied_vouchers_success_count": "Successfully applied {count} offer(s)!",
+    "voucher_capsule_status": "Voucher status"
   },
   "gift_selector": {
     "default_title": "Choose your free gift",

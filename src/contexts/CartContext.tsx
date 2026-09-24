@@ -177,36 +177,48 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         return null;
       };
 
+      let matchedVariant = false;
       if (p.variants && p.variants.length > 0) {
         const v = p.variants.find(
           (vObj: any) => vObj.size === item.variant || vObj.id === item.productId || vObj.kiotviet_id === item.productId || vObj.code === item.productCode
         );
         if (v) {
-          const vBase = parseFloat(String(v.original_price || v.price || 0));
+          matchedVariant = true;
+          const vOrig = v.original_price ? parseFloat(String(v.original_price)) : 0;
+          const vPrice = v.price ? parseFloat(String(v.price)) : 0;
+          const vBase = vOrig > 0 ? vOrig : vPrice;
           const activeCampaign = v.active_campaign || p.active_campaign;
           const vCamp = evaluateCampaign(v.campaign_price, activeCampaign, vBase);
           
           if (vCamp) {
             origPrice = vBase;
             currentPrice = vCamp;
-          } else if (vBase > 0) {
-            currentPrice = vBase;
-            origPrice = vBase;
+          } else if (vOrig > 0 && vPrice > 0 && vPrice < vOrig) {
+            origPrice = vOrig;
+            currentPrice = vPrice;
+          } else {
+            currentPrice = vPrice > 0 ? vPrice : (vBase > 0 ? vBase : undefined);
+            origPrice = undefined;
           }
         }
       }
 
-      if (!origPrice && p.original_price && p.price) {
-        const pBase = parseFloat(String(p.original_price));
+      if (!matchedVariant && (p.original_price || p.price)) {
+        const pOrig = p.original_price ? parseFloat(String(p.original_price)) : 0;
+        const pPriceVal = p.price ? parseFloat(String(p.price)) : 0;
+        const pBase = pOrig > 0 ? pOrig : pPriceVal;
         const activeCampaign = p.active_campaign;
-        const pPrice = evaluateCampaign(p.campaign_price, activeCampaign, pBase);
+        const pCamp = evaluateCampaign(p.campaign_price, activeCampaign, pBase);
         
-        if (pPrice) {
+        if (pCamp) {
           origPrice = pBase;
-          currentPrice = pPrice;
+          currentPrice = pCamp;
+        } else if (pOrig > 0 && pPriceVal > 0 && pPriceVal < pOrig) {
+          origPrice = pOrig;
+          currentPrice = pPriceVal;
         } else {
-          currentPrice = pBase;
-          origPrice = pBase;
+          currentPrice = pPriceVal > 0 ? pPriceVal : (pBase > 0 ? pBase : undefined);
+          origPrice = undefined;
         }
       }
 

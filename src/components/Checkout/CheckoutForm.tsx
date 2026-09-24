@@ -2782,7 +2782,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               <VoucherTicketBar
                 appliedVoucher={appliedVoucher}
                 appliedShippingVoucher={appliedShippingVoucher}
+                activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.name}
                 onClick={() => setIsVoucherModalOpen(true)}
+                onRemove={handleRemoveVoucher}
               />
               {voucherError && (
                 <p className="text-xs text-red-600 font-semibold px-2">{voucherError}</p>

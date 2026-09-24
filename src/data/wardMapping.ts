@@ -96,22 +96,20 @@ export const HCMC_WARD_OLD_NAME_MAP: Record<string, string> = {
 };
 
 /**
- * Format label according to requirement 3:
- * [Tên Phường Mới] - [Quận] (Cũ: [Tên Phường Cũ])
+ * Format label:
+ * [Tên Phường Mới] - [Quận]
  * Examples:
- * - Phường An Hội Tây - Gò Vấp (Cũ: P.14)
- * - Phường Gia Định - Bình Thạnh (Cũ: P.1, P.2)
+ * - Phường An Hội Tây - Gò Vấp
+ * - Phường Gia Định - Bình Thạnh
  */
-export function formatWardLabel(wardName: string, district?: string, oldWard?: string): string {
+export function formatWardLabel(wardName: string, district?: string, _oldWard?: string): string {
   if (!wardName) return "";
   const cleanWardName = wardName.trim();
-  const resolvedOldWard = oldWard || HCMC_WARD_OLD_NAME_MAP[cleanWardName] || "";
   
   const hasPrefix = cleanWardName.startsWith("Phường") || cleanWardName.startsWith("Xã") || cleanWardName.startsWith("Thị trấn");
   const prefix = hasPrefix ? "" : "Phường ";
 
   const districtText = district ? ` - ${district.trim()}` : "";
-  const oldWardText = resolvedOldWard ? ` (Cũ: ${resolvedOldWard.trim()})` : "";
 
-  return `${prefix}${cleanWardName}${districtText}${oldWardText}`;
+  return `${prefix}${cleanWardName}${districtText}`;
 }

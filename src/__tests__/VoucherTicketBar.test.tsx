@@ -6,6 +6,7 @@ import VoucherTicketBar, {
   formatVoucherBadgeText,
   FoodTicketBadge,
   FreeshipTicketBadge,
+  CampaignTicketBadge,
 } from '@/components/Checkout/VoucherTicketBar';
 import viMessages from '@/i18n/locales/vi.json';
 
@@ -41,35 +42,52 @@ vi.mock('next-intl', () => ({
 }));
 
 describe('VoucherTicketBar Component Tests', () => {
-  it('1. Trạng thái chưa chọn mã -> Hiển thị Brand Ticket icon, Tiêu đề và placeholder thanh lịch "Chọn hoặc nhập mã ›"', () => {
+  it('1. Trạng thái chưa chọn mã -> Tiêu đề ngoài khung, khung capsule rounded-full, placeholder "Chưa áp dụng mã ưu đãi", nút "Chọn mã"', () => {
     const handleClick = vi.fn();
-    render(
+    const handleRemove = vi.fn();
+
+    const { container } = render(
       <VoucherTicketBar
         appliedVoucher={null}
         appliedShippingVoucher={null}
         onClick={handleClick}
+        onRemove={handleRemove}
       />
     );
 
-    // Tiêu đề chuẩn nhận diện
-    expect(screen.getByText('Mã giảm giá (Voucher)')).toBeInTheDocument();
+    // 1. Tiêu đề nằm độc lập phía trên khung với font-display, font-bold, text-primary
+    const titleLabel = screen.getByText('Mã giảm giá (Voucher)');
+    expect(titleLabel).toBeInTheDocument();
+    expect(titleLabel.className).toContain('text-primary');
+    expect(titleLabel.className).toContain('font-bold');
+    expect(titleLabel.className).toContain('font-display');
 
-    // Placeholder
-    expect(screen.getByText('Chọn hoặc nhập mã')).toBeInTheDocument();
-    expect(screen.getByText('›')).toBeInTheDocument();
+    // 2. Khung capsule có class rounded-full border border-gray-300 p-1.5
+    const capsule = container.querySelector('.rounded-full.border.border-gray-300');
+    expect(capsule).toBeInTheDocument();
+    expect(capsule?.className).toContain('rounded-full');
+    expect(capsule?.className).toContain('border-gray-300');
+    expect(capsule?.className).toContain('p-1.5');
 
-    // Brand Ticket SVG Icon hiện diện
-    const svgIcon = document.querySelector('svg');
-    expect(svgIcon).toBeInTheDocument();
+    // 3. Văn bản placeholder khi chưa có mã
+    expect(screen.getByText('Chưa áp dụng mã ưu đãi')).toBeInTheDocument();
 
-    // Thao tác 1 chạm: Click vào thanh kích hoạt callback mở modal
-    const bar = screen.getByRole('button');
-    fireEvent.click(bar);
+    // 4. Nút "Chọn mã" hiển thị, nút "Xóa" KHÔNG hiển thị
+    const selectBtn = screen.getByRole('button', { name: 'Chọn mã' });
+    expect(selectBtn).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Xóa' })).not.toBeInTheDocument();
+
+    // 5. Click nút "Chọn mã" kích hoạt callback onClick
+    fireEvent.click(selectBtn);
     expect(handleClick).toHaveBeenCalledTimes(1);
+
+    // 6. Chưa có mã thì không hiển thị dòng thông báo thành công
+    expect(screen.queryByText(/Đã áp dụng thành công/i)).not.toBeInTheDocument();
   });
 
-  it('2. Trạng thái đã áp dụng 1 mã món ăn -> Hiển thị Ticket Badge món ăn màu cam đỏ #CD4829 và số tiền giảm', () => {
+  it('2. Trạng thái đã áp dụng 1 mã món ăn -> Hiển thị Pill Chip Cam Brand #CD4829, nút Xóa, và dòng trạng thái 1 ưu đãi', () => {
     const handleClick = vi.fn();
+    const handleRemove = vi.fn();
     const appliedFood = {
       id: 10,
       code: 'DISCOUNT76K',
@@ -84,28 +102,42 @@ describe('VoucherTicketBar Component Tests', () => {
         appliedVoucher={appliedFood}
         appliedShippingVoucher={null}
         onClick={handleClick}
+        onRemove={handleRemove}
       />
     );
 
-    // Badge món ăn xuất hiện với số tiền giảm -76,6kđ
+    // Chip món ăn xuất hiện với số tiền giảm -76,6kđ
     const foodBadge = screen.getByTestId('food-ticket-badge');
     expect(foodBadge).toBeInTheDocument();
     expect(foodBadge).toHaveTextContent('-76,6kđ');
 
-    // Chữ màu #CD4829, nền #FFF5F2
+    // Màu Cam Brand: nền #FDF0ED, viền #CD4829, chữ #CD4829, rounded-full
     expect(foodBadge.className).toContain('text-[#CD4829]');
-    expect(foodBadge.className).toContain('bg-[#FFF5F2]');
+    expect(foodBadge.className).toContain('bg-[#FDF0ED]');
+    expect(foodBadge.className).toContain('border-[#CD4829]');
+    expect(foodBadge.className).toContain('rounded-full');
 
     // Không còn placeholder
-    expect(screen.queryByText('Chọn hoặc nhập mã')).not.toBeInTheDocument();
+    expect(screen.queryByText('Chưa áp dụng mã ưu đãi')).not.toBeInTheDocument();
 
-    // Click vẫn gọi onClick
-    fireEvent.click(screen.getByRole('button'));
-    expect(handleClick).toHaveBeenCalled();
+    // Cả 2 nút "Chọn mã" và "Xóa" đều hiển thị
+    const selectBtn = screen.getByRole('button', { name: 'Chọn mã' });
+    const removeBtn = screen.getByRole('button', { name: 'Xóa' });
+    expect(selectBtn).toBeInTheDocument();
+    expect(removeBtn).toBeInTheDocument();
+
+    // Click nút Xóa gọi onRemove
+    fireEvent.click(removeBtn);
+    expect(handleRemove).toHaveBeenCalledTimes(1);
+
+    // Dòng trạng thái bên dưới hiển thị thành công 1 ưu đãi
+    expect(screen.getByText('Đã áp dụng thành công 1 ưu đãi!')).toBeInTheDocument();
+    expect(screen.getByText('✓')).toBeInTheDocument();
   });
 
-  it('3. Trạng thái đã áp dụng 1 mã Freeship -> Hiển thị Ticket Badge Freeship màu xanh ngọc #00BFA5', () => {
+  it('3. Trạng thái đã áp dụng mã Freeship -> Hiển thị Pill Chip Xanh Brand #142A68 và text "Miễn Phí Vận Chuyển"', () => {
     const handleClick = vi.fn();
+    const handleRemove = vi.fn();
     const appliedShip = {
       id: 20,
       code: 'FREESHIPMAX',
@@ -120,25 +152,28 @@ describe('VoucherTicketBar Component Tests', () => {
         appliedVoucher={null}
         appliedShippingVoucher={appliedShip}
         onClick={handleClick}
+        onRemove={handleRemove}
       />
     );
 
-    // Badge Freeship xuất hiện với text "Miễn Phí Vận Chuyển"
+    // Chip Freeship xuất hiện với text "Miễn Phí Vận Chuyển"
     const shipBadge = screen.getByTestId('freeship-ticket-badge');
     expect(shipBadge).toBeInTheDocument();
     expect(shipBadge).toHaveTextContent('Miễn Phí Vận Chuyển');
 
-    // Chữ màu #00BFA5, nền #F0FDF9
-    expect(shipBadge.className).toContain('text-[#00BFA5]');
-    expect(shipBadge.className).toContain('bg-[#F0FDF9]');
+    // Màu Xanh Brand: nền #EBF0FA, viền #142A68, chữ #142A68, rounded-full
+    expect(shipBadge.className).toContain('text-[#142A68]');
+    expect(shipBadge.className).toContain('bg-[#EBF0FA]');
+    expect(shipBadge.className).toContain('border-[#142A68]');
+    expect(shipBadge.className).toContain('rounded-full');
 
-    // Click gọi onClick
-    fireEvent.click(screen.getByRole('button'));
-    expect(handleClick).toHaveBeenCalled();
+    // Dòng trạng thái thành công 1 ưu đãi
+    expect(screen.getByText('Đã áp dụng thành công 1 ưu đãi!')).toBeInTheDocument();
   });
 
-  it('4. Trạng thái áp dụng đồng thời cả 2 mã (Món + Freeship) -> Hiển thị song song 2 Ticket Badges độc lập', () => {
+  it('4. Trạng thái áp dụng đồng thời cả 2 mã (Món + Freeship) -> Hiển thị song song 2 Pill Chips và đếm 2 ưu đãi', () => {
     const handleClick = vi.fn();
+    const handleRemove = vi.fn();
     const appliedFood = {
       id: 11,
       code: 'GIAM100K',
@@ -161,6 +196,7 @@ describe('VoucherTicketBar Component Tests', () => {
         appliedVoucher={appliedFood}
         appliedShippingVoucher={appliedShip}
         onClick={handleClick}
+        onRemove={handleRemove}
       />
     );
 
@@ -174,11 +210,59 @@ describe('VoucherTicketBar Component Tests', () => {
     expect(shipBadge).toBeInTheDocument();
     expect(shipBadge).toHaveTextContent('Miễn Phí Vận Chuyển');
 
-    // Có mũi tên › ở cuối
-    expect(screen.getByText('›')).toBeInTheDocument();
+    // Dòng thông báo hiển thị đúng 2 ưu đãi
+    expect(screen.getByText('Đã áp dụng thành công 2 ưu đãi!')).toBeInTheDocument();
   });
 
-  it('5. Helper formatVoucherBadgeText định dạng chính xác các trường hợp tiền giảm', () => {
+  it('5. Trạng thái áp dụng 3 ưu đãi (Món + Freeship + Chiến dịch) -> Hiển thị cả 3 Chip với màu Vàng kem #8A5800 cho chiến dịch', () => {
+    const handleClick = vi.fn();
+    const handleRemove = vi.fn();
+    const appliedFood = {
+      id: 12,
+      code: 'GIAM50K',
+      value: 50000,
+      discountAmount: 50000,
+      discountType: 'fixed' as const,
+      isFreeship: false,
+    };
+    const appliedShip = {
+      id: 22,
+      code: 'FREESHIP',
+      value: 20000,
+      discountAmount: 20000,
+      discountType: 'freeship' as const,
+      isFreeship: true,
+    };
+
+    render(
+      <VoucherTicketBar
+        appliedVoucher={appliedFood}
+        appliedShippingVoucher={appliedShip}
+        activeCampaignName="Ưu đãi hè giảm 5%"
+        onClick={handleClick}
+        onRemove={handleRemove}
+      />
+    );
+
+    const foodBadge = screen.getByTestId('food-ticket-badge');
+    const shipBadge = screen.getByTestId('freeship-ticket-badge');
+    const campaignBadge = screen.getByTestId('campaign-ticket-badge');
+
+    expect(foodBadge).toBeInTheDocument();
+    expect(shipBadge).toBeInTheDocument();
+    expect(campaignBadge).toBeInTheDocument();
+    expect(campaignBadge).toHaveTextContent('Ưu đãi hè giảm 5%');
+
+    // Màu Vàng kem Brand: text-[#8A5800], bg-[#FEF9E7], border-[#F5D585]
+    expect(campaignBadge.className).toContain('text-[#8A5800]');
+    expect(campaignBadge.className).toContain('bg-[#FEF9E7]');
+    expect(campaignBadge.className).toContain('border-[#F5D585]');
+
+    // Dòng thông báo hiển thị đúng 3 ưu đãi
+    expect(screen.getByText('Đã áp dụng thành công 3 ưu đãi!')).toBeInTheDocument();
+  });
+
+  it('6. Helper formatVoucherBadgeText định dạng chính xác các trường hợp tiền giảm', () => {
     // 76.600đ lẻ nghìn -> -76,6kđ
     expect(formatVoucherBadgeText({ discountAmount: 76600 })).toBe('-76,6kđ');
 
@@ -190,5 +274,8 @@ describe('VoucherTicketBar Component Tests', () => {
 
     // Chưa có discountAmount nhưng có value chẵn -> -50.000đ
     expect(formatVoucherBadgeText({ value: 50000 })).toBe('-50.000đ');
+
+    // Fallback code
+    expect(formatVoucherBadgeText({ code: 'SAVE10' })).toBe('-SAVE10');
   });
 });

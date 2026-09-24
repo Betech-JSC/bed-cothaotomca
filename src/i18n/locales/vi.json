@@ -254,7 +254,12 @@
     "voucher_ticket_title": "Mã giảm giá (Voucher)",
     "freeship_badge_text": "Miễn Phí Vận Chuyển",
     "campaign_applied_vouchers_count": "Áp dụng • {count} voucher",
-    "campaign_applied_mixed_count": "Áp dụng • {vCount} voucher, {cCount} khuyến mãi"
+    "campaign_applied_mixed_count": "Áp dụng • {vCount} voucher, {cCount} khuyến mãi",
+    "no_voucher_applied": "Chưa áp dụng mã ưu đãi",
+    "btn_select_voucher": "Chọn mã",
+    "btn_remove_voucher": "Xóa",
+    "applied_vouchers_success_count": "Đã áp dụng thành công {count} ưu đãi!",
+    "voucher_capsule_status": "Trạng thái ưu đãi"
   },
   "gift_selector": {
     "default_title": "Chọn món quà tặng miễn phí",
