@@ -44,6 +44,7 @@ vi.mock('next-intl', () => ({
 
 // Mock i18n routing
 vi.mock('@/i18n/routing', () => ({
+  usePathname: () => '/checkout',
   useRouter: () => ({ push: vi.fn() }),
   Link: ({ children, href, className }: any) => <a href={href} className={className}>{children}</a>,
 }));

@@ -47,6 +47,7 @@ import MobileCartFlow from "@/components/Header/MobileCartFlow";
 import CouponModal from "@/components/Voucher/CouponModal";
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
 import GiftSelectorModal from "./GiftSelectorModal";
+import VoucherTicketBar from "./VoucherTicketBar";
 
 export interface CheckoutOrderItem {
   productId: number;
@@ -2776,77 +2777,20 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
             </div>
 
 
-            {/* Hộp nhập mã giảm giá & Nút chọn mã */}
-            <div className="border-t border-gray-100 pt-4 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label className="body-1 font-display text-primary font-bold">
-                  {t("voucher_label")}
-                </label>
-              </div>
-
-              <div className="flex items-center border border-gray-300 rounded-full p-1 bg-white focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all overflow-hidden">
-                <input
-                  type="text"
-                  value={voucherCode}
-                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (!appliedVoucher && !validatingVoucher && voucherCode.trim()) {
-                        handleApplyVoucher();
-                      }
-                    }
-                  }}
-                  readOnly={Boolean(appliedVoucher || appliedShippingVoucher)}
-                  disabled={validatingVoucher}
-                  style={{ backgroundColor: "transparent" }}
-                  className="flex-1 min-w-0 !bg-transparent px-3 2xl:px-4 py-1.5 2xl:py-2 text-gray-900 focus:outline-none text-sm 2xl:text-base uppercase placeholder-gray-400 font-semibold tracking-wider"
-                  placeholder={t("voucher_input_placeholder")}
-                />
-                {appliedVoucher || appliedShippingVoucher ? (
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setIsVoucherModalOpen(true)}
-                      className="bg-yellow/70 hover:bg-yellow text-primary font-bold px-2.5 2xl:px-3.5 py-1.5 2xl:py-2 rounded-full text-xs transition-all border border-primary/20 cursor-pointer whitespace-nowrap"
-                    >
-                      {t("select_voucher_btn")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleRemoveVoucher}
-                      className="bg-red-50 text-red-600 hover:bg-red-100 font-bold px-3 2xl:px-4 py-1.5 2xl:py-2 rounded-full text-xs transition-all border border-red-200/60 shrink-0 cursor-pointer whitespace-nowrap"
-                    >
-                      {t("remove_voucher")}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setIsVoucherModalOpen(true)}
-                      className="bg-yellow/70 hover:bg-yellow text-primary font-bold px-2.5 2xl:px-3.5 py-1.5 2xl:py-2 rounded-full text-xs transition-all border border-primary/20 cursor-pointer whitespace-nowrap"
-                    >
-                      {t("select_voucher_btn")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyVoucher()}
-                      disabled={validatingVoucher || !voucherCode.trim()}
-                      className="bg-primary hover:bg-primary/95 text-white font-bold px-3.5 2xl:px-5 py-1.5 2xl:py-2 rounded-full text-xs 2xl:text-sm transition-all disabled:opacity-40 shrink-0 cursor-pointer whitespace-nowrap"
-                    >
-                      {validatingVoucher ? t("checking_voucher") : t("apply_voucher")}
-                    </button>
-                  </div>
-                )}
-              </div>
+            {/* Shopee-style Voucher Ticket Bar */}
+            <div className="border-t border-gray-100 pt-4 space-y-2">
+              <VoucherTicketBar
+                appliedVoucher={appliedVoucher}
+                appliedShippingVoucher={appliedShippingVoucher}
+                onClick={() => setIsVoucherModalOpen(true)}
+              />
               {voucherError && (
                 <p className="text-xs text-red-600 font-semibold px-2">{voucherError}</p>
               )}
               {bestDealNotice && (
                 <p className="text-xs text-secondary font-semibold px-2">{bestDealNotice}</p>
               )}
-              {appliedVoucher && promotionMatrixVoucherNotice ? (
+              {appliedVoucher && promotionMatrixVoucherNotice && (
                 <div className="text-xs text-secondary font-semibold px-2 space-y-0.5 animate-fade-in">
                   <p className="flex items-center gap-1.5">
                     <span>{promotionMatrixVoucherNotice}</span>
@@ -2857,29 +2801,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     </p>
                   ) : null}
                 </div>
-              ) : appliedVoucher && isAutoVoucherApplied ? (
-                <div className="text-xs text-emerald-600 font-semibold px-2 space-y-0.5 animate-fade-in">
-                  <p className="flex items-center gap-1.5">
-                    <span>✓</span> <span>{t("auto_voucher_applied") || "Đã tự động áp dụng mã ưu đãi tốt nhất cho bạn"}</span>
-                  </p>
-                  {appliedVoucher?.prereqPrice ? (
-                    <p className="text-[11px] text-gray-500 font-normal">
-                      {t("voucher_prereq_note", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })}
-                    </p>
-                  ) : null}
-                </div>
-              ) : voucherSuccess ? (
-                <div className="text-xs text-emerald-600 font-semibold px-2 space-y-0.5 animate-fade-in">
-                  <p className="flex items-center gap-1.5">
-                    <span>✓</span> <span>{voucherSuccess}</span>
-                  </p>
-                  {appliedVoucher?.prereqPrice ? (
-                    <p className="text-[11px] text-gray-500 font-normal">
-                      {t("voucher_prereq_note", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
+              )}
             </div>
 
             {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}

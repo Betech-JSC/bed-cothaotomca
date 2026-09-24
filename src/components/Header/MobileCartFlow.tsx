@@ -39,6 +39,7 @@ import Chevron from "@/components/Icons/Chevron";
 import CouponModal from "@/components/Voucher/CouponModal";
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
 import GiftSelectorModal from "@/components/Checkout/GiftSelectorModal";
+import VoucherTicketBar from "@/components/Checkout/VoucherTicketBar";
 
 const POPULAR_DISTRICTS = [
   // Hà Nội
@@ -1718,64 +1719,17 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
             {cartItems.length > 0 && (
               <>
-                {/* Voucher Code */}
-                <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold text-primary font-display">
-                      {t("voucher_label")}
-                    </label>
-                  </div>
-                  <div className="flex items-center rounded-full border border-gray-200 bg-white p-1 pl-4 focus-within:border-primary transition-all">
-                    <input
-                      type="text"
-                      placeholder={t("voucher_input_placeholder")}
-                      value={voucherCode}
-                      onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          if (!appliedVoucher && !validatingVoucher && voucherCode.trim()) {
-                            handleApplyVoucher();
-                          }
-                        }
-                      }}
-                      readOnly={!!appliedVoucher}
-                      disabled={validatingVoucher}
-                      style={{ backgroundColor: "transparent" }}
-                      className="flex-1 !bg-transparent text-gray-900 focus:outline-none text-base uppercase placeholder-gray-400 font-semibold"
-                    />
-                    {appliedVoucher ? (
-                      <button
-                        type="button"
-                        onClick={handleRemoveVoucher}
-                        className="bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-full px-5 py-2 text-sm transition-all border border-red-200/60"
-                      >
-                        {t("remove_voucher")}
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setIsVoucherModalOpen(true)}
-                          className="bg-yellow hover:bg-yellow/80 text-primary font-bold rounded-full px-3.5 py-2 text-xs transition-all border border-secondary/30 cursor-pointer whitespace-nowrap"
-                        >
-                          {t("select_voucher_btn")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleApplyVoucher()}
-                          disabled={validatingVoucher || !voucherCode.trim()}
-                          className="bg-primary hover:bg-primary/95 text-white font-bold rounded-full px-5 py-2 text-sm transition-all disabled:opacity-50 cursor-pointer"
-                        >
-                          {validatingVoucher ? t("checking_voucher") : t("apply_voucher")}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  {voucherError && <p className="text-sm text-red-600 font-semibold mt-1">{voucherError}</p>}
-                  {bestDealNotice && <p className="text-sm text-secondary font-semibold mt-1">{bestDealNotice}</p>}
-                  {appliedVoucher && promotionMatrixVoucherNotice ? (
-                    <div className="text-xs text-secondary font-semibold mt-1 space-y-0.5 animate-fade-in">
+                {/* Shopee-style Voucher Ticket Bar */}
+                <div className="space-y-2">
+                  <VoucherTicketBar
+                    appliedVoucher={appliedVoucher}
+                    appliedShippingVoucher={appliedShippingVoucher}
+                    onClick={() => setIsVoucherModalOpen(true)}
+                  />
+                  {voucherError && <p className="text-sm text-red-600 font-semibold mt-1 px-2">{voucherError}</p>}
+                  {bestDealNotice && <p className="text-sm text-secondary font-semibold mt-1 px-2">{bestDealNotice}</p>}
+                  {appliedVoucher && promotionMatrixVoucherNotice && (
+                    <div className="text-xs text-secondary font-semibold mt-1 px-2 space-y-0.5 animate-fade-in">
                       <p className="flex items-center gap-1">
                         <span>{promotionMatrixVoucherNotice}</span>
                       </p>
@@ -1785,18 +1739,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         </p>
                       ) : null}
                     </div>
-                  ) : voucherSuccess ? (
-                    <div className="text-xs text-secondary font-semibold mt-1 space-y-0.5">
-                      <p className="flex items-center gap-1">
-                        <span>✓</span> <span>{voucherSuccess}</span>
-                      </p>
-                      {appliedVoucher?.prereqPrice ? (
-                        <p className="text-[11px] text-gray-500 font-normal">
-                          {t("voucher_prereq_note", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  )}
                 </div>
 
                 {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}

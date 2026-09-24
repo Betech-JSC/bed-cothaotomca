@@ -148,6 +148,7 @@ export default function FloatingVoucherButton() {
         onApplyCampaigns={handleApplyCampaigns}
         onApplyVouchers={handleApplyVouchers}
         onRemoveVoucher={handleRemoveVoucher}
+        isBrowseOnly={true}
       />
     </>
   );

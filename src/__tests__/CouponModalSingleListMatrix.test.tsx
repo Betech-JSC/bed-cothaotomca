@@ -45,8 +45,11 @@ vi.mock('next-intl', () => ({
 }));
 
 // Mock i18n routing
+let mockPathname = '/checkout';
+const mockPush = vi.fn();
 vi.mock('@/i18n/routing', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => mockPathname,
+  useRouter: () => ({ push: mockPush }),
   Link: ({ children, href, className }: any) => <a href={href} className={className}>{children}</a>,
 }));
 
@@ -82,9 +85,11 @@ vi.mock('@/services/orderService', async () => {
 describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPush.mockClear();
     resetCouponModalCache();
     localStorage.clear();
     mockCurrentUser = null;
+    mockPathname = '/checkout';
     mockVouchersList = [];
     mockCampaignsList = [];
     mockValidateVoucherResult = { valid: false, message: 'Mã không tồn tại' };
@@ -1154,7 +1159,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     });
   });
 
-  it('Matrix 24: isBrowseOnly={true} vẫn hiển thị đầy đủ ô Checkbox [ ] / [✓] và nút Bottom Bar CTA, cho phép tick chọn thủ công và lưu vào localStorage', async () => {
+  it('Matrix 24: isBrowseOnly={true} -> Ẩn toàn bộ Checkbox ở các thẻ và hiển thị nút CTA "Đặt món ngay", click đóng modal và điều hướng /product', async () => {
     mockCampaignsList = [
       {
         id: 801,
@@ -1187,35 +1192,20 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(await screen.findByText('Chiến dịch Nổi Bật')).toBeInTheDocument();
     expect(screen.getByText('BROWSE10K')).toBeInTheDocument();
 
-    // Checkbox của cả Campaign và Voucher đều hiển thị đầy đủ
-    const cbCampaign = screen.getByText('Chiến dịch Nổi Bật').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
-    const cbVoucher = screen.getByText('BROWSE10K').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    // Toàn bộ Checkbox ở cả Campaign và Voucher đều bị ẩn hoàn toàn
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
 
-    expect(cbCampaign).toBeInTheDocument();
-    expect(cbVoucher).toBeInTheDocument();
-    expect(cbCampaign).toHaveAttribute('aria-checked', 'false');
-    expect(cbVoucher).toHaveAttribute('aria-checked', 'false');
+    // Nút Bottom Bar CTA hiển thị "Đặt món ngay"
+    const orderNowBtn = screen.getByRole('button', { name: /Đặt món ngay/i });
+    expect(orderNowBtn).toBeInTheDocument();
 
-    // Tick chọn Campaign và Voucher thủ công
-    fireEvent.click(cbCampaign);
-    expect(cbCampaign).toHaveAttribute('aria-checked', 'true');
-
-    fireEvent.click(cbVoucher);
-    expect(cbVoucher).toHaveAttribute('aria-checked', 'true');
-
-    // Nút Bottom Bar CTA hiển thị "Áp dụng • 2 ưu đãi"
-    const applyBtn = screen.getByRole('button', { name: /Áp dụng • 2 ưu đãi/i });
-    expect(applyBtn).toBeInTheDocument();
-
-    await fireEvent.click(applyBtn);
-
-    // Lưu vào localStorage khi không có onApplyCampaigns / onApplyVouchers
-    expect(localStorage.getItem('cothaotomca_selected_campaign_ids')).toBe(JSON.stringify([801]));
-    expect(localStorage.getItem('cothaotomca_applied_voucher_codes')).toBe(JSON.stringify(['BROWSE10K']));
+    // Click "Đặt món ngay" gọi onClose và điều hướng tới /product
+    await fireEvent.click(orderNowBtn);
     expect(onClose).toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith('/product');
   });
 
-  it('Matrix 25: Khi bấm [Bỏ qua ưu đãi và tiếp tục] trong isBrowseOnly mode -> xóa localStorage', async () => {
+  it('Matrix 25: Khi isBrowseOnly={true} -> ẩn nút [Bỏ qua ưu đãi và tiếp tục], hiển thị nút Đặt món ngay và cho phép đóng bằng icon nút X', async () => {
     localStorage.setItem('cothaotomca_selected_campaign_ids', JSON.stringify([999]));
     localStorage.setItem('cothaotomca_applied_voucher_codes', JSON.stringify(['OLDVOUCHER']));
 
@@ -1242,13 +1232,58 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
 
     expect(await screen.findByText('Chiến dịch Test Bỏ Qua')).toBeInTheDocument();
 
-    const skipBtn = screen.getByRole('button', { name: /Bỏ qua ưu đãi và tiếp tục/i });
-    expect(skipBtn).toBeInTheDocument();
+    // Nút Bỏ qua ưu đãi và tiếp tục KHÔNG xuất hiện trên màn hình
+    expect(screen.queryByRole('button', { name: /Bỏ qua ưu đãi và tiếp tục/i })).not.toBeInTheDocument();
 
-    await fireEvent.click(skipBtn);
+    // Nút Đặt món ngay xuất hiện
+    expect(screen.getByRole('button', { name: /Đặt món ngay/i })).toBeInTheDocument();
 
-    expect(localStorage.getItem('cothaotomca_selected_campaign_ids')).toBe(JSON.stringify([]));
-    expect(localStorage.getItem('cothaotomca_applied_voucher_codes')).toBe(JSON.stringify([]));
+    // Nút đóng icon "X" hoạt động chuẩn và gọi onClose
+    const closeBtn = screen.getByLabelText(/đóng|close/i);
+    expect(closeBtn).toBeInTheDocument();
+    await fireEvent.click(closeBtn);
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('Matrix 26: Khi ở ngoài route checkout (pathname != /checkout) -> tự động ở Browse-only Mode (ẩn checkbox, hiện nút Đặt món ngay, ẩn nút Bỏ qua)', async () => {
+    mockPathname = '/';
+    mockCampaignsList = [
+      {
+        id: 803,
+        name: 'Chiến dịch Ngoài Checkout',
+        min_order_value: 0,
+        can_combine_with_promotions: true,
+      },
+    ];
+
+    const onClose = vi.fn();
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={onClose}
+        subtotal={100000}
+        appliedCampaignIds={[]}
+        appliedVoucherCodes={[]}
+        isBrowseOnly={false}
+      />
+    );
+
+    expect(await screen.findByText('Chiến dịch Ngoài Checkout')).toBeInTheDocument();
+
+    // Checkbox không xuất hiện
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+
+    // Nút Bỏ qua ưu đãi và tiếp tục KHÔNG xuất hiện ngoài Checkout
+    expect(screen.queryByRole('button', { name: /Bỏ qua ưu đãi và tiếp tục/i })).not.toBeInTheDocument();
+
+    // Hiển thị nút "Đặt món ngay"
+    const orderNowBtn = screen.getByRole('button', { name: /Đặt món ngay/i });
+    expect(orderNowBtn).toBeInTheDocument();
+
+    // Đóng bằng nút icon "X"
+    const closeBtn = screen.getByLabelText(/đóng|close/i);
+    await fireEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalled();
   });
 });

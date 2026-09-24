@@ -248,7 +248,13 @@
     "campaign_freeship_locked": "CTKM không áp dụng cùng giảm phí vận chuyển.",
     "view_terms_detail": "Chi tiết điều kiện áp dụng ›",
     "campaign_applied_count": "Áp dụng • {count} ưu đãi",
-    "buy_more_campaign_hint": "Chưa đạt giá trị đơn tối thiểu {minSpend}. Mua thêm {missingAmount} để áp dụng"
+    "buy_more_campaign_hint": "Chưa đạt giá trị đơn tối thiểu {minSpend}. Mua thêm {missingAmount} để áp dụng",
+    "order_now_cta": "Đặt món ngay",
+    "select_or_enter_voucher": "Chọn hoặc nhập mã",
+    "voucher_ticket_title": "Mã giảm giá (Voucher)",
+    "freeship_badge_text": "Miễn Phí Vận Chuyển",
+    "campaign_applied_vouchers_count": "Áp dụng • {count} voucher",
+    "campaign_applied_mixed_count": "Áp dụng • {vCount} voucher, {cCount} khuyến mãi"
   },
   "gift_selector": {
     "default_title": "Chọn món quà tặng miễn phí",

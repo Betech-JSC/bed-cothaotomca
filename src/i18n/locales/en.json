@@ -248,7 +248,13 @@
     "campaign_freeship_locked": "Promotion does not apply with shipping fee discount.",
     "view_terms_detail": "Terms & conditions details ›",
     "campaign_applied_count": "Apply • {count} offers",
-    "buy_more_campaign_hint": "Minimum order value {minSpend} not met. Add {missingAmount} more to apply"
+    "buy_more_campaign_hint": "Minimum order value {minSpend} not met. Add {missingAmount} more to apply",
+    "order_now_cta": "Order now",
+    "select_or_enter_voucher": "Select or enter code",
+    "voucher_ticket_title": "Discount code (Voucher)",
+    "freeship_badge_text": "Free Shipping",
+    "campaign_applied_vouchers_count": "Apply • {count} voucher(s)",
+    "campaign_applied_mixed_count": "Apply • {vCount} voucher(s), {cCount} promo(s)"
   },
   "gift_selector": {
     "default_title": "Choose your free gift",

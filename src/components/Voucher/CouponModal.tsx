@@ -17,7 +17,7 @@ import {
   CampaignEligibilityResult,
   CampaignLockResult,
 } from "@/services/campaignService";
-import { useRouter } from "@/i18n/routing";
+import { useRouter, usePathname } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useAuth, StorefrontUser } from "@/contexts/AuthContext";
 
@@ -158,6 +158,16 @@ export default function CouponModal({
 }: CouponModalProps) {
   const t = useTranslations("voucher");
   const router = useRouter();
+  const pathname = typeof usePathname === "function" ? usePathname() : "";
+  const isCheckoutRoute = Boolean(
+    pathname && (
+      pathname === "/checkout" ||
+      pathname.endsWith("/checkout") ||
+      pathname.includes("/checkout")
+    )
+  );
+  const isBrowseMode = Boolean(isBrowseOnly || !isCheckoutRoute);
+  const showSkipButton = !isBrowseOnly && isCheckoutRoute;
   const { user: authUser } = useAuth();
   const currentUser = user !== undefined ? user : authUser;
   const resolveTierFromPoints = (pts: number = 0): string => {
@@ -1038,15 +1048,17 @@ export default function CouponModal({
           </div>
 
           {/* Disabled Checkbox */}
-          <div className="flex items-center justify-center pl-2 pr-3.5 py-3 shrink-0">
-            <div
-              role="checkbox"
-              aria-checked={false}
-              aria-disabled={true}
-              aria-label={camp.name}
-              className="w-5 h-5 min-w-[20px] min-h-[20px] rounded-md border border-gray-200 bg-gray-100/80 cursor-not-allowed text-transparent"
-            />
-          </div>
+          {!isBrowseMode && (
+            <div className="flex items-center justify-center pl-2 pr-3.5 py-3 shrink-0">
+              <div
+                role="checkbox"
+                aria-checked={false}
+                aria-disabled={true}
+                aria-label={camp.name}
+                className="w-5 h-5 min-w-[20px] min-h-[20px] rounded-md border border-gray-200 bg-gray-100/80 cursor-not-allowed text-transparent"
+              />
+            </div>
+          )}
         </div>
       );
     }
@@ -1056,6 +1068,10 @@ export default function CouponModal({
       <div
         key={camp.id}
         onClick={() => {
+          if (isBrowseMode) {
+            setSelectedCampaign(camp);
+            return;
+          }
           if (!isLocked) {
             handleToggleCampaign(camp.id);
           }
@@ -1140,33 +1156,35 @@ export default function CouponModal({
         </div>
 
         {/* Checkbox */}
-        <div className="flex items-center justify-center pl-2 pr-4 py-3 shrink-0">
-          <div
-            role="checkbox"
-            aria-checked={isSelected}
-            aria-disabled={isLocked}
-            aria-label={camp.name}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isLocked) {
-                handleToggleCampaign(camp.id);
-              }
-            }}
-            className={`w-5 h-5 min-w-[20px] min-h-[20px] rounded-md border flex items-center justify-center transition-all ${
-              isLocked
-                ? "border-gray-200 bg-gray-100 cursor-not-allowed text-transparent"
-                : isSelected
-                  ? "border-secondary bg-secondary text-white shadow-xs cursor-pointer"
-                  : "border-gray-300 bg-white hover:border-secondary/60 cursor-pointer text-transparent"
-            }`}
-          >
-            {isSelected && (
-              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2.5 7L5.5 10L11.5 3.5" />
-              </svg>
-            )}
+        {!isBrowseMode && (
+          <div className="flex items-center justify-center pl-2 pr-4 py-3 shrink-0">
+            <div
+              role="checkbox"
+              aria-checked={isSelected}
+              aria-disabled={isLocked}
+              aria-label={camp.name}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isLocked) {
+                  handleToggleCampaign(camp.id);
+                }
+              }}
+              className={`w-5 h-5 min-w-[20px] min-h-[20px] rounded-md border flex items-center justify-center transition-all ${
+                isLocked
+                  ? "border-gray-200 bg-gray-100 cursor-not-allowed text-transparent"
+                  : isSelected
+                    ? "border-secondary bg-secondary text-white shadow-xs cursor-pointer"
+                    : "border-gray-300 bg-white hover:border-secondary/60 cursor-pointer text-transparent"
+              }`}
+            >
+              {isSelected && (
+                <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2.5 7L5.5 10L11.5 3.5" />
+                </svg>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -1257,14 +1275,16 @@ export default function CouponModal({
           </div>
 
           {/* Right Checkbox (Grab-style disabled) */}
-          <div className="flex items-center justify-center pl-2 pr-3.5 py-3 shrink-0">
-            <div
-              role="checkbox"
-              aria-checked={false}
-              aria-disabled={true}
-              className="w-5 h-5 rounded-md border border-gray-200 bg-gray-100/80 cursor-not-allowed text-transparent"
-            />
-          </div>
+          {!isBrowseMode && (
+            <div className="flex items-center justify-center pl-2 pr-3.5 py-3 shrink-0">
+              <div
+                role="checkbox"
+                aria-checked={false}
+                aria-disabled={true}
+                className="w-5 h-5 rounded-md border border-gray-200 bg-gray-100/80 cursor-not-allowed text-transparent"
+              />
+            </div>
+          )}
         </div>
       );
     }
@@ -1274,6 +1294,10 @@ export default function CouponModal({
       <div
         key={v.code}
         onClick={() => {
+          if (isBrowseMode) {
+            handleCopyCode(v.code);
+            return;
+          }
           if (!isLocked) {
             handleToggleVoucher(v.code);
           }
@@ -1370,32 +1394,34 @@ export default function CouponModal({
         </div>
 
         {/* Right side Checkbox (Grab-style) */}
-        <div className="flex items-center justify-center pl-2 pr-4 py-3 shrink-0">
-          <div
-            role="checkbox"
-            aria-checked={isSelected}
-            aria-disabled={isLocked}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isLocked) {
-                handleToggleVoucher(v.code);
-              }
-            }}
-            className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-              isLocked
-                ? "border-gray-200 bg-gray-100 cursor-not-allowed text-transparent"
-                : isSelected
-                  ? "border-secondary bg-secondary text-white shadow-xs cursor-pointer"
-                  : "border-gray-300 bg-white hover:border-secondary/60 cursor-pointer text-transparent"
-            }`}
-          >
-            {isSelected && (
-              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2.5 7L5.5 10L11.5 3.5" />
-              </svg>
-            )}
+        {!isBrowseMode && (
+          <div className="flex items-center justify-center pl-2 pr-4 py-3 shrink-0">
+            <div
+              role="checkbox"
+              aria-checked={isSelected}
+              aria-disabled={isLocked}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isLocked) {
+                  handleToggleVoucher(v.code);
+                }
+              }}
+              className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                isLocked
+                  ? "border-gray-200 bg-gray-100 cursor-not-allowed text-transparent"
+                  : isSelected
+                    ? "border-secondary bg-secondary text-white shadow-xs cursor-pointer"
+                    : "border-gray-300 bg-white hover:border-secondary/60 cursor-pointer text-transparent"
+              }`}
+            >
+              {isSelected && (
+                <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2.5 7L5.5 10L11.5 3.5" />
+                </svg>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -1683,26 +1709,38 @@ export default function CouponModal({
             </div>
 
             {/* Bottom Bar: Pinned CTA button (Grab-style) */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 shadow-lg shrink-0 z-20">
-              {totalAppliedCount === 0 ? (
+            {isBrowseMode ? (
+              <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 shadow-lg shrink-0 z-20">
                 <button
                   type="button"
-                  onClick={handleSkipAndContinue}
-                  className="w-full py-3.5 px-4 rounded-2xl text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-center cursor-pointer active:scale-[0.99]"
+                  onClick={handleGoShopping}
+                  className="w-full py-3.5 px-4 rounded-2xl text-base font-bold text-white bg-secondary hover:bg-secondary/95 shadow-md hover:shadow-lg transition-all text-center cursor-pointer active:scale-[0.99] flex items-center justify-center font-display"
                 >
-                  Bỏ qua ưu đãi và tiếp tục
+                  <span>{t("order_now_cta") || "Đặt món ngay"}</span>
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleApplySelected}
-                  disabled={loading}
-                  className="w-full py-3.5 px-4 rounded-2xl text-sm font-bold text-white bg-secondary hover:bg-secondary/95 shadow-sm transition-all text-center cursor-pointer active:scale-[0.99] flex items-center justify-center gap-2"
-                >
-                  <span>{t("campaign_applied_count", { count: totalAppliedCount }) || `Áp dụng • ${totalAppliedCount} ưu đãi`}</span>
-                </button>
-              )}
-            </div>
+              </div>
+            ) : (totalAppliedCount > 0 || showSkipButton) ? (
+              <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 shadow-lg shrink-0 z-20">
+                {totalAppliedCount === 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleSkipAndContinue}
+                    className="w-full py-3.5 px-4 rounded-2xl text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-center cursor-pointer active:scale-[0.99]"
+                  >
+                    Bỏ qua ưu đãi và tiếp tục
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleApplySelected}
+                    disabled={loading}
+                    className="w-full py-3.5 px-4 rounded-2xl text-sm font-bold text-white bg-secondary hover:bg-secondary/95 shadow-sm transition-all text-center cursor-pointer active:scale-[0.99] flex items-center justify-center gap-2"
+                  >
+                    <span>{t("campaign_applied_count", { count: totalAppliedCount }) || `Áp dụng • ${totalAppliedCount} ưu đãi`}</span>
+                  </button>
+                )}
+              </div>
+            ) : null}
           </>
         )}
       </div>
