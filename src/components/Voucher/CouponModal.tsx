@@ -44,18 +44,30 @@ export function formatPrivateVoucherError(errMsg: string): string {
   return "Mã giảm giá không hợp lệ hoặc đã hết lượt sử dụng.";
 }
 
+export interface CartItemProductEligibilityCheck {
+  id?: number | string;
+  product_id?: number;
+  productId?: number;
+  product_variant_id?: number | null;
+  variantId?: number | null;
+  quantity?: number;
+}
+
 export interface CouponModalProps {
   isOpen: boolean;
   onClose: () => void;
   subtotal?: number;
   originalSubtotal?: number;
   shippingFee?: number;
+  shippingFeeDiscount?: number;
   isFreeship?: boolean;
   isAutoFreeship?: boolean;
+  isAutoShippingDiscountActive?: boolean;
   canCombineWithFreeship?: boolean;
   appliedVoucherCode?: string;
   appliedVoucherCodes?: string[];
   appliedCampaignIds?: (number | string)[];
+  cartItems?: CartItemProductEligibilityCheck[];
   onApplyVoucher?: (code: string) => Promise<boolean | void> | void;
   onApplyVouchers?: (codes: string[]) => Promise<boolean | void> | void;
   onApplyCampaigns?: (ids: (number | string)[]) => Promise<void> | void;
@@ -132,18 +144,133 @@ export function getCampaignEstimatedValue(camp: PublicCampaignItem, subtotal: nu
   return 0;
 }
 
+export function getVoucherBadgeLabel(v: PublicVoucherItem, isFreeship: boolean): string {
+  if (v.short_name && v.short_name.trim()) {
+    return v.short_name.trim();
+  }
+  if (isFreeship) {
+    if (v.discount_type === "freeship" || !v.value || v.value === 0) {
+      return "FREESHIP";
+    }
+    return `-${formatPrice(v.value)}`;
+  }
+  if (v.discount_type === "percent") {
+    return `-${v.value}%`;
+  }
+  return `-${formatPrice(v.value)}`;
+}
+
+export function evaluateCampaignEligibility(
+  c: PublicCampaignItem | ActivePromotion,
+  options: {
+    subtotal?: number;
+    originalSubtotal?: number;
+    cartItems?: CartItemProductEligibilityCheck[];
+    isBrowseMode?: boolean;
+    t?: (key: string, values?: Record<string, any>) => string;
+  }
+): CampaignEligibilityResult {
+  const { subtotal = 0, originalSubtotal, cartItems, isBrowseMode = false, t } = options;
+
+  if (isBrowseMode) {
+    return { eligible: true };
+  }
+
+  // 1. Kiểm tra min_order_value
+  const minSpend = Number(c.min_order_value || 0);
+  const effectiveSpend =
+    c.can_combine_with_promotions === false && originalSubtotal !== undefined && originalSubtotal > 0
+      ? originalSubtotal
+      : subtotal;
+
+  if (minSpend > 0 && effectiveSpend < minSpend) {
+    const missingAmount = Math.max(0, minSpend - effectiveSpend);
+    return {
+      eligible: false,
+      reason: t
+        ? (t("buy_more_campaign_hint", {
+            minSpend: formatPrice(minSpend),
+            missingAmount: formatPrice(missingAmount),
+          }) || `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missingAmount)} để áp dụng`)
+        : `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missingAmount)} để áp dụng`,
+      missingAmount,
+    };
+  }
+
+  // 2. Kiểm tra phạm vi sản phẩm của campaign
+  const targetProductIds: number[] = Array.isArray(c.applicable_product_ids)
+    ? c.applicable_product_ids.map(Number)
+    : (c.items && c.promotion_type !== "order_gift_discount"
+        ? c.items.filter((i) => !i.is_free).map((i) => Number(i.product_id)).filter(Boolean)
+        : []);
+
+  const targetVariantIds: number[] = Array.isArray(c.applicable_variant_ids)
+    ? c.applicable_variant_ids.map(Number)
+    : (c.items && c.promotion_type !== "order_gift_discount"
+        ? c.items.filter((i) => !i.is_free).map((i) => Number(i.product_variant_id)).filter(Boolean)
+        : []);
+
+  // Nếu targetProductIds.length === 0 && targetVariantIds.length === 0: Đây là campaign toàn đơn hàng -> Cho phép áp dụng
+  if (targetProductIds.length === 0 && targetVariantIds.length === 0) {
+    return { eligible: true };
+  }
+
+  // Nếu campaign có danh sách sản phẩm giới hạn:
+  if (!cartItems || cartItems.length === 0) {
+    return {
+      eligible: false,
+      reason: t ? (t("no_matching_products_in_cart") || "Chưa có sản phẩm áp dụng trong giỏ hàng") : "Chưa có sản phẩm áp dụng trong giỏ hàng",
+    };
+  }
+
+  const matchingItems = cartItems.filter((item) => {
+    const pId = item.product_id ?? item.productId;
+    const vId = item.product_variant_id ?? item.variantId;
+    const matchesVariant = Boolean(vId && targetVariantIds.length > 0 && targetVariantIds.includes(Number(vId)));
+    const matchesProduct = Boolean(pId && targetProductIds.length > 0 && targetProductIds.includes(Number(pId)));
+    return matchesVariant || matchesProduct;
+  });
+
+  if (matchingItems.length === 0) {
+    return {
+      eligible: false,
+      reason: t ? (t("no_matching_products_in_cart") || "Chưa có sản phẩm áp dụng trong giỏ hàng") : "Chưa có sản phẩm áp dụng trong giỏ hàng",
+    };
+  }
+
+  // 3. Nếu c.promotion_type === "buy_x_get_y"
+  if (c.promotion_type === "buy_x_get_y") {
+    const buyQty = Number(c.settings?.buy_quantity || 2);
+    const matchingQty = matchingItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+    if (matchingQty < buyQty) {
+      const missing = buyQty - matchingQty;
+      return {
+        eligible: false,
+        reason: t
+          ? (t("buy_more_to_activate_buy_x_get_y", { count: missing }) || `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`)
+          : `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`,
+      };
+    }
+  }
+
+  return { eligible: true };
+}
+
 export default function CouponModal({
   isOpen,
   onClose,
   subtotal = 0,
   originalSubtotal,
   shippingFee = 0,
+  shippingFeeDiscount = 0,
   isFreeship = false,
   isAutoFreeship,
+  isAutoShippingDiscountActive,
   canCombineWithFreeship,
   appliedVoucherCode = "",
   appliedVoucherCodes,
   appliedCampaignIds,
+  cartItems,
   onApplyVoucher,
   onApplyVouchers,
   onApplyCampaigns,
@@ -201,24 +328,15 @@ export default function CouponModal({
 
   const checkCampaignEligibility = useCallback(
     (c: PublicCampaignItem): CampaignEligibilityResult => {
-      const minSpend = Number(c.min_order_value || 0);
-      const effectiveSpend =
-        c.can_combine_with_promotions === false && originalSubtotal !== undefined && originalSubtotal > 0
-          ? originalSubtotal
-          : subtotal;
-
-      if (minSpend > 0 && effectiveSpend < minSpend) {
-        const missingAmount = Math.max(0, minSpend - effectiveSpend);
-        return {
-          eligible: false,
-          reason: `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missingAmount)} để áp dụng`,
-          missingAmount,
-        };
-      }
-
-      return { eligible: true };
+      return evaluateCampaignEligibility(c, {
+        subtotal,
+        originalSubtotal,
+        cartItems,
+        isBrowseMode,
+        t,
+      });
     },
-    [subtotal, originalSubtotal]
+    [subtotal, originalSubtotal, cartItems, isBrowseMode, t]
   );
 
   const effectivePrivateVouchers = useMemo(() => {
@@ -394,6 +512,23 @@ export default function CouponModal({
         };
       }
 
+      // 0.05 System partial shipping discount check: Đang áp dụng chương trình giảm phí vận chuyển của hệ thống
+      const isAutoShippingDiscount = Boolean(
+        !orderIsAutoFreeship &&
+        (isAutoShippingDiscountActive ||
+         (shippingFeeDiscount !== undefined && shippingFeeDiscount > 0) ||
+         (shippingSettingsState?.is_min_amount_enabled &&
+          Number(shippingSettingsState.min_order_amount) > 0 &&
+          subtotal >= Number(shippingSettingsState.min_order_amount)))
+      );
+
+      if (isAutoShippingDiscount && isFreeship) {
+        return {
+          eligible: false,
+          reason: t("system_shipping_discount_active") || "Đang áp dụng chương trình giảm phí vận chuyển của hệ thống",
+        };
+      }
+
       // 0.1 Combination rule check: Mã giảm giá hàng hiện tại cấm kết hợp freeship
       if (canCombineWithFreeship === false && isFreeship) {
         return {
@@ -475,6 +610,9 @@ export default function CouponModal({
       currentUser,
       currentUserTier,
       orderIsAutoFreeship,
+      isAutoShippingDiscountActive,
+      shippingFeeDiscount,
+      shippingSettingsState,
       canCombineWithFreeship,
       hasCampaignWithNoFreeship,
       subtotal,
@@ -848,6 +986,18 @@ export default function CouponModal({
         setFeedbackError("Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.");
         return;
       }
+      const isAutoShippingDiscount = Boolean(
+        !orderIsAutoFreeship &&
+        (isAutoShippingDiscountActive ||
+         (shippingFeeDiscount !== undefined && shippingFeeDiscount > 0) ||
+         (shippingSettingsState?.is_min_amount_enabled &&
+          Number(shippingSettingsState.min_order_amount) > 0 &&
+          subtotal >= Number(shippingSettingsState.min_order_amount)))
+      );
+      if (isAutoShippingDiscount && isCodeFreeship) {
+        setFeedbackNotice(t("system_shipping_discount_active") || "Đang áp dụng chương trình giảm phí vận chuyển của hệ thống");
+        return;
+      }
       if (canCombineWithFreeship === false && isCodeFreeship) {
         setFeedbackError("Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.");
         return;
@@ -875,6 +1025,7 @@ export default function CouponModal({
         const newVoucher: PublicVoucherItem = {
           id: res.voucher.id,
           code: res.voucher.code,
+          short_name: res.voucher.short_name,
           discount_type: res.voucher.discount_type || (isShip ? "freeship" : "fixed"),
           value: res.voucher.value,
           max_discount: res.voucher.max_discount,
@@ -890,7 +1041,14 @@ export default function CouponModal({
 
         const eligibility = checkVoucherEligibility(newVoucher);
         if (!eligibility.eligible) {
-          setFeedbackError("Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.");
+          if (
+            eligibility.reason ===
+            (t("system_shipping_discount_active") || "Đang áp dụng chương trình giảm phí vận chuyển của hệ thống")
+          ) {
+            setFeedbackNotice(eligibility.reason);
+          } else {
+            setFeedbackError(formatPrivateVoucherError(eligibility.reason || ""));
+          }
           return;
         }
 
@@ -1208,11 +1366,7 @@ export default function CouponModal({
           {/* Left Badge */}
           <div className="sm:w-28 py-3 px-3 flex sm:flex-col items-center justify-center gap-1 text-center shrink-0 bg-gray-400 text-white">
             <span className="title-3 font-display font-bold uppercase tracking-wider leading-tight text-white">
-              {isFreeship
-                ? "FREESHIP"
-                : v.discount_type === "percent"
-                  ? `-${v.value}%`
-                  : `-${formatPrice(v.value)}`}
+              {getVoucherBadgeLabel(v, isFreeship)}
             </span>
           </div>
 
@@ -1260,7 +1414,7 @@ export default function CouponModal({
             </div>
 
             <div className="flex items-center justify-between pt-1 border-t border-gray-200/60">
-              <span className="text-[11px] text-gray-400 font-medium">Mã không khả dụng</span>
+              <span className="text-[11px] text-gray-400 font-medium">{t("ineligible_badge") || "Chưa đủ điều kiện"}</span>
             </div>
           </div>
 
@@ -1305,11 +1459,7 @@ export default function CouponModal({
           isLocked ? "bg-gray-400" : "bg-secondary"
         }`}>
           <span className="title-3 font-display font-bold uppercase tracking-wider leading-tight text-white">
-            {isFreeship
-              ? "FREESHIP"
-              : v.discount_type === "percent"
-                ? `-${v.value}%`
-                : `-${formatPrice(v.value)}`}
+            {getVoucherBadgeLabel(v, isFreeship)}
           </span>
         </div>
 
@@ -1635,51 +1785,35 @@ export default function CouponModal({
                 </div>
               ) : (
                 <>
-                  {/* Nhóm 1: CHƯƠNG TRÌNH ƯU ĐÃI KHẢ DỤNG (TẦNG 1) */}
-                  {(eligibleCampaigns.length > 0 || shippingPromotionItem) && (
+                  {/* TẦNG 1: CHƯƠNG TRÌNH ƯU ĐÃI */}
+                  {allCampaigns.length > 0 && (
                     <div className="space-y-3">
                       <div className="title-4 font-display text-primary uppercase tracking-wider font-bold flex items-center justify-between">
-                        <span>{t("eligible_campaigns", { count: eligibleCampaigns.length + (shippingPromotionItem ? 1 : 0) }) || `Chương trình ưu đãi khả dụng (${eligibleCampaigns.length + (shippingPromotionItem ? 1 : 0)})`}</span>
+                        <span>
+                          {t("eligible_campaigns", { count: allCampaigns.length }) ||
+                            `Chương trình ưu đãi (${allCampaigns.length})`}
+                        </span>
                       </div>
 
                       <div className="space-y-3">
                         {eligibleCampaigns.map((camp) => renderCampaignCard(camp, true))}
                         {shippingPromotionItem && renderCampaignCard(shippingPromotionItem, true)}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Nhóm 2: MÃ GIẢM GIÁ KHẢ DỤNG */}
-                  {eligibleVouchers.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="title-4 font-display text-primary uppercase tracking-wider font-bold flex items-center justify-between">
-                        <span>Mã giảm giá khả dụng ({eligibleVouchers.length})</span>
-                      </div>
-                      <div className="space-y-3">
-                        {eligibleVouchers.map((v) => renderVoucherCard(v, true))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Nhóm 3: CHƯƠNG TRÌNH CHƯA ĐỦ ĐIỀU KIỆN (TẦNG 2) */}
-                  {ineligibleCampaigns.length > 0 && (
-                    <div className="space-y-3 pt-1">
-                      <div className="title-4 font-display text-gray-500 uppercase tracking-wider font-bold flex items-center justify-between">
-                        <span>{t("ineligible_campaigns", { count: ineligibleCampaigns.length }) || `Chương trình chưa đủ điều kiện (${ineligibleCampaigns.length})`}</span>
-                      </div>
-                      <div className="space-y-3">
                         {ineligibleCampaigns.map((camp) => renderCampaignCard(camp, false))}
                       </div>
                     </div>
                   )}
 
-                  {/* Nhóm 4: MÃ CHƯA ĐỦ ĐIỀU KIỆN */}
-                  {ineligibleVouchers.length > 0 && (
-                    <div className="space-y-3 pt-1">
-                      <div className="title-4 font-display text-gray-500 uppercase tracking-wider font-bold flex items-center justify-between">
-                        <span>Mã chưa đủ điều kiện ({ineligibleVouchers.length})</span>
+                  {/* TẦNG 2: MÃ GIẢM GIÁ */}
+                  {allVouchers.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="title-4 font-display text-primary uppercase tracking-wider font-bold flex items-center justify-between">
+                        <span>
+                          {t("eligible_vouchers", { count: allVouchers.length }) ||
+                            `Mã giảm giá (${allVouchers.length})`}
+                        </span>
                       </div>
                       <div className="space-y-3">
+                        {eligibleVouchers.map((v) => renderVoucherCard(v, true))}
                         {ineligibleVouchers.map((v) => renderVoucherCard(v, false))}
                       </div>
                     </div>

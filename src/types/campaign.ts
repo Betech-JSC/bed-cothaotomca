@@ -40,6 +40,8 @@ export interface ActivePromotion {
   max_discount?: number | null;
   settings?: CampaignSettings;
   items: PromotionGiftItem[];
+  applicable_product_ids?: number[];
+  applicable_variant_ids?: number[];
   can_combine_with_promotions?: boolean;
   can_combine_with_freeship?: boolean;
 }
@@ -60,6 +62,8 @@ export interface PublicCampaignItem {
   can_combine_with_freeship?: boolean;
   settings?: CampaignSettings;
   items?: PromotionGiftItem[];
+  applicable_product_ids?: number[];
+  applicable_variant_ids?: number[];
   start_at?: string | null;
   end_at?: string | null;
 }

@@ -44,7 +44,7 @@ import WardSelectCombobox from "./WardSelectCombobox";
 import RequiredMark from "./RequiredMark";
 import PreOrderNoticeModal from "./PreOrderNoticeModal";
 import MobileCartFlow from "@/components/Header/MobileCartFlow";
-import CouponModal from "@/components/Voucher/CouponModal";
+import CouponModal, { evaluateCampaignEligibility } from "@/components/Voucher/CouponModal";
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
 import GiftSelectorModal from "./GiftSelectorModal";
 import VoucherTicketBar from "./VoucherTicketBar";
@@ -270,6 +270,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [appliedVoucher, setAppliedVoucher] = useState<{
     id: number;
     code: string;
+    short_name?: string | null;
     value: number;
     discountType?: "fixed" | "percent" | "freeship";
     maxDiscount?: number | null;
@@ -283,6 +284,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [appliedShippingVoucher, setAppliedShippingVoucher] = useState<{
     id: number;
     code: string;
+    short_name?: string | null;
     value: number;
     discountType?: "fixed" | "percent" | "freeship";
     maxDiscount?: number | null;
@@ -442,6 +444,22 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return quantity || 1;
   }, [isCartCheckout, cartItems, quantity]);
 
+  const checkoutCartItems = useMemo(() => {
+    if (isCartCheckout) {
+      return cartItems;
+    }
+    if (order) {
+      return [
+        {
+          id: `${order.productId}-${order.variant || "default"}`,
+          productId: order.productId,
+          quantity,
+        },
+      ];
+    }
+    return [];
+  }, [isCartCheckout, cartItems, order, quantity]);
+
   // Pure Checkbox Selection for campaigns (default empty array [])
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>([]);
 
@@ -453,6 +471,33 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       console.error("Error saving campaign IDs to localStorage in CheckoutForm", e);
     }
   }, []);
+
+  // Auto-prune stale selected campaigns if cart changes and campaign is no longer eligible
+  useEffect(() => {
+    if (selectedCampaignIds.length === 0) return;
+    if (!configState.active_promotions || configState.active_promotions.length === 0) return;
+
+    const validCampaignIds = selectedCampaignIds.filter((id) => {
+      const promo = configState.active_promotions?.find((p) => String(p.id) === String(id));
+      if (!promo) return true;
+      const res = evaluateCampaignEligibility(promo, {
+        subtotal,
+        originalSubtotal,
+        cartItems: checkoutCartItems,
+        isBrowseMode: false,
+      });
+      return res.eligible;
+    });
+
+    if (validCampaignIds.length !== selectedCampaignIds.length) {
+      setSelectedCampaignIds(validCampaignIds);
+      try {
+        localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify(validCampaignIds));
+      } catch (e) {
+        console.error("Error auto-pruning campaign IDs from localStorage in CheckoutForm", e);
+      }
+    }
+  }, [selectedCampaignIds, configState.active_promotions, subtotal, originalSubtotal, checkoutCartItems]);
 
   // Campaign G1 trong giỏ hàng (nhận diện theo configState.active_promotions và mức giá đơn hàng)
   const cartCampaignG1 = useMemo(() => {
@@ -614,11 +659,16 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     if (selectedCampaignIds.length === 0) return [];
     return configState.active_promotions.filter((p) => {
       if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
-      const buyQty = Number(p.settings?.buy_quantity || 2);
-      if (totalCartQuantity < buyQty) return false;
-      return selectedCampaignIds.some((id) => String(id) === String(p.id));
+      if (!selectedCampaignIds.some((id) => String(id) === String(p.id))) return false;
+      const res = evaluateCampaignEligibility(p, {
+        subtotal,
+        originalSubtotal,
+        cartItems: checkoutCartItems,
+        isBrowseMode: false,
+      });
+      return res.eligible;
     });
-  }, [configState.active_promotions, totalCartQuantity, isBestDealVoucherApplied, selectedCampaignIds]);
+  }, [configState.active_promotions, checkoutCartItems, subtotal, originalSubtotal, isBestDealVoucherApplied, selectedCampaignIds]);
 
 
   const [selectedBuyXGetYMap, setSelectedBuyXGetYMap] = useState<Record<number, number>>({});
@@ -1229,6 +1279,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           const voucherCandidate = {
             id: res.voucher.id,
             code: res.voucher.code,
+            short_name: res.voucher.short_name,
             value: res.voucher.value,
             discountType: res.voucher.discount_type,
             maxDiscount: res.voucher.max_discount,
@@ -1263,6 +1314,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           const candidateData = {
             id: res.voucher.id,
             code: res.voucher.code,
+            short_name: res.voucher.short_name,
             value: res.voucher.value,
             discountType: res.voucher.discount_type,
             maxDiscount: res.voucher.max_discount,
@@ -1308,6 +1360,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           const voucherCandidate = {
             id: res.voucher.id,
             code: res.voucher.code,
+            short_name: res.voucher.short_name,
             value: res.voucher.value,
             discountType: res.voucher.discount_type,
             maxDiscount: res.voucher.max_discount,
@@ -1323,6 +1376,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           const candidateData = {
             id: res.voucher.id,
             code: res.voucher.code,
+            short_name: res.voucher.short_name,
             value: res.voucher.value,
             discountType: res.voucher.discount_type,
             maxDiscount: res.voucher.max_discount,
@@ -1446,6 +1500,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           const candidate = {
             id: res.voucher.id,
             code: res.voucher.code,
+            short_name: res.voucher.short_name,
             value: res.voucher.value,
             discountType: res.voucher.discount_type,
             maxDiscount: res.voucher.max_discount,
@@ -1458,6 +1513,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               {
                 id: res.voucher.id,
                 code: res.voucher.code,
+                short_name: res.voucher.short_name,
                 value: res.voucher.value,
                 discountType: res.voucher.discount_type,
                 maxDiscount: res.voucher.max_discount,
@@ -2815,6 +2871,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 freeshipReason={freeshipReason}
                 vouchers={availableVouchers}
                 appliedVoucher={appliedVoucher as any}
+                appliedShippingVoucher={appliedShippingVoucher as any}
                 appliedCampaign={cartCampaignG1}
                 onOpenVouchers={() => setIsVoucherModalOpen(true)}
               />
@@ -3058,12 +3115,24 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         subtotal={subtotal}
         originalSubtotal={originalSubtotal}
         shippingFee={shipping}
+        shippingFeeDiscount={shippingDiscount}
         isFreeship={isFreeship}
         isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
+        isAutoShippingDiscountActive={
+          deliveryType === "delivery" &&
+          Boolean(
+            (shippingDiscount > 0 && shippingFee < originalFee && !appliedShippingVoucher) ||
+            (shippingSettings?.is_min_amount_enabled &&
+              Number(shippingSettings.min_order_amount) > 0 &&
+              subtotal >= Number(shippingSettings.min_order_amount) &&
+              !(isFreeship && shippingFee === 0))
+          )
+        }
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
         appliedVoucherCode={appliedVoucher?.code || appliedShippingVoucher?.code || ""}
         appliedVoucherCodes={modalAppliedVoucherCodes}
         appliedCampaignIds={selectedCampaignIds}
+        cartItems={checkoutCartItems}
         onApplyCampaigns={handleApplyCampaigns}
         onApplyVouchers={handleApplyVouchers}
         onApplyVoucher={handleApplyVoucherFromModal}

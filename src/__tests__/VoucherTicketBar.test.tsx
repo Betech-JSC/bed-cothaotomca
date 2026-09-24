@@ -42,7 +42,7 @@ vi.mock('next-intl', () => ({
 }));
 
 describe('VoucherTicketBar Component Tests', () => {
-  it('1. Trạng thái chưa chọn mã -> Tiêu đề ngoài khung, khung capsule rounded-full, placeholder "Chưa áp dụng mã ưu đãi", nút "Chọn mã"', () => {
+  it('1. Trạng thái chưa chọn mã -> Tiêu đề ngoài khung, khung capsule rounded-full, placeholder "Chọn hoặc nhập mã ưu đãi", nút "Chọn mã"', () => {
     const handleClick = vi.fn();
     const handleRemove = vi.fn();
 
@@ -62,19 +62,23 @@ describe('VoucherTicketBar Component Tests', () => {
     expect(titleLabel.className).toContain('font-bold');
     expect(titleLabel.className).toContain('font-display');
 
-    // 2. Khung capsule có class rounded-full border border-gray-300 p-1.5
+    // 2. Khung capsule có class rounded-full border border-gray-300 py-2.5 px-3.5 min-h-[46px]
     const capsule = container.querySelector('.rounded-full.border.border-gray-300');
     expect(capsule).toBeInTheDocument();
     expect(capsule?.className).toContain('rounded-full');
     expect(capsule?.className).toContain('border-gray-300');
-    expect(capsule?.className).toContain('p-1.5');
+    expect(capsule?.className).toContain('py-2.5');
+    expect(capsule?.className).toContain('px-3.5');
+    expect(capsule?.className).toContain('min-h-[46px]');
 
     // 3. Văn bản placeholder khi chưa có mã
-    expect(screen.getByText('Chưa áp dụng mã ưu đãi')).toBeInTheDocument();
+    expect(screen.getByText('Chọn hoặc nhập mã ưu đãi')).toBeInTheDocument();
 
-    // 4. Nút "Chọn mã" hiển thị, nút "Xóa" KHÔNG hiển thị
+    // 4. Nút "Chọn mã" hiển thị với px-4 py-1.5, nút "Xóa" KHÔNG hiển thị
     const selectBtn = screen.getByRole('button', { name: 'Chọn mã' });
     expect(selectBtn).toBeInTheDocument();
+    expect(selectBtn.className).toContain('px-4');
+    expect(selectBtn.className).toContain('py-1.5');
     expect(screen.queryByRole('button', { name: 'Xóa' })).not.toBeInTheDocument();
 
     // 5. Click nút "Chọn mã" kích hoạt callback onClick
@@ -118,7 +122,7 @@ describe('VoucherTicketBar Component Tests', () => {
     expect(foodBadge.className).toContain('rounded-full');
 
     // Không còn placeholder
-    expect(screen.queryByText('Chưa áp dụng mã ưu đãi')).not.toBeInTheDocument();
+    expect(screen.queryByText('Chọn hoặc nhập mã ưu đãi')).not.toBeInTheDocument();
 
     // Cả 2 nút "Chọn mã" và "Xóa" đều hiển thị
     const selectBtn = screen.getByRole('button', { name: 'Chọn mã' });
@@ -277,5 +281,95 @@ describe('VoucherTicketBar Component Tests', () => {
 
     // Fallback code
     expect(formatVoucherBadgeText({ code: 'SAVE10' })).toBe('-SAVE10');
+  });
+
+  it('7. Voucher vận chuyển có short_name -> Pill chip ưu tiên hiển thị nội dung short_name', () => {
+    const appliedShip = {
+      id: 30,
+      code: 'TEST_SHIP_30K',
+      short_name: 'Giảm 30K Ship',
+      value: 30000,
+      discountType: 'fixed',
+      isFreeship: true,
+    };
+
+    render(
+      <VoucherTicketBar
+        appliedVoucher={null}
+        appliedShippingVoucher={appliedShip}
+        onClick={vi.fn()}
+      />
+    );
+
+    const shipBadge = screen.getByTestId('freeship-ticket-badge');
+    expect(shipBadge).toBeInTheDocument();
+    expect(shipBadge).toHaveTextContent('Giảm 30K Ship');
+  });
+
+  it('8. Voucher vận chuyển giảm tiền cố định KHÔNG có short_name -> Pill chip hiển thị formatVoucherBadgeText + Ship (-30.000đ Ship), TUYỆT ĐỐI KHÔNG hiển thị "Miễn Phí Vận Chuyển"', () => {
+    const appliedShip = {
+      id: 31,
+      code: 'TEST_SHIP_30K',
+      value: 30000,
+      discountType: 'fixed',
+      isFreeship: true,
+    };
+
+    render(
+      <VoucherTicketBar
+        appliedVoucher={null}
+        appliedShippingVoucher={appliedShip}
+        onClick={vi.fn()}
+      />
+    );
+
+    const shipBadge = screen.getByTestId('freeship-ticket-badge');
+    expect(shipBadge).toBeInTheDocument();
+    expect(shipBadge).toHaveTextContent('-30.000đ Ship');
+    expect(shipBadge).not.toHaveTextContent('Miễn Phí Vận Chuyển');
+  });
+
+  it('9. Voucher vận chuyển Freeship 100% KHÔNG có short_name -> Pill chip hiển thị "Miễn Phí Vận Chuyển"', () => {
+    const appliedShip = {
+      id: 32,
+      code: 'FREESHIP100',
+      discountType: 'freeship',
+      isFreeship: true,
+    };
+
+    render(
+      <VoucherTicketBar
+        appliedVoucher={null}
+        appliedShippingVoucher={appliedShip}
+        onClick={vi.fn()}
+      />
+    );
+
+    const shipBadge = screen.getByTestId('freeship-ticket-badge');
+    expect(shipBadge).toBeInTheDocument();
+    expect(shipBadge).toHaveTextContent('Miễn Phí Vận Chuyển');
+  });
+
+  it('10. Voucher món ăn có short_name -> Pill chip ưu tiên hiển thị nội dung short_name', () => {
+    const appliedFood = {
+      id: 33,
+      code: 'FOOD50K',
+      short_name: 'Giảm 50K Món',
+      value: 50000,
+      discountType: 'fixed',
+      isFreeship: false,
+    };
+
+    render(
+      <VoucherTicketBar
+        appliedVoucher={appliedFood}
+        appliedShippingVoucher={null}
+        onClick={vi.fn()}
+      />
+    );
+
+    const foodBadge = screen.getByTestId('food-ticket-badge');
+    expect(foodBadge).toBeInTheDocument();
+    expect(foodBadge).toHaveTextContent('Giảm 50K Món');
   });
 });

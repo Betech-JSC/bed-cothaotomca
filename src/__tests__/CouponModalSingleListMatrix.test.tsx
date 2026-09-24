@@ -519,9 +519,10 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(await screen.findByText('Giảm 10% toàn menu')).toBeInTheDocument();
     expect(screen.getByText('VOUCHER10K')).toBeInTheDocument();
 
-    // Headers các phần hiển thị rõ
+    // Headers các phần hiển thị rõ: 2 tầng chuẩn không còn chữ "khả dụng"
     expect(screen.getByText(/Chương trình ưu đãi/i)).toBeInTheDocument();
-    expect(screen.getByText(/Mã giảm giá khả dụng/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mã giảm giá/i)).toBeInTheDocument();
+    expect(screen.queryByText(/khả dụng/i)).toBeNull();
   });
 
   it('Matrix 12: Nhập mã hợp lệ - tự động thêm thẻ ưu đãi mới vào danh sách và tự động tích chọn', async () => {
@@ -670,7 +671,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i })).toBeInTheDocument();
   });
 
-  it('Matrix 16: Campaign phân tầng - Tier 1 (Khả dụng) và Tier 2 (Chưa đủ điều kiện với thông báo thiếu tiền)', async () => {
+  it('Matrix 16: Tầng 1 (Chương trình ưu đãi) gom đầy đủ các chiến dịch đủ và chưa đủ điều kiện, hiển thị thông báo thiếu tiền', async () => {
     mockCampaignsList = [
       {
         id: 101,
@@ -703,9 +704,10 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(await screen.findByText('Ưu đãi hè 10%')).toBeInTheDocument();
     expect(screen.getByText('Tặng trà đào đơn từ 300k')).toBeInTheDocument();
 
-    // Check tier headers
-    expect(screen.getByText(/Chương trình ưu đãi khả dụng/i)).toBeInTheDocument();
-    expect(screen.getByText(/Chương trình chưa đủ điều kiện/i)).toBeInTheDocument();
+    // Check tier headers: Tầng 1 gom chung cả 2 campaign, không còn header riêng "Chương trình chưa đủ điều kiện" hay chữ "khả dụng"
+    expect(screen.getByText(/Chương trình ưu đãi \(2\)/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Chương trình chưa đủ điều kiện/i)).toBeNull();
+    expect(screen.queryByText(/khả dụng/i)).toBeNull();
 
     // Campaign 102 (Tier 2) hiển thị câu thông báo thiếu tiền: 300k - 200k = 100k
     expect(
@@ -1285,5 +1287,144 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     const closeBtn = screen.getByLabelText(/đóng|close/i);
     await fireEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('Matrix 27: Đơn hàng đạt Freeship 100% tự động -> Voucher freeship bị disabled kèm lý do "Đơn hàng đã được Freeship tự động"', async () => {
+    const freeshipVoucher: PublicVoucherItem = {
+      id: 901,
+      code: 'FREESHIP100',
+      discount_type: 'freeship',
+      value: 0,
+      is_freeship: true,
+      description: 'Miễn phí vận chuyển cho đơn hàng',
+    };
+    mockVouchersList = [freeshipVoucher];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={300000}
+        isAutoFreeship={true}
+        onApplyVoucher={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText('FREESHIP100')).toBeInTheDocument();
+    expect(screen.getByText('Đơn hàng đã được Freeship tự động')).toBeInTheDocument();
+    const card = screen.getByText('FREESHIP100').closest('div[class*="rounded-2xl"]')!;
+    expect(card.className).toContain('opacity-50');
+  });
+
+  it('Matrix 28: Hệ thống đang áp dụng giảm một phần phí ship tự động -> Voucher freeship bị disabled kèm lý do "Đang áp dụng chương trình giảm phí vận chuyển của hệ thống"', async () => {
+    const freeshipVoucher: PublicVoucherItem = {
+      id: 902,
+      code: 'FREESHIP_EXTRA',
+      discount_type: 'freeship',
+      value: 0,
+      is_freeship: true,
+      description: 'Freeship đơn hàng',
+    };
+    mockVouchersList = [freeshipVoucher];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={250000}
+        shippingFee={15000}
+        shippingFeeDiscount={20000}
+        isAutoShippingDiscountActive={true}
+        onApplyVoucher={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText('FREESHIP_EXTRA')).toBeInTheDocument();
+    expect(screen.getByText('Đang áp dụng chương trình giảm phí vận chuyển của hệ thống')).toBeInTheDocument();
+    const card = screen.getByText('FREESHIP_EXTRA').closest('div[class*="rounded-2xl"]')!;
+    expect(card.className).toContain('opacity-50');
+  });
+
+  it('Matrix 29: Thẻ voucher ưu tiên hiển thị short_name trên cột nhãn bên trái', async () => {
+    const voucherWithShortName: PublicVoucherItem = {
+      id: 903,
+      code: 'TEST_SHIP_30K',
+      short_name: 'Giảm 30K Ship',
+      discount_type: 'fixed',
+      value: 30000,
+      is_freeship: true,
+      description: 'Giảm 30k phí ship',
+    };
+    mockVouchersList = [voucherWithShortName];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={150000}
+        onApplyVoucher={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText('TEST_SHIP_30K')).toBeInTheDocument();
+    // Cột badge bên trái hiển thị nội dung short_name
+    expect(screen.getByText('Giảm 30K Ship')).toBeInTheDocument();
+  });
+
+  it('Matrix 30: Voucher ship không có short_name: 100% Freeship hiển thị FREESHIP, giảm ship cố định hiển thị -30.000đ và không bị gán FREESHIP', async () => {
+    const fullFreeship: PublicVoucherItem = {
+      id: 904,
+      code: 'FREESHIP100PCT',
+      discount_type: 'freeship',
+      value: 0,
+      is_freeship: true,
+    };
+    const fixedShip: PublicVoucherItem = {
+      id: 905,
+      code: 'FIXED_SHIP_30K',
+      discount_type: 'fixed',
+      value: 30000,
+      is_freeship: true,
+    };
+    mockVouchersList = [fullFreeship, fixedShip];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={150000}
+        onApplyVoucher={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText('FREESHIP100PCT')).toBeInTheDocument();
+    expect(screen.getByText('FIXED_SHIP_30K')).toBeInTheDocument();
+
+    // fullFreeship hiển thị FREESHIP
+    expect(screen.getByText('FREESHIP')).toBeInTheDocument();
+
+    // fixedShip hiển thị -30.000 VNĐ (từ formatPrice), tuyệt đối không gán nhãn FREESHIP
+    expect(screen.getByText(`-${formatPrice(30000)}`)).toBeInTheDocument();
+  });
+
+  it('Matrix 31: Nhập tay mã Freeship khi hệ thống đang giảm ship tự động -> Trả về feedback notice thân thiện', async () => {
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={250000}
+        shippingFeeDiscount={20000}
+        isAutoShippingDiscountActive={true}
+        onApplyVoucher={vi.fn()}
+      />
+    );
+
+    const input = screen.getByPlaceholderText(/Nhập mã voucher/i);
+    const applyBtn = screen.getByRole('button', { name: /Áp dụng/i });
+
+    fireEvent.change(input, { target: { value: 'FREESHIP50' } });
+    fireEvent.click(applyBtn);
+
+    expect(await screen.findByText('Đang áp dụng chương trình giảm phí vận chuyển của hệ thống')).toBeInTheDocument();
   });
 });

@@ -216,6 +216,7 @@ describe('Campaign & Gift Promotions Flow (Frontend Tasks 2 & 3)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     resetCouponModalCache();
     mockCartItems = [
       {

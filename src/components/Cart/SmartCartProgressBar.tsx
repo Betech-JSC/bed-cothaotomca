@@ -23,6 +23,13 @@ export interface SmartCartProgressBarProps {
     can_combine_with_freeship?: boolean;
     canCombineWithPromotions?: boolean;
     can_combine_with_promotions?: boolean;
+    isFreeship?: boolean;
+    discountType?: string;
+  }) | null;
+  appliedShippingVoucher?: (PublicVoucherItem & {
+    isFreeship?: boolean;
+    discountType?: string;
+    [key: string]: any;
   }) | null;
   appliedCampaign?: {
     name?: string;
@@ -39,6 +46,7 @@ export default function SmartCartProgressBar({
   freeshipReason,
   vouchers = [],
   appliedVoucher = null,
+  appliedShippingVoucher = null,
   appliedCampaign = null,
   onOpenVouchers,
   className = "",
@@ -157,7 +165,6 @@ export default function SmartCartProgressBar({
 
   const isG2BlockingFreeship = Boolean(
     appliedVoucher &&
-    !appliedVoucher.is_freeship &&
     (appliedVoucher.canCombineWithFreeship === false || appliedVoucher.can_combine_with_freeship === false)
   );
 
@@ -175,6 +182,21 @@ export default function SmartCartProgressBar({
         {message}
       </div>
     );
+  }
+
+  // Khi có mã voucher vận chuyển đang áp dụng, lập tức ẩn hoàn toàn thanh tiến độ
+  const hasAppliedShippingVoucher = Boolean(
+    appliedShippingVoucher ||
+    (appliedVoucher && (
+      appliedVoucher.isFreeship ||
+      appliedVoucher.discountType === "freeship" ||
+      appliedVoucher.discount_type === "freeship" ||
+      appliedVoucher.is_freeship
+    ))
+  );
+
+  if (hasAppliedShippingVoucher) {
+    return null;
   }
 
   if (!milestone) {

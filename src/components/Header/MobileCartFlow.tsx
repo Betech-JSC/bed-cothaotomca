@@ -36,7 +36,7 @@ import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getV
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 import Chevron from "@/components/Icons/Chevron";
-import CouponModal from "@/components/Voucher/CouponModal";
+import CouponModal, { evaluateCampaignEligibility } from "@/components/Voucher/CouponModal";
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
 import GiftSelectorModal from "@/components/Checkout/GiftSelectorModal";
 import VoucherTicketBar from "@/components/Checkout/VoucherTicketBar";
@@ -138,6 +138,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [appliedVoucher, setAppliedVoucher] = useState<{
     id: number;
     code: string;
+    short_name?: string | null;
     value: number;
     discountType?: "fixed" | "percent" | "freeship";
     maxDiscount?: number | null;
@@ -151,6 +152,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [appliedShippingVoucher, setAppliedShippingVoucher] = useState<{
     id: number;
     code: string;
+    short_name?: string | null;
     value: number;
     discountType?: "fixed" | "percent" | "freeship";
     maxDiscount?: number | null;
@@ -626,6 +628,33 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     }
   }, [appliedVoucher, originalSubtotal, saleSubtotal, totalItemDiscount, shipping]);
 
+  // Auto-prune stale selected campaigns if cart changes and campaign is no longer eligible
+  useEffect(() => {
+    if (selectedCampaignIds.length === 0) return;
+    if (!config?.active_promotions || config.active_promotions.length === 0) return;
+
+    const validCampaignIds = selectedCampaignIds.filter((id) => {
+      const promo = config.active_promotions?.find((p) => String(p.id) === String(id));
+      if (!promo) return true;
+      const res = evaluateCampaignEligibility(promo, {
+        subtotal,
+        originalSubtotal,
+        cartItems,
+        isBrowseMode: false,
+      });
+      return res.eligible;
+    });
+
+    if (validCampaignIds.length !== selectedCampaignIds.length) {
+      setSelectedCampaignIds(validCampaignIds);
+      try {
+        localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify(validCampaignIds));
+      } catch (e) {
+        console.error("Error auto-pruning campaign IDs from localStorage in MobileCartFlow", e);
+      }
+    }
+  }, [selectedCampaignIds, config?.active_promotions, subtotal, originalSubtotal, cartItems]);
+
   const foodVoucherDiscount = useMemo(() => {
     if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") return 0;
     return calculateVoucherDiscount(appliedVoucher, subtotal, shipping);
@@ -727,11 +756,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     if (selectedCampaignIds.length === 0) return [];
     return config.active_promotions.filter((p) => {
       if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
-      const buyQty = Number(p.settings?.buy_quantity || 2);
-      if (totalCartQuantity < buyQty) return false;
-      return selectedCampaignIds.some((id) => String(id) === String(p.id));
+      if (!selectedCampaignIds.some((id) => String(id) === String(p.id))) return false;
+      const res = evaluateCampaignEligibility(p, {
+        subtotal,
+        originalSubtotal,
+        cartItems,
+        isBrowseMode: false,
+      });
+      return res.eligible;
     });
-  }, [config?.active_promotions, totalCartQuantity, isBestDealVoucherApplied, selectedCampaignIds]);
+  }, [config?.active_promotions, cartItems, subtotal, originalSubtotal, isBestDealVoucherApplied, selectedCampaignIds]);
 
 
   const [selectedBuyXGetYMap, setSelectedBuyXGetYMap] = useState<Record<number, number>>({});
@@ -1013,6 +1047,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           const voucherCandidate = {
             id: result.voucher.id,
             code: result.voucher.code,
+            short_name: result.voucher.short_name,
             value: result.voucher.value,
             discountType: result.voucher.discount_type,
             maxDiscount: result.voucher.max_discount,
@@ -1047,6 +1082,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           const candidateData = {
             id: result.voucher.id,
             code: result.voucher.code,
+            short_name: result.voucher.short_name,
             value: result.voucher.value,
             discountType: result.voucher.discount_type,
             maxDiscount: result.voucher.max_discount,
@@ -1092,6 +1128,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           const voucherCandidate = {
             id: result.voucher.id,
             code: result.voucher.code,
+            short_name: result.voucher.short_name,
             value: result.voucher.value,
             discountType: result.voucher.discount_type,
             maxDiscount: result.voucher.max_discount,
@@ -1107,6 +1144,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           const candidateData = {
             id: result.voucher.id,
             code: result.voucher.code,
+            short_name: result.voucher.short_name,
             value: result.voucher.value,
             discountType: result.voucher.discount_type,
             maxDiscount: result.voucher.max_discount,
@@ -1233,6 +1271,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           const candidate = {
             id: res.voucher.id,
             code: res.voucher.code,
+            short_name: res.voucher.short_name,
             value: res.voucher.value,
             discountType: res.voucher.discount_type,
             maxDiscount: res.voucher.max_discount,
@@ -1245,6 +1284,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               {
                 id: res.voucher.id,
                 code: res.voucher.code,
+                short_name: res.voucher.short_name,
                 value: res.voucher.value,
                 discountType: res.voucher.discount_type,
                 maxDiscount: res.voucher.max_discount,
@@ -1753,6 +1793,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     freeshipReason={freeshipReason}
                     vouchers={availableVouchers}
                     appliedVoucher={appliedVoucher as any}
+                    appliedShippingVoucher={appliedShippingVoucher as any}
                     onOpenVouchers={() => setIsVoucherModalOpen(true)}
                   />
                 )}
@@ -2610,12 +2651,24 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         subtotal={subtotal}
         originalSubtotal={originalSubtotal}
         shippingFee={shipping}
+        shippingFeeDiscount={shippingDiscount}
         isFreeship={isFreeship}
         isAutoFreeship={deliveryType === "delivery" && isFreeship && shippingFee === 0}
+        isAutoShippingDiscountActive={
+          deliveryType === "delivery" &&
+          Boolean(
+            (shippingDiscount > 0 && shipping < originalFee && !appliedShippingVoucher) ||
+            (shippingSettings?.is_min_amount_enabled &&
+              Number(shippingSettings.min_order_amount) > 0 &&
+              subtotal >= Number(shippingSettings.min_order_amount) &&
+              !(isFreeship && shippingFee === 0))
+          )
+        }
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
         appliedVoucherCode={appliedVoucher?.code || appliedShippingVoucher?.code || ""}
         appliedVoucherCodes={[appliedVoucher?.code, appliedShippingVoucher?.code].filter(Boolean) as string[]}
         appliedCampaignIds={selectedCampaignIds}
+        cartItems={cartItems}
         onApplyCampaigns={handleApplyCampaigns}
         onApplyVouchers={handleApplyVouchersFromModal}
         onApplyVoucher={handleApplyVoucherFromModal}

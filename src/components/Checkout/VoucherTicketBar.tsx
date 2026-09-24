@@ -7,6 +7,7 @@ export interface VoucherTicketBarProps {
   appliedVoucher?: {
     id?: number;
     code: string;
+    short_name?: string | null;
     value?: number;
     discountType?: string;
     maxDiscount?: number | null;
@@ -16,6 +17,7 @@ export interface VoucherTicketBarProps {
   appliedShippingVoucher?: {
     id?: number;
     code: string;
+    short_name?: string | null;
     value?: number;
     discountType?: string;
     maxDiscount?: number | null;
@@ -110,7 +112,7 @@ export default function VoucherTicketBar({
   const t = useTranslations("voucher");
 
   const title = t("voucher_ticket_title") || "Mã giảm giá (Voucher)";
-  const placeholder = t("no_voucher_applied") || "Chưa áp dụng mã ưu đãi";
+  const placeholder = t("no_voucher_applied") || "Chọn hoặc nhập mã ưu đãi";
   const freeshipBadgeText = t("freeship_badge_text") || "Miễn Phí Vận Chuyển";
 
   // Determine food and shipping badges
@@ -126,9 +128,14 @@ export default function VoucherTicketBar({
   const appliedCount = (foodVoucher ? 1 : 0) + (shipVoucher ? 1 : 0) + (activeCampaignName ? 1 : 0);
 
   const shipBadgeText = shipVoucher
-    ? shipVoucher.isFreeship || shipVoucher.discountType === "freeship"
-      ? freeshipBadgeText
-      : formatVoucherBadgeText(shipVoucher) || freeshipBadgeText
+    ? shipVoucher.short_name && shipVoucher.short_name.trim()
+      ? shipVoucher.short_name.trim()
+      : shipVoucher.discountType === "freeship" ||
+        (shipVoucher.isFreeship && (!shipVoucher.value || shipVoucher.value === 0))
+        ? freeshipBadgeText
+        : shipVoucher.value && shipVoucher.value > 0
+          ? `${formatVoucherBadgeText(shipVoucher)} Ship`
+          : freeshipBadgeText
     : "";
 
   return (
@@ -139,7 +146,7 @@ export default function VoucherTicketBar({
       </label>
 
       {/* 2. Khung chứa dạng Capsule viên thuốc */}
-      <div className="rounded-full border border-gray-300 p-1.5 bg-white flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap shadow-xs">
+      <div className="rounded-full border border-gray-300 py-2.5 px-3.5 min-h-[46px] bg-white flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap shadow-xs">
         {/* Bên trái (Chips hoặc Placeholder) */}
         <div
           onClick={onClick}
@@ -148,7 +155,7 @@ export default function VoucherTicketBar({
           {hasAnyVoucher ? (
             <>
               {foodVoucher && (
-                <FoodTicketBadge text={formatVoucherBadgeText(foodVoucher)} />
+                <FoodTicketBadge text={foodVoucher.short_name || formatVoucherBadgeText(foodVoucher)} />
               )}
               {shipVoucher && (
                 <FreeshipTicketBadge text={shipBadgeText} />
@@ -169,7 +176,7 @@ export default function VoucherTicketBar({
           <button
             type="button"
             onClick={onClick}
-            className="rounded-full px-3.5 py-1 text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer select-none transition-all"
+            className="rounded-full px-4 py-1.5 text-xs sm:text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer select-none transition-all"
             aria-label={t("btn_select_voucher") || "Chọn mã"}
           >
             {t("btn_select_voucher") || "Chọn mã"}

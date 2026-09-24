@@ -330,9 +330,10 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         />
       );
 
-      // Verify Tầng 1 & Tầng 2 Headers
-      expect(await screen.findByText(/Mã giảm giá khả dụng \(2\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Mã chưa đủ điều kiện \(1\)/i)).toBeInTheDocument();
+      // Verify Header Tầng 2 (Mã giảm giá): gom toàn bộ 3 voucher (2 đủ điều kiện + 1 chưa đủ điều kiện)
+      expect(await screen.findByText(/Mã giảm giá \(3\)/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Mã chưa đủ điều kiện/i)).toBeNull();
+      expect(screen.queryByText(/khả dụng/i)).toBeNull();
 
       // VOUCHER_NO_COMBO is in Tầng 1 (Khả dụng) because originalSubtotal (320k) >= prereq (300k)
       expect(screen.getByText('VOUCHER_NO_COMBO')).toBeInTheDocument();
@@ -859,6 +860,44 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         />
       );
       expect(screen.getByText(/CTKM Đại tiệc không áp dụng cùng/i)).toBeInTheDocument();
+    });
+
+    it('Task 2: SmartCartProgressBar tự động ẩn khi có appliedShippingVoucher và hiển thị lại khi gỡ mã', () => {
+      const { rerender, container } = render(
+        <SmartCartProgressBar
+          subtotal={200000}
+          shippingSettings={{ is_min_amount_enabled: true, min_order_amount: 300000 }}
+          appliedShippingVoucher={null}
+        />
+      );
+      expect(screen.getByText(/Mua thêm/i)).toBeInTheDocument();
+
+      // Khi áp dụng mã freeship -> ẩn hoàn toàn (DOM rỗng / return null)
+      rerender(
+        <SmartCartProgressBar
+          subtotal={200000}
+          shippingSettings={{ is_min_amount_enabled: true, min_order_amount: 300000 }}
+          appliedShippingVoucher={{
+            id: 99,
+            code: 'FREESHIPMAX',
+            is_freeship: true,
+            discount_type: 'freeship',
+            value: 0,
+          }}
+        />
+      );
+      expect(container.firstChild).toBeNull();
+      expect(screen.queryByText(/Mua thêm/i)).not.toBeInTheDocument();
+
+      // Khi gỡ mã ship -> tự động hiển thị trở lại
+      rerender(
+        <SmartCartProgressBar
+          subtotal={200000}
+          shippingSettings={{ is_min_amount_enabled: true, min_order_amount: 300000 }}
+          appliedShippingVoucher={null}
+        />
+      );
+      expect(screen.getByText(/Mua thêm/i)).toBeInTheDocument();
     });
   });
 });

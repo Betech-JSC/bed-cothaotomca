@@ -287,6 +287,7 @@ export function calcOrderTotal(
 export interface AppliedVoucherState {
   id: number;
   code: string;
+  short_name?: string | null;
   value: number;
   discountType?: "fixed" | "percent" | "freeship";
   maxDiscount?: number | null;
@@ -359,6 +360,7 @@ export interface ValidateVoucherResult {
   voucher?: {
     id: number;
     code: string;
+    short_name?: string | null;
     value: number;
     discount_type?: "fixed" | "percent" | "freeship";
     max_discount?: number | null;
@@ -378,6 +380,7 @@ export interface ValidateVoucherResult {
 export interface PublicVoucherItem {
   id: number;
   code: string;
+  short_name?: string | null;
   discount_type: "fixed" | "percent" | "freeship";
   value: number;
   max_discount?: number | null;
