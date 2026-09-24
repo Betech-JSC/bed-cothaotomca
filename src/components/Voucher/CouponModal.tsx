@@ -197,16 +197,40 @@ export function evaluateCampaignEligibility(
     };
   }
 
-  // 2. Kiểm tra phạm vi sản phẩm của campaign
+  // 2. Xử lý các loại campaign:
+  // a) Nếu c.promotion_type === 'order_gift_discount':
+  // Món quà tặng chưa có trong giỏ hàng, chỉ cần đủ min_order_value ở Bước 1 là hợp lệ.
+  if (c.promotion_type === "order_gift_discount") {
+    return { eligible: true };
+  }
+
+  // b) Nếu c.promotion_type === 'buy_x_get_y':
+  // Món ưu đãi kèm Y chưa có trong giỏ hàng, chỉ cần tổng số lượng sản phẩm trong giỏ hàng đạt buy_quantity (c.settings?.buy_quantity || 2).
+  if (c.promotion_type === "buy_x_get_y") {
+    const buyQty = Number(c.settings?.buy_quantity || 2);
+    const totalCartQty = (cartItems || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
+    if (totalCartQty < buyQty) {
+      const missing = buyQty - totalCartQty;
+      return {
+        eligible: false,
+        reason: t
+          ? (t("buy_more_to_activate_buy_x_get_y", { count: missing }) || `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`)
+          : `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`,
+      };
+    }
+    return { eligible: true };
+  }
+
+  // c) Các campaign khác (same_price_discount, item discount...):
   const targetProductIds: number[] = Array.isArray(c.applicable_product_ids)
     ? c.applicable_product_ids.map(Number)
-    : (c.items && c.promotion_type !== "order_gift_discount"
+    : (c.items
         ? c.items.filter((i) => !i.is_free).map((i) => Number(i.product_id)).filter(Boolean)
         : []);
 
   const targetVariantIds: number[] = Array.isArray(c.applicable_variant_ids)
     ? c.applicable_variant_ids.map(Number)
-    : (c.items && c.promotion_type !== "order_gift_discount"
+    : (c.items
         ? c.items.filter((i) => !i.is_free).map((i) => Number(i.product_variant_id)).filter(Boolean)
         : []);
 
@@ -236,21 +260,6 @@ export function evaluateCampaignEligibility(
       eligible: false,
       reason: t ? (t("no_matching_products_in_cart") || "Chưa có sản phẩm áp dụng trong giỏ hàng") : "Chưa có sản phẩm áp dụng trong giỏ hàng",
     };
-  }
-
-  // 3. Nếu c.promotion_type === "buy_x_get_y"
-  if (c.promotion_type === "buy_x_get_y") {
-    const buyQty = Number(c.settings?.buy_quantity || 2);
-    const matchingQty = matchingItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
-    if (matchingQty < buyQty) {
-      const missing = buyQty - matchingQty;
-      return {
-        eligible: false,
-        reason: t
-          ? (t("buy_more_to_activate_buy_x_get_y", { count: missing }) || `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`)
-          : `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`,
-      };
-    }
   }
 
   return { eligible: true };

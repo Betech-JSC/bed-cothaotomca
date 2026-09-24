@@ -162,6 +162,40 @@ describe("Campaign Product Eligibility Unit & Component Tests (OpenSpec campaign
     ],
   };
 
+  const orderGiftCampaign: PublicCampaignItem = {
+    id: 6,
+    name: "Tặng Trà Tắc cho đơn từ 100k",
+    promotion_type: "order_gift_discount",
+    discount_type: "percent",
+    discount_value: 100,
+    min_order_value: 100000,
+    applicable_product_ids: [],
+    applicable_variant_ids: [],
+    items: [
+      {
+        id: 101,
+        product_id: 35,
+        product_code: "TRA_TAC",
+        product_name: "Trà Tắc Khổng Lồ",
+        image: "/tra-tac.png",
+        original_price: 25000,
+        campaign_price: 0,
+        is_free: true,
+      },
+    ],
+  };
+
+  const samePriceCampaign: PublicCampaignItem = {
+    id: 7,
+    name: "Đồng giá 29k Trà Sữa",
+    promotion_type: "same_price_discount",
+    discount_type: "fixed",
+    discount_value: 29000,
+    min_order_value: 0,
+    applicable_product_ids: [15],
+    applicable_variant_ids: [],
+  };
+
   beforeEach(() => {
     resetCouponModalCache();
     if (typeof window !== "undefined" && window.localStorage) {
@@ -328,14 +362,24 @@ describe("Campaign Product Eligibility Unit & Component Tests (OpenSpec campaign
       expect(res.eligible).toBe(true);
     });
 
-    it("5.3.5: buy_x_get_y nhưng giỏ hàng hoàn toàn không có sản phẩm điều kiện -> báo chưa có sản phẩm áp dụng", () => {
+    it("5.3.5: buy_x_get_y: Hợp lệ khi giỏ hàng có từ 2 món thường bất kỳ (chưa có món Y) với buy_quantity = 2", () => {
       const res = evaluateCampaignEligibility(buyXGetYCampaign, {
         subtotal: 100000,
-        cartItems: [{ productId: 999, quantity: 5 }],
+        cartItems: [{ productId: 999, quantity: 2 }],
+        isBrowseMode: false,
+      });
+      expect(res.eligible).toBe(true);
+      expect(res.reason).toBeUndefined();
+    });
+
+    it("5.3.6: buy_x_get_y: Không hợp lệ khi giỏ hàng chỉ có 1 món thường (hiển thị báo mua thêm 1 món)", () => {
+      const res = evaluateCampaignEligibility(buyXGetYCampaign, {
+        subtotal: 50000,
+        cartItems: [{ productId: 999, quantity: 1 }],
         isBrowseMode: false,
       });
       expect(res.eligible).toBe(false);
-      expect(res.reason).toBe("Chưa có sản phẩm áp dụng trong giỏ hàng");
+      expect(res.reason).toBe("Cần mua thêm 1 sản phẩm áp dụng để kích hoạt ưu đãi");
     });
   });
 
@@ -545,6 +589,92 @@ describe("Campaign Product Eligibility Unit & Component Tests (OpenSpec campaign
 
       const enabledCheckbox = screen.getByRole("checkbox", { name: "Giảm 20% cho Cơm Sườn" });
       expect(enabledCheckbox).toHaveAttribute("aria-disabled", "false");
+    });
+
+    it("5.5.4: Campaign order_gift_discount hợp lệ và checkbox khả dụng khi đủ subtotal tối thiểu dù giỏ hàng chỉ có món thường", async () => {
+      (getActiveCampaigns as any).mockResolvedValue([orderGiftCampaign]);
+      render(
+        <CouponModal
+          isOpen={true}
+          onClose={vi.fn()}
+          subtotal={120000}
+          cartItems={[{ productId: 999, quantity: 2 }]}
+          isBrowseOnly={false}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Tặng Trà Tắc cho đơn từ 100k")).toBeInTheDocument();
+      });
+
+      const enabledCheckbox = screen.getByRole("checkbox", { name: "Tặng Trà Tắc cho đơn từ 100k" });
+      expect(enabledCheckbox).toHaveAttribute("aria-disabled", "false");
+    });
+  });
+
+  describe("5.6: Xử lý Campaign Quà Tặng (order_gift_discount & buy_x_get_y) & Kiểm tra Regression same_price_discount", () => {
+    it("5.6.1: order_gift_discount: Hợp lệ khi giỏ hàng chỉ có món thường (chưa có quà) và subtotal >= min_order_value", () => {
+      const res = evaluateCampaignEligibility(orderGiftCampaign, {
+        subtotal: 120000,
+        cartItems: [{ productId: 999, quantity: 2 }],
+        isBrowseMode: false,
+      });
+      expect(res.eligible).toBe(true);
+      expect(res.reason).toBeUndefined();
+    });
+
+    it("5.6.2: order_gift_discount: Không hợp lệ khi subtotal < min_order_value (hiển thị báo mua thêm tiền)", () => {
+      const res = evaluateCampaignEligibility(orderGiftCampaign, {
+        subtotal: 70000,
+        cartItems: [{ productId: 999, quantity: 1 }],
+        isBrowseMode: false,
+      });
+      expect(res.eligible).toBe(false);
+      expect(res.reason).toContain("Chưa đạt giá trị đơn tối thiểu");
+      expect(res.missingAmount).toBe(30000);
+    });
+
+    it("5.6.3: buy_x_get_y: Hợp lệ khi giỏ hàng có từ 2 món thường bất kỳ (chưa có món Y) với buy_quantity = 2", () => {
+      const res = evaluateCampaignEligibility(buyXGetYCampaign, {
+        subtotal: 100000,
+        cartItems: [
+          { productId: 888, quantity: 1 },
+          { productId: 999, quantity: 1 },
+        ],
+        isBrowseMode: false,
+      });
+      expect(res.eligible).toBe(true);
+      expect(res.reason).toBeUndefined();
+    });
+
+    it("5.6.4: buy_x_get_y: Không hợp lệ khi giỏ hàng chỉ có 1 món thường (hiển thị báo mua thêm 1 món)", () => {
+      const res = evaluateCampaignEligibility(buyXGetYCampaign, {
+        subtotal: 40000,
+        cartItems: [{ productId: 888, quantity: 1 }],
+        isBrowseMode: false,
+      });
+      expect(res.eligible).toBe(false);
+      expect(res.reason).toBe("Cần mua thêm 1 sản phẩm áp dụng để kích hoạt ưu đãi");
+    });
+
+    it("5.6.5: same_price_discount: Vẫn bị disabled khi giỏ hàng không có món giảm giá (đảm bảo không bị regression)", () => {
+      const res = evaluateCampaignEligibility(samePriceCampaign, {
+        subtotal: 100000,
+        cartItems: [{ productId: 999, quantity: 3 }],
+        isBrowseMode: false,
+      });
+      expect(res.eligible).toBe(false);
+      expect(res.reason).toBe("Chưa có sản phẩm áp dụng trong giỏ hàng");
+    });
+
+    it("5.6.6: same_price_discount: Hợp lệ khi giỏ hàng có món giảm giá", () => {
+      const res = evaluateCampaignEligibility(samePriceCampaign, {
+        subtotal: 100000,
+        cartItems: [{ productId: 15, quantity: 1 }],
+        isBrowseMode: false,
+      });
+      expect(res.eligible).toBe(true);
+      expect(res.reason).toBeUndefined();
     });
   });
 });
