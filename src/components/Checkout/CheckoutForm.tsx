@@ -32,6 +32,8 @@ import { getGeneralSettings } from "@/services/generalSettingService";
 import {
   getCustomerAddressesApi,
   createCustomerAddressApi,
+  getCachedCustomerAddresses,
+  setCachedCustomerAddresses,
   type CustomerAddress,
 } from "@/services/authService";
 import GuestTierHintBanner from "./GuestTierHintBanner";
@@ -165,47 +167,160 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
+  // Check whether current user is authenticated (via AuthContext user/token or stored auth_token)
+  const isUserLoggedIn = Boolean(
+    user ||
+    token ||
+    (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token")))
+  );
+
   // Customer Address Book states (for logged in customers)
-  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(null);
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>(() => {
+    if (typeof window !== "undefined") {
+      const cached = getCachedCustomerAddresses();
+      if (cached.length > 0) return cached;
+    }
+    return [];
+  });
+
+  const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(() => {
+    if (typeof window !== "undefined") {
+      const cached = getCachedCustomerAddresses();
+      if (cached.length > 0) {
+        const defaultAddr = cached.find((a) => a.is_default) || cached[0];
+        return defaultAddr ? defaultAddr.id : null;
+      }
+    }
+    return null;
+  });
+
   const [saveToAddressBook, setSaveToAddressBook] = useState(false);
+  const [isLoadingCustomerAddresses, setIsLoadingCustomerAddresses] = useState<boolean>(() => {
+    const hasAuth = Boolean(
+      user ||
+      token ||
+      (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token")))
+    );
+    if (hasAuth) {
+      const cached = typeof window !== "undefined" ? getCachedCustomerAddresses() : [];
+      return cached.length === 0;
+    }
+    return false;
+  });
   const hasAutoFilledDefaultAddressRef = useRef(false);
 
-  useEffect(() => {
-    if (user) {
-      setName(user.name || "");
-      setPhone(user.phone || "");
-      setEmail(user.email || "");
+  // Auto-fill address details helper
+  const applyAddressToForm = useCallback((addr: CustomerAddress) => {
+    setSelectedAddressId(addr.id);
+    if (addr.recipient_name) setName(addr.recipient_name);
+    if (addr.phone) setPhone(addr.phone);
+    if (addr.province) setSelectedProvince(addr.province);
+    if (addr.district) setSelectedDistrict(addr.district);
+    if (addr.ward) setSelectedWard(addr.ward);
+    if (addr.ward_id) setSelectedWardId(addr.ward_id);
+    const addrStreet = addr.street_address || addr.full_address || "";
+    if (addrStreet) setStreetAddress(addrStreet);
+  }, []);
 
-      // Load saved addresses and auto-fill default
-      getCustomerAddressesApi().then((addrs) => {
-        setCustomerAddresses(addrs);
-        if (!hasAutoFilledDefaultAddressRef.current && addrs.length > 0) {
-          const defaultAddr = addrs.find((a) => a.is_default) || addrs[0];
-          if (defaultAddr) {
-            hasAutoFilledDefaultAddressRef.current = true;
-            setSelectedAddressId(defaultAddr.id);
-            if (defaultAddr.recipient_name) setName(defaultAddr.recipient_name);
-            if (defaultAddr.phone) setPhone(defaultAddr.phone);
-            if (defaultAddr.province) setSelectedProvince(defaultAddr.province);
-            if (defaultAddr.district) setSelectedDistrict(defaultAddr.district);
-            if (defaultAddr.ward) setSelectedWard(defaultAddr.ward);
-            if (defaultAddr.ward_id) setSelectedWardId(defaultAddr.ward_id);
-            if (defaultAddr.street_address) setStreetAddress(defaultAddr.street_address);
-          }
-        }
-      }).catch((err) => {
-        console.warn("Failed to load customer addresses:", err);
-      });
+  // Auto-fill from cached address immediately on client mount if available
+  useEffect(() => {
+    if (!hasAutoFilledDefaultAddressRef.current && customerAddresses.length > 0 && selectedAddressId && selectedAddressId !== "new") {
+      const addr = customerAddresses.find((a) => a.id === selectedAddressId);
+      if (addr) {
+        hasAutoFilledDefaultAddressRef.current = true;
+        applyAddressToForm(addr);
+      }
     }
-  }, [user]);
+  }, [customerAddresses, selectedAddressId, applyAddressToForm]);
+
+  useEffect(() => {
+    if (isUserLoggedIn) {
+      if (user) {
+        setName((prev) => prev || user.name || "");
+        setPhone((prev) => prev || user.phone || "");
+        setEmail((prev) => prev || user.email || "");
+      }
+
+      // If we don't have any addresses in state, ensure loading skeleton is shown
+      setCustomerAddresses((prev) => {
+        if (prev.length === 0) {
+          setIsLoadingCustomerAddresses(true);
+        }
+        return prev;
+      });
+
+      // Fetch fresh addresses from API (Stale-While-Revalidate if cache exists)
+      getCustomerAddressesApi()
+        .then((addrs) => {
+          setCustomerAddresses(addrs);
+          setCachedCustomerAddresses(addrs);
+          if (addrs.length > 0) {
+            setSelectedAddressId((curr) => {
+              if (curr && curr !== "new" && addrs.some((a) => a.id === curr)) {
+                return curr;
+              }
+              const defaultAddr = addrs.find((a) => a.is_default) || addrs[0];
+              if (defaultAddr && !hasAutoFilledDefaultAddressRef.current) {
+                hasAutoFilledDefaultAddressRef.current = true;
+                applyAddressToForm(defaultAddr);
+              }
+              return defaultAddr ? defaultAddr.id : curr;
+            });
+          }
+        })
+        .catch((err) => {
+          console.warn("Failed to load customer addresses:", err);
+        })
+        .finally(() => {
+          setIsLoadingCustomerAddresses(false);
+        });
+    } else {
+      setIsLoadingCustomerAddresses(false);
+    }
+  }, [isUserLoggedIn, user, applyAddressToForm]);
+
+  // COD/Transfer selection (CARD removed)
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
+
+  // Regional Shipping & Freeship calculation states
+  const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>(FALLBACK_ADMINISTRATIVE_UNITS);
+  const [selectedProvince, setSelectedProvince] = useState("TP. Hồ Chí Minh");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedWard, setSelectedWard] = useState("");
+  const [selectedWardId, setSelectedWardId] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+
+  const isSavedAddressSelected = Boolean(
+    isUserLoggedIn &&
+    customerAddresses.length > 0 &&
+    selectedAddressId &&
+    selectedAddressId !== "new"
+  );
+
+  const selectedSavedAddress = useMemo(() => {
+    if (!isSavedAddressSelected) return null;
+    return customerAddresses.find((a) => a.id === selectedAddressId) || null;
+  }, [customerAddresses, isSavedAddressSelected, selectedAddressId]);
 
   const handleSelectCustomerAddress = (addrId: number | "new") => {
     if (addrId === "new") {
-      setSelectedAddressId(null);
+      setSelectedAddressId("new");
       setStreetAddress("");
       setSelectedWard("");
       setSelectedWardId("");
+      setSelectedDistrict("");
+      setSelectedProvince(adminProvinces[0]?.name || "TP. Hồ Chí Minh");
+      setSaveToAddressBook(false);
+      if (user) {
+        setName(user.name || "");
+        setPhone(user.phone || "");
+      }
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next["delivery.ward"];
+        delete next["delivery.address"];
+        return next;
+      });
       return;
     }
     setSaveToAddressBook(false);
@@ -218,20 +333,16 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       if (addr.district) setSelectedDistrict(addr.district);
       if (addr.ward) setSelectedWard(addr.ward);
       if (addr.ward_id) setSelectedWardId(addr.ward_id);
-      if (addr.street_address) setStreetAddress(addr.street_address);
+      const addrStreet = addr.street_address || addr.full_address || "";
+      if (addrStreet) setStreetAddress(addrStreet);
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next["delivery.ward"];
+        delete next["delivery.address"];
+        return next;
+      });
     }
   };
-
-  // COD/Transfer selection (CARD removed)
-  const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
-
-  // Regional Shipping & Freeship calculation states
-  const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>(FALLBACK_ADMINISTRATIVE_UNITS);
-  const [selectedProvince, setSelectedProvince] = useState("TP. Hồ Chí Minh");
-  const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [selectedWard, setSelectedWard] = useState("");
-  const [selectedWardId, setSelectedWardId] = useState("");
-  const [streetAddress, setStreetAddress] = useState("");
 
   const [shippingFee, setShippingFee] = useState<number>(defaultShippingFee);
   const [originalFee, setOriginalFee] = useState<number>(defaultShippingFee);
@@ -851,7 +962,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     return () => {
       isSubscribed = false;
     };
-  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, subtotal, appliedVoucher, appliedShippingVoucher, config.branches, cartCampaignG1]);
+  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, subtotal, appliedVoucher, appliedShippingVoucher, config.branches, cartCampaignG1]);
 
   // Store Pickup input & Auto-assigned delivery branch
   const [selectedBranchId, setSelectedBranchId] = useState<number>(() => {
@@ -1623,7 +1734,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
           const parsed = JSON.parse(storedVouchers);
           if (Array.isArray(parsed) && parsed.length > 0) {
             hasLoadedStoredPromotionsRef.current = true;
-            handleApplyVouchers(parsed).catch(() => {});
+            handleApplyVouchers(parsed).catch(() => { });
             return;
           }
         }
@@ -1642,6 +1753,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         ? `Nhận tại chi nhánh: ${branch.branchName} - Địa chỉ: ${branch.address}`
         : "Nhận tại chi nhánh Cô Thảo";
     }
+    if (isSavedAddressSelected && selectedSavedAddress?.full_address) {
+      return selectedSavedAddress.full_address;
+    }
     const parts = [
       streetAddress.trim(),
       selectedWard.trim(),
@@ -1649,7 +1763,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       selectedProvince.trim(),
     ].filter(Boolean);
     return parts.join(", ");
-  }, [deliveryType, selectedBranchId, streetAddress, selectedWard, selectedDistrict, selectedProvince, config.branches]);
+  }, [
+    deliveryType,
+    selectedBranchId,
+    streetAddress,
+    selectedWard,
+    selectedDistrict,
+    selectedProvince,
+    config.branches,
+    isSavedAddressSelected,
+    selectedSavedAddress,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1693,11 +1817,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
     // Validate custom delivery inputs
     if (deliveryType === "delivery") {
-      if (!selectedWard.trim() && !selectedWardId) {
-        errs["delivery.ward"] = "* Vui lòng chọn Phường / Xã (Khu vực giao).";
-      }
-      if (!streetAddress.trim()) {
-        errs["delivery.address"] = "Vui lòng nhập số nhà và tên đường.";
+      if (!isSavedAddressSelected) {
+        if (!selectedWard.trim() && !selectedWardId) {
+          errs["delivery.ward"] = "* Vui lòng chọn Phường / Xã (Khu vực giao).";
+        }
+        if (!streetAddress.trim()) {
+          errs["delivery.address"] = "Vui lòng nhập số nhà và tên đường.";
+        }
+      } else {
+        if (!streetAddress.trim() && !selectedSavedAddress?.full_address) {
+          errs["delivery.address"] = "Vui lòng nhập số nhà và tên đường.";
+        }
       }
     }
 
@@ -1773,6 +1903,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               address: finalAddress,
               price: shippingFee,
               expected_delivery: expectedDeliveryISO,
+              province: selectedProvince,
+              district: selectedDistrict,
+              ward: selectedWard,
+              ward_id: selectedWardId || undefined,
             }
             : null,
         items: isCartCheckout
@@ -2141,19 +2275,60 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
                 <p className="body-1 text-gray-700 font-bold">{t("delivery_home")}</p>
 
-                {/* Khối Chọn từ Sổ địa chỉ (dành cho khách hàng đã đăng nhập) */}
-                {user && customerAddresses.length > 0 && (
-                  <div className="space-y-2 p-3.5 bg-yellow/40 rounded-xl border border-secondary/20 font-serif">
+                {/* 1. Skeleton Loading khi đang tải sổ địa chỉ của khách hàng đã đăng nhập */}
+                {isUserLoggedIn && isLoadingCustomerAddresses && (
+                  <div
+                    data-testid="address-book-skeleton"
+                    className="space-y-3 p-3.5 bg-yellow/30 rounded-xl border border-secondary/20 font-serif animate-pulse"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                        <span className="text-sm">📍</span>
+                        <span>Đang tải danh sách địa chỉ...</span>
+                      </span>
+                      <span className="text-xs text-secondary/60 font-semibold">
+                        Vui lòng chờ...
+                      </span>
+                    </div>
+
+                    {/* Mock Dropdown Box */}
+                    <div className="w-full h-10 rounded-[6px] border border-gray-200 bg-white/80 px-3 flex items-center justify-between shadow-xs">
+                      <div className="h-3.5 bg-gray-200 rounded-sm w-3/5" />
+                      <div className="size-3.5 bg-gray-200 rounded-xs" />
+                    </div>
+
+                    {/* Mock Selected Address Summary Card */}
+                    <div className="mt-2.5 p-3 bg-white/90 rounded-lg border border-secondary/15 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="size-3.5 bg-gray-200 rounded-full" />
+                          <div className="h-3.5 bg-gray-200 rounded-sm w-28" />
+                          <div className="h-3 bg-gray-100 rounded-sm w-16" />
+                        </div>
+                        <div className="h-4 bg-secondary/15 rounded-full w-14" />
+                      </div>
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <div className="size-3.5 bg-gray-200 rounded-xs shrink-0" />
+                        <div className="h-3 bg-gray-200 rounded-sm w-4/5" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Khối Chọn từ Sổ địa chỉ (dành cho khách hàng đã đăng nhập khi đã tải xong) */}
+                {isUserLoggedIn && !isLoadingCustomerAddresses && customerAddresses.length > 0 && (
+                  <div className="space-y-2 p-3.5 bg-yellow/40 rounded-xl border border-secondary/20 font-serif animate-fade-in">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
                         <span>📍</span>
-                        <span>Chọn từ sổ địa chỉ nhận hàng</span>
+                        <span>Chọn từ danh sách địa chỉ</span>
                       </span>
                       <Link href={"/profile?tab=addresses" as any} className="text-xs text-secondary hover:underline font-semibold">
-                        Quản lý sổ địa chỉ →
+                        Danh sách địa chỉ →
                       </Link>
                     </div>
                     <select
+                      data-testid="customer-address-select"
                       value={selectedAddressId || "new"}
                       onChange={(e) =>
                         handleSelectCustomerAddress(
@@ -2164,107 +2339,211 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     >
                       {customerAddresses.map((addr) => (
                         <option key={addr.id} value={addr.id}>
-                          {addr.recipient_name} ({addr.phone}) - {addr.full_address || `${addr.street_address}, ${addr.ward}, ${addr.district}, ${addr.province}`} {addr.is_default ? "Mặc định" : ""}
+                          {addr.recipient_name} ({addr.phone}) - {addr.full_address || `${addr.street_address}, ${addr.ward}, ${addr.district}, ${addr.province}`} {addr.is_default ? "(Mặc định)" : ""}
                         </option>
                       ))}
                       <option value="new">+ Nhập địa chỉ nhận hàng khác</option>
                     </select>
+
+                    {/* Hiển thị tóm tắt địa chỉ đã chọn khi dùng địa chỉ trong sổ */}
+                    {/* {isSavedAddressSelected && selectedSavedAddress && (
+                      <div className="mt-2.5 p-3 bg-white rounded-lg border border-secondary/20 shadow-xs text-xs text-gray-700 space-y-1.5 animate-fade-in">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                            <span>👤</span>
+                            <span>{selectedSavedAddress.recipient_name}</span>
+                            <span className="text-gray-300 font-normal">|</span>
+                            <span className="text-gray-600 font-medium">{selectedSavedAddress.phone}</span>
+                          </span>
+                          {selectedSavedAddress.is_default && (
+                            <span className="text-[10px] bg-secondary/10 text-secondary font-bold px-2 py-0.5 rounded-full">
+                              Mặc định
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-start gap-1.5 text-gray-600">
+                          <span className="shrink-0 text-primary">🏡</span>
+                          <span className="leading-relaxed">
+                            {selectedSavedAddress.full_address ||
+                              [
+                                selectedSavedAddress.street_address,
+                                selectedSavedAddress.ward,
+                                selectedSavedAddress.district,
+                                selectedSavedAddress.province,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                          </span>
+                        </div>
+                      </div>
+                    )} */}
                   </div>
                 )}
 
-                {/* Chọn Tỉnh/Thành & Phường/Xã (Danh mục chuẩn) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <label className="text-sm font-serif font-semibold text-primary block">
-                      {t("province_label")}
-                      <RequiredMark />
-                    </label>
-                    <select
-                      value={selectedProvince}
-                      onChange={(e) => {
-                        const newProv = e.target.value;
-                        setSelectedProvince(newProv);
-                        setSelectedDistrict("");
-                        setSelectedWard("");
-                        setSelectedWardId("");
-                      }}
-                      className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif cursor-pointer"
-                    >
-                      {adminProvinces.length > 0 ? (
-                        adminProvinces.map((prov) => (
-                          <option key={prov.id} value={prov.name}>
-                            {prov.name}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-                          <option value="Hà Nội">Hà Nội</option>
-                          <option value="Bình Dương">Bình Dương</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
+                {/* 3. Các ô input nhập địa chỉ mới: chỉ hiển thị khi chưa chọn địa chỉ đã lưu và không đang tải */}
+                {!isSavedAddressSelected && (!isUserLoggedIn || !isLoadingCustomerAddresses) && (
+                  <div className="space-y-4 animate-fade-in">
+                    {/* Header thông báo nhập mới & nút clear nhanh nếu là khách đăng nhập chọn nhập địa chỉ khác */}
+                    {isUserLoggedIn && customerAddresses.length > 0 && (
+                      <div className="flex items-center justify-between pb-1 border-b border-gray-200">
+                        <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
+                          <span>📝</span>
+                          <span>Điền thông tin địa chỉ nhận hàng mới</span>
+                        </span>
+                        {(streetAddress || selectedWard || selectedWardId) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStreetAddress("");
+                              setSelectedWard("");
+                              setSelectedWardId("");
+                              setSelectedDistrict("");
+                              setFieldErrors((prev) => {
+                                const next = { ...prev };
+                                delete next["delivery.ward"];
+                                delete next["delivery.address"];
+                                return next;
+                              });
+                            }}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>✕</span>
+                            <span>Xóa trắng form</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
 
-                  <WardSelectCombobox
-                    wards={availableWards}
-                    selectedWardId={selectedWardId}
-                    selectedWardName={selectedWard}
-                    onSelectWard={(wObj) => {
-                      if (wObj) {
-                        setSelectedWardId(wObj.id);
-                        setSelectedWard(wObj.name);
-                        if (wObj.district) setSelectedDistrict(wObj.district);
-                      } else {
-                        setSelectedWardId("");
-                        setSelectedWard("");
-                      }
-                      if (fieldErrors["delivery.ward"]) {
-                        setFieldErrors((prev) => {
-                          const next = { ...prev };
-                          delete next["delivery.ward"];
-                          return next;
-                        });
-                      }
-                    }}
-                    hasError={!!fieldError("delivery.ward")}
-                    errorMessage={fieldError("delivery.ward") || "* Vui lòng chọn Phường / Xã (Khu vực giao)."}
-                  />
-                </div>
+                    {/* Chọn Tỉnh/Thành & Phường/Xã (Danh mục chuẩn) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <label className="text-sm font-serif font-semibold text-primary block">
+                          {t("province_label")}
+                          <RequiredMark />
+                        </label>
+                        <select
+                          value={selectedProvince}
+                          onChange={(e) => {
+                            const newProv = e.target.value;
+                            setSelectedProvince(newProv);
+                            setSelectedDistrict("");
+                            setSelectedWard("");
+                            setSelectedWardId("");
+                          }}
+                          className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif cursor-pointer"
+                        >
+                          {adminProvinces.length > 0 ? (
+                            adminProvinces.map((prov) => (
+                              <option key={prov.id} value={prov.name}>
+                                {prov.name}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+                              <option value="Hà Nội">Hà Nội</option>
+                              <option value="Bình Dương">Bình Dương</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
 
-                {/* Số nhà, tên đường */}
-                <div className="space-y-2">
-                  <label className="text-sm font-serif font-semibold text-primary block">
-                    {t("street_label")}
-                    <RequiredMark />
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={streetAddress}
-                    onChange={(e) => setStreetAddress(e.target.value)}
-                    className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
-                    placeholder={t("address_placeholder")}
-                  />
-                  {fieldError("delivery.address") ? (
-                    <p className="text-sm text-red-600 mt-1">{fieldError("delivery.address")}</p>
-                  ) : null}
-
-                  {/* Checkbox lưu địa chỉ cho khách đã đăng nhập */}
-                  {user && (!selectedAddressId || selectedAddressId === "new") && (
-                    <div className="pt-1">
-                      <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700 select-none">
-                        <input
-                          type="checkbox"
-                          checked={saveToAddressBook}
-                          onChange={(e) => setSaveToAddressBook(e.target.checked)}
-                          className="rounded text-secondary focus:ring-secondary size-4 accent-secondary cursor-pointer"
-                        />
-                        <span>Lưu địa chỉ này vào sổ địa chỉ nhận hàng</span>
-                      </label>
+                      <WardSelectCombobox
+                        wards={availableWards}
+                        selectedWardId={selectedWardId}
+                        selectedWardName={selectedWard}
+                        onSelectWard={(wObj) => {
+                          if (wObj) {
+                            setSelectedWardId(wObj.id);
+                            setSelectedWard(wObj.name);
+                            if (wObj.district) setSelectedDistrict(wObj.district);
+                          } else {
+                            setSelectedWardId("");
+                            setSelectedWard("");
+                          }
+                          if (fieldErrors["delivery.ward"]) {
+                            setFieldErrors((prev) => {
+                              const next = { ...prev };
+                              delete next["delivery.ward"];
+                              return next;
+                            });
+                          }
+                        }}
+                        hasError={!!fieldError("delivery.ward")}
+                        errorMessage={fieldError("delivery.ward") || "* Vui lòng chọn Phường / Xã (Khu vực giao)."}
+                      />
                     </div>
-                  )}
-                </div>
+
+                    {/* Số nhà, tên đường */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-serif font-semibold text-primary block">
+                          {t("street_label")}
+                          <RequiredMark />
+                        </label>
+                        {streetAddress && (
+                          <button
+                            type="button"
+                            onClick={() => setStreetAddress("")}
+                            className="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1 font-serif cursor-pointer"
+                          >
+                            <span>✕</span>
+                            <span>Xóa nhanh</span>
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <input
+                          data-testid="desktop-street-address-input"
+                          type="text"
+                          required
+                          value={streetAddress}
+                          onChange={(e) => {
+                            setStreetAddress(e.target.value);
+                            if (fieldErrors["delivery.address"]) {
+                              setFieldErrors((prev) => {
+                                const next = { ...prev };
+                                delete next["delivery.address"];
+                                return next;
+                              });
+                            }
+                          }}
+                          className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] pr-9 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
+                          placeholder={t("address_placeholder")}
+                        />
+                        {streetAddress && (
+                          <button
+                            type="button"
+                            onClick={() => setStreetAddress("")}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 size-5 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
+                            title="Xóa địa chỉ"
+                            aria-label="Xóa nội dung số nhà, tên đường"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      {fieldError("delivery.address") ? (
+                        <p className="text-sm text-red-600 mt-1">{fieldError("delivery.address")}</p>
+                      ) : null}
+
+                      {/* Checkbox lưu địa chỉ cho khách đã đăng nhập */}
+                      {isUserLoggedIn && (!selectedAddressId || selectedAddressId === "new") && (
+                        <div className="pt-1">
+                          <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700 select-none">
+                            <input
+                              type="checkbox"
+                              checked={saveToAddressBook}
+                              onChange={(e) => setSaveToAddressBook(e.target.checked)}
+                              className="rounded text-secondary focus:ring-secondary size-4 accent-secondary cursor-pointer"
+                            />
+                            <span>Lưu địa chỉ này vào danh sách địa chỉ</span>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Thông báo chi nhánh tự động được chọn & thông tin ship */}
                 {assignedBranchName && (
@@ -3079,6 +3358,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               <label className="flex items-center gap-2.5 cursor-pointer text-xs 2xl:text-sm font-semibold text-gray-700 select-none">
                 <div className="relative">
                   <input
+                    data-testid="desktop-confirm-checkbox"
                     type="checkbox"
                     checked={confirmInfo}
                     onChange={(e) => setConfirmInfo(e.target.checked)}
@@ -3120,6 +3400,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
             {/* Nút submit */}
             <button
+              data-testid="checkout-submit-btn"
               type="button"
               onClick={handleSubmit}
               disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || (isCartCheckout && isOutOfStockOverall)}

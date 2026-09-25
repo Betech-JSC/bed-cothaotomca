@@ -3,7 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import React from 'react';
 import CouponModal, { resetCouponModalCache } from '@/components/Voucher/CouponModal';
+import GiftSelectorModal, { GiftItem } from '@/components/Checkout/GiftSelectorModal';
 import { PublicVoucherItem, ActivePromotion } from '@/services/orderService';
+import { getActiveCampaigns, PublicCampaignItem } from '@/services/campaignService';
 import { formatPrice } from '@/lib/format';
 import viMessages from '@/i18n/locales/vi.json';
 
@@ -95,7 +97,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     mockValidateVoucherResult = { valid: false, message: 'Mã không tồn tại' };
   });
 
-  it('Matrix 1: Voucher chưa đạt đơn tối thiểu -> Mờ 60%, chặn click, hiển thị lý do chuẩn', async () => {
+  it('Matrix 1: Voucher chưa đạt đơn tối thiểu -> Thẻ xám mờ opacity-50, badge xám bg-gray-400, checkbox disabled, gợi ý mua thêm', async () => {
     const voucher: PublicVoucherItem = {
       id: 1,
       code: 'MIN200K',
@@ -106,11 +108,11 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     };
     mockVouchersList = [voucher];
 
-    const { container } = render(
+    render(
       <CouponModal
         isOpen={true}
         onClose={vi.fn()}
-        subtotal={150000} // Chưa đạt 200k
+        subtotal={150000} // Chưa đạt 200k (thiếu 50k)
         onApplyVoucher={vi.fn()}
       />
     );
@@ -121,12 +123,29 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     const expectedReason = `Chưa đạt giá trị đơn tối thiểu ${formatPrice(200000)}`;
     expect(screen.getByText(expectedReason)).toBeInTheDocument();
 
-    // Thẻ voucher có class làm mờ và chặn tương tác
-    const card = container.querySelector('.opacity-60.bg-gray-100\\/70.pointer-events-none.cursor-not-allowed.select-none');
-    expect(card).toBeInTheDocument();
+    // Gợi ý mua thêm: 200k - 150k = 50k
+    expect(screen.getByText(/Mua thêm/i)).toBeInTheDocument();
+    expect(screen.getByText(formatPrice(50000))).toBeInTheDocument();
+
+    // Thẻ voucher xám mờ (chứa opacity-50, bg-gray-50, cursor-not-allowed)
+    const card = screen.getByText('MIN200K').closest('div[class*="rounded-2xl"]')!;
+    expect(card.className).toContain('opacity-50');
+    expect(card.className).toContain('bg-gray-50');
+    expect(card.className).toContain('cursor-not-allowed');
+
+    // Badge bên trái màu xám bg-gray-400 text-white
+    const badge = card.querySelector('div[class*="bg-gray-400"]')!;
+    expect(badge).toBeInTheDocument();
+    expect(badge.className).toContain('bg-gray-400');
+    expect(badge.className).toContain('text-white');
+
+    // Checkbox bị disabled
+    const checkbox = card.querySelector('[role="checkbox"]')!;
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('Matrix 2: Mã Freeship bị cấm bởi Campaign can_combine_with_freeship = false -> Hiển thị lý do và bị làm mờ', async () => {
+  it('Matrix 2: Mã Freeship bị cấm bởi Campaign can_combine_with_freeship = false -> Hiển thị lý do chuẩn, thẻ xám mờ, badge xám, checkbox disabled', async () => {
     const freeshipVoucher: PublicVoucherItem = {
       id: 2,
       code: 'FREESHIPX',
@@ -152,7 +171,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
       },
     ];
 
-    const { container } = render(
+    render(
       <CouponModal
         isOpen={true}
         onClose={vi.fn()}
@@ -167,12 +186,23 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     // Hiển thị dòng lý do chuẩn xác
     expect(screen.getByText('Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship')).toBeInTheDocument();
 
-    // Card bị disabled
-    const disabledCard = container.querySelector('.opacity-60.bg-gray-100\\/70.pointer-events-none.cursor-not-allowed.select-none');
-    expect(disabledCard).toBeInTheDocument();
+    // Thẻ voucher xám mờ
+    const card = screen.getByText('FREESHIPX').closest('div[class*="rounded-2xl"]')!;
+    expect(card.className).toContain('opacity-50');
+    expect(card.className).toContain('bg-gray-50');
+    expect(card.className).toContain('cursor-not-allowed');
+
+    // Badge bên trái màu xám
+    const badge = card.querySelector('div[class*="bg-gray-400"]')!;
+    expect(badge).toBeInTheDocument();
+
+    // Checkbox bị disabled
+    const checkbox = card.querySelector('[role="checkbox"]')!;
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('Matrix 3: Mã Member-Only khi khách vãng lai (chưa login) -> Bị mờ và hiển thị lý do', async () => {
+  it('Matrix 3: Mã Member-Only khi khách vãng lai (chưa login) -> Thẻ xám mờ, badge xám, hiển thị lý do, checkbox disabled', async () => {
     const memberVoucher: PublicVoucherItem = {
       id: 3,
       code: 'MEMBERVIP',
@@ -185,7 +215,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     mockVouchersList = [memberVoucher];
     mockCurrentUser = null; // Khách vãng lai
 
-    const { container } = render(
+    render(
       <CouponModal
         isOpen={true}
         onClose={vi.fn()}
@@ -197,11 +227,23 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(await screen.findByText('MEMBERVIP')).toBeInTheDocument();
     expect(screen.getByText('Chỉ dành cho khách hàng thành viên. Vui lòng đăng nhập.')).toBeInTheDocument();
 
-    const disabledCard = container.querySelector('.opacity-60.bg-gray-100\\/70.pointer-events-none.cursor-not-allowed.select-none');
-    expect(disabledCard).toBeInTheDocument();
+    // Thẻ voucher xám mờ
+    const card = screen.getByText('MEMBERVIP').closest('div[class*="rounded-2xl"]')!;
+    expect(card.className).toContain('opacity-50');
+    expect(card.className).toContain('bg-gray-50');
+    expect(card.className).toContain('cursor-not-allowed');
+
+    // Badge bên trái màu xám
+    const badge = card.querySelector('div[class*="bg-gray-400"]')!;
+    expect(badge).toBeInTheDocument();
+
+    // Checkbox bị disabled
+    const checkbox = card.querySelector('[role="checkbox"]')!;
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('Matrix 4: Mã Tier-Only (Hạng DIAMOND) khi khách chỉ đạt hạng GOLD -> Bị mờ và hiển thị lý do hạng', async () => {
+  it('Matrix 4: Mã Tier-Only (Hạng DIAMOND) khi khách chỉ đạt hạng GOLD -> Thẻ xám mờ, badge xám, hiển thị lý do hạng, checkbox disabled', async () => {
     const diamondVoucher: PublicVoucherItem = {
       id: 4,
       code: 'DIAMONDONLY',
@@ -220,7 +262,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
       tier: 'gold',
     };
 
-    const { container } = render(
+    render(
       <CouponModal
         isOpen={true}
         onClose={vi.fn()}
@@ -234,8 +276,20 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(await screen.findByText('DIAMONDONLY')).toBeInTheDocument();
     expect(screen.getByText('Chỉ dành riêng cho thành viên đạt hạng DIAMOND trở lên')).toBeInTheDocument();
 
-    const disabledCard = container.querySelector('.opacity-60.bg-gray-100\\/70.pointer-events-none.cursor-not-allowed.select-none');
-    expect(disabledCard).toBeInTheDocument();
+    // Thẻ voucher xám mờ
+    const card = screen.getByText('DIAMONDONLY').closest('div[class*="rounded-2xl"]')!;
+    expect(card.className).toContain('opacity-50');
+    expect(card.className).toContain('bg-gray-50');
+    expect(card.className).toContain('cursor-not-allowed');
+
+    // Badge bên trái màu xám
+    const badge = card.querySelector('div[class*="bg-gray-400"]')!;
+    expect(badge).toBeInTheDocument();
+
+    // Checkbox bị disabled
+    const checkbox = card.querySelector('[role="checkbox"]')!;
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
   });
 
   it('Matrix 5: Mã đủ điều kiện -> Hiển thị bình thường, cho phép chọn áp dụng', async () => {
@@ -1289,7 +1343,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('Matrix 27: Đơn hàng đạt Freeship 100% tự động -> Voucher freeship bị disabled kèm lý do "Đơn hàng đã được Freeship tự động"', async () => {
+  it('Matrix 27: Đơn hàng đạt Freeship 100% tự động -> Voucher freeship thẻ xám mờ opacity-50, badge xám, checkbox disabled kèm lý do "Đơn hàng đã được Freeship tự động"', async () => {
     const freeshipVoucher: PublicVoucherItem = {
       id: 901,
       code: 'FREESHIP100',
@@ -1314,9 +1368,15 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(screen.getByText('Đơn hàng đã được Freeship tự động')).toBeInTheDocument();
     const card = screen.getByText('FREESHIP100').closest('div[class*="rounded-2xl"]')!;
     expect(card.className).toContain('opacity-50');
+    expect(card.className).toContain('bg-gray-50');
+    expect(card.className).toContain('cursor-not-allowed');
+
+    const checkbox = card.querySelector('[role="checkbox"]')!;
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('Matrix 28: Hệ thống đang áp dụng giảm một phần phí ship tự động -> Voucher freeship bị disabled kèm lý do "Đang áp dụng chương trình giảm phí vận chuyển của hệ thống"', async () => {
+  it('Matrix 28: Hệ thống đang áp dụng giảm một phần phí ship tự động -> Voucher freeship thẻ xám mờ opacity-50, badge xám, checkbox disabled kèm lý do "Đang áp dụng chương trình giảm phí vận chuyển của hệ thống"', async () => {
     const freeshipVoucher: PublicVoucherItem = {
       id: 902,
       code: 'FREESHIP_EXTRA',
@@ -1343,6 +1403,12 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(screen.getByText('Đang áp dụng chương trình giảm phí vận chuyển của hệ thống')).toBeInTheDocument();
     const card = screen.getByText('FREESHIP_EXTRA').closest('div[class*="rounded-2xl"]')!;
     expect(card.className).toContain('opacity-50');
+    expect(card.className).toContain('bg-gray-50');
+    expect(card.className).toContain('cursor-not-allowed');
+
+    const checkbox = card.querySelector('[role="checkbox"]')!;
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
   });
 
   it('Matrix 29: Thẻ voucher ưu tiên hiển thị short_name trên cột nhãn bên trái', async () => {
@@ -1426,5 +1492,491 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     fireEvent.click(applyBtn);
 
     expect(await screen.findByText('Đang áp dụng chương trình giảm phí vận chuyển của hệ thống')).toBeInTheDocument();
+  });
+
+  it('Matrix 32: GiftSelectorModal - Hiển thị danh sách món quà tặng, badge "Chưa đạt điều kiện" và tuyệt đối không có chữ "khả dụng"', () => {
+    const mockItems: GiftItem[] = [
+      {
+        id: 1,
+        product_id: 10,
+        product_name: 'Trà đào cam sả',
+        original_price: 35000,
+        campaign_price: 0,
+        is_available: true,
+      },
+      {
+        id: 2,
+        product_id: 20,
+        product_name: 'Bánh flan trân châu',
+        original_price: 25000,
+        campaign_price: 0,
+        is_available: false, // chưa đạt điều kiện
+      },
+    ];
+
+    const { container } = render(
+      <GiftSelectorModal
+        isOpen={true}
+        onClose={vi.fn()}
+        items={mockItems}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />
+    );
+
+    // Tiêu đề danh sách quà: "Danh sách món quà tặng (2)"
+    expect(screen.getByText('Danh sách món quà tặng (2)')).toBeInTheDocument();
+
+    // Món không khả dụng hiển thị fallback badge "Chưa đạt điều kiện", không phải "Chưa khả dụng"
+    expect(screen.getByText('Chưa đạt điều kiện')).toBeInTheDocument();
+    expect(screen.queryByText(/chưa khả dụng/i)).toBeNull();
+
+    // Tên món hiển thị đầy đủ
+    expect(screen.getByText('Trà đào cam sả')).toBeInTheDocument();
+    expect(screen.getByText('Bánh flan trân châu')).toBeInTheDocument();
+
+    // Tuyệt đối không xuất hiện chữ "khả dụng" trên toàn bộ giao diện GiftSelectorModal
+    expect(container.textContent?.toLowerCase()).not.toContain('khả dụng');
+  });
+
+  it('Matrix 33: Cấu trúc 2 tầng phẳng ("Chương trình ưu đãi" và "Mã giảm giá") - Tuyệt đối không có chữ "khả dụng" và thẻ không bị mờ xám', async () => {
+    mockCampaignsList = [
+      {
+        id: 101,
+        name: 'Giảm 15% mùa hè',
+        min_order_value: 50000,
+        promotion_type: 'order_discount',
+        discount_type: 'percent',
+        discount_value: 15,
+      },
+      {
+        id: 102,
+        name: 'Tặng trà sen đơn từ 500k',
+        min_order_value: 500000,
+        promotion_type: 'order_gift_discount',
+      },
+    ];
+    mockVouchersList = [
+      {
+        id: 11,
+        code: 'VOUCHER_ELIGIBLE',
+        discount_type: 'fixed',
+        value: 10000,
+        prereq_price: 50000,
+        description: 'Giảm 10k đơn từ 50k',
+      },
+      {
+        id: 12,
+        code: 'VOUCHER_INELIGIBLE',
+        discount_type: 'fixed',
+        value: 50000,
+        prereq_price: 500000,
+        description: 'Giảm 50k đơn từ 500k',
+      },
+    ];
+
+    const { container } = render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={100000}
+      />
+    );
+
+    // Cả 2 tầng hiển thị đồng thời trong 1 view phẳng duy nhất
+    expect(await screen.findByText('Chương trình ưu đãi (2)')).toBeInTheDocument();
+    expect(screen.getByText('Mã giảm giá (2)')).toBeInTheDocument();
+
+    // Không có tab điều hướng hay các tầng phân chia "khả dụng" / "chưa khả dụng"
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.queryByText(/^Chương trình chưa đủ điều kiện/i)).toBeNull();
+    expect(screen.queryByText(/^Mã chưa đủ điều kiện/i)).toBeNull();
+    expect(container.textContent?.toLowerCase()).not.toContain('khả dụng');
+
+    // Thẻ chưa đủ điều kiện có giao diện xám mờ (opacity-50, bg-gray-50)
+    const campIneligibleCard = screen.getByText('Tặng trà sen đơn từ 500k').closest('div[class*="rounded-2xl"]')!;
+    expect(campIneligibleCard.className).toContain('opacity-50');
+    expect(campIneligibleCard.className).toContain('bg-gray-50');
+    expect(campIneligibleCard.className).toContain('cursor-not-allowed');
+
+    const voucherIneligibleCard = screen.getByText('VOUCHER_INELIGIBLE').closest('div[class*="rounded-2xl"]')!;
+    expect(voucherIneligibleCard.className).toContain('opacity-50');
+    expect(voucherIneligibleCard.className).toContain('bg-gray-50');
+    expect(voucherIneligibleCard.className).toContain('cursor-not-allowed');
+  });
+
+  it('Matrix 34: Gợi ý mua thêm và checkbox disabled xuất hiện chuẩn xác ở cả Tầng 1 (Campaign) và Tầng 2 (Voucher) khi chưa đủ điều kiện giỏ hàng', async () => {
+    mockCampaignsList = [
+      {
+        id: 201,
+        name: 'Giảm 30k đơn 300k',
+        min_order_value: 300000,
+        promotion_type: 'order_discount',
+        discount_type: 'fixed',
+        discount_value: 30000,
+      },
+    ];
+    mockVouchersList = [
+      {
+        id: 21,
+        code: 'MIN400K',
+        discount_type: 'fixed',
+        value: 40000,
+        prereq_price: 400000,
+        description: 'Giảm 40k đơn từ 400k',
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={200000} // Thiếu 100k cho Campaign (300k), thiếu 200k cho Voucher (400k)
+      />
+    );
+
+    expect(await screen.findByText('Giảm 30k đơn 300k')).toBeInTheDocument();
+    expect(screen.getByText('MIN400K')).toBeInTheDocument();
+
+    // Tầng 1 Campaign: Gợi ý mua thêm 100.000đ, checkbox disabled
+    expect(screen.getByText(/Chưa đạt giá trị đơn tối thiểu 300\.000.*Mua thêm 100\.000/i)).toBeInTheDocument();
+    const campCard = screen.getByText('Giảm 30k đơn 300k').closest('div[class*="rounded-2xl"]')!;
+    const campCb = campCard.querySelector('[role="checkbox"]')!;
+    expect(campCb).toHaveAttribute('aria-disabled', 'true');
+    expect(campCb).toHaveAttribute('aria-checked', 'false');
+
+    // Tầng 2 Voucher: Gợi ý mua thêm 200.000đ, checkbox disabled
+    expect(screen.getByText(`Chưa đạt giá trị đơn tối thiểu ${formatPrice(400000)}`)).toBeInTheDocument();
+    expect(screen.getByText(formatPrice(200000))).toBeInTheDocument();
+    const voucherCard = screen.getByText('MIN400K').closest('div[class*="rounded-2xl"]')!;
+    const voucherCb = voucherCard.querySelector('[role="checkbox"]')!;
+    expect(voucherCb).toHaveAttribute('aria-disabled', 'true');
+    expect(voucherCb).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('Matrix 35: CouponModal nhận prop campaigns từ component cha (FloatingVoucherButton) và cơ chế chống cache poisoning khi cachedCampaigns = []', async () => {
+    // Phần 1: CouponModal nhận prop campaigns từ FloatingVoucherButton và hiển thị đầy đủ danh sách ở Tầng 1: "Chương trình ưu đãi"
+    const parentCampaigns: PublicCampaignItem[] = [
+      {
+        id: 351,
+        name: 'Giảm 25% Đơn Trưa từ FloatingVoucherButton',
+        min_order_value: 100000,
+        promotion_type: 'order_discount',
+        discount_type: 'percent',
+        discount_value: 25,
+      },
+      {
+        id: 352,
+        name: 'Tặng trà sen đơn từ 300k',
+        min_order_value: 300000,
+        promotion_type: 'order_gift_discount',
+      },
+    ];
+
+    // Ngay cả khi API mockCampaignsList rỗng hoặc chưa load xong, prop campaigns từ cha vẫn được ưu tiên render
+    mockCampaignsList = [];
+
+    const { rerender } = render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        campaigns={parentCampaigns}
+        subtotal={150000}
+      />
+    );
+
+    // Hiển thị đầy đủ danh sách ưu đãi ở Tầng 1: "Chương trình ưu đãi (2)"
+    expect(await screen.findByText('Chương trình ưu đãi (2)')).toBeInTheDocument();
+    expect(screen.getByText('Giảm 25% Đơn Trưa từ FloatingVoucherButton')).toBeInTheDocument();
+    expect(screen.getByText('Tặng trà sen đơn từ 300k')).toBeInTheDocument();
+
+    // Thẻ đủ điều kiện (subtotal 150k >= 100k) có checkbox enabled
+    const camp1Card = screen.getByText('Giảm 25% Đơn Trưa từ FloatingVoucherButton').closest('div[class*="rounded-2xl"]')!;
+    const camp1Checkbox = camp1Card.querySelector('[role="checkbox"]')!;
+    expect(camp1Checkbox).toHaveAttribute('aria-disabled', 'false');
+
+    // Thẻ chưa đủ điều kiện (subtotal 150k < 300k) hiển thị gợi ý mua thêm và checkbox disabled
+    const camp2Card = screen.getByText('Tặng trà sen đơn từ 300k').closest('div[class*="rounded-2xl"]')!;
+    const camp2Checkbox = camp2Card.querySelector('[role="checkbox"]')!;
+    expect(camp2Checkbox).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText(/Chưa đạt giá trị đơn tối thiểu 300\.000.*Mua thêm 150\.000/i)).toBeInTheDocument();
+
+    // Đóng modal để chuẩn bị cho Phần 2
+    rerender(
+      <CouponModal
+        isOpen={false}
+        onClose={vi.fn()}
+        subtotal={150000}
+      />
+    );
+
+    // Phần 2: Kiểm tra cơ chế chống cache poisoning:
+    // Nếu cachedCampaigns = [] (do lần mở trước API trả về rỗng []), modal không bị kẹt mà kích hoạt gọi API tải lại khi mở lại.
+    resetCouponModalCache();
+    vi.mocked(getActiveCampaigns).mockClear();
+
+    // Lần 1: API ban đầu trả về rỗng [] (cachedCampaigns = [])
+    mockCampaignsList = [];
+    mockVouchersList = [
+      {
+        id: 1,
+        code: 'VOUCHER10K',
+        discount_type: 'fixed',
+        value: 10000,
+        prereq_price: 50000,
+        description: 'Giảm 10k đơn từ 50k',
+      },
+    ];
+
+    const { rerender: rerenderCacheTest } = render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={150000}
+      />
+    );
+
+    // Xác nhận API getActiveCampaigns đã được gọi lần 1
+    await waitFor(() => {
+      expect(getActiveCampaigns).toHaveBeenCalledTimes(1);
+    });
+
+    // Lúc này API trả về rỗng nên không có tầng Chương trình ưu đãi
+    expect(screen.queryByText(/Chương trình ưu đãi/i)).toBeNull();
+    // Voucher vẫn hiển thị
+    expect(await screen.findByText('VOUCHER10K')).toBeInTheDocument();
+
+    // Đóng modal
+    rerenderCacheTest(
+      <CouponModal
+        isOpen={false}
+        onClose={vi.fn()}
+        subtotal={150000}
+      />
+    );
+
+    // Sau đó backend có campaign mới được kích hoạt
+    const freshCampaign: PublicCampaignItem = {
+      id: 353,
+      name: 'Flash Sale Cuối Tuần Giảm 50k',
+      min_order_value: 50000,
+      promotion_type: 'order_discount',
+      discount_type: 'fixed',
+      discount_value: 50000,
+    };
+    mockCampaignsList = [freshCampaign];
+
+    // Lần 2: Mở lại modal (không truyền prop campaigns)
+    // Nếu bị cache poisoning (kẹt cachedCampaigns = [] vì [] là truthy trong JS), modal sẽ coi cache hợp lệ và KHÔNG gọi API.
+    // Với cơ chế chống cache poisoning (kiểm tra cachedCampaigns.length > 0 và chỉ cache khi length > 0),
+    // modal phát hiện không có campaign hợp lệ trong cache và kích hoạt gọi lại getActiveCampaigns().
+    rerenderCacheTest(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={150000}
+      />
+    );
+
+    // Modal kích hoạt gọi API tải lại (lần thứ 2)
+    await waitFor(() => {
+      expect(getActiveCampaigns).toHaveBeenCalledTimes(2);
+    });
+
+    // Modal không bị kẹt ở trạng thái rỗng mà hiển thị đầy đủ campaign mới tải về ở Tầng 1
+    expect(await screen.findByText('Chương trình ưu đãi (1)')).toBeInTheDocument();
+    expect(screen.getByText('Flash Sale Cuối Tuần Giảm 50k')).toBeInTheDocument();
+  });
+
+  it('Matrix 36: Browse Mode - Không đọc localStorage selections, không hiện Đang dùng, không khóa chéo mutex giữa các ưu đãi', async () => {
+    resetCouponModalCache();
+
+    // Giả lập checkout trước đó đã lưu campaign và voucher có can_combine_with_promotions = false vào localStorage
+    localStorage.setItem('cothaotomca_selected_campaign_ids', JSON.stringify([901]));
+    localStorage.setItem('cothaotomca_applied_voucher_codes', JSON.stringify(['VOUCHER_MUTEX']));
+
+    const nonCombinableCamp: PublicCampaignItem = {
+      id: 901,
+      name: 'Chiến dịch độc quyền 901',
+      can_combine_with_promotions: false,
+      min_order_value: 0,
+      discount_type: 'percent',
+      discount_value: 20,
+    };
+    const otherCamp: PublicCampaignItem = {
+      id: 902,
+      name: 'Chiến dịch thứ hai 902',
+      can_combine_with_promotions: false,
+      min_order_value: 0,
+      discount_type: 'percent',
+      discount_value: 10,
+    };
+    const nonCombinableVoucher: PublicVoucherItem = {
+      id: 801,
+      code: 'VOUCHER_MUTEX',
+      can_combine_with_promotions: false,
+      value: 50000,
+      discount_type: 'fixed',
+      description: 'Mã giảm giá độc quyền',
+    };
+    const otherVoucher: PublicVoucherItem = {
+      id: 802,
+      code: 'VOUCHER_OTHER',
+      can_combine_with_promotions: false,
+      value: 30000,
+      discount_type: 'fixed',
+      description: 'Mã giảm giá thứ hai',
+    };
+
+    mockCampaignsList = [nonCombinableCamp, otherCamp];
+    mockVouchersList = [nonCombinableVoucher, otherVoucher];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        isBrowseOnly={true}
+        subtotal={200000}
+      />
+    );
+
+    // Cả 2 chiến dịch và 2 voucher đều hiển thị
+    expect(await screen.findByText('Chiến dịch độc quyền 901')).toBeInTheDocument();
+    expect(screen.getByText('Chiến dịch thứ hai 902')).toBeInTheDocument();
+    expect(screen.getByText('VOUCHER_MUTEX')).toBeInTheDocument();
+    expect(screen.getByText('VOUCHER_OTHER')).toBeInTheDocument();
+
+    // 1. Không hiện badge "Đang dùng" cho bất kỳ ưu đãi nào
+    expect(screen.queryByText(/Đang dùng/i)).toBeNull();
+
+    // 2. Không có thông báo khóa chéo mutex
+    expect(screen.queryByText(/Không thể sử dụng cùng ưu đãi đã chọn/i)).toBeNull();
+    expect(screen.queryByText(/Không thể sử dụng với những ưu đãi đã chọn khác/i)).toBeNull();
+
+    // 3. Toàn bộ các thẻ đều ở trạng thái sáng đẹp bình thường, không thẻ nào bị mờ xám (opacity-50, grayscale)
+    const campCard1 = screen.getByText('Chiến dịch độc quyền 901').closest('div[class*="rounded-2xl"]')!;
+    const campCard2 = screen.getByText('Chiến dịch thứ hai 902').closest('div[class*="rounded-2xl"]')!;
+    const voucherCard1 = screen.getByText('VOUCHER_MUTEX').closest('div[class*="rounded-2xl"]')!;
+    const voucherCard2 = screen.getByText('VOUCHER_OTHER').closest('div[class*="rounded-2xl"]')!;
+
+    expect(campCard1.className).not.toContain('opacity-50');
+    expect(campCard1.className).not.toContain('ring-2');
+    expect(campCard1.className).toContain('border-gray-200');
+
+    expect(campCard2.className).not.toContain('opacity-50');
+    expect(campCard2.className).not.toContain('ring-2');
+    expect(campCard2.className).toContain('border-gray-200');
+
+    expect(voucherCard1.className).not.toContain('opacity-50');
+    expect(voucherCard1.className).not.toContain('ring-2');
+    expect(voucherCard1.className).toContain('border-gray-200');
+
+    expect(voucherCard2.className).not.toContain('opacity-50');
+    expect(voucherCard2.className).not.toContain('ring-2');
+    expect(voucherCard2.className).toContain('border-gray-200');
+
+    // 4. Nút bấm đáy màn hình là "Đặt món ngay", không phải nút áp dụng
+    expect(screen.getByRole('button', { name: /Đặt món ngay/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Áp dụng •/i })).toBeNull();
+  });
+
+  it('Matrix 37: Chuẩn hóa thị giác 100% cho Campaign và Voucher không đủ điều kiện (test_campaign_order_50k disabled xám, voucher xám)', async () => {
+    const ineligibleCampaign: PublicCampaignItem = {
+      id: 501,
+      name: 'test_campaign_order_50k',
+      promotion_type: 'order_discount',
+      min_order_value: 50000,
+      discount_type: 'fixed',
+      discount_value: 10000,
+      description: 'Giảm 10k cho đơn từ 50k',
+    };
+
+    const ineligibleVoucher: PublicVoucherItem = {
+      id: 502,
+      code: 'VOUCHER_50K',
+      discount_type: 'fixed',
+      value: 10000,
+      prereq_price: 50000,
+      description: 'Giảm 10.000đ cho đơn từ 50.000đ',
+    };
+
+    mockCampaignsList = [ineligibleCampaign];
+    mockVouchersList = [ineligibleVoucher];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={30000} // Chưa đạt 50k (thiếu 20k)
+        onApplyVoucher={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText('test_campaign_order_50k')).toBeInTheDocument();
+    expect(screen.getByText('VOUCHER_50K')).toBeInTheDocument();
+
+    // 1. Campaign !isEligible:
+    // Thẻ ngoài: opacity-50, border-gray-200, bg-gray-50/70, select-none, cursor-not-allowed
+    const campCard = screen.getByText('test_campaign_order_50k').closest('div[class*="rounded-2xl"]')!;
+    expect(campCard.className).toContain('opacity-50');
+    expect(campCard.className).toContain('border-gray-200');
+    expect(campCard.className).toContain('bg-gray-50');
+    expect(campCard.className).toContain('cursor-not-allowed');
+
+    // Khối banner bên trái: grayscale, bg-gray-200, border-gray-300, text-gray-500
+    const campLeftBox = campCard.querySelector('div[class*="bg-gray-200"]')!;
+    expect(campLeftBox).toBeInTheDocument();
+    expect(campLeftBox.className).toContain('grayscale');
+    expect(campLeftBox.className).toContain('border-gray-300');
+
+    // Tiêu đề campaign: text-gray-600
+    const campTitle = screen.getByText('test_campaign_order_50k');
+    expect(campTitle.className).toContain('text-gray-600');
+
+    // Checkbox disabled
+    const campCheckbox = campCard.querySelector('[role="checkbox"]')!;
+    expect(campCheckbox).toHaveAttribute('aria-disabled', 'true');
+    expect(campCheckbox).toHaveAttribute('aria-checked', 'false');
+
+    // Click vào thân thẻ KHÔNG mở popup terms
+    fireEvent.click(campCard);
+    expect(screen.queryByText('Điều khoản chi tiết của test_campaign_order_50k')).toBeNull();
+
+    // Click vào nút "Chi tiết điều kiện áp dụng ›" MỞ popup terms
+    const viewTermsBtn = screen.getByRole('button', { name: /Chi tiết điều kiện áp dụng/i });
+    fireEvent.click(viewTermsBtn);
+    expect(await screen.findByText('Chi Tiết Chương Trình')).toBeInTheDocument();
+
+    // Đóng popup terms bằng nút Quay lại
+    const backBtn = screen.getByRole('button', { name: /Quay lại/i });
+    fireEvent.click(backBtn);
+
+    // 2. Voucher !isEligible:
+    // Thẻ ngoài: opacity-50, border-gray-200, bg-gray-50/70, select-none, cursor-not-allowed
+    const voucherCard = screen.getByText('VOUCHER_50K').closest('div[class*="rounded-2xl"]')!;
+    expect(voucherCard.className).toContain('opacity-50');
+    expect(voucherCard.className).toContain('border-gray-200');
+    expect(voucherCard.className).toContain('bg-gray-50');
+    expect(voucherCard.className).toContain('cursor-not-allowed');
+
+    // Badge bên trái: bg-gray-400 text-white
+    const voucherBadge = voucherCard.querySelector('div[class*="bg-gray-400"]')!;
+    expect(voucherBadge).toBeInTheDocument();
+    expect(voucherBadge.className).toContain('bg-gray-400');
+    expect(voucherBadge.className).toContain('text-white');
+
+    // Tiêu đề voucher: text-gray-600
+    const voucherDesc = screen.getByText('Giảm 10.000đ cho đơn từ 50.000đ');
+    expect(voucherDesc.className).toContain('text-gray-600');
+
+    // Text mô tả min spend: text-gray-400
+    const minSpendText = voucherCard.querySelector('p[class*="text-gray-400"]')!;
+    expect(minSpendText).toBeInTheDocument();
+    expect(minSpendText.textContent).toContain('Đơn tối thiểu');
+
+    // Checkbox disabled
+    const voucherCheckbox = voucherCard.querySelector('[role="checkbox"]')!;
+    expect(voucherCheckbox).toHaveAttribute('aria-disabled', 'true');
+    expect(voucherCheckbox).toHaveAttribute('aria-checked', 'false');
   });
 });

@@ -98,16 +98,25 @@ vi.mock("@/contexts/AuthContext", async (importOriginal) => {
 });
 
 vi.mock("@/services/authService", () => ({
+  getCachedCustomerAddresses: vi.fn().mockReturnValue([]),
+  setCachedCustomerAddresses: vi.fn(),
+  clearCachedCustomerAddresses: vi.fn(),
   getCustomerAddressesApi: vi.fn().mockResolvedValue([
     {
       id: 101,
+      recipient_name: "Nguyễn Văn A",
       receiver_name: "Nguyễn Văn A",
       receiver_phone: "0901234567",
+      phone: "0901234567",
       province_id: 1,
       province_name: "Hồ Chí Minh",
+      province: "TP. Hồ Chí Minh",
+      district: "Quận 1",
       ward_code: "001",
       ward_name: "Phường Bến Nghé",
+      ward: "Phường Bến Nghé",
       detail_address: "123 Lê Duẩn",
+      street_address: "123 Lê Duẩn",
       is_default: true,
     },
   ]),
@@ -206,7 +215,7 @@ describe("ProfileDashboard tab parameter navigation", () => {
 });
 
 describe("CheckoutForm Address Book Link", () => {
-  it("renders 'Quản lý sổ địa chỉ →' with href='/profile?tab=addresses'", async () => {
+  it("renders 'Danh sách địa chỉ →' with href='/profile?tab=addresses'", async () => {
     render(
       <CheckoutForm
         order={null as any}
@@ -223,7 +232,7 @@ describe("CheckoutForm Address Book Link", () => {
 
     // Wait for customer addresses to load and link to render
     await waitFor(() => {
-      const addressBookLink = screen.getByRole("link", { name: /Quản lý sổ địa chỉ →/i });
+      const addressBookLink = screen.getByRole("link", { name: /Danh sách địa chỉ →/i });
       expect(addressBookLink).toBeInTheDocument();
       expect(addressBookLink).toHaveAttribute("href", "/profile?tab=addresses");
     });

@@ -79,6 +79,8 @@ export interface CouponModalProps {
   shippingSettings?: ShippingSettings | null;
   privateVouchers?: PublicVoucherItem[];
   onAddPrivateVoucher?: (voucher: PublicVoucherItem) => void;
+  campaigns?: PublicCampaignItem[];
+  vouchers?: PublicVoucherItem[];
 }
 
 // Module-level in-memory cache to prevent layout shift / flickering on open
@@ -291,6 +293,8 @@ export default function CouponModal({
   shippingSettings,
   privateVouchers,
   onAddPrivateVoucher,
+  campaigns: campaignsProp,
+  vouchers: vouchersProp,
 }: CouponModalProps) {
   const t = useTranslations("voucher");
   const router = useRouter();
@@ -320,8 +324,24 @@ export default function CouponModal({
     ? isAutoFreeship
     : Boolean(isFreeship && shippingFee === 0);
 
-  const [campaigns, setCampaigns] = useState<PublicCampaignItem[]>(cachedCampaigns || []);
-  const [vouchers, setVouchers] = useState<PublicVoucherItem[]>(cachedVouchers || []);
+  const [campaigns, setCampaigns] = useState<PublicCampaignItem[]>(
+    campaignsProp && campaignsProp.length > 0 ? campaignsProp : (cachedCampaigns || [])
+  );
+  const [vouchers, setVouchers] = useState<PublicVoucherItem[]>(
+    vouchersProp && vouchersProp.length > 0 ? vouchersProp : (cachedVouchers || [])
+  );
+
+  useEffect(() => {
+    if (campaignsProp && campaignsProp.length > 0) {
+      setCampaigns(campaignsProp);
+    }
+  }, [campaignsProp]);
+
+  useEffect(() => {
+    if (vouchersProp && vouchersProp.length > 0) {
+      setVouchers(vouchersProp);
+    }
+  }, [vouchersProp]);
   const [localPrivateVouchers, setLocalPrivateVouchers] = useState<PublicVoucherItem[]>([]);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>([]);
@@ -393,53 +413,74 @@ export default function CouponModal({
         setFeedbackNotice(null);
         setFeedbackSuccess(null);
         setSelectedCampaign(null);
-        let initialCodes = (appliedVoucherCodes && appliedVoucherCodes.length > 0)
-          ? appliedVoucherCodes
-          : appliedVoucherCode
-            ? [appliedVoucherCode]
-            : [];
-        if (
-          initialCodes.length === 0 &&
-          appliedVoucherCodes === undefined &&
-          appliedVoucherCode === undefined &&
-          typeof window !== "undefined"
-        ) {
-          try {
-            const stored = localStorage.getItem("cothaotomca_applied_voucher_codes");
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              if (Array.isArray(parsed)) initialCodes = parsed;
-            }
-          } catch (e) {
-            console.error("Error reading stored voucher codes", e);
-          }
-        }
-        setSelectedCodes(initialCodes);
+        let initialCodes: string[] = [];
+        let initialCampaigns: (number | string)[] = [];
 
-        let initialCampaigns = (appliedCampaignIds && appliedCampaignIds.length > 0)
-          ? [...appliedCampaignIds]
-          : [];
-        if (
-          initialCampaigns.length === 0 &&
-          appliedCampaignIds === undefined &&
-          typeof window !== "undefined"
-        ) {
-          try {
-            const stored = localStorage.getItem("cothaotomca_selected_campaign_ids");
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              if (Array.isArray(parsed)) initialCampaigns = parsed;
+        if (!isBrowseMode) {
+          initialCodes = (appliedVoucherCodes && appliedVoucherCodes.length > 0)
+            ? appliedVoucherCodes
+            : appliedVoucherCode
+              ? [appliedVoucherCode]
+              : [];
+          if (
+            initialCodes.length === 0 &&
+            appliedVoucherCodes === undefined &&
+            appliedVoucherCode === undefined &&
+            typeof window !== "undefined"
+          ) {
+            try {
+              const stored = localStorage.getItem("cothaotomca_applied_voucher_codes");
+              if (stored) {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) initialCodes = parsed;
+              }
+            } catch (e) {
+              console.error("Error reading stored voucher codes", e);
             }
-          } catch (e) {
-            console.error("Error reading stored campaign ids", e);
+          }
+
+          initialCampaigns = (appliedCampaignIds && appliedCampaignIds.length > 0)
+            ? [...appliedCampaignIds]
+            : [];
+          if (
+            initialCampaigns.length === 0 &&
+            appliedCampaignIds === undefined &&
+            typeof window !== "undefined"
+          ) {
+            try {
+              const stored = localStorage.getItem("cothaotomca_selected_campaign_ids");
+              if (stored) {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) initialCampaigns = parsed;
+              }
+            } catch (e) {
+              console.error("Error reading stored campaign ids", e);
+            }
           }
         }
+
+        setSelectedCodes(initialCodes);
         setSelectedCampaignIds(initialCampaigns);
 
+        if (campaignsProp && campaignsProp.length > 0) {
+          setCampaigns(campaignsProp);
+        }
+        if (vouchersProp && vouchersProp.length > 0) {
+          setVouchers(vouchersProp);
+        }
+
         // If we have cached data, reuse it immediately to prevent flickering
-        if (cachedCampaigns && cachedVouchers) {
-          if (campaigns.length === 0) setCampaigns(cachedCampaigns);
-          if (vouchers.length === 0) setVouchers(cachedVouchers);
+        if (cachedCampaigns && cachedCampaigns.length > 0 && cachedVouchers && cachedVouchers.length > 0) {
+          if (campaignsProp && campaignsProp.length > 0) {
+            setCampaigns(campaignsProp);
+          } else if (campaigns.length === 0) {
+            setCampaigns(cachedCampaigns);
+          }
+          if (vouchersProp && vouchersProp.length > 0) {
+            setVouchers(vouchersProp);
+          } else if (vouchers.length === 0) {
+            setVouchers(cachedVouchers);
+          }
           if (shippingSettings && !shippingSettingsState) setShippingSettingsState(shippingSettings);
           setLoading(false);
         } else {
@@ -448,15 +489,27 @@ export default function CouponModal({
             ? Promise.resolve(shippingSettings)
             : getShippingSettings().catch(() => null);
 
+          const fetchCampaigns = (campaignsProp && campaignsProp.length > 0)
+            ? Promise.resolve(campaignsProp)
+            : getActiveCampaigns().catch(() => []);
+
+          const fetchVouchers = (vouchersProp && vouchersProp.length > 0)
+            ? Promise.resolve(vouchersProp)
+            : getAvailableVouchers().catch(() => []);
+
           Promise.all([
-            getActiveCampaigns().catch(() => []),
-            getAvailableVouchers().catch(() => []),
+            fetchCampaigns,
+            fetchVouchers,
             fetchShipping,
           ]).then(([camps, vows, sSettings]) => {
-            cachedCampaigns = camps;
-            cachedVouchers = vows;
-            setCampaigns(camps);
-            setVouchers(vows);
+            if (camps.length > 0) {
+              cachedCampaigns = camps;
+            }
+            if (vows.length > 0) {
+              cachedVouchers = vows;
+            }
+            setCampaigns(campaignsProp && campaignsProp.length > 0 ? campaignsProp : camps);
+            setVouchers(vouchersProp && vouchersProp.length > 0 ? vouchersProp : vows);
             setShippingSettingsState(sSettings);
           }).finally(() => {
             setLoading(false);
@@ -466,7 +519,8 @@ export default function CouponModal({
     } else {
       wasOpenRef.current = false;
     }
-  }, [isOpen, appliedVoucherCode, appliedVoucherCodes, appliedCampaignIds, shippingSettings, subtotal, checkCampaignEligibility]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isBrowseMode, appliedVoucherCode, appliedVoucherCodes, appliedCampaignIds, shippingSettings, subtotal, checkCampaignEligibility, campaignsProp, vouchersProp]);
 
   // Virtual campaign item for shipping discount card (FB-04)
   const shippingPromotionItem: PublicCampaignItem | null = useMemo(() => {
@@ -667,6 +721,10 @@ export default function CouponModal({
 
   const checkCampaignRealtimeLock = useCallback(
     (camp: PublicCampaignItem): CampaignLockResult => {
+      if (isBrowseMode) {
+        return { locked: false };
+      }
+
       const isSelected = selectedCampaignIds.some((id) => String(id) === String(camp.id));
       if (isSelected) {
         return { locked: false };
@@ -721,11 +779,15 @@ export default function CouponModal({
 
       return { locked: false };
     },
-    [selectedCampaignIds, selectedCampaignItems, selectedVoucherItems, t]
+    [isBrowseMode, selectedCampaignIds, selectedCampaignItems, selectedVoucherItems, t]
   );
 
   const checkRealtimeLock = useCallback(
     (v: PublicVoucherItem): { locked: boolean; reason?: string } => {
+      if (isBrowseMode) {
+        return { locked: false };
+      }
+
       const isSelected = selectedCodes.some((c) => c.toUpperCase() === v.code.toUpperCase());
       if (isSelected) {
         return { locked: false };
@@ -807,7 +869,7 @@ export default function CouponModal({
 
       return { locked: false };
     },
-    [selectedCodes, selectedVoucherItems, selectedCampaignItems, t]
+    [isBrowseMode, selectedCodes, selectedVoucherItems, selectedCampaignItems, t]
   );
 
   const handleCopyCode = (code: string) => {
@@ -1183,17 +1245,17 @@ export default function CouponModal({
     const isLocked = lockState.locked;
     const eligibility = checkCampaignEligibility(camp);
 
-    // Tầng 2: Chưa đủ điều kiện
+    // Chưa đủ điều kiện: xám mờ giống campaign bị khóa (isLocked), checkbox disabled
     if (!isEligible) {
       const minSpend = Number(camp.min_order_value || 0);
       const missing = eligibility.missingAmount || 0;
       return (
         <div
           key={camp.id}
-          className="opacity-60 bg-gray-100/70 border border-dashed border-gray-300 cursor-not-allowed select-none relative rounded-2xl transition-all overflow-hidden flex items-center gap-3.5 p-3 shadow-xs"
+          className="relative rounded-2xl border transition-all overflow-hidden flex items-center gap-3.5 p-3 shadow-xs opacity-50 border-gray-200 bg-gray-50/70 select-none cursor-not-allowed"
         >
           {/* Banner */}
-          <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden bg-gray-200 shrink-0 relative border border-gray-300 flex items-center justify-center grayscale">
+          <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 relative border flex items-center justify-center grayscale bg-gray-200 border-gray-300">
             {camp.banner ? (
               <Image
                 src={formatImageUrl(camp.banner)}
@@ -1203,7 +1265,7 @@ export default function CouponModal({
                 unoptimized
               />
             ) : (
-              <div className="flex flex-col items-center justify-center text-center p-1 text-gray-400">
+              <div className="flex flex-col items-center justify-center text-center p-1 text-gray-500">
                 <span className="title-4 font-display font-bold uppercase">{t("promo_tag")}</span>
               </div>
             )}
@@ -1211,22 +1273,31 @@ export default function CouponModal({
 
           {/* Content */}
           <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
-            <h4 className="title-3 font-display text-gray-700 font-bold leading-snug line-clamp-2">
+            <h4 className="title-3 font-display text-gray-600 font-bold leading-snug line-clamp-2">
               {camp.name}
             </h4>
 
-            <div className="body-3 font-sans text-gray-500">
+            <div className="body-2 font-sans font-bold text-gray-800">
               <span className="line-clamp-1">
                 {t("duration")}{" "}
-                <span className="font-semibold">
+                <span className="text-secondary font-bold font-sans">
                   {formatCampaignDuration(camp.start_at, camp.end_at)}
                 </span>
               </span>
             </div>
 
+            {camp.special_note && (
+              <div className="body-3 font-sans text-gray-500 italic">
+                <span className="line-clamp-1">{camp.special_note}</span>
+              </div>
+            )}
+
             {/* Ineligible reason and missing amount hint */}
             <p className="text-secondary text-xs font-semibold leading-normal">
-              {eligibility.reason || `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missing)} để áp dụng`}
+              {eligibility.reason ||
+                (minSpend > 0 && missing > 0
+                  ? `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missing)} để áp dụng`
+                  : "")}
             </p>
 
             {/* Terms link with e.stopPropagation() */}
@@ -1237,7 +1308,7 @@ export default function CouponModal({
                   e.stopPropagation();
                   setSelectedCampaign(camp);
                 }}
-                className="body-3 font-sans text-secondary hover:underline cursor-pointer inline-flex items-center gap-1 font-medium mt-1"
+                className="body-3 font-sans text-secondary hover:underline cursor-pointer inline-flex items-center gap-1 font-medium"
               >
                 <span>{t("view_terms_detail") || "Chi tiết điều kiện áp dụng ›"}</span>
               </button>
@@ -1246,13 +1317,13 @@ export default function CouponModal({
 
           {/* Disabled Checkbox */}
           {!isBrowseMode && (
-            <div className="flex items-center justify-center pl-2 pr-3.5 py-3 shrink-0">
+            <div className="flex items-center justify-center pl-2 pr-4 py-3 shrink-0">
               <div
                 role="checkbox"
                 aria-checked={false}
                 aria-disabled={true}
                 aria-label={camp.name}
-                className="w-5 h-5 min-w-[20px] min-h-[20px] rounded-md border border-gray-200 bg-gray-100/80 cursor-not-allowed text-transparent"
+                className="w-5 h-5 min-w-[20px] min-h-[20px] rounded-md border border-gray-200 bg-gray-100 cursor-not-allowed text-transparent"
               />
             </div>
           )}
@@ -1274,11 +1345,13 @@ export default function CouponModal({
           }
         }}
         className={`relative rounded-2xl border transition-all overflow-hidden flex items-center gap-3.5 p-3 shadow-xs ${
-          isLocked
-            ? "opacity-50 border-gray-200 cursor-not-allowed bg-gray-50/70 select-none"
-            : isSelected
-              ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40 cursor-pointer"
-              : "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer bg-white"
+          isBrowseMode
+            ? "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer bg-white"
+            : isLocked
+              ? "opacity-50 border-gray-200 cursor-not-allowed bg-gray-50/70 select-none"
+              : isSelected
+                ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40 cursor-pointer"
+                : "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer bg-white"
         }`}
       >
         {/* Banner */}
@@ -1308,7 +1381,7 @@ export default function CouponModal({
             }`}>
               {camp.name}
             </h4>
-            {isSelected && (
+            {isSelected && !isBrowseMode && (
               <span className="body-3 font-sans font-bold text-secondary bg-secondary/15 px-2 py-0.5 rounded-full shrink-0">
                 {t("in_use")}
               </span>
@@ -1395,12 +1468,21 @@ export default function CouponModal({
     const isLocked = lockState.locked;
     const isDimmedByNonCombinableVoucher = isLocked;
 
-    // 1. Voucher KHÔNG ĐỦ ĐIỀU KIỆN
+    // 1. Voucher KHÔNG ĐỦ ĐIỀU KIỆN: xám mờ giống voucher bị khóa (isLocked), badge xám, checkbox disabled
     if (!isEligible) {
       return (
         <div
           key={v.code}
-          className="opacity-50 opacity-60 bg-gray-100/70 border border-dashed border-gray-300 pointer-events-none cursor-not-allowed select-none relative rounded-2xl transition-all overflow-hidden flex flex-col sm:flex-row shadow-xs"
+          onClick={() => {
+            if (isBrowseMode) {
+              handleCopyCode(v.code);
+            }
+          }}
+          className={`relative rounded-2xl border transition-all overflow-hidden flex flex-col sm:flex-row shadow-xs ${
+            isBrowseMode
+              ? "border-gray-200 bg-white cursor-pointer hover:border-secondary/40 hover:shadow-md"
+              : "opacity-50 border-gray-200 bg-gray-50/70 select-none cursor-not-allowed"
+          }`}
         >
           {/* Left Badge */}
           <div className="sm:w-28 py-3 px-3 flex sm:flex-col items-center justify-center gap-1 text-center shrink-0 bg-gray-400 text-white">
@@ -1413,58 +1495,73 @@ export default function CouponModal({
           <div className="flex-1 p-3 flex flex-col justify-between space-y-1.5">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono font-bold text-xs text-gray-600 bg-gray-200 px-2 py-0.5 rounded">
+                <span className="font-mono font-bold text-xs text-primary bg-yellow/60 px-2 py-0.5 rounded border border-secondary/20">
                   {v.code}
                 </span>
                 {v.customer_scope === "member_only" && (
-                  <span className="body-3 font-sans font-medium text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">
+                  <span className="body-3 font-sans font-medium text-primary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
                     Thành viên
                   </span>
                 )}
                 {v.customer_scope === "tier_only" && (
-                  <span className="body-3 font-sans font-medium text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">
+                  <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
                     Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "DIAMOND" : "GOLD") : "VIP"}
                   </span>
                 )}
               </div>
 
-              <p className="body-2 font-sans font-bold text-gray-700 mt-1 leading-snug">
+              <p className="body-2 font-sans font-bold text-gray-600 mt-1 leading-snug">
                 {v.description || v.campaign_name}
               </p>
 
-              {v.prereq_price && v.prereq_price > 0 && (
-                <p className="body-3 font-sans text-gray-500 mt-0.5">
+              {v.prereq_price && v.prereq_price > 0 ? (
+                <p className="body-3 font-sans text-gray-400 mt-0.5">
                   {t("min_spend", { amount: formatPrice(v.prereq_price) })}
+                </p>
+              ) : (
+                <p className="body-3 font-sans text-gray-400 font-medium mt-0.5">
+                  {t("all_orders")}
                 </p>
               )}
 
               {/* Reason why ineligible */}
               {eligibility.reason && (
-                <p className="text-secondary text-xs font-semibold mt-1.5 leading-normal">
+                <p className="text-secondary text-xs font-semibold mt-1 leading-normal">
                   {eligibility.reason}
                 </p>
               )}
 
               {(eligibility as any).missingAmount !== undefined && (eligibility as any).missingAmount > 0 && (
-                <p className="text-gray-500 text-xs mt-0.5">
-                  Mua thêm <strong className="text-secondary font-bold">{formatPrice((eligibility as any).missingAmount)}</strong> để áp dụng (để dùng mã này)
+                <p className="text-secondary text-xs font-semibold mt-0.5">
+                  Mua thêm <strong className="font-bold">{formatPrice((eligibility as any).missingAmount)}</strong> để áp dụng
                 </p>
               )}
             </div>
 
-            <div className="flex items-center justify-between pt-1 border-t border-gray-200/60">
-              <span className="text-[11px] text-gray-400 font-medium">{t("ineligible_badge") || "Chưa đủ điều kiện"}</span>
+            {/* Card Footer: Copy Code */}
+            <div className="flex items-center justify-between pt-1.5 border-t border-gray-100 gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopyCode(v.code);
+                }}
+                className="body-3 font-sans text-gray-500 hover:text-secondary font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <span>{copiedCode === v.code ? t("copied_code") : t("copy_code")}</span>
+              </button>
             </div>
           </div>
 
           {/* Right Checkbox (Grab-style disabled) */}
           {!isBrowseMode && (
-            <div className="flex items-center justify-center pl-2 pr-3.5 py-3 shrink-0">
+            <div className="flex items-center justify-center pl-2 pr-4 py-3 shrink-0">
               <div
                 role="checkbox"
                 aria-checked={false}
                 aria-disabled={true}
-                className="w-5 h-5 rounded-md border border-gray-200 bg-gray-100/80 cursor-not-allowed text-transparent"
+                aria-label={v.code}
+                className="w-5 h-5 min-w-[20px] min-h-[20px] rounded-md border border-gray-200 bg-gray-100 cursor-not-allowed text-transparent"
               />
             </div>
           )}
@@ -1486,11 +1583,13 @@ export default function CouponModal({
           }
         }}
         className={`relative rounded-2xl border transition-all overflow-hidden flex flex-col sm:flex-row bg-white shadow-xs ${
-          isLocked
-            ? "opacity-50 border-gray-200 cursor-not-allowed bg-gray-50/70 select-none"
-            : isApplied
-              ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40 cursor-pointer"
-              : "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer"
+          isBrowseMode
+            ? "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer"
+            : isLocked
+              ? "opacity-50 border-gray-200 cursor-not-allowed bg-gray-50/70 select-none"
+              : isApplied
+                ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40 cursor-pointer"
+                : "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer"
         }`}
       >
         {/* Left Badge */}
@@ -1519,7 +1618,7 @@ export default function CouponModal({
                   Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "DIAMOND" : "GOLD") : "VIP"}
                 </span>
               )}
-              {isApplied && (
+              {isApplied && !isBrowseMode && (
                 <span className="body-3 font-sans font-bold text-secondary bg-secondary/15 px-2 py-0.5 rounded-full">
                   {t("in_use")}
                 </span>

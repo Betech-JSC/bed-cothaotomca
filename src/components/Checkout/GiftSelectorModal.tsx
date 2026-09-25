@@ -162,7 +162,7 @@ export default function GiftSelectorModal({
                   {/* Badge */}
                   {isDisabled ? (
                     <span className="text-[11px] font-sans font-bold text-gray-500 bg-gray-200/90 px-2 py-0.5 rounded-full shrink-0">
-                      {item.disabled_reason || "Chưa khả dụng"}
+                      {item.disabled_reason || "Chưa đạt điều kiện"}
                     </span>
                   ) : isSelected ? (
                     <span className="body-3 font-sans font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full shrink-0">

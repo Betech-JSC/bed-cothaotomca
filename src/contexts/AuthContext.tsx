@@ -315,6 +315,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem("auth_token");
+    localStorage.removeItem("cothaotomca_cached_customer_addresses");
     setToken(null);
     setUser(null);
   };

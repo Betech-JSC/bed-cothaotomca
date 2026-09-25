@@ -11,7 +11,7 @@ export async function getActiveCampaigns(): Promise<PublicCampaignItem[]> {
     const res = await fetch(`${API_BASE}/campaigns`, {
       headers: { Accept: "application/json" },
       cache: "no-store",
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return [];
     const json = await res.json();

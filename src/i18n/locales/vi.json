@@ -268,7 +268,7 @@
   },
   "gift_selector": {
     "default_title": "Chọn món quà tặng miễn phí",
-    "available_gifts": "Danh sách món quà khả dụng ({count})",
+    "available_gifts": "Danh sách món quà tặng ({count})",
     "free": "Miễn phí (0đ)",
     "selecting": "Đang chọn",
     "instruction": "* Nhấp vào món để chọn nhận quà",

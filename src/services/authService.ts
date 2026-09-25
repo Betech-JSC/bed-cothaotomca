@@ -47,6 +47,36 @@ export interface CustomerAddress {
   updated_at?: string;
 }
 
+export const CACHED_ADDRESSES_STORAGE_KEY = "cothaotomca_cached_customer_addresses";
+
+export function getCachedCustomerAddresses(): CustomerAddress[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CACHED_ADDRESSES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function setCachedCustomerAddresses(addresses: CustomerAddress[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CACHED_ADDRESSES_STORAGE_KEY, JSON.stringify(addresses));
+  } catch (e) {
+    console.warn("Failed to cache customer addresses:", e);
+  }
+}
+
+export function clearCachedCustomerAddresses(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(CACHED_ADDRESSES_STORAGE_KEY);
+  } catch {}
+}
+
 /**
  * Real-time availability check for phone or email
  */
@@ -251,7 +281,11 @@ export async function getCustomerAddressesApi(): Promise<CustomerAddress[]> {
     }
 
     const body = await res.json();
-    return (body.data || body) as CustomerAddress[];
+    const list = (body.data || body) as CustomerAddress[];
+    if (Array.isArray(list)) {
+      setCachedCustomerAddresses(list);
+    }
+    return list;
   } catch (err) {
     console.error("getCustomerAddressesApi error:", err);
     return [];
@@ -287,7 +321,13 @@ export async function createCustomerAddressApi(
     throw new Error(errorMsg);
   }
 
-  return (body.data || body) as CustomerAddress;
+  const newAddr = (body.data || body) as CustomerAddress;
+  if (newAddr && newAddr.id) {
+    const cached = getCachedCustomerAddresses();
+    setCachedCustomerAddresses([...cached, newAddr]);
+  }
+
+  return newAddr;
 }
 
 /**
@@ -320,7 +360,13 @@ export async function updateCustomerAddressApi(
     throw new Error(errorMsg);
   }
 
-  return (body.data || body) as CustomerAddress;
+  const updatedAddr = (body.data || body) as CustomerAddress;
+  if (updatedAddr && updatedAddr.id) {
+    const cached = getCachedCustomerAddresses();
+    setCachedCustomerAddresses(cached.map((a) => (a.id === updatedAddr.id ? updatedAddr : a)));
+  }
+
+  return updatedAddr;
 }
 
 /**
@@ -345,6 +391,11 @@ export async function deleteCustomerAddressApi(id: number): Promise<void> {
     const errorMsg = body.message || "Xóa địa chỉ thất bại.";
     throw new Error(errorMsg);
   }
+
+  const cached = getCachedCustomerAddresses();
+  if (cached.length > 0) {
+    setCachedCustomerAddresses(cached.filter((a) => a.id !== id));
+  }
 }
 
 /**
@@ -366,8 +417,13 @@ export async function setDefaultCustomerAddressApi(id: number): Promise<void> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const errorMsg = body.message || "Đặt địa chỉ mặc định thất bại.";
+    const errorMsg = body.message || "Không thể đặt làm địa chỉ mặc định.";
     throw new Error(errorMsg);
+  }
+
+  const cached = getCachedCustomerAddresses();
+  if (cached.length > 0) {
+    setCachedCustomerAddresses(cached.map((a) => ({ ...a, is_default: a.id === id })));
   }
 }
 
