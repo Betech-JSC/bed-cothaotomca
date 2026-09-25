@@ -1,9 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 import "@testing-library/jest-dom";
+
+vi.mock("@/i18n/routing", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+  usePathname: () => "/checkout",
+}));
+
 import { calculateVoucherDiscount, type AppliedVoucherState } from "@/services/orderService";
 import { formatPrice } from "@/lib/format";
+import { getVoucherBadgeLabel } from "@/components/Voucher/CouponModal";
 
 /**
  * Reusable summary component representing the exact render logic of CheckoutForm & MobileCartFlow
@@ -310,6 +317,45 @@ describe("Shipping Voucher Discount Display & Separation Tests (OpenSpec: fix-sh
       expect(screen.getByTestId("shipping-auto-badge")).toHaveTextContent("Freeship tự động");
       expect(screen.queryByTestId("voucher-row")).not.toBeInTheDocument();
       expect(screen.getByTestId("total-amount")).toHaveTextContent("400.000 VNĐ");
+    });
+  });
+
+  describe("Kịch bản 5: Nhãn hiển thị cho Voucher Vận chuyển (FREESHIP vs GIẢM SHIP vs short_name)", () => {
+    it("5.1 Voucher ship không có max_discount -> hiển thị nhãn FREESHIP", () => {
+      const fullFreeship = {
+        id: 501,
+        code: "FREESHIP_FULL",
+        discount_type: "freeship" as const,
+        value: 0,
+        max_discount: null,
+        is_freeship: true,
+      };
+      expect(getVoucherBadgeLabel(fullFreeship, true)).toBe("FREESHIP");
+    });
+
+    it("5.2 Voucher ship có max_discount = 25000 -> hiển thị nhãn GIẢM SHIP", () => {
+      const cappedShip = {
+        id: 502,
+        code: "SHIP_CAP_25K",
+        discount_type: "fixed" as const,
+        value: 25000,
+        max_discount: 25000,
+        is_freeship: true,
+      };
+      expect(getVoucherBadgeLabel(cappedShip, true)).toBe("GIẢM SHIP");
+    });
+
+    it("5.3 Voucher ship có short_name từ CMS -> ưu tiên hiển thị short_name", () => {
+      const customShip = {
+        id: 503,
+        code: "SHIP_CUSTOM",
+        short_name: "Giảm 50% Ship",
+        discount_type: "percent" as const,
+        value: 50,
+        max_discount: 25000,
+        is_freeship: true,
+      };
+      expect(getVoucherBadgeLabel(customShip, true)).toBe("Giảm 50% Ship");
     });
   });
 });

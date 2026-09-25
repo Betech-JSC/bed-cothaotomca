@@ -139,7 +139,7 @@ describe('VoucherTicketBar Component Tests', () => {
     expect(screen.getByText('✓')).toBeInTheDocument();
   });
 
-  it('3. Trạng thái đã áp dụng mã Freeship -> Hiển thị Pill Chip Xanh Brand #142A68 và text "Miễn Phí Vận Chuyển"', () => {
+  it('3. Trạng thái đã áp dụng mã Freeship -> Hiển thị Pill Chip Xanh Brand #142A68 và text "FREESHIP"', () => {
     const handleClick = vi.fn();
     const handleRemove = vi.fn();
     const appliedShip = {
@@ -160,10 +160,10 @@ describe('VoucherTicketBar Component Tests', () => {
       />
     );
 
-    // Chip Freeship xuất hiện với text "Miễn Phí Vận Chuyển"
+    // Chip Freeship xuất hiện với text "FREESHIP"
     const shipBadge = screen.getByTestId('freeship-ticket-badge');
     expect(shipBadge).toBeInTheDocument();
-    expect(shipBadge).toHaveTextContent('Miễn Phí Vận Chuyển');
+    expect(shipBadge).toHaveTextContent('FREESHIP');
 
     // Màu Xanh Brand: nền #EBF0FA, viền #142A68, chữ #142A68, rounded-full
     expect(shipBadge.className).toContain('text-[#142A68]');
@@ -212,7 +212,7 @@ describe('VoucherTicketBar Component Tests', () => {
     expect(foodBadge).toHaveTextContent('-100.000đ');
 
     expect(shipBadge).toBeInTheDocument();
-    expect(shipBadge).toHaveTextContent('Miễn Phí Vận Chuyển');
+    expect(shipBadge).toHaveTextContent('FREESHIP');
 
     // Dòng thông báo hiển thị đúng 2 ưu đãi
     expect(screen.getByText('Đã áp dụng thành công 2 ưu đãi!')).toBeInTheDocument();
@@ -306,11 +306,12 @@ describe('VoucherTicketBar Component Tests', () => {
     expect(shipBadge).toHaveTextContent('Giảm 30K Ship');
   });
 
-  it('8. Voucher vận chuyển giảm tiền cố định KHÔNG có short_name -> Pill chip hiển thị formatVoucherBadgeText + Ship (-30.000đ Ship), TUYỆT ĐỐI KHÔNG hiển thị "Miễn Phí Vận Chuyển"', () => {
+  it('8. Voucher vận chuyển có maxDiscount > 0 KHÔNG có short_name -> Pill chip hiển thị "GIẢM SHIP"', () => {
     const appliedShip = {
       id: 31,
       code: 'TEST_SHIP_30K',
       value: 30000,
+      maxDiscount: 25000,
       discountType: 'fixed',
       isFreeship: true,
     };
@@ -325,11 +326,11 @@ describe('VoucherTicketBar Component Tests', () => {
 
     const shipBadge = screen.getByTestId('freeship-ticket-badge');
     expect(shipBadge).toBeInTheDocument();
-    expect(shipBadge).toHaveTextContent('-30.000đ Ship');
-    expect(shipBadge).not.toHaveTextContent('Miễn Phí Vận Chuyển');
+    expect(shipBadge).toHaveTextContent('GIẢM SHIP');
+    expect(shipBadge).not.toHaveTextContent('FREESHIP');
   });
 
-  it('9. Voucher vận chuyển Freeship 100% KHÔNG có short_name -> Pill chip hiển thị "Miễn Phí Vận Chuyển"', () => {
+  it('9. Voucher vận chuyển Freeship 100% (không có maxDiscount) KHÔNG có short_name -> Pill chip hiển thị "FREESHIP"', () => {
     const appliedShip = {
       id: 32,
       code: 'FREESHIP100',
@@ -347,7 +348,7 @@ describe('VoucherTicketBar Component Tests', () => {
 
     const shipBadge = screen.getByTestId('freeship-ticket-badge');
     expect(shipBadge).toBeInTheDocument();
-    expect(shipBadge).toHaveTextContent('Miễn Phí Vận Chuyển');
+    expect(shipBadge).toHaveTextContent('FREESHIP');
   });
 
   it('10. Voucher món ăn có short_name -> Pill chip ưu tiên hiển thị nội dung short_name', () => {

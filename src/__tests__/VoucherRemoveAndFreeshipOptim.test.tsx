@@ -15,7 +15,8 @@ vi.mock('next-intl', () => ({
         btn_select_voucher: 'Chọn mã',
         btn_remove_voucher: 'Xóa',
         applied_vouchers_success_count: 'Đã áp dụng thành công {count} ưu đãi!',
-        freeship_badge_text: 'Miễn Phí Vận Chuyển',
+        freeship_badge_text: 'FREESHIP',
+        shipping_discount_badge_text: 'GIẢM SHIP',
       },
       progress_bar: {
         buy_more: 'Mua thêm',

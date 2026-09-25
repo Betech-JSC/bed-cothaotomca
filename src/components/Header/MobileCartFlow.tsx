@@ -40,6 +40,7 @@ import CouponModal, { evaluateCampaignEligibility } from "@/components/Voucher/C
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
 import GiftSelectorModal from "@/components/Checkout/GiftSelectorModal";
 import VoucherTicketBar from "@/components/Checkout/VoucherTicketBar";
+import RequiredMark from "@/components/Checkout/RequiredMark";
 
 const POPULAR_DISTRICTS = [
   // Hà Nội
@@ -1416,6 +1417,19 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       return;
     }
 
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setFieldErrors((prev) => ({ ...prev, email: "Vui lòng nhập địa chỉ email." }));
+      setLoading(false);
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setFieldErrors((prev) => ({ ...prev, email: "Email không hợp lệ. Vui lòng kiểm tra lại." }));
+      setLoading(false);
+      return;
+    }
+
     if (deliveryType === "delivery") {
       if (!selectedWard && !selectedWardId) {
         setFieldErrors((prev) => ({ ...prev, ward: "Vui lòng chọn Phường / Xã." }));
@@ -2248,14 +2262,28 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
               {/* Email */}
               <div className="space-y-3">
-                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("email_label")}</label>
+                <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
+                  {t("email_label")}
+                  <RequiredMark />
+                </label>
                 <input
                   type="email"
+                  required
                   placeholder={t("email_placeholder")}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (fieldErrors.email) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.email;
+                        return next;
+                      });
+                    }
+                  }}
                   className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
                 />
+                {fieldErrors.email && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.email}</p>}
               </div>
 
               {/* Delivery method toggle button */}

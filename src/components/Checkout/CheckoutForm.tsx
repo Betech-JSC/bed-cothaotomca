@@ -1093,7 +1093,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   const validateEmailInput = (val: string): string | null => {
     const clean = val.trim();
-    if (!clean) return null;
+    if (!clean) return "Vui lòng nhập địa chỉ email.";
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(clean)) {
       return "Email không hợp lệ. Vui lòng kiểm tra lại.";
@@ -2198,11 +2198,15 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
               )}
             </div>
 
-            {/* Email (Optional) */}
+            {/* Email */}
             <div className="space-y-2">
-              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("email_label")}</label>
+              <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
+                {t("email_label")}
+                <RequiredMark />
+              </label>
               <input
                 type="email"
+                required
                 value={email}
                 onChange={(e) => {
                   const val = e.target.value;

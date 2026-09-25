@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import React from 'react';
-import CouponModal, { resetCouponModalCache } from '@/components/Voucher/CouponModal';
+import CouponModal, { resetCouponModalCache, getVoucherBadgeLabel } from '@/components/Voucher/CouponModal';
 import GiftSelectorModal, { GiftItem } from '@/components/Checkout/GiftSelectorModal';
 import { PublicVoucherItem, ActivePromotion } from '@/services/orderService';
 import { getActiveCampaigns, PublicCampaignItem } from '@/services/campaignService';
@@ -1437,7 +1437,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(screen.getByText('Giảm 30K Ship')).toBeInTheDocument();
   });
 
-  it('Matrix 30: Voucher ship không có short_name: 100% Freeship hiển thị FREESHIP, giảm ship cố định hiển thị -30.000đ và không bị gán FREESHIP', async () => {
+  it('Matrix 30: Voucher ship không có short_name: 100% Freeship (không max_discount) hiển thị FREESHIP, voucher ship có max_discount hiển thị GIẢM SHIP', async () => {
     const fullFreeship: PublicVoucherItem = {
       id: 904,
       code: 'FREESHIP100PCT',
@@ -1445,14 +1445,15 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
       value: 0,
       is_freeship: true,
     };
-    const fixedShip: PublicVoucherItem = {
+    const cappedShip: PublicVoucherItem = {
       id: 905,
-      code: 'FIXED_SHIP_30K',
+      code: 'CAPPED_SHIP_25K',
       discount_type: 'fixed',
       value: 30000,
+      max_discount: 25000,
       is_freeship: true,
     };
-    mockVouchersList = [fullFreeship, fixedShip];
+    mockVouchersList = [fullFreeship, cappedShip];
 
     render(
       <CouponModal
@@ -1464,13 +1465,18 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     );
 
     expect(await screen.findByText('FREESHIP100PCT')).toBeInTheDocument();
-    expect(screen.getByText('FIXED_SHIP_30K')).toBeInTheDocument();
+    expect(screen.getByText('CAPPED_SHIP_25K')).toBeInTheDocument();
 
-    // fullFreeship hiển thị FREESHIP
+    // fullFreeship (không có max_discount) hiển thị FREESHIP
     expect(screen.getByText('FREESHIP')).toBeInTheDocument();
 
-    // fixedShip hiển thị -30.000 VNĐ (từ formatPrice), tuyệt đối không gán nhãn FREESHIP
-    expect(screen.getByText(`-${formatPrice(30000)}`)).toBeInTheDocument();
+    // cappedShip (có max_discount: 25000) hiển thị GIẢM SHIP
+    expect(screen.getByText('GIẢM SHIP')).toBeInTheDocument();
+
+    // Xác thực logic getVoucherBadgeLabel độc lập
+    expect(getVoucherBadgeLabel(fullFreeship, true)).toBe('FREESHIP');
+    expect(getVoucherBadgeLabel(cappedShip, true)).toBe('GIẢM SHIP');
+    expect(getVoucherBadgeLabel({ ...cappedShip, short_name: 'Giảm 25K Ship' }, true)).toBe('Giảm 25K Ship');
   });
 
   it('Matrix 31: Nhập tay mã Freeship khi hệ thống đang giảm ship tự động -> Trả về feedback notice thân thiện', async () => {

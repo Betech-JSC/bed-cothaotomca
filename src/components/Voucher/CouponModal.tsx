@@ -151,10 +151,11 @@ export function getVoucherBadgeLabel(v: PublicVoucherItem, isFreeship: boolean):
     return v.short_name.trim();
   }
   if (isFreeship) {
-    if (v.discount_type === "freeship" || !v.value || v.value === 0) {
-      return "FREESHIP";
+    const maxDiscount = v.max_discount ?? (v as any).maxDiscount;
+    if (maxDiscount && Number(maxDiscount) > 0) {
+      return "GIẢM SHIP";
     }
-    return `-${formatPrice(v.value)}`;
+    return "FREESHIP";
   }
   if (v.discount_type === "percent") {
     return `-${v.value}%`;

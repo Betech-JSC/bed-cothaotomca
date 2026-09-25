@@ -11,8 +11,10 @@ export interface VoucherTicketBarProps {
     value?: number;
     discountType?: string;
     maxDiscount?: number | null;
+    max_discount?: number | null;
     discountAmount?: number;
     isFreeship?: boolean;
+    is_freeship?: boolean;
   } | null;
   appliedShippingVoucher?: {
     id?: number;
@@ -21,8 +23,10 @@ export interface VoucherTicketBarProps {
     value?: number;
     discountType?: string;
     maxDiscount?: number | null;
+    max_discount?: number | null;
     discountAmount?: number;
     isFreeship?: boolean;
+    is_freeship?: boolean;
   } | null;
   activeCampaignName?: string | null;
   onClick: () => void;
@@ -113,7 +117,8 @@ export default function VoucherTicketBar({
 
   const title = t("voucher_ticket_title") || "Mã giảm giá (Voucher)";
   const placeholder = t("no_voucher_applied") || "Chọn hoặc nhập mã ưu đãi";
-  const freeshipBadgeText = t("freeship_badge_text") || "Miễn Phí Vận Chuyển";
+  const freeshipBadgeText = t("freeship_badge_text") || "FREESHIP";
+  const shippingDiscountBadgeText = t("shipping_discount_badge_text") || "GIẢM SHIP";
 
   // Determine food and shipping badges
   let foodVoucher = appliedVoucher && !isShippingVoucher(appliedVoucher) ? appliedVoucher : null;
@@ -127,15 +132,13 @@ export default function VoucherTicketBar({
   const hasAnyVoucher = Boolean(foodVoucher || shipVoucher || activeCampaignName);
   const appliedCount = (foodVoucher ? 1 : 0) + (shipVoucher ? 1 : 0) + (activeCampaignName ? 1 : 0);
 
+  const maxDiscountVal = shipVoucher ? (shipVoucher.maxDiscount ?? shipVoucher.max_discount) : null;
   const shipBadgeText = shipVoucher
     ? shipVoucher.short_name && shipVoucher.short_name.trim()
       ? shipVoucher.short_name.trim()
-      : shipVoucher.discountType === "freeship" ||
-        (shipVoucher.isFreeship && (!shipVoucher.value || shipVoucher.value === 0))
-        ? freeshipBadgeText
-        : shipVoucher.value && shipVoucher.value > 0
-          ? `${formatVoucherBadgeText(shipVoucher)} Ship`
-          : freeshipBadgeText
+      : maxDiscountVal && Number(maxDiscountVal) > 0
+        ? shippingDiscountBadgeText
+        : freeshipBadgeText
     : "";
 
   return (
