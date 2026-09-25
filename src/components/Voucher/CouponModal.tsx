@@ -294,7 +294,7 @@ export default function CouponModal({
 }: CouponModalProps) {
   const t = useTranslations("voucher");
   const router = useRouter();
-  const pathname = typeof usePathname === "function" ? usePathname() : "";
+  const pathname = usePathname() || "";
   const isCheckoutRoute = Boolean(
     pathname && (
       pathname === "/checkout" ||
@@ -436,28 +436,32 @@ export default function CouponModal({
         }
         setSelectedCampaignIds(initialCampaigns);
 
-        // If we don't have cached data yet, show smooth loading
-        if (!cachedCampaigns || !cachedVouchers) {
-          setLoading(true);
-        }
-
-        const fetchShipping = shippingSettings !== undefined
-          ? Promise.resolve(shippingSettings)
-          : getShippingSettings().catch(() => null);
-
-        Promise.all([
-          getActiveCampaigns().catch(() => []),
-          getAvailableVouchers().catch(() => []),
-          fetchShipping,
-        ]).then(([camps, vows, sSettings]) => {
-          cachedCampaigns = camps;
-          cachedVouchers = vows;
-          setCampaigns(camps);
-          setVouchers(vows);
-          setShippingSettingsState(sSettings);
-        }).finally(() => {
+        // If we have cached data, reuse it immediately to prevent flickering
+        if (cachedCampaigns && cachedVouchers) {
+          if (campaigns.length === 0) setCampaigns(cachedCampaigns);
+          if (vouchers.length === 0) setVouchers(cachedVouchers);
+          if (shippingSettings && !shippingSettingsState) setShippingSettingsState(shippingSettings);
           setLoading(false);
-        });
+        } else {
+          setLoading(true);
+          const fetchShipping = shippingSettings !== undefined
+            ? Promise.resolve(shippingSettings)
+            : getShippingSettings().catch(() => null);
+
+          Promise.all([
+            getActiveCampaigns().catch(() => []),
+            getAvailableVouchers().catch(() => []),
+            fetchShipping,
+          ]).then(([camps, vows, sSettings]) => {
+            cachedCampaigns = camps;
+            cachedVouchers = vows;
+            setCampaigns(camps);
+            setVouchers(vows);
+            setShippingSettingsState(sSettings);
+          }).finally(() => {
+            setLoading(false);
+          });
+        }
       }
     } else {
       wasOpenRef.current = false;
@@ -947,16 +951,38 @@ export default function CouponModal({
         }
       }
 
-      if (onApplyCampaigns) {
-        await onApplyCampaigns(selectedCampaignIds);
-      }
-      if (onApplyVouchers) {
-        await onApplyVouchers(selectedCodes);
-      } else if (onApplyVoucher) {
-        for (const code of selectedCodes) {
-          await onApplyVoucher(code);
+      // 1. Đồng bộ Campaign độc lập, không triệt tiêu Voucher
+      const hadPreviousCampaigns = Boolean(appliedCampaignIds && appliedCampaignIds.length > 0);
+      if (selectedCampaignIds.length > 0) {
+        if (onApplyCampaigns) {
+          await onApplyCampaigns(selectedCampaignIds);
+        }
+      } else if (hadPreviousCampaigns) {
+        if (onApplyCampaigns) {
+          await onApplyCampaigns([]);
         }
       }
+
+      // 2. Đồng bộ Voucher độc lập, không triệt tiêu Campaign
+      const hadPreviousVouchers = Boolean(
+        (appliedVoucherCodes && appliedVoucherCodes.length > 0) || appliedVoucherCode
+      );
+      if (selectedCodes.length > 0) {
+        if (onApplyVouchers) {
+          await onApplyVouchers(selectedCodes);
+        } else if (onApplyVoucher) {
+          for (const code of selectedCodes) {
+            await onApplyVoucher(code);
+          }
+        }
+      } else if (hadPreviousVouchers) {
+        if (onApplyVouchers) {
+          await onApplyVouchers([]);
+        } else if (onRemoveVoucher) {
+          onRemoveVoucher();
+        }
+      }
+
       onClose();
     } catch (err: any) {
       setFeedbackError(err.message || "Áp dụng ưu đãi thất bại");
@@ -967,9 +993,13 @@ export default function CouponModal({
     totalAppliedCount,
     selectedCodes,
     selectedCampaignIds,
+    appliedVoucherCode,
+    appliedVoucherCodes,
+    appliedCampaignIds,
     onApplyCampaigns,
     onApplyVouchers,
     onApplyVoucher,
+    onRemoveVoucher,
     handleSkipAndContinue,
     onClose,
   ]);

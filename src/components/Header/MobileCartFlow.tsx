@@ -1218,33 +1218,47 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     }
   };
 
-  const handleRemoveVoucher = () => {
-    if (appliedVoucher || appliedShippingVoucher) {
-      setAppliedVoucher(null);
-      setAppliedShippingVoucher(null);
-      setVoucherCode("");
-      setVoucherSuccess(null);
-      setVoucherError(null);
-      setBestDealNotice(null);
-      try {
-        localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
-      } catch (e) {
-        console.error("Error clearing applied vouchers from localStorage", e);
-      }
-    } else {
-      setSelectedCampaignIds([]);
-      setVoucherCode("");
-      setVoucherSuccess(null);
-      setVoucherError(null);
-      setBestDealNotice(null);
-      try {
-        localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
-        localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
-      } catch (e) {
-        console.error("Error clearing applied vouchers and campaigns from localStorage", e);
-      }
+  const handleRemoveVoucher = useCallback(() => {
+    setAppliedVoucher(null);
+    setAppliedShippingVoucher(null);
+    setVoucherCode("");
+    setVoucherSuccess(null);
+    setVoucherError(null);
+    setBestDealNotice(null);
+    try {
+      localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
+    } catch (e) {
+      console.error("Error clearing applied vouchers from localStorage", e);
     }
-  };
+  }, []);
+
+  const handleRemoveCampaign = useCallback(() => {
+    setSelectedCampaignIds([]);
+    try {
+      localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
+    } catch (e) {
+      console.error("Error clearing applied campaigns from localStorage", e);
+    }
+  }, []);
+
+  const handleClearAllPromotions = useCallback(() => {
+    handleRemoveVoucher();
+    handleRemoveCampaign();
+  }, [handleRemoveVoucher, handleRemoveCampaign]);
+
+  const handleRemovePromotionFromBar = useCallback(() => {
+    const hasVouchers = Boolean(appliedVoucher || appliedShippingVoucher);
+    const hasCampaigns = selectedCampaignIds.length > 0;
+    if (hasVouchers && hasCampaigns) {
+      handleClearAllPromotions();
+    } else if (hasVouchers) {
+      handleRemoveVoucher();
+    } else if (hasCampaigns) {
+      handleRemoveCampaign();
+    } else {
+      handleClearAllPromotions();
+    }
+  }, [appliedVoucher, appliedShippingVoucher, selectedCampaignIds, handleClearAllPromotions, handleRemoveVoucher, handleRemoveCampaign]);
 
   const handleApplyVoucherFromModal = useCallback((code: string) => {
     return handleApplyVoucher(code);
@@ -1262,6 +1276,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     try {
       let nextFood: typeof appliedVoucher = null;
       let nextShip: typeof appliedShippingVoucher = null;
+      let validationError: string | null = null;
       for (const rawCode of codes) {
         const c = rawCode.trim().toUpperCase();
         const res = await validateVoucher(
@@ -1311,6 +1326,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           };
           if (isCandidateFreeship) nextShip = candidate;
           else nextFood = candidate;
+        } else {
+          validationError = res.message || "Mã không hợp lệ hoặc không đủ điều kiện.";
         }
       }
       setAppliedVoucher(nextFood);
@@ -1328,6 +1345,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         }
       } else {
         handleRemoveVoucher();
+        if (validationError) {
+          setVoucherError(validationError);
+        }
         setIsVoucherModalOpen(false);
       }
     } catch (e: any) {
@@ -1336,7 +1356,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     } finally {
       setValidatingVoucher(false);
     }
-  }, [originalSubtotal, shipping, phone, user?.phone, token, saleSubtotal]);
+  }, [originalSubtotal, shipping, phone, user?.phone, token, saleSubtotal, handleRemoveVoucher]);
 
   const hasLoadedStoredVoucherRef = useRef(false);
   useEffect(() => {
@@ -1780,7 +1800,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     appliedShippingVoucher={appliedShippingVoucher}
                     activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.name}
                     onClick={() => setIsVoucherModalOpen(true)}
-                    onRemove={handleRemoveVoucher}
+                    onRemove={handleRemovePromotionFromBar}
                   />
                   {voucherError && <p className="text-sm text-red-600 font-semibold mt-1 px-2">{voucherError}</p>}
                   {bestDealNotice && <p className="text-sm text-secondary font-semibold mt-1 px-2">{bestDealNotice}</p>}
