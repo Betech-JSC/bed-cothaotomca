@@ -336,7 +336,7 @@
     "title": "Tra cứu đơn hàng",
     "subtitle": "Kiểm tra tiến độ chế biến và giao nhận đơn hàng của bạn",
     "notice_message": "Đơn hàng của bạn đang được xử lý. Đơn hàng chỉ được tiến hành chuẩn bị sau khi khách hàng nghe máy và xác nhận. Vui lòng chú ý điện thoại để tránh bỏ lỡ cuộc gọi xác nhận đơn hàng.",
-    "order_code_placeholder": "Nhập mã đơn hàng (VD: CTTC-123456)...",
+    "order_code_placeholder": "Nhập mã đơn hàng (VD: #ORD-250926-0001)...",
     "phone_placeholder": "Nhập số điện thoại đặt hàng...",
     "search_button": "Tra cứu ngay",
     "searching": "Đang tra cứu...",

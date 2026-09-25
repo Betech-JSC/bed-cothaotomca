@@ -336,7 +336,7 @@
     "title": "Order Lookup",
     "subtitle": "Check the status and delivery progress of your order",
     "notice_message": "Your order is being processed. The order will only be prepared after the customer answers the phone and confirms. Please pay attention to your phone to avoid missing the order confirmation call.",
-    "order_code_placeholder": "Enter order code (e.g. CTTC-123456)...",
+    "order_code_placeholder": "Enter order code (e.g. #ORD-250926-0001)...",
     "phone_placeholder": "Enter order phone number...",
     "search_button": "Track Order",
     "searching": "Searching...",

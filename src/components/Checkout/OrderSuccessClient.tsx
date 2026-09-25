@@ -274,7 +274,7 @@ export default function OrderSuccessClient({
         <div className="bg-yellow/60 border border-secondary/20 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs md:text-sm font-sans">
           <div>
             <span className="text-brown block font-medium">
-              {t("order_code_label")} <strong className="font-mono font-bold text-primary">{order.order_code}</strong>
+              {t("order_code_label")} <strong className="font-mono font-bold text-primary">{order.order_code?.startsWith("#") ? order.order_code : `#${order.order_code}`}</strong>
             </span>
             <span className="text-brown/90 text-xs mt-0.5 block">
               {t("lookup_tip")}

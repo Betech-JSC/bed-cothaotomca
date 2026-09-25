@@ -12,7 +12,6 @@
 .agents/
 openspec/
 
-.vscode
 
 # testing & logs
 /coverage
@@ -67,4 +66,3 @@ yarn-error.log*
 .vercel
 
 config.bat
-.env

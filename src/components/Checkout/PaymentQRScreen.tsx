@@ -352,7 +352,7 @@ export default function PaymentQRScreen({
           {/* Order summary */}
           <div className="border-t border-gray-100 pt-4 space-y-2 body-1 text-gray-700">
             <p className="label-1 text-gray-500">{t("order_summary") || "Mã đơn hàng"}</p>
-            <p className="title-2 font-mono text-primary">{orderData.order_code}</p>
+            <p className="title-2 font-mono text-primary">{orderData.order_code?.startsWith("#") ? orderData.order_code : `#${orderData.order_code}`}</p>
             <div className="flex justify-between pt-2 headline-2 text-primary">
               <span>{t("total") || "Tổng thanh toán"}</span>
               <span className="text-secondary">{formatPrice(amount)}</span>
