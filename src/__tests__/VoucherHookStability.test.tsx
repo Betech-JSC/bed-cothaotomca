@@ -56,7 +56,7 @@ describe('Voucher Hook Stability Test (Fix React Error #300)', () => {
     };
 
     // Render 1: Initial state before applying voucher (appliedVoucher is null)
-    const { rerender } = render(
+    const { rerender, container } = render(
       <SmartCartProgressBar
         subtotal={200000}
         shippingSettings={shippingSettings}
@@ -79,9 +79,10 @@ describe('Voucher Hook Stability Test (Fix React Error #300)', () => {
       );
     }).not.toThrow();
 
+    expect(container.firstChild).toBeNull();
     expect(
-      screen.getByText(/Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá/i)
-    ).toBeInTheDocument();
+      screen.queryByText(/Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá/i)
+    ).toBeNull();
 
     // Render 3: User removes voucher -> appliedVoucher is null again
     expect(() => {

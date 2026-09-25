@@ -822,9 +822,9 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
   // Nhóm 4: SmartCartProgressBar
   // =========================================================================
   describe('Nhóm 4: SmartCartProgressBar Cleanup & Combination', () => {
-    it('Task 4.1 & 4.2: Hiển thị cảnh báo khi voucher hoặc campaign cấm freeship', () => {
+    it('Task 4.1 & 4.2: Tự động ẩn SmartCartProgressBar khi voucher hoặc campaign cấm freeship', () => {
       // Normal state
-      const { rerender } = render(
+      const { rerender, container } = render(
         <SmartCartProgressBar
           subtotal={200000}
           shippingSettings={{ is_min_amount_enabled: true, min_order_amount: 300000 }}
@@ -832,7 +832,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
       );
       expect(screen.getByText(/Mua thêm/i)).toBeInTheDocument();
 
-      // Voucher cấm freeship
+      // Voucher cấm freeship -> tự động ẩn để tránh khung đỏ dư thừa
       rerender(
         <SmartCartProgressBar
           subtotal={200000}
@@ -846,9 +846,10 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
           } as any}
         />
       );
-      expect(screen.getByText(/Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá/i)).toBeInTheDocument();
+      expect(container.firstChild).toBeNull();
+      expect(screen.queryByText(/Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá/i)).toBeNull();
 
-      // Campaign cấm freeship
+      // Campaign cấm freeship -> tự động ẩn
       rerender(
         <SmartCartProgressBar
           subtotal={200000}
@@ -859,7 +860,8 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
           }}
         />
       );
-      expect(screen.getByText(/CTKM Đại tiệc không áp dụng cùng/i)).toBeInTheDocument();
+      expect(container.firstChild).toBeNull();
+      expect(screen.queryByText(/không áp dụng cùng/i)).toBeNull();
     });
 
     it('Task 2: SmartCartProgressBar tự động ẩn khi có appliedShippingVoucher và hiển thị lại khi gỡ mã', () => {

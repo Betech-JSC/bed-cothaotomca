@@ -513,7 +513,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     const { default: SmartCartProgressBar } = await import('@/components/Cart/SmartCartProgressBar');
 
     // 1. Case: Chưa đạt Freeship (đơn 300k, freeship 500k) -> Cần mua thêm 200k
-    const { rerender } = render(
+    const { rerender, container } = render(
       <SmartCartProgressBar
         subtotal={300000}
         shippingSettings={{ is_min_amount_enabled: true, min_order_amount: 500000 }}
@@ -569,7 +569,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(screen.getByText(formatPrice(20000))).toBeInTheDocument();
     expect(screen.getByText(/phí ship/i)).toBeInTheDocument();
 
-    // 5. Case: Áp dụng voucher khi can_combine_with_promotions === false -> Re-render an toàn, KHÔNG vi phạm React hook count
+    // 5. Case: Áp dụng voucher khi can_combine_with_promotions === false -> Re-render an toàn, KHÔNG vi phạm React hook count, ẩn thanh tiến độ
     rerender(
       <SmartCartProgressBar
         subtotal={250000}
@@ -587,7 +587,8 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
         } as any}
       />
     );
-    expect(screen.getByText(/Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá/i)).toBeInTheDocument();
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByText(/Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá/i)).toBeNull();
 
     // Re-render khi tháo voucher -> Trở lại trạng thái bình thường mà không có lỗi hook mismatch
     rerender(

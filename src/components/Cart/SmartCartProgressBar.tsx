@@ -172,16 +172,9 @@ export default function SmartCartProgressBar({
     shippingSettings?.is_min_amount_enabled && (isG1BlockingFreeship || isG2BlockingFreeship)
   );
 
+  // Khi freeship bị chặn bởi CTKM hoặc Voucher, ẩn thanh tiến độ (lý do không áp dụng đã được hiển thị chi tiết dưới dòng Phí giao hàng)
   if (isFreeshipBlocked) {
-    const message = isG1BlockingFreeship
-      ? `CTKM ${appliedCampaign?.name || ""} không áp dụng cùng chương trình giảm phí vận chuyển.`
-      : (t("cannot_combine_voucher") || `Mã ${appliedVoucher?.code || ""} không áp dụng cùng chương trình giảm phí vận chuyển.`);
-
-    return (
-      <div className={`rounded-2xl p-3.5 border transition-all bg-red-50 border-red-200 text-red-800 text-xs font-semibold ${className}`}>
-        {message}
-      </div>
-    );
+    return null;
   }
 
   // Khi có mã voucher vận chuyển đang áp dụng, lập tức ẩn hoàn toàn thanh tiến độ

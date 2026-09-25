@@ -185,6 +185,7 @@ export default function VoucherTicketBar({
             <button
               type="button"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 onRemove();
               }}

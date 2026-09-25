@@ -135,7 +135,7 @@ describe('SmartCartProgressBar Component Tests', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('displays conflict warning banner when voucher explicitly blocks freeship', () => {
+  it('automatically hides (returns null) without redundant banner when voucher explicitly blocks freeship', () => {
     const blockingVoucher = {
       id: 203,
       code: 'NO_FREESHIP_CODE',
@@ -145,7 +145,7 @@ describe('SmartCartProgressBar Component Tests', () => {
       can_combine_with_freeship: false,
     };
 
-    render(
+    const { container } = render(
       <SmartCartProgressBar
         subtotal={150000}
         shippingSettings={defaultShippingSettings}
@@ -153,8 +153,9 @@ describe('SmartCartProgressBar Component Tests', () => {
       />
     );
 
+    expect(container.firstChild).toBeNull();
     expect(
-      screen.getByText(/Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá/i)
-    ).toBeInTheDocument();
+      screen.queryByText(/Không thể áp dụng Hỗ trợ phí ship do giỏ hàng đã có mã giảm giá/i)
+    ).toBeNull();
   });
 });

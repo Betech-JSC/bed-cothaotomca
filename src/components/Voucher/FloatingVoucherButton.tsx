@@ -60,8 +60,10 @@ export default function FloatingVoucherButton() {
 
   const handleRemoveVoucher = () => {
     setAppliedVoucherCodes([]);
+    setSelectedCampaignIds([]);
     try {
       localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
+      localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
     } catch (e) {
       console.error("Error clearing voucher codes from localStorage", e);
     }

@@ -1219,16 +1219,30 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   };
 
   const handleRemoveVoucher = () => {
-    setAppliedVoucher(null);
-    setAppliedShippingVoucher(null);
-    setVoucherCode("");
-    setVoucherSuccess(null);
-    setVoucherError(null);
-    setBestDealNotice(null);
-    try {
-      localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
-    } catch (e) {
-      console.error("Error clearing applied vouchers from localStorage", e);
+    if (appliedVoucher || appliedShippingVoucher) {
+      setAppliedVoucher(null);
+      setAppliedShippingVoucher(null);
+      setVoucherCode("");
+      setVoucherSuccess(null);
+      setVoucherError(null);
+      setBestDealNotice(null);
+      try {
+        localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
+      } catch (e) {
+        console.error("Error clearing applied vouchers from localStorage", e);
+      }
+    } else {
+      setSelectedCampaignIds([]);
+      setVoucherCode("");
+      setVoucherSuccess(null);
+      setVoucherError(null);
+      setBestDealNotice(null);
+      try {
+        localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
+        localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
+      } catch (e) {
+        console.error("Error clearing applied vouchers and campaigns from localStorage", e);
+      }
     }
   };
 
