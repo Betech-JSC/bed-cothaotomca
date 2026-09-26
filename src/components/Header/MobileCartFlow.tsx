@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
-import { useRouter } from "@/i18n/routing";
+import { useRouter, Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
@@ -32,7 +32,16 @@ import {
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
 import { useAuth, getMemberTier, calculateMemberDiscount } from "@/contexts/AuthContext";
-import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getVietnamDate, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
+import {
+  getCustomerAddressesApi,
+  getCachedCustomerAddresses,
+  setCachedCustomerAddresses,
+  type CustomerAddress,
+  checkGuestTierByPhone,
+  type GuestTierHint,
+} from "@/services/authService";
+import GuestTierHintBanner from "@/components/Checkout/GuestTierHintBanner";
+import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getEarliestPreOrderSlot, getVietnamDate, getVietnamTimeString, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 import Chevron from "@/components/Icons/Chevron";
@@ -67,7 +76,7 @@ const POPULAR_DISTRICTS = [
 
 export default function MobileCartFlow({ onClose, inline = false }: { onClose?: () => void; inline?: boolean }) {
   const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen, hasOutOfStockItems } = useCart();
-  const isOutOfStockOverall = hasOutOfStockItems ?? cartItems.some((i) => i.isOutOfStock);
+  const isOutOfStockOverall = Boolean(hasOutOfStockItems || cartItems.some((i) => i.isOutOfStock));
   const { user, token, refreshUser } = useAuth();
   const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
   const router = useRouter();
@@ -102,6 +111,194 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [streetAddress, setStreetAddress] = useState("");
   const [selectedBranchId, setSelectedBranchId] = useState<number>(1);
   const [assignedBranchName, setAssignedBranchName] = useState<string | null>(null);
+
+  // Check whether current user is authenticated
+  const isUserLoggedIn = Boolean(
+    user ||
+    token ||
+    (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token")))
+  );
+
+  // Customer Address Book states (for logged in customers)
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>(() => {
+    if (typeof window !== "undefined") {
+      const cached = getCachedCustomerAddresses();
+      if (cached.length > 0) return cached;
+    }
+    return [];
+  });
+
+  const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(() => {
+    if (typeof window !== "undefined") {
+      const cached = getCachedCustomerAddresses();
+      if (cached.length > 0) {
+        const defaultAddr = cached.find((a) => a.is_default) || cached[0];
+        return defaultAddr ? defaultAddr.id : null;
+      }
+    }
+    return null;
+  });
+
+  const [isLoadingCustomerAddresses, setIsLoadingCustomerAddresses] = useState<boolean>(() => {
+    const hasAuth = Boolean(
+      user ||
+      token ||
+      (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token")))
+    );
+    if (hasAuth) {
+      const cached = typeof window !== "undefined" ? getCachedCustomerAddresses() : [];
+      return cached.length === 0;
+    }
+    return false;
+  });
+  const hasAutoFilledDefaultAddressRef = useRef(false);
+
+  // Auto-fill address details helper
+  const applyAddressToForm = useCallback((addr: CustomerAddress) => {
+    setSelectedAddressId(addr.id);
+    if (addr.recipient_name) setName(addr.recipient_name);
+    if (addr.phone) setPhone(addr.phone);
+    if (addr.province) setSelectedProvince(addr.province);
+    if (addr.district) setSelectedDistrict(addr.district);
+    if (addr.ward) setSelectedWard(addr.ward);
+    if (addr.ward_id) setSelectedWardId(addr.ward_id);
+    const addrStreet = addr.street_address || addr.full_address || "";
+    if (addrStreet) setStreetAddress(addrStreet);
+  }, []);
+
+  // Auto-fill from cached address immediately on client mount if available
+  useEffect(() => {
+    if (!hasAutoFilledDefaultAddressRef.current && customerAddresses.length > 0 && selectedAddressId && selectedAddressId !== "new") {
+      const addr = customerAddresses.find((a) => a.id === selectedAddressId);
+      if (addr) {
+        hasAutoFilledDefaultAddressRef.current = true;
+        applyAddressToForm(addr);
+      }
+    }
+  }, [customerAddresses, selectedAddressId, applyAddressToForm]);
+
+  useEffect(() => {
+    if (isUserLoggedIn) {
+      if (user) {
+        setName((prev) => prev || user.name || "");
+        setPhone((prev) => prev || user.phone || "");
+        setEmail((prev) => prev || user.email || "");
+      }
+
+      setCustomerAddresses((prev) => {
+        if (prev.length === 0) {
+          setIsLoadingCustomerAddresses(true);
+        }
+        return prev;
+      });
+
+      getCustomerAddressesApi()
+        .then((addrs) => {
+          setCustomerAddresses(addrs);
+          setCachedCustomerAddresses(addrs);
+          if (addrs.length > 0) {
+            setSelectedAddressId((curr) => {
+              if (curr && curr !== "new" && addrs.some((a) => a.id === curr)) {
+                return curr;
+              }
+              const defaultAddr = addrs.find((a) => a.is_default) || addrs[0];
+              if (defaultAddr && !hasAutoFilledDefaultAddressRef.current) {
+                hasAutoFilledDefaultAddressRef.current = true;
+                applyAddressToForm(defaultAddr);
+              }
+              return defaultAddr ? defaultAddr.id : curr;
+            });
+          }
+        })
+        .catch((err) => {
+          console.warn("Failed to load customer addresses:", err);
+        })
+        .finally(() => {
+          setIsLoadingCustomerAddresses(false);
+        });
+    }
+  }, [isUserLoggedIn, user, applyAddressToForm]);
+
+  const handleSelectCustomerAddress = (addrId: number | "new") => {
+    if (addrId === "new") {
+      setSelectedAddressId("new");
+      setStreetAddress("");
+      setSelectedWard("");
+      setSelectedWardId("");
+      setSelectedDistrict("");
+      setSelectedProvince(adminProvinces[0]?.name || "TP. Hồ Chí Minh");
+      if (user) {
+        setName(user.name || "");
+        setPhone(user.phone || "");
+      }
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.ward;
+        delete next.address;
+        return next;
+      });
+      return;
+    }
+    const addr = customerAddresses.find((a) => a.id === addrId);
+    if (addr) {
+      applyAddressToForm(addr);
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.ward;
+        delete next.address;
+        return next;
+      });
+    }
+  };
+
+  const isSavedAddressSelected = Boolean(
+    isUserLoggedIn &&
+    selectedAddressId &&
+    selectedAddressId !== "new" &&
+    customerAddresses.some((a) => a.id === selectedAddressId)
+  );
+
+  const selectedSavedAddress = useMemo(
+    () => (isSavedAddressSelected ? customerAddresses.find((a) => a.id === selectedAddressId) : null),
+    [isSavedAddressSelected, customerAddresses, selectedAddressId]
+  );
+
+  // Guest VIP tier hint states
+  const [guestTierHint, setGuestTierHint] = useState<GuestTierHint | null>(null);
+  const [guestTierChecking, setGuestTierChecking] = useState(false);
+  const [guestTierDismissed, setGuestTierDismissed] = useState(false);
+
+  // Auto-check guest VIP tier hint as soon as 10+ digits are typed
+  useEffect(() => {
+    const cleanPhone = phone.trim().replace(/\s/g, "");
+    if (user || guestTierDismissed || cleanPhone.length < 10) {
+      if (guestTierHint && cleanPhone.length < 10) {
+        setGuestTierHint(null);
+      }
+      return;
+    }
+    const normalized = cleanPhone.startsWith("+84") ? "0" + cleanPhone.slice(3) : cleanPhone;
+    const phoneRegex = /^0[35789]\d{8}$/;
+    if (!phoneRegex.test(normalized) || /^(\d)\1{9}$/.test(normalized)) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setGuestTierChecking(true);
+      checkGuestTierByPhone(cleanPhone)
+        .then((hint) => {
+          setGuestTierHint(hint && hint.hasBenefit ? hint : null);
+        })
+        .catch(() => {
+          setGuestTierHint(null);
+        })
+        .finally(() => {
+          setGuestTierChecking(false);
+        });
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [phone, user, guestTierDismissed, guestTierHint]);
 
   // Load administrative units catalog
   useEffect(() => {
@@ -203,8 +400,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const availableDeliveryDates = useMemo(() => {
     const dates: { iso: string; label: string }[] = [];
     const refDate = getVietnamDate();
-    const outOfSlotsToday = isTodayOutOfScheduleSlots(operatingStatus.deliveryClose || "23:00", new Date(), 120);
-    const startOffset = (!operatingStatus.canOrderNow && (operatingStatus.isAfterCutoff || operatingStatus.isAfterClose)) || outOfSlotsToday ? 1 : 0;
+    const closeTime = deliveryType === "pickup" ? (operatingStatus.pickupClose || "22:30") : (operatingStatus.deliveryClose || "23:00");
+    const outOfSlotsToday = isTodayOutOfScheduleSlots(closeTime, refDate, operatingStatus.bufferMinutes || 90, operatingStatus.scheduleCutoff || "21:30");
+    const startOffset = (!operatingStatus.canOrderNow && (operatingStatus.isAfterCutoff || operatingStatus.isAfterClose)) || outOfSlotsToday || !operatingStatus.canScheduleToday ? 1 : 0;
 
     for (let i = startOffset; i < startOffset + 5; i++) {
       const d = new Date(refDate);
@@ -216,24 +414,22 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       dates.push({ iso, label });
     }
     return dates;
-  }, [operatingStatus]);
+  }, [operatingStatus, deliveryType]);
 
   const availableTimeSlots = useMemo(() => {
     const refDate = getVietnamDate();
     const todayISO = toISODateString(refDate);
 
+    const minTime = deliveryType === "pickup" ? (operatingStatus.pickupOpen || "09:00") : (operatingStatus.deliveryOpen || "10:00");
+    const maxTime = deliveryType === "pickup" ? (operatingStatus.pickupClose || "22:30") : (operatingStatus.deliveryClose || "23:00");
+
     let filterTime: string | undefined = undefined;
     if (deliveryDate === todayISO) {
-      const curH = refDate.getHours();
-      const curM = refDate.getMinutes();
-      const bufferM = curH * 60 + curM + 120; // 120 min (2 hours) preparation buffer
-      const bH = Math.floor(bufferM / 60);
-      const bM = bufferM % 60;
-      filterTime = `${bH.toString().padStart(2, "0")}:${bM.toString().padStart(2, "0")}`;
+      filterTime = getEarliestPreOrderSlot(refDate, minTime, 90);
     }
 
-    return generate15MinTimeSlots(operatingStatus.deliveryOpen || "10:00", operatingStatus.deliveryClose || "23:00", filterTime);
-  }, [deliveryDate, operatingStatus.deliveryOpen, operatingStatus.deliveryClose]);
+    return generate15MinTimeSlots(minTime, maxTime, filterTime, deliveryType);
+  }, [deliveryDate, deliveryType, operatingStatus.deliveryOpen, operatingStatus.deliveryClose, operatingStatus.pickupOpen, operatingStatus.pickupClose]);
 
   // Auto-shift delivery date if current selected date is invalid or out of available list
   useEffect(() => {
@@ -1431,15 +1627,23 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     }
 
     if (deliveryType === "delivery") {
-      if (!selectedWard && !selectedWardId) {
-        setFieldErrors((prev) => ({ ...prev, ward: "Vui lòng chọn Phường / Xã." }));
-        setLoading(false);
-        return;
-      }
-      if (!streetAddress.trim()) {
-        setFieldErrors((prev) => ({ ...prev, address: "Vui lòng nhập địa chỉ chi tiết." }));
-        setLoading(false);
-        return;
+      if (!isSavedAddressSelected) {
+        if (!selectedWard && !selectedWardId) {
+          setFieldErrors((prev) => ({ ...prev, ward: "Vui lòng chọn Phường / Xã." }));
+          setLoading(false);
+          return;
+        }
+        if (!streetAddress.trim()) {
+          setFieldErrors((prev) => ({ ...prev, address: "Vui lòng nhập địa chỉ chi tiết." }));
+          setLoading(false);
+          return;
+        }
+      } else {
+        if (!streetAddress.trim() && !selectedSavedAddress?.full_address) {
+          setFieldErrors((prev) => ({ ...prev, address: "Vui lòng nhập địa chỉ chi tiết." }));
+          setLoading(false);
+          return;
+        }
       }
       if (!isDeliverable) {
         setError("Khu vực bạn chọn hiện chưa hỗ trợ giao hàng. Vui lòng chọn địa chỉ khác.");
@@ -1456,8 +1660,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
     let finalAddress = "";
     if (deliveryType === "delivery") {
-      const parts = [streetAddress.trim(), selectedWard, selectedDistrict, selectedProvince].filter(Boolean);
-      finalAddress = parts.join(", ");
+      if (isSavedAddressSelected && selectedSavedAddress?.full_address) {
+        finalAddress = selectedSavedAddress.full_address;
+      } else {
+        const parts = [streetAddress.trim(), selectedWard, selectedDistrict, selectedProvince].filter(Boolean);
+        finalAddress = parts.join(", ");
+      }
     } else {
       finalAddress = config?.branches?.find((b) => b.id === selectedBranchId)?.address || "";
     }
@@ -1469,28 +1677,47 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
     let expectedDeliveryISO: string | undefined = undefined;
     if (deliveryType === "delivery" && (deliverySchedule === "schedule" || !opCheck.canOrderNow)) {
+      const minAllowed = opCheck.deliveryOpen || "10:00";
+      const maxAllowed = opCheck.deliveryClose || "23:00";
+
       if (!expectedDeliveryTime) {
-        const msg = "Vui lòng chọn giờ nhận hàng mong muốn (khung giờ 10:00 - 23:00).";
+        const msg = `Vui lòng chọn giờ nhận hàng mong muốn (khung giờ ${minAllowed} - ${maxAllowed}).`;
         setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
       }
-      if (expectedDeliveryTime < "10:00" || expectedDeliveryTime > "23:00") {
-        const msg = "Khung giờ nhận món phải từ 10:00 đến 23:00.";
+      if (expectedDeliveryTime < minAllowed || expectedDeliveryTime > maxAllowed) {
+        const msg = `Khung giờ nhận món phải từ ${minAllowed} đến ${maxAllowed}.`;
         setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
       }
-      const refDate = new Date();
+
+      const [eH, eM] = expectedDeliveryTime.split(":").map(Number);
+      if (eM % 15 !== 0) {
+        const msg = "Thời gian nhận món phải theo các mốc 15 phút (ví dụ: 10:00, 10:15, 10:30, 10:45).";
+        setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
+        setLoading(false);
+        return;
+      }
+
+      const refDate = getVietnamDate();
       const todayISO = toISODateString(refDate);
       if (deliveryDate === todayISO) {
+        const curTime = getVietnamTimeString(refDate);
+        if (curTime > (opCheck.scheduleCutoff || "21:30")) {
+          const msg = "Sau 21:30, quán đã ngưng nhận đơn đặt trước trong ngày. Quý khách vui lòng chọn hẹn giờ từ ngày mai.";
+          setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
+          setLoading(false);
+          return;
+        }
+
         const curH = refDate.getHours();
         const curM = refDate.getMinutes();
-        const minBufferM = curH * 60 + curM + 120;
-        const [eH, eM] = expectedDeliveryTime.split(":").map(Number);
+        const minBufferM = curH * 60 + curM + 90;
         const selectedM = eH * 60 + eM;
         if (selectedM < minBufferM) {
-          const msg = "Giờ nhận hàng phải sau thời gian hiện tại ít nhất 120 phút (2 tiếng).";
+          const msg = "Đơn đặt trước phải cách thời điểm hiện tại tối thiểu 90 phút.";
           setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
           setLoading(false);
           return;
@@ -1885,7 +2112,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 {/* Submit button step 1 */}
                 {isOutOfStockOverall && (
                   <p className="text-red-500 text-xs text-center font-medium">
-                    Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng
+                    {t("oos_warning") || "Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng"}
                   </p>
                 )}
                 <button
@@ -1958,7 +2185,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 <p className="body-2 text-primary font-bold font-display line-clamp-1">{item.title}</p>
                                 {item.isOutOfStock && (
                                   <span className="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold text-red-600 bg-red-100 rounded-full">
-                                    Tạm hết hàng
+                                    [Tạm hết hàng]
                                   </span>
                                 )}
                               </div>
@@ -2221,6 +2448,30 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               </div>
             </div>
 
+            {/* Shopee-style Voucher Ticket Bar in Step 2 */}
+            <div className="space-y-2">
+              <VoucherTicketBar
+                appliedVoucher={appliedVoucher}
+                appliedShippingVoucher={appliedShippingVoucher}
+                activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.name}
+                onClick={() => setIsVoucherModalOpen(true)}
+                onRemove={handleRemovePromotionFromBar}
+              />
+              {voucherError && <p className="text-sm text-red-600 font-semibold mt-1 px-2">{voucherError}</p>}
+              {bestDealNotice && <p className="text-sm text-secondary font-semibold mt-1 px-2">{bestDealNotice}</p>}
+              {appliedVoucher && promotionMatrixVoucherNotice && (
+                <div className="text-xs text-secondary font-semibold mt-1 px-2 space-y-0.5 animate-fade-in">
+                  <p className="flex items-center gap-1">
+                    <span>{promotionMatrixVoucherNotice}</span>
+                  </p>
+                  {appliedVoucher?.prereqPrice ? (
+                    <p className="text-[11px] text-gray-500 font-normal">
+                      {t("voucher_prereq_note", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
 
             {/* Checkout contact details */}
             <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-6 font-serif">
@@ -2258,6 +2509,19 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
                 />
                 {fieldErrors.phone && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.phone}</p>}
+                {!user && !guestTierDismissed && guestTierHint && guestTierHint.hasBenefit && (
+                  <GuestTierHintBanner
+                    tier={guestTierHint.tier as "gold" | "diamond"}
+                    discountPercent={guestTierHint.discountPercent}
+                    loginHref="/vi/login?redirect=/vi/checkout"
+                    isUpgradeCelebration={guestTierHint.isUpgradeCelebration}
+                    onDismiss={() => {
+                      setGuestTierDismissed(true);
+                      setGuestTierHint(null);
+                    }}
+                    autoDismissMs={0}
+                  />
+                )}
               </div>
 
               {/* Email */}
@@ -2327,71 +2591,211 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 <div className="space-y-4 rounded-xl bg-gray-50 p-4 border border-gray-100 mt-2">
                   <p className="text-sm text-gray-700 font-bold font-serif">{t("delivery_home")}</p>
 
-                  <div className="space-y-3">
-                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("province_label")}</label>
-                    <select
-                      value={selectedProvince}
-                      onChange={(e) => {
-                        const newProv = e.target.value;
-                        setSelectedProvince(newProv);
-                        setSelectedDistrict("");
-                        setSelectedWard("");
-                        setSelectedWardId("");
-                      }}
-                      className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
+                  {/* 1. Skeleton Loading khi đang tải sổ địa chỉ của khách hàng đã đăng nhập */}
+                  {isUserLoggedIn && isLoadingCustomerAddresses && (
+                    <div
+                      data-testid="address-book-skeleton"
+                      className="space-y-3 p-3.5 bg-yellow/30 rounded-xl border border-secondary/20 font-serif animate-pulse"
                     >
-                      {adminProvinces.length > 0 ? (
-                        adminProvinces.map((prov) => (
-                          <option key={prov.id} value={prov.name}>
-                            {prov.name}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                          <span className="text-sm">📍</span>
+                          <span>Đang tải danh sách địa chỉ...</span>
+                        </span>
+                        <span className="text-xs text-secondary/60 font-semibold">
+                          Vui lòng chờ...
+                        </span>
+                      </div>
+
+                      {/* Mock Dropdown Box */}
+                      <div className="w-full h-10 rounded-[6px] border border-gray-200 bg-white/80 px-3 flex items-center justify-between shadow-xs">
+                        <div className="h-3.5 bg-gray-200 rounded-sm w-3/5" />
+                        <div className="size-3.5 bg-gray-200 rounded-xs" />
+                      </div>
+
+                      {/* Mock Selected Address Summary Card */}
+                      <div className="mt-2.5 p-3 bg-white/90 rounded-lg border border-secondary/15 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="size-3.5 bg-gray-200 rounded-full" />
+                            <div className="h-3.5 bg-gray-200 rounded-sm w-28" />
+                            <div className="h-3 bg-gray-100 rounded-sm w-16" />
+                          </div>
+                          <div className="h-4 bg-secondary/15 rounded-full w-14" />
+                        </div>
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <div className="size-3.5 bg-gray-200 rounded-xs shrink-0" />
+                          <div className="h-3 bg-gray-200 rounded-sm w-4/5" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Khối Chọn từ Sổ địa chỉ (dành cho khách hàng đã đăng nhập khi đã tải xong) */}
+                  {isUserLoggedIn && !isLoadingCustomerAddresses && customerAddresses.length > 0 && (
+                    <div className="space-y-2 p-3.5 bg-yellow/40 rounded-xl border border-secondary/20 font-serif animate-fade-in">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                          <span>📍</span>
+                          <span>Chọn từ danh sách địa chỉ</span>
+                        </span>
+                        <Link href={"/profile?tab=addresses" as any} className="text-xs text-secondary hover:underline font-semibold">
+                          Danh sách địa chỉ →
+                        </Link>
+                      </div>
+                      <select
+                        data-testid="customer-address-select"
+                        value={selectedAddressId || "new"}
+                        onChange={(e) =>
+                          handleSelectCustomerAddress(
+                            e.target.value === "new" ? "new" : Number(e.target.value)
+                          )
+                        }
+                        className="w-full h-10 rounded-[6px] border border-gray-300 px-3 bg-white text-gray-900 text-xs sm:text-sm font-serif cursor-pointer focus:border-primary focus:outline-none"
+                      >
+                        {customerAddresses.map((addr) => (
+                          <option key={addr.id} value={addr.id}>
+                            {addr.recipient_name} ({addr.phone}) - {addr.full_address || `${addr.street_address}, ${addr.ward}, ${addr.district}, ${addr.province}`} {addr.is_default ? "(Mặc định)" : ""}
                           </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-                          <option value="Hà Nội">Hà Nội</option>
-                          <option value="Bình Dương">Bình Dương</option>
-                        </>
+                        ))}
+                        <option value="new">+ Nhập địa chỉ nhận hàng khác</option>
+                      </select>
+
+                      {/* Hiển thị tóm tắt địa chỉ đã chọn khi dùng địa chỉ trong sổ */}
+                      {isSavedAddressSelected && selectedSavedAddress && (
+                        <div className="mt-2.5 p-3 bg-white rounded-lg border border-secondary/20 shadow-xs text-xs text-gray-700 space-y-1.5 animate-fade-in">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                              <span>👤</span>
+                              <span>{selectedSavedAddress.recipient_name}</span>
+                              <span className="text-gray-300 font-normal">|</span>
+                              <span className="text-gray-600 font-medium">{selectedSavedAddress.phone}</span>
+                            </span>
+                            {selectedSavedAddress.is_default && (
+                              <span className="text-[10px] bg-secondary/10 text-secondary font-bold px-2 py-0.5 rounded-full">
+                                Mặc định
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-start gap-1.5 text-gray-600">
+                            <span className="shrink-0 text-primary">🏡</span>
+                            <span className="leading-relaxed">
+                              {selectedSavedAddress.full_address ||
+                                [
+                                  selectedSavedAddress.street_address,
+                                  selectedSavedAddress.ward,
+                                  selectedSavedAddress.district,
+                                  selectedSavedAddress.province,
+                                ]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                            </span>
+                          </div>
+                        </div>
                       )}
-                    </select>
-                  </div>
+                    </div>
+                  )}
 
-                  <WardSelectCombobox
-                    wards={availableWards}
-                    selectedWardId={selectedWardId}
-                    selectedWardName={selectedWard}
-                    onSelectWard={(wObj) => {
-                      if (wObj) {
-                        setSelectedWardId(wObj.id);
-                        setSelectedWard(wObj.name);
-                        if (wObj.district) setSelectedDistrict(wObj.district);
-                      } else {
-                        setSelectedWardId("");
-                        setSelectedWard("");
-                      }
-                      if (fieldErrors.ward) {
-                        setFieldErrors((prev) => {
-                          const next = { ...prev };
-                          delete next.ward;
-                          return next;
-                        });
-                      }
-                    }}
-                    hasError={!!fieldErrors.ward}
-                    errorMessage={fieldErrors.ward || "* Vui lòng chọn Phường / Xã (Khu vực giao)."}
-                  />
+                  {/* 3. Các ô input nhập địa chỉ mới: chỉ hiển thị khi chưa chọn địa chỉ đã lưu và không đang tải */}
+                  {!isSavedAddressSelected && (!isUserLoggedIn || !isLoadingCustomerAddresses) && (
+                    <div className="space-y-4 animate-fade-in">
+                      {isUserLoggedIn && customerAddresses.length > 0 && (
+                        <div className="flex items-center justify-between pb-1 border-b border-gray-200">
+                          <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
+                            <span>📝</span>
+                            <span>Điền thông tin địa chỉ nhận hàng mới</span>
+                          </span>
+                          {(streetAddress || selectedWard || selectedWardId) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStreetAddress("");
+                                setSelectedWard("");
+                                setSelectedWardId("");
+                                setSelectedDistrict("");
+                                setFieldErrors((prev) => {
+                                  const next = { ...prev };
+                                  delete next.ward;
+                                  delete next.address;
+                                  return next;
+                                });
+                              }}
+                              className="text-xs text-red-500 hover:text-red-700 font-medium hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>✕</span>
+                              <span>Xóa trắng form</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
 
-                  <div className="space-y-3">
-                    <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("street_label")}</label>
-                    <input
-                      type="text"
-                      placeholder={t("address_placeholder")}
-                      value={streetAddress}
-                      onChange={(e) => setStreetAddress(e.target.value)}
-                      className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base font-serif font-normal leading-[150%] tracking-[0%]"
-                    />
-                    {fieldErrors.address && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.address}</p>}
-                  </div>
+                      <div className="space-y-3">
+                        <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("province_label")}</label>
+                        <select
+                          value={selectedProvince}
+                          onChange={(e) => {
+                            const newProv = e.target.value;
+                            setSelectedProvince(newProv);
+                            setSelectedDistrict("");
+                            setSelectedWard("");
+                            setSelectedWardId("");
+                          }}
+                          className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
+                        >
+                          {adminProvinces.length > 0 ? (
+                            adminProvinces.map((prov) => (
+                              <option key={prov.id} value={prov.name}>
+                                {prov.name}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+                              <option value="Hà Nội">Hà Nội</option>
+                              <option value="Bình Dương">Bình Dương</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+
+                      <WardSelectCombobox
+                        wards={availableWards}
+                        selectedWardId={selectedWardId}
+                        selectedWardName={selectedWard}
+                        onSelectWard={(wObj) => {
+                          if (wObj) {
+                            setSelectedWardId(wObj.id);
+                            setSelectedWard(wObj.name);
+                            if (wObj.district) setSelectedDistrict(wObj.district);
+                          } else {
+                            setSelectedWardId("");
+                            setSelectedWard("");
+                          }
+                          if (fieldErrors.ward) {
+                            setFieldErrors((prev) => {
+                              const next = { ...prev };
+                              delete next.ward;
+                              return next;
+                            });
+                          }
+                        }}
+                        hasError={!!fieldErrors.ward}
+                        errorMessage={fieldErrors.ward || "* Vui lòng chọn Phường / Xã (Khu vực giao)."}
+                      />
+
+                      <div className="space-y-3">
+                        <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">{t("street_label")}</label>
+                        <input
+                          type="text"
+                          placeholder={t("address_placeholder")}
+                          value={streetAddress}
+                          onChange={(e) => setStreetAddress(e.target.value)}
+                          className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                        />
+                        {fieldErrors.address && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.address}</p>}
+                      </div>
+                    </div>
+                  )}
 
                   {assignedBranchName && (
                     <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-xs text-primary font-medium">
@@ -2471,8 +2875,22 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   <p className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
                     {t("delivery_time_label")}
                   </p>
+                  {/* Microcopy banner cho Khung 1 (00:00 - 08:59) */}
+                  {operatingStatus.isEarlyMorning && (
+                    <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium">
+                      {t("microcopy_early_morning")}
+                    </div>
+                  )}
+
+                  {/* Microcopy banner cho Khung 4 (22:31 - 23:59) */}
+                  {!operatingStatus.canOrderNow && !operatingStatus.isEarlyMorning && (
+                    <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium">
+                      {t("microcopy_closed_today")}
+                    </div>
+                  )}
+
                   <div className="space-y-3">
-                    {/* Option 1: Giao ngay (Chỉ hiển thị khi trước 22:30 / canOrderNow) */}
+                    {/* Option 1: Giao ngay (Chỉ hiển thị khi trong giờ nhận đơn ngay 09:00 - 22:30 / canOrderNow) */}
                     {operatingStatus.canOrderNow && (
                       <div>
                         <label className="flex items-center gap-2 cursor-pointer">
@@ -2489,23 +2907,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           </span>
                         </label>
 
-                        {/* Footnote dưới Option 1: Chỉ hiển thị khi chọn Giao ngay VÀ thời gian hiện tại trước 10:00 AM */}
-                        {deliverySchedule === "now" && operatingStatus.currentTime < (operatingStatus.deliveryOpen || "10:00") && (
-                          <p className="text-xs text-secondary font-medium pl-6 mt-1">
-                            {t("early_morning_note", { openTime: operatingStatus.deliveryOpen || "10:00" })}
+                        {/* Microcopy 2 dưới ô Giao ngay */}
+                        {deliverySchedule === "now" && (
+                          <p className="text-xs text-gray-500 font-normal pl-6 mt-0.5">
+                            {t("microcopy_delivery_now")}
                           </p>
                         )}
-                      </div>
-                    )}
-
-                    {/* Nếu sau 22:30 (ngưng giao ngay), chỉ hiển thị thông báo chuyển qua Hẹn giờ */}
-                    {!operatingStatus.canOrderNow && (
-                      <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium">
-                        {t("delivery_operating_notice", {
-                          storeOpen: operatingStatus.storeOpen || "09:00",
-                          deliveryOpen: operatingStatus.deliveryOpen || "10:00",
-                          cutoff: operatingStatus.lastOrderCutoff || "22:30",
-                        })}
                       </div>
                     )}
 
@@ -2524,6 +2931,21 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           {t("schedule_delivery")}
                         </span>
                       </label>
+
+                      {/* Microcopy 3 hoặc 4 dưới ô Đặt trước */}
+                      {(deliverySchedule === "schedule" || !operatingStatus.canOrderNow) && (
+                        <p className="text-xs font-normal pl-6 mt-0.5">
+                          {operatingStatus.canOrderNow && !operatingStatus.canScheduleToday ? (
+                            <span className="text-amber-700 font-medium">
+                              {t("microcopy_schedule_cutoff")}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">
+                              {t("microcopy_schedule")}
+                            </span>
+                          )}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -2564,7 +2986,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          <span>Chọn giờ nhận hàng (10:00 - 23:00)</span>
+                          <span>Chọn giờ nhận hàng ({(operatingStatus.deliveryOpen || "10:00") + " - " + (operatingStatus.deliveryClose || "23:00")})</span>
                         </label>
                         <div className="relative">
                           <select
@@ -2680,7 +3102,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             {/* Submit checkout button */}
             {isOutOfStockOverall && (
               <p className="text-red-500 text-xs text-center font-medium">
-                Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng
+                {t("oos_warning") || "Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng"}
               </p>
             )}
             <button
@@ -2693,8 +3115,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 ? t("submitting")
                 : deliveryType === "delivery" && !isDeliverable
                   ? "Khu vực chưa hỗ trợ giao"
-                  : deliveryType === "delivery" && !operatingStatus.canOrderNow
-                    ? t("schedule_delivery")
+                  : !operatingStatus.canOrderNow || (deliveryType === "delivery" && deliverySchedule === "schedule")
+                    ? (t("preorder_cta") || "Đặt trước")
                     : t("place_order")}
             </button>
           </div>
@@ -2735,6 +3157,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         onApplyVouchers={handleApplyVouchersFromModal}
         onApplyVoucher={handleApplyVoucherFromModal}
         onRemoveVoucher={handleRemoveVoucher}
+        isBrowseOnly={false}
         activePromotions={appliedCartPromotions}
         user={user}
         memberTier={memberTier.tier}
