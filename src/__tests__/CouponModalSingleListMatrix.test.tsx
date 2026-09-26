@@ -1321,7 +1321,6 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
         subtotal={100000}
         appliedCampaignIds={[]}
         appliedVoucherCodes={[]}
-        isBrowseOnly={false}
       />
     );
 

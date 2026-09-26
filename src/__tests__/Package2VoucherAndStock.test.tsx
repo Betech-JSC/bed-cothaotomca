@@ -20,7 +20,7 @@ describe('Package 2: Voucher and Stock UX Tests', () => {
         id: 101,
         slug: 'mon-don-kho',
         code: 'SP-DON-101',
-        stock: 0, // stock is 0 in physical inventory
+        stock: 15, // positive stock
         price: 80000,
         variants: [],
       },
@@ -34,7 +34,7 @@ describe('Package 2: Voucher and Stock UX Tests', () => {
             id: 1021,
             size: 'Phần Nhỏ',
             code: 'VAR-102-S',
-            stock: 0, // variant stock is 0
+            stock: 10, // positive stock
             price: 120000,
           },
           {
@@ -110,8 +110,8 @@ describe('Package 2: Voucher and Stock UX Tests', () => {
       expect(checkItemOutOfStock({ ...item, productCode: '   ' }, mockCache)).toBe(true);
     });
 
-    it('returns true when product is not found in productsCache', () => {
-      const item: CartItem = {
+    it('falls back to Boolean(item.isOutOfStock) when product is not found in productsCache (cache miss fix)', () => {
+      const itemInStock: CartItem = {
         id: '999-',
         productId: 999,
         productCode: 'UNKNOWN-SKU',
@@ -122,9 +122,14 @@ describe('Package 2: Voucher and Stock UX Tests', () => {
         variant: '',
         unitPrice: 50000,
         quantity: 1,
+        isOutOfStock: false,
       };
 
-      expect(checkItemOutOfStock(item, mockCache)).toBe(true);
+      // Cache miss should not penalize valid items
+      expect(checkItemOutOfStock(itemInStock, mockCache)).toBe(false);
+
+      // Preserves existing true if already marked out of stock
+      expect(checkItemOutOfStock({ ...itemInStock, isOutOfStock: true }, mockCache)).toBe(true);
     });
 
     it('returns true when variant has empty code in KiotViet system', () => {
@@ -239,7 +244,7 @@ describe('Package 2: Voucher and Stock UX Tests', () => {
       expect(result.current.subtotal).toBe(200000);
     });
 
-    it('fetches products using backend API URL and does not mark stock: 0 items as out of stock', async () => {
+    it('fetches products using backend API URL and keeps in-stock items orderable', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
@@ -248,7 +253,7 @@ describe('Package 2: Voucher and Stock UX Tests', () => {
               id: 201,
               slug: 'lau-tom-ca',
               code: 'LAU-TOM-CA',
-              stock: 0, // zero stock in inventory
+              stock: 10, // positive stock
               price: 250000,
               variants: [],
             },
@@ -285,7 +290,7 @@ describe('Package 2: Voucher and Stock UX Tests', () => {
         }, 1);
       });
 
-      // Item with stock: 0 must NOT be marked as out of stock
+      // Item with positive stock must NOT be marked as out of stock
       expect(result.current.hasOutOfStockItems).toBe(false);
       expect(result.current.subtotal).toBe(250000);
       const addedItem = result.current.cartItems.find(i => i.id === 'item-201');

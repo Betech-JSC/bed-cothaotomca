@@ -537,20 +537,20 @@ const MobileMenu = ({
             <span className="sr-only">
               {open ? "Close menu" : "Open menu"}
             </span>
-            <div className="flex h-6 w-6 flex-col items-center justify-center gap-1">
+            <div className="relative h-6 w-6">
               <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${
-                  open ? "translate-y-1.5 rotate-45" : ""
+                className={`bg-yellow absolute left-0 top-[3px] block h-0.5 w-6 rounded-full transition-all duration-300 ease-in-out origin-center ${
+                  open ? "translate-y-2 rotate-45" : "translate-y-0 rotate-0"
                 }`}
               />
               <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-opacity duration-200 ${
-                  open ? "opacity-0" : "opacity-100"
+                className={`bg-yellow absolute left-0 top-1/2 -translate-y-1/2 block h-0.5 w-6 rounded-full origin-center transition-all duration-300 ease-in-out ${
+                  open ? "scale-x-0 opacity-0" : "scale-x-100 opacity-100"
                 }`}
               />
               <span
-                className={`bg-yellow block h-0.5 w-6 rounded-full transition-transform duration-200 ${
-                  open ? "-translate-y-1.5 -rotate-45" : ""
+                className={`bg-yellow absolute left-0 bottom-[3px] block h-0.5 w-6 rounded-full transition-all duration-300 ease-in-out origin-center ${
+                  open ? "-translate-y-2 -rotate-45" : "translate-y-0 rotate-0"
                 }`}
               />
             </div>
@@ -575,7 +575,7 @@ const MobileMenu = ({
         role="dialog"
         aria-modal="true"
       >
-        <ul className="title-3 mt-2 flex flex-col gap-2">
+        <ul className="mt-2 flex flex-col gap-2">
           {navItems.map((item, index) => {
             const active = isNavActive(
               item.href as string | undefined,
@@ -614,8 +614,8 @@ const MobileMenu = ({
                       prev === index ? null : index,
                     )
                   }
-                  className={`flex w-full items-center justify-between px-3 py-2.5 text-left title-3 duration-300 ease-in-out cursor-pointer ${
-                    isOpen || active ? "text-secondary font-bold" : "text-yellow"
+                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left font-display text-lg font-bold duration-300 ease-in-out cursor-pointer ${
+                    isOpen || active ? "text-secondary" : "text-yellow hover:text-secondary"
                   }`}
                 >
                   <span>{item.label}</span>

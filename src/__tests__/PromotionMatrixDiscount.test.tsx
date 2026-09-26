@@ -106,6 +106,9 @@ vi.mock('@/services/generalSettingService', () => ({
 vi.mock('@/services/authService', () => ({
   getCustomerAddressesApi: vi.fn().mockResolvedValue([]),
   createCustomerAddressApi: vi.fn().mockResolvedValue({}),
+  getCachedCustomerAddresses: vi.fn().mockReturnValue([]),
+  setCachedCustomerAddresses: vi.fn(),
+  checkGuestTierByPhone: vi.fn().mockResolvedValue(null),
 }));
 
 // Mock orderService

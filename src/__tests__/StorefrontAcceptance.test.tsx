@@ -185,7 +185,9 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
 
     render(<ProductDetailsInfo productData={productDataUnlinked} />);
 
-    const disabledButton = screen.getByRole('button', { name: /Tạm hết hàng/i });
+    const disabledButtons = screen.getAllByRole('button', { name: /Tạm hết hàng/i });
+    expect(disabledButtons.length).toBeGreaterThan(0);
+    const disabledButton = disabledButtons[0];
     expect(disabledButton).toBeInTheDocument();
     expect(disabledButton).toBeDisabled();
 
@@ -651,9 +653,9 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     const applyButtons = screen.getAllByRole('button', { name: /Áp dụng/i });
     expect(applyButtons.length).toBeGreaterThan(0);
 
-    // Mã chưa đủ điều kiện hiển thị rõ dòng gợi ý "Mua thêm 350.000đ để dùng mã này"
+    // Mã chưa đủ điều kiện hiển thị rõ dòng gợi ý "Mua thêm 350.000đ để áp dụng"
     expect(screen.getByText(formatPrice(350000))).toBeInTheDocument();
-    expect(screen.getByText(/để dùng mã này/i)).toBeInTheDocument();
+    expect(screen.getByText(/để áp dụng|để dùng mã này/i)).toBeInTheDocument();
   });
 
   it('Luồng 13: Đồng bộ chính xác % giảm giá 12% khi giá làm tròn 55.000đ -> 49.000đ', () => {

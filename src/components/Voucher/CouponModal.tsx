@@ -287,7 +287,7 @@ export default function CouponModal({
   onApplyVouchers,
   onApplyCampaigns,
   onRemoveVoucher,
-  isBrowseOnly = false,
+  isBrowseOnly,
   activePromotions,
   user,
   memberTier,
@@ -307,8 +307,8 @@ export default function CouponModal({
       pathname.includes("/checkout")
     )
   );
-  const isBrowseMode = Boolean(isBrowseOnly || !isCheckoutRoute);
-  const showSkipButton = !isBrowseOnly && isCheckoutRoute;
+  const isBrowseMode = isBrowseOnly !== undefined ? isBrowseOnly : !isCheckoutRoute;
+  const showSkipButton = !isBrowseMode && isCheckoutRoute;
   const { user: authUser } = useAuth();
   const currentUser = user !== undefined ? user : authUser;
   const resolveTierFromPoints = (pts: number = 0): string => {
@@ -1811,10 +1811,26 @@ export default function CouponModal({
             <div className="p-4 bg-white border-t border-gray-100 shrink-0">
               <button
                 type="button"
-                onClick={handleGoShopping}
+                onClick={() => {
+                  if (!isBrowseMode) {
+                    const isAlreadySelected = selectedCampaignIds.some(
+                      (id) => String(id) === String(selectedCampaign.id)
+                    );
+                    if (!isAlreadySelected) {
+                      handleToggleCampaign(selectedCampaign.id);
+                    }
+                    setSelectedCampaign(null);
+                  } else {
+                    handleGoShopping();
+                  }
+                }}
                 className="w-full py-3.5 px-6 bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full shadow-md hover:shadow-lg transition-all active:scale-98 cursor-pointer flex items-center justify-center font-display title-2"
               >
-                <span>{t("start_order")}</span>
+                <span>
+                  {!isBrowseMode
+                    ? (t("apply_this_promotion") || "Áp dụng ưu đãi này")
+                    : t("start_order")}
+                </span>
               </button>
             </div>
           </div>
@@ -1862,7 +1878,7 @@ export default function CouponModal({
                         setFeedbackNotice(null);
                       }}
                       placeholder={t("input_placeholder") || "Nhập mã voucher..."}
-                      className="w-full h-10 px-3.5 body-2 font-sans font-semibold uppercase rounded-full border border-gray-300 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/20 placeholder:text-gray-400 placeholder:normal-case transition-all"
+                      className="w-full h-11 px-4 text-base font-sans font-semibold uppercase rounded-full border border-gray-300 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/20 placeholder:text-gray-400 placeholder:normal-case transition-all"
                     />
                     {manualCode && (
                       <button
@@ -1881,7 +1897,7 @@ export default function CouponModal({
                   <button
                     type="submit"
                     disabled={!manualCode.trim() || applyingCode === manualCode.trim().toUpperCase()}
-                    className="px-5 h-10 bg-secondary hover:bg-secondary/95 text-white font-display title-4 font-bold rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer shadow-xs"
+                    className="px-5 h-11 bg-secondary hover:bg-secondary/95 text-white font-display title-4 font-bold rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer shadow-xs"
                   >
                     {applyingCode === manualCode.trim().toUpperCase() ? "..." : t("apply")}
                   </button>

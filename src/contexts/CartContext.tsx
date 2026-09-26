@@ -35,23 +35,42 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function checkItemOutOfStock(item: CartItem, cache: any[]): boolean {
   if (!item.productCode || !item.productCode.trim()) return true;
-  if (!cache || cache.length === 0) return Boolean(item.isOutOfStock);
+  if (!cache || cache.length === 0) return Boolean(item.isOutOfStock ?? false);
 
-  const p = cache.find(
-    (x: any) => x.id === item.productId || x.kiotviet_id === item.productId || x.slug === item.slug
+  let p = cache.find(
+    (x: any) =>
+      Number(x.id) === Number(item.productId) ||
+      Number(x.kiotviet_id) === Number(item.productId) ||
+      (x.slug && x.slug === item.slug) ||
+      (x.code && x.code === item.productCode)
   );
-  if (!p) return true;
+  if (!p) {
+    p = cache.find(
+      (x: any) =>
+        x.variants &&
+        x.variants.some(
+          (v: any) =>
+            Number(v.id) === Number(item.productId) ||
+            Number(v.kiotviet_id) === Number(item.productId) ||
+            (v.code && v.code === item.productCode)
+        )
+    );
+  }
+  if (!p) return Boolean(item.isOutOfStock ?? false);
 
   if (p.variants && p.variants.length > 0) {
     const v = p.variants.find(
       (vObj: any) =>
         vObj.size === item.variant ||
-        vObj.id === item.productId ||
-        vObj.kiotviet_id === item.productId ||
-        vObj.code === item.productCode
+        Number(vObj.id) === Number(item.productId) ||
+        Number(vObj.kiotviet_id) === Number(item.productId) ||
+        (vObj.code && vObj.code === item.productCode)
     );
-    if (!v) return true;
-    if (!v.code || !v.code.trim()) return true;
+    if (v) {
+      if (!v.code || !v.code.trim()) return true;
+      return false;
+    }
+    if (!p.code || !p.code.trim()) return true;
     return false;
   }
 
@@ -135,11 +154,34 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const grossSubtotal = cartItems.reduce((sum, item) => {
       const isOut = checkItemOutOfStock(item, productsCache);
       if (isOut) return sum;
-      const p = productsCache.find(x => x.id === item.productId || x.kiotviet_id === item.productId || x.slug === item.slug);
+      let p = productsCache.find(
+        (x: any) =>
+          Number(x.id) === Number(item.productId) ||
+          Number(x.kiotviet_id) === Number(item.productId) ||
+          (x.slug && x.slug === item.slug) ||
+          (x.code && x.code === item.productCode)
+      );
+      if (!p) {
+        p = productsCache.find((x: any) =>
+          x.variants &&
+          x.variants.some(
+            (v: any) =>
+              Number(v.id) === Number(item.productId) ||
+              Number(v.kiotviet_id) === Number(item.productId) ||
+              (v.code && v.code === item.productCode)
+          )
+        );
+      }
       let basePrice = item.originalPrice || item.unitPrice;
       if (p) {
         if (p.variants && p.variants.length > 0) {
-          const v = p.variants.find((vObj: any) => vObj.size === item.variant || vObj.id === item.productId || vObj.kiotviet_id === item.productId || vObj.code === item.productCode);
+          const v = p.variants.find(
+            (vObj: any) =>
+              vObj.size === item.variant ||
+              Number(vObj.id) === Number(item.productId) ||
+              Number(vObj.kiotviet_id) === Number(item.productId) ||
+              (vObj.code && vObj.code === item.productCode)
+          );
           if (v) basePrice = parseFloat(String(v.original_price || v.price || 0));
         } else if (p.original_price || p.price) {
           basePrice = parseFloat(String(p.original_price || p.price));
@@ -152,9 +194,24 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     let changed = false;
     const updated = cartItems.map((item) => {
       const isOut = checkItemOutOfStock(item, productsCache);
-      const p = productsCache.find(
-        (x: any) => x.id === item.productId || x.kiotviet_id === item.productId || x.slug === item.slug
+      let p = productsCache.find(
+        (x: any) =>
+          Number(x.id) === Number(item.productId) ||
+          Number(x.kiotviet_id) === Number(item.productId) ||
+          (x.slug && x.slug === item.slug) ||
+          (x.code && x.code === item.productCode)
       );
+      if (!p) {
+        p = productsCache.find((x: any) =>
+          x.variants &&
+          x.variants.some(
+            (v: any) =>
+              Number(v.id) === Number(item.productId) ||
+              Number(v.kiotviet_id) === Number(item.productId) ||
+              (v.code && v.code === item.productCode)
+          )
+        );
+      }
       if (!p) {
         if (item.isOutOfStock !== isOut) {
           changed = true;

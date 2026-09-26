@@ -131,15 +131,43 @@ vi.mock('@/services/generalSettingService', () => ({
 vi.mock('@/services/authService', () => ({
   getCustomerAddressesApi: vi.fn().mockResolvedValue([]),
   createCustomerAddressApi: vi.fn().mockResolvedValue(null),
+  getCachedCustomerAddresses: vi.fn().mockReturnValue([]),
+  setCachedCustomerAddresses: vi.fn(),
   checkGuestTierByPhone: vi.fn().mockResolvedValue(null),
 }));
 
 // Mock operatingHours
 vi.mock('@/lib/operatingHours', () => ({
-  checkOperatingHours: () => ({ isOpen: true, canOrderNow: true, message: 'Đang mở cửa' }),
+  checkOperatingHours: () => ({
+    isOpen: true,
+    canOrderNow: true,
+    canScheduleToday: true,
+    message: 'Đang mở cửa',
+    deliveryOpen: '10:00',
+    deliveryClose: '23:00',
+    storeOpen: '09:00',
+    storeClose: '23:00',
+    pickupOpen: '09:00',
+    pickupClose: '22:30',
+    defaultDate: '2026-09-22',
+    defaultDeliverySchedule: 'now',
+    isEarlyMorning: false,
+    isAfterCutoff: false,
+    isAfterClose: false,
+    isTodayOutOfSlots: false,
+    operatingWindow: 'active',
+    currentTime: '10:00',
+    notice: null,
+  }),
   formatVietnameseDate: () => 'Hôm nay',
-  generate15MinTimeSlots: () => ['10:00', '10:15'],
-  getVietnamDate: () => new Date(),
+  generate15MinTimeSlots: () => [
+    { value: '10:00', label: '10:00' },
+    { value: '10:15', label: '10:15' },
+  ],
+  getVietnamDate: () => new Date('2026-09-22T10:00:00+07:00'),
+  getVietnamTimeString: () => '10:00',
+  ceil15Minutes: (m: number) => Math.ceil(m / 15) * 15,
+  getEarliestPreOrderSlot: () => '10:00',
   isTodayOutOfScheduleSlots: () => false,
   toISODateString: () => '2026-09-22',
 }));

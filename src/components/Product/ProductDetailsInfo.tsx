@@ -77,13 +77,18 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                     <div
                       key={index}
                       onClick={() => setSelectedSizeIndex(index)}
-                      className={`w-max px-3 min-w-[48px] min-h[48px] flex items-center justify-center button-1 size-12 rounded-full duration-300 ease-in-out cursor-pointer ${
-                        isOutOfStockSize ? "opacity-50 cursor-not-allowed line-through " : ""
+                      className={`w-max px-3 min-w-[48px] min-h-[48px] flex items-center justify-center button-1 size-12 rounded-full duration-300 ease-in-out cursor-pointer ${
+                        isOutOfStockSize ? "opacity-50 line-through bg-gray-100 text-gray-400 " : ""
                       }${
                         selectedSizeIndex === index
-                          ? "bg-primary text-yellow"
-                          : "bg-white text-gray-900 lg:hover:bg-primary lg:hover:text-yellow"
+                          ? isOutOfStockSize
+                            ? "bg-gray-200 text-gray-600 border-2 border-gray-400"
+                            : "bg-primary text-yellow"
+                          : isOutOfStockSize
+                            ? ""
+                            : "bg-white text-gray-900 lg:hover:bg-primary lg:hover:text-yellow"
                       }`}
+                      title={isOutOfStockSize ? (t("product.out_of_stock") || "Tạm hết hàng") : undefined}
                     >
                       <span>{size.title}</span>
                     </div>
@@ -146,13 +151,13 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                 type="button"
                 disabled={isSelectedOutOfStock}
                 onClick={handleAddToCart}
-                className={`btn flex items-center justify-center gap-2 ${
+                className={`btn !min-w-0 w-full px-2 sm:px-3 text-[13px] sm:text-sm md:text-base font-semibold tracking-normal flex items-center justify-center gap-1.5 sm:gap-2 ${
                   !isSelectedOutOfStock
                     ? "btn-primary"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
                 }`}
               >
-                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 <span>{isSelectedOutOfStock ? (t("product.out_of_stock") || "Tạm hết hàng") : t("button.add_to_cart")}</span>
@@ -167,13 +172,13 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                     window.location.href = "/checkout";
                   }
                 }}
-                className={`btn flex items-center justify-center gap-2 ${
+                className={`btn !min-w-0 w-full px-2 sm:px-3 text-[13px] sm:text-sm md:text-base font-bold tracking-normal flex items-center justify-center gap-1.5 sm:gap-2 ${
                   !isSelectedOutOfStock
                     ? "btn-secondary font-bold"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
                 }`}
               >
-                <span>{t("button.buy-now")}</span>
+                <span>{isSelectedOutOfStock ? (t("product.out_of_stock") || "Tạm hết hàng") : t("button.buy-now")}</span>
               </button>
             </div>
           );

@@ -23,7 +23,10 @@ export default function CartPopup({ onClose }: CartPopupProps) {
     subtotal,
     isCartOpen,
     totalItems,
+    hasOutOfStockItems,
   } = useCart();
+
+  const isOutOfStockOverall = Boolean(hasOutOfStockItems ?? cartItems.some((i) => i.isOutOfStock));
 
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -219,13 +222,29 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                 </span>
               </div>
 
-              <Link
-                href="/checkout"
-                onClick={onClose}
-                className="block w-full py-3 bg-secondary hover:bg-secondary/95 text-white font-bold text-center rounded-full transition-colors duration-300 shadow-md shadow-secondary/10 tracking-wider font-display"
-              >
-                {t("checkout")}
-              </Link>
+              {isOutOfStockOverall && (
+                <p className="text-red-500 text-xs text-center font-medium">
+                  {t("remove_oos_warning") || "Vui lòng xóa món tạm hết trước khi thanh toán"}
+                </p>
+              )}
+
+              {isOutOfStockOverall ? (
+                <button
+                  type="button"
+                  disabled
+                  className="block w-full py-3 bg-gray-300 text-gray-500 font-bold text-center rounded-full cursor-not-allowed tracking-wider font-display shadow-none"
+                >
+                  {t("checkout")}
+                </button>
+              ) : (
+                <Link
+                  href="/checkout"
+                  onClick={onClose}
+                  className="block w-full py-3 bg-secondary hover:bg-secondary/95 text-white font-bold text-center rounded-full transition-colors duration-300 shadow-md shadow-secondary/10 tracking-wider font-display"
+                >
+                  {t("checkout")}
+                </Link>
+              )}
             </div>
           </>
         )}

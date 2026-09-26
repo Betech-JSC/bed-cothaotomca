@@ -334,10 +334,10 @@ describe('Checkout Promotion & Modal Flow Tests', () => {
       expect(screen.getAllByTestId('campaign-ticket-badge')[0]).toBeInTheDocument();
     });
 
-    // Bấm nút "Xóa" trên VoucherTicketBar
-    const removeBtn = container.querySelector('button.bg-red-50') as HTMLButtonElement;
-    expect(removeBtn).toBeInTheDocument();
-    fireEvent.click(removeBtn);
+    // Bấm nút "Xóa" trên VoucherTicketBar (cả mobile và desktop)
+    const removeBtns = container.querySelectorAll('button.bg-red-50');
+    expect(removeBtns.length).toBeGreaterThan(0);
+    removeBtns.forEach((btn) => fireEvent.click(btn));
 
     await waitFor(() => {
       expect(screen.queryByTestId('campaign-ticket-badge')).not.toBeInTheDocument();
@@ -355,9 +355,9 @@ describe('Checkout Promotion & Modal Flow Tests', () => {
       expect(screen.getAllByTestId('food-ticket-badge')[0]).toBeInTheDocument();
     });
 
-    const removeBtnVoucher = container2.querySelector('button.bg-red-50') as HTMLButtonElement;
-    expect(removeBtnVoucher).toBeInTheDocument();
-    fireEvent.click(removeBtnVoucher);
+    const removeBtnsVoucher = container2.querySelectorAll('button.bg-red-50');
+    expect(removeBtnsVoucher.length).toBeGreaterThan(0);
+    removeBtnsVoucher.forEach((btn) => fireEvent.click(btn));
 
     await waitFor(() => {
       expect(screen.queryByTestId('food-ticket-badge')).not.toBeInTheDocument();
@@ -377,9 +377,9 @@ describe('Checkout Promotion & Modal Flow Tests', () => {
       expect(screen.getAllByTestId('food-ticket-badge')[0]).toBeInTheDocument();
     });
 
-    const removeBtnAll = container3.querySelector('button.bg-red-50') as HTMLButtonElement;
-    expect(removeBtnAll).toBeInTheDocument();
-    fireEvent.click(removeBtnAll);
+    const removeBtnsAll = container3.querySelectorAll('button.bg-red-50');
+    expect(removeBtnsAll.length).toBeGreaterThan(0);
+    removeBtnsAll.forEach((btn) => fireEvent.click(btn));
 
     await waitFor(() => {
       expect(screen.queryByTestId('campaign-ticket-badge')).not.toBeInTheDocument();
