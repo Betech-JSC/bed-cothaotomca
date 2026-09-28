@@ -96,20 +96,44 @@ export const HCMC_WARD_OLD_NAME_MAP: Record<string, string> = {
 };
 
 /**
+ * Helper loại bỏ tiền tố đơn vị hành chính không phân biệt hoa thường:
+ * Phường, Xã, Thị trấn, Quận, Huyện, Thành phố, TP., TP.
+ */
+export function cleanAdministrativeUnitName(name: string): string {
+  if (!name) return "";
+  return name
+    .trim()
+    .replace(/^(phường|xã|thị trấn|quận|huyện|thành phố|tp\.|tp)\s+/i, "")
+    .trim();
+}
+
+/**
  * Format label:
  * [Tên Phường Mới] - [Quận]
  * Examples:
  * - Phường An Hội Tây - Gò Vấp
  * - Phường Gia Định - Bình Thạnh
+ * - Xã Bình Chánh (không lặp lại Quận/Huyện nếu tên trùng nhau)
  */
 export function formatWardLabel(wardName: string, district?: string, _oldWard?: string): string {
   if (!wardName) return "";
   const cleanWardName = wardName.trim();
-  
+
   const hasPrefix = cleanWardName.startsWith("Phường") || cleanWardName.startsWith("Xã") || cleanWardName.startsWith("Thị trấn");
   const prefix = hasPrefix ? "" : "Phường ";
 
-  const districtText = district ? ` - ${district.trim()}` : "";
+  if (!district || !district.trim()) {
+    return `${prefix}${cleanWardName}`;
+  }
 
-  return `${prefix}${cleanWardName}${districtText}`;
+  const cleanDistrict = district.trim();
+  const normalizedWard = cleanAdministrativeUnitName(cleanWardName);
+  const normalizedDistrict = cleanAdministrativeUnitName(cleanDistrict);
+
+  if (normalizedWard.toLowerCase() === normalizedDistrict.toLowerCase()) {
+    return `${prefix}${cleanWardName}`;
+  }
+
+  return `${prefix}${cleanWardName} - ${cleanDistrict}`;
 }
+

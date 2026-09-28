@@ -23,7 +23,21 @@ describe("WardSelectCombobox & Ward Mapping", () => {
     expect(prefixed).toBe("Phường 14 - Quận 3");
 
     const commune = formatWardLabel("Xã Bình Chánh", "Bình Chánh");
-    expect(commune).toBe("Xã Bình Chánh - Bình Chánh");
+    expect(commune).toBe("Xã Bình Chánh");
+  });
+
+  it("deduplicates ward and district when names are identical after cleaning administrative prefixes", () => {
+    // Trùng tên không có tiền tố -> Tự động thêm "Phường " và không lặp lại tên Quận
+    expect(formatWardLabel("Bình Lợi", "Bình Lợi")).toBe("Phường Bình Lợi");
+    expect(formatWardLabel("Bình Phú", "Bình Phú")).toBe("Phường Bình Phú");
+
+    // Đã có tiền tố Phường và trùng tên Quận -> Giữ nguyên, không lặp lại "- Bình Tân"
+    expect(formatWardLabel("Phường Bình Tân", "Bình Tân")).toBe("Phường Bình Tân");
+    expect(formatWardLabel("Phường Bình Tân", "Quận Bình Tân")).toBe("Phường Bình Tân");
+
+    // Khác tên Quận và Phường -> Ghép đầy đủ "[Tiền tố][Tên Phường] - [Quận]"
+    expect(formatWardLabel("An Hội Tây", "Gò Vấp")).toBe("Phường An Hội Tây - Gò Vấp");
+    expect(formatWardLabel("Gia Định", "Quận Bình Thạnh")).toBe("Phường Gia Định - Quận Bình Thạnh");
   });
 
   it("contains mapping entries for key HCMC wards for fuzzy search support", () => {
@@ -33,3 +47,4 @@ describe("WardSelectCombobox & Ward Mapping", () => {
     expect(HCMC_WARD_OLD_NAME_MAP["An Đông"]).toBe("P.9, P.10");
   });
 });
+

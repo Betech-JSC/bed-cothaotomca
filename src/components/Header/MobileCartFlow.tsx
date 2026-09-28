@@ -1555,7 +1555,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
           hasLoadedStoredVoucherRef.current = true;
-          handleApplyVouchersFromModal(parsed).catch(() => {});
+          handleApplyVouchersFromModal(parsed).catch(() => { });
           return;
         }
       }
@@ -2135,7 +2135,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     <p className="text-secondary font-medium text-xs">
                       Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
                     </p>
-                  ) : ( ((appliedCartPromotions.length > 0 || isFreeship)) && (
+                  ) : (((appliedCartPromotions.length > 0 || isFreeship)) && (
                     <p className="text-secondary font-medium text-xs">
                       {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
                     </p>
@@ -2194,11 +2194,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   type="button"
                   onClick={() => setStep(2)}
                   disabled={isOutOfStockOverall}
-                  className={`w-full font-bold rounded-full py-4 text-center transition-all font-display title-2 ${
-                    isOutOfStockOverall
+                  className={`w-full font-bold rounded-full py-4 text-center transition-all font-display title-2 ${isOutOfStockOverall
                       ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
                       : "bg-secondary hover:bg-secondary/95 text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)]"
-                  }`}
+                    }`}
                 >
                   {t("checkout")}
                 </button>
@@ -2427,7 +2426,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <p className="text-secondary font-medium text-xs">
                           Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
                         </p>
-                      ) : ( ((appliedCartPromotions.length > 0 || isFreeship)) && (
+                      ) : (((appliedCartPromotions.length > 0 || isFreeship)) && (
                         <p className="text-secondary font-medium text-xs">
                           {t("best_deal_applied") || "Đã tự động áp dụng ưu đãi tốt nhất cho đơn hàng."}
                         </p>
@@ -2742,7 +2741,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     </div>
                   )}
 
-                  {/* 2. Khối Chọn từ Sổ địa chỉ (dành cho khách hàng đã đăng nhập khi đã tải xong) */}
+                  {/* 2. Khối Chọn từ Danh sách địa chỉ (dành cho khách hàng đã đăng nhập khi đã tải xong) */}
                   {isMounted && isUserLoggedIn && !isLoadingCustomerAddresses && customerAddresses.length > 0 && (
                     <div className="space-y-2 p-3.5 bg-yellow/40 rounded-xl border border-secondary/20 font-serif animate-fade-in">
                       <div className="flex items-center justify-between">
