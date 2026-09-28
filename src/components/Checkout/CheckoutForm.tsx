@@ -38,6 +38,7 @@ import {
   type CustomerAddress,
 } from "@/services/authService";
 import GuestTierHintBanner from "./GuestTierHintBanner";
+import { buildDeliveryAddress, cleanDuplicateAddressParts } from "@/data/wardMapping";
 import { checkGuestTierByPhone, type GuestTierHint } from "@/services/authService";
 
 import { useAuth, getMemberTier, calculateMemberDiscount } from "@/contexts/AuthContext";
@@ -1764,15 +1765,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         : "Nhận tại chi nhánh Cô Thảo";
     }
     if (isSavedAddressSelected && selectedSavedAddress?.full_address) {
-      return selectedSavedAddress.full_address;
+      return cleanDuplicateAddressParts(selectedSavedAddress.full_address);
     }
-    const parts = [
-      streetAddress.trim(),
-      selectedWard.trim(),
-      selectedDistrict.trim(),
-      selectedProvince.trim(),
-    ].filter(Boolean);
-    return parts.join(", ");
+    return buildDeliveryAddress(
+      streetAddress,
+      selectedWard,
+      selectedDistrict,
+      selectedProvince
+    );
   }, [
     deliveryType,
     selectedBranchId,
@@ -2048,7 +2048,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
       // Tự động lưu địa chỉ mới vào Danh sách địa chỉ nếu khách hàng chọn checkbox
       if (user && saveToAddressBook && (!selectedAddressId || selectedAddressId === "new") && streetAddress.trim() && selectedWard.trim()) {
-        const full_addr = [streetAddress.trim(), selectedWard, selectedDistrict, selectedProvince].filter(Boolean).join(", ");
+        const full_addr = buildDeliveryAddress(streetAddress, selectedWard, selectedDistrict, selectedProvince);
         createCustomerAddressApi({
           recipient_name: name.trim() || user.name,
           phone: phone.trim() || user.phone || "",
@@ -2372,7 +2372,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     >
                       {customerAddresses.map((addr) => (
                         <option key={addr.id} value={addr.id}>
-                          {addr.recipient_name} ({addr.phone}) - {addr.full_address || `${addr.street_address}, ${addr.ward}, ${addr.district}, ${addr.province}`} {addr.is_default ? "(Mặc định)" : ""}
+                          {addr.recipient_name} ({addr.phone}) - {cleanDuplicateAddressParts(addr.full_address || buildDeliveryAddress(addr.street_address, addr.ward, addr.district, addr.province))} {addr.is_default ? "(Mặc định)" : ""}
                         </option>
                       ))}
                       <option value="new">+ Nhập địa chỉ nhận hàng khác</option>
@@ -2397,15 +2397,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         <div className="flex items-start gap-1.5 text-gray-600">
                           <span className="shrink-0 text-primary">🏡</span>
                           <span className="leading-relaxed">
-                            {selectedSavedAddress.full_address ||
-                              [
+                            {cleanDuplicateAddressParts(
+                              selectedSavedAddress.full_address ||
+                              buildDeliveryAddress(
                                 selectedSavedAddress.street_address,
                                 selectedSavedAddress.ward,
                                 selectedSavedAddress.district,
-                                selectedSavedAddress.province,
-                              ]
-                                .filter(Boolean)
-                                .join(", ")}
+                                selectedSavedAddress.province
+                              )
+                            )}
                           </span>
                         </div>
                       </div>

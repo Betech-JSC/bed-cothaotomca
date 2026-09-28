@@ -22,6 +22,7 @@ import {
   type AdministrativeProvince,
 } from "@/services/orderService";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
+import { buildDeliveryAddress, cleanDuplicateAddressParts } from "@/data/wardMapping";
 
 type ProfileDashboardProps = {
   user: StorefrontUser;
@@ -363,14 +364,12 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     setSavingAddress(true);
     setAddressModalError(null);
 
-    const full_address = [
-      addressForm.street_address.trim(),
+    const full_address = buildDeliveryAddress(
+      addressForm.street_address,
       addressForm.ward,
       addressForm.district,
-      addressForm.province,
-    ]
-      .filter(Boolean)
-      .join(", ");
+      addressForm.province
+    );
 
     try {
       if (editingAddress) {
@@ -1000,7 +999,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                                 </p>
                                 <p>
                                   <span className="text-gray-400">Địa chỉ:</span>{" "}
-                                  <span>{order.delivery?.address || "Nhận tại cửa hàng"}</span>
+                                  <span>{cleanDuplicateAddressParts(order.delivery?.address || "") || "Nhận tại cửa hàng"}</span>
                                 </p>
                               </div>
                             </div>
@@ -1349,7 +1348,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                       </p>
 
                       <p className="text-sm text-gray-800 leading-snug">
-                        {addr.full_address || `${addr.street_address}, ${addr.ward}, ${addr.district}, ${addr.province}`}
+                        {cleanDuplicateAddressParts(addr.full_address || buildDeliveryAddress(addr.street_address, addr.ward, addr.district, addr.province))}
                       </p>
 
                       {addr.notes && (

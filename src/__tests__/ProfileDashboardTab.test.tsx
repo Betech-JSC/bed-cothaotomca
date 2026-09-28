@@ -197,6 +197,38 @@ describe("ProfileDashboard tab parameter navigation", () => {
     expect(screen.getByText("+ Thêm địa chỉ mới")).toBeInTheDocument();
   });
 
+  it("deduplicates duplicated ward name in saved addresses list on ProfileDashboard", async () => {
+    mockSearchParams = new URLSearchParams({ tab: "addresses" });
+    const { getCustomerAddressesApi } = await import("@/services/authService");
+    vi.mocked(getCustomerAddressesApi).mockResolvedValueOnce([
+      {
+        id: 202,
+        recipient_name: "Quỳnh Giang Nguyễn",
+        phone: "0967442341",
+        province: "TP. Hồ Chí Minh",
+        district: "Tân Sơn Nhất",
+        ward: "Tân Sơn Nhất",
+        street_address: "64 Út Tịch",
+        full_address: "64 Út Tịch, Tân Sơn Nhất, Tân Sơn Nhất, TP. Hồ Chí Minh",
+        is_default: true,
+      } as any,
+    ]);
+
+    render(
+      <ProfileDashboard
+        user={dummyUser as any}
+        onLogout={vi.fn()}
+        updateProfile={vi.fn()}
+        refreshUser={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("64 Út Tịch, Tân Sơn Nhất, TP. Hồ Chí Minh")).toBeInTheDocument();
+      expect(screen.queryByText("64 Út Tịch, Tân Sơn Nhất, Tân Sơn Nhất, TP. Hồ Chí Minh")).not.toBeInTheDocument();
+    });
+  });
+
   it("activates info tab when tab=info is in URL query parameters", () => {
     mockSearchParams = new URLSearchParams({ tab: "info" });
 
@@ -232,9 +264,11 @@ describe("CheckoutForm Address Book Link", () => {
 
     // Wait for customer addresses to load and link to render
     await waitFor(() => {
-      const addressBookLink = screen.getByRole("link", { name: /Danh sách địa chỉ →/i });
-      expect(addressBookLink).toBeInTheDocument();
-      expect(addressBookLink).toHaveAttribute("href", "/profile?tab=addresses");
+      const addressBookLinks = screen.getAllByRole("link", { name: /Danh sách địa chỉ →/i });
+      expect(addressBookLinks.length).toBeGreaterThan(0);
+      addressBookLinks.forEach((link) => {
+        expect(link).toHaveAttribute("href", "/profile?tab=addresses");
+      });
     });
   });
 });

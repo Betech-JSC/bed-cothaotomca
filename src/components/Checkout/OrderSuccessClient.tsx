@@ -8,6 +8,7 @@ import { getOrderByCode } from "@/services/orderService";
 import { formatPrice } from "@/lib/format";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import OrderStatusStepper from "@/components/Order/OrderStatusStepper";
+import { cleanDuplicateAddressParts } from "@/data/wardMapping";
 
 interface OrderSuccessClientProps {
   orderCode: string;
@@ -240,7 +241,7 @@ export default function OrderSuccessClient({
                 {isPickup ? t("pickup_location") : t("delivery_address")}
               </span>
               <strong className="text-primary text-sm md:text-base font-bold font-sans block leading-snug">
-                {order.delivery?.address || ""}
+                {cleanDuplicateAddressParts(order.delivery?.address || "")}
               </strong>
             </div>
           </div>

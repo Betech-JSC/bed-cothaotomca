@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { formatWardLabel, HCMC_WARD_OLD_NAME_MAP } from "../data/wardMapping";
+import {
+  formatWardLabel,
+  HCMC_WARD_OLD_NAME_MAP,
+  cleanAdministrativeUnitName,
+  cleanDuplicateAddressParts,
+  buildDeliveryAddress,
+} from "../data/wardMapping";
 
 describe("WardSelectCombobox & Ward Mapping", () => {
   it("formats ward label cleanly without old ward string", () => {
@@ -45,6 +51,54 @@ describe("WardSelectCombobox & Ward Mapping", () => {
     expect(HCMC_WARD_OLD_NAME_MAP["Gia Định"]).toBe("P.1, P.2");
     expect(HCMC_WARD_OLD_NAME_MAP["Bàn Cờ"]).toBe("P.1, P.2, P.3");
     expect(HCMC_WARD_OLD_NAME_MAP["An Đông"]).toBe("P.9, P.10");
+  });
+
+  describe("Address Deduplication (cleanDuplicateAddressParts & buildDeliveryAddress)", () => {
+    it("fixes duplicated ward name when ward and district share identical names", () => {
+      // Bug từ hình ảnh: "64 Út Tịch, Tân Sơn Nhất, Tân Sơn Nhất, TP. Hồ Chí Minh"
+      const result = cleanDuplicateAddressParts("64 Út Tịch, Tân Sơn Nhất, Tân Sơn Nhất, TP. Hồ Chí Minh");
+      expect(result).toBe("64 Út Tịch, Tân Sơn Nhất, TP. Hồ Chí Minh");
+
+      const built = buildDeliveryAddress("64 Út Tịch", "Tân Sơn Nhất", "Tân Sơn Nhất", "TP. Hồ Chí Minh");
+      expect(built).toBe("64 Út Tịch, Tân Sơn Nhất, TP. Hồ Chí Minh");
+    });
+
+    it("deduplicates when ward and district have administrative prefixes but same name", () => {
+      const built = buildDeliveryAddress("64 Út Tịch", "Phường Tân Sơn Nhất", "Quận Tân Sơn Nhất", "TP. Hồ Chí Minh");
+      expect(built).toBe("64 Út Tịch, Phường Tân Sơn Nhất, TP. Hồ Chí Minh");
+
+      const commune = buildDeliveryAddress("10 Nguyễn Hữu Trí", "Xã Bình Chánh", "Huyện Bình Chánh", "TP. Hồ Chí Minh");
+      expect(commune).toBe("10 Nguyễn Hữu Trí, Xã Bình Chánh, TP. Hồ Chí Minh");
+    });
+
+    it("deduplicates when street address already ends with ward name", () => {
+      const built = buildDeliveryAddress("64 Út Tịch, Tân Sơn Nhất", "Tân Sơn Nhất", "Tân Bình", "TP. Hồ Chí Minh");
+      expect(built).toBe("64 Út Tịch, Tân Sơn Nhất, Tân Bình, TP. Hồ Chí Minh");
+    });
+
+    it("preserves standard addresses with different ward and district", () => {
+      const built = buildDeliveryAddress("64 Út Tịch", "Tân Sơn Nhất", "Tân Bình", "TP. Hồ Chí Minh");
+      expect(built).toBe("64 Út Tịch, Tân Sơn Nhất, Tân Bình, TP. Hồ Chí Minh");
+    });
+
+    it("correctly cleans administrative prefixes like P., P, Q., Q, TT., TX.", () => {
+      expect(cleanAdministrativeUnitName("P. Tân Sơn Nhất")).toBe("Tân Sơn Nhất");
+      expect(cleanAdministrativeUnitName("P Tân Sơn Nhất")).toBe("Tân Sơn Nhất");
+      expect(cleanAdministrativeUnitName("Phường Tân Sơn Nhất")).toBe("Tân Sơn Nhất");
+      expect(cleanAdministrativeUnitName("Q. Tân Bình")).toBe("Tân Bình");
+      expect(cleanAdministrativeUnitName("Q Tân Bình")).toBe("Tân Bình");
+      expect(cleanAdministrativeUnitName("TT. Củ Chi")).toBe("Củ Chi");
+      expect(cleanAdministrativeUnitName("TX. Bến Cát")).toBe("Bến Cát");
+      expect(cleanAdministrativeUnitName("TP. Hồ Chí Minh")).toBe("Hồ Chí Minh");
+    });
+
+    it("deduplicates when street address contains ward name after hyphen or comma", () => {
+      const hyphenBuilt = buildDeliveryAddress("64 Út Tịch - Tân Sơn Nhất", "Tân Sơn Nhất", "Tân Bình", "TP. Hồ Chí Minh");
+      expect(hyphenBuilt).toBe("64 Út Tịch - Tân Sơn Nhất, Tân Bình, TP. Hồ Chí Minh");
+
+      const commaBuilt = buildDeliveryAddress("64 Út Tịch, Phường Tân Sơn Nhất", "Tân Sơn Nhất", "Tân Bình", "TP. Hồ Chí Minh");
+      expect(commaBuilt).toBe("64 Út Tịch, Phường Tân Sơn Nhất, Tân Bình, TP. Hồ Chí Minh");
+    });
   });
 });
 

@@ -13,6 +13,7 @@ import {
 } from "@/services/orderService";
 import { getGeneralSettings } from "@/services/generalSettingService";
 import OrderStatusStepper from "@/components/Order/OrderStatusStepper";
+import { cleanDuplicateAddressParts } from "@/data/wardMapping";
 
 interface OrderDetailData {
   order_code: string;
@@ -736,7 +737,7 @@ export default function OrderLookupPage() {
                   )}
                   <div className="pt-2.5 text-xs text-gray-600 border-t border-gray-200/80 mt-2 leading-relaxed">
                     <span className="font-bold text-primary">{t("delivery_address")}:</span>{" "}
-                    {order.delivery?.address || t("delivery_type_pickup")}
+                    {cleanDuplicateAddressParts(order.delivery?.address || "") || t("delivery_type_pickup")}
                   </div>
                 </div>
               </div>

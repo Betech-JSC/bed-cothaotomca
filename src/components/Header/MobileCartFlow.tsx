@@ -40,6 +40,7 @@ import {
   checkGuestTierByPhone,
   type GuestTierHint,
 } from "@/services/authService";
+import { buildDeliveryAddress, cleanDuplicateAddressParts } from "@/data/wardMapping";
 import GuestTierHintBanner from "@/components/Checkout/GuestTierHintBanner";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getEarliestPreOrderSlot, getVietnamDate, getVietnamTimeString, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
@@ -1651,10 +1652,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     let finalAddress = "";
     if (deliveryType === "delivery") {
       if (isSavedAddressSelected && selectedSavedAddress?.full_address) {
-        finalAddress = selectedSavedAddress.full_address;
+        finalAddress = cleanDuplicateAddressParts(selectedSavedAddress.full_address);
       } else {
-        const parts = [streetAddress.trim(), selectedWard, selectedDistrict, selectedProvince].filter(Boolean);
-        finalAddress = parts.join(", ");
+        finalAddress = buildDeliveryAddress(streetAddress, selectedWard, selectedDistrict, selectedProvince);
       }
     } else {
       finalAddress = config?.branches?.find((b) => b.id === selectedBranchId)?.address || "";
@@ -2765,7 +2765,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       >
                         {customerAddresses.map((addr) => (
                           <option key={addr.id} value={addr.id}>
-                            {addr.recipient_name} ({addr.phone}) - {addr.full_address || `${addr.street_address}, ${addr.ward}, ${addr.district}, ${addr.province}`} {addr.is_default ? "(Mặc định)" : ""}
+                            {addr.recipient_name} ({addr.phone}) - {cleanDuplicateAddressParts(addr.full_address || buildDeliveryAddress(addr.street_address, addr.ward, addr.district, addr.province))} {addr.is_default ? "(Mặc định)" : ""}
                           </option>
                         ))}
                         <option value="new">+ Nhập địa chỉ nhận hàng khác</option>
@@ -2790,15 +2790,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                           <div className="flex items-start gap-1.5 text-gray-600">
                             <span className="shrink-0 text-primary">🏡</span>
                             <span className="leading-relaxed">
-                              {selectedSavedAddress.full_address ||
-                                [
+                              {cleanDuplicateAddressParts(
+                                selectedSavedAddress.full_address ||
+                                buildDeliveryAddress(
                                   selectedSavedAddress.street_address,
                                   selectedSavedAddress.ward,
                                   selectedSavedAddress.district,
-                                  selectedSavedAddress.province,
-                                ]
-                                  .filter(Boolean)
-                                  .join(", ")}
+                                  selectedSavedAddress.province
+                                )
+                              )}
                             </span>
                           </div>
                         </div>
