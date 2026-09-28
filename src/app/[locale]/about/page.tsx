@@ -160,7 +160,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
   return (
     <main className="overflow-x-hidden">
-      <Banner banner={banner} classHeight="h-[191px] md:h-[480px] lg:h-[706px]" />
+      <Banner banner={banner} classHeight="w-full min-h-[191px] aspect-[16/9] max-h-[520px] 2xl:max-h-[560px]" />
       <section className="pt-10 pb-10 md:pb-16 xl:pb-20">
         <div className="container space-y-10 md:space-y-16 xl:space-y-[120px]">
           <div className="space-y-[60px] md:space-y-16 xl:space-y-20">

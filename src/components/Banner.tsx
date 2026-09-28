@@ -15,10 +15,12 @@ type BannerProps = {
   classHeight?: string;
 };
 
-const Banner: React.FC<BannerProps> = ({ banner, classHeight = "h-[162px] md:h-[480px]" }) => {
+const Banner: React.FC<BannerProps> = ({
+  banner,
+  classHeight = "w-full min-h-[162px] aspect-[16/9] max-h-[360px] md:max-h-[440px] xl:max-h-[480px]",
+}) => {
   const imageSrc = banner.image?.url || '/cover.jpg';
   const imageMobileSrc = banner.image_mobile?.url || '/cover.jpg';
-
 
   return (
     <div
@@ -29,14 +31,14 @@ const Banner: React.FC<BannerProps> = ({ banner, classHeight = "h-[162px] md:h-[
         alt={banner.image_mobile?.alt || "banner mobile"}
         fill
         priority
-        className="h-full w-full object-cover lg:hidden"
+        className="h-full w-full object-cover object-center lg:hidden"
       />
       <Image
         src={imageSrc}
         alt={banner.image?.alt || "banner"}
         fill
         priority
-        className="h-full w-full object-cover hidden lg:block"
+        className="h-full w-full object-cover object-center hidden lg:block"
       />
     </div>
   );

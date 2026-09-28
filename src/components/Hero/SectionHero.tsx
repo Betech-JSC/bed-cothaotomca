@@ -18,7 +18,7 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
   const swiperRef = useRef<SwiperType | null>(null);
 
   return (
-    <section className="relative overflow-hidden h-[12.1875rem] md:h-[34.375rem] xl:h-[45rem]">
+    <section className="relative overflow-hidden w-full min-h-[195px] aspect-[16/9] max-h-[520px] 2xl:max-h-[560px]">
       <div className="relative swiper-hero h-full group">
         <Swiper
           modules={[Navigation, Pagination]}
@@ -35,16 +35,36 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
         >
           {items.map((item, index) => {
             const imageSrc = item.image?.url || '/cover.jpg';
+            const imageMobileSrc = item.image_mobile?.url;
             return (
               <SwiperSlide key={index} className="h-full">
                 <div className="relative h-full">
-                  <Image
-                    src={imageSrc}
-                    alt={item.image?.alt || 'Hero image'}
-                    fill
-                    priority={index === 0}
-                    className="object-cover w-full h-full"
-                  />
+                  {imageMobileSrc && imageMobileSrc !== imageSrc ? (
+                    <>
+                      <Image
+                        src={imageMobileSrc}
+                        alt={item.image_mobile?.alt || item.image?.alt || 'Hero image mobile'}
+                        fill
+                        priority={index === 0}
+                        className="object-cover object-center w-full h-full md:hidden"
+                      />
+                      <Image
+                        src={imageSrc}
+                        alt={item.image?.alt || 'Hero image'}
+                        fill
+                        priority={index === 0}
+                        className="object-cover object-center w-full h-full hidden md:block"
+                      />
+                    </>
+                  ) : (
+                    <Image
+                      src={imageSrc}
+                      alt={item.image?.alt || 'Hero image'}
+                      fill
+                      priority={index === 0}
+                      className="object-cover object-center w-full h-full"
+                    />
+                  )}
                 </div>
               </SwiperSlide>
             );
