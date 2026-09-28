@@ -281,7 +281,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(res0830.notice?.openTime).toBe('10:00');
     expect(res0830.notice?.targetDateDisplay).toBe('Hôm nay 16/08');
     expect(res0830.notice?.message).toBe(
-      'Quán ngưng nhận đơn từ 22:30 - 09:00 | Đặt trước từ 10:00 ngày hôm nay 16/08 (hoặc đặt món sau 09:00 sáng).\n*Ngày nhận món dự kiến: Hôm nay 16/08'
+      'Chỉ nhận đơn đặt trước | Đơn giao hỏa tốc nhận từ 09:00 – 22:30 hằng ngày.\n*Ngày nhận món dự kiến: Hôm nay 16/08'
     );
     expect(res0830.defaultDate).toBe('2026-08-16');
     expect(res0830.expectedDateNote).toBe('*Ngày nhận món dự kiến: Hôm nay 16/08');
@@ -290,7 +290,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     const res0830Pickup = checkOperatingHours(config, new Date('2026-08-16T08:30:00+07:00'), 'pickup');
     expect(res0830Pickup.notice?.openTime).toBe('09:00');
     expect(res0830Pickup.notice?.message).toBe(
-      'Quán ngưng nhận đơn từ 22:30 - 09:00 | Đặt trước từ 09:00 ngày hôm nay 16/08 (hoặc đặt món sau 09:00 sáng).\n*Ngày nhận món dự kiến: Hôm nay 16/08'
+      'Chỉ nhận đơn đặt trước | Đơn giao hỏa tốc nhận từ 09:00 – 22:30 hằng ngày.\n*Ngày nhận món dự kiến: Hôm nay 16/08'
     );
 
     // Case 2: 14:00 (Trong giờ nhận đơn ngay 09:00 - 22:30)
@@ -307,7 +307,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(res2245.notice?.openTime).toBe('10:00');
     expect(res2245.notice?.targetDateDisplay).toBe('Ngày mai 17/08');
     expect(res2245.notice?.message).toBe(
-      'Quán ngưng nhận đơn từ 22:30 - 09:00 | Đặt trước từ 10:00 ngày mai 17/08 (hoặc đặt món sau 09:00 sáng).\n*Ngày nhận món dự kiến: Ngày mai 17/08'
+      'Chỉ nhận đơn đặt trước | Đơn giao hỏa tốc nhận từ 09:00 – 22:30 hằng ngày.\n*Ngày nhận món dự kiến: Ngày mai 17/08'
     );
     expect(res2245.defaultDate).toBe('2026-08-17');
     expect(res2245.expectedDateNote).toBe('*Ngày nhận món dự kiến: Ngày mai 17/08');
@@ -316,7 +316,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     const res2245Pickup = checkOperatingHours(config, new Date('2026-08-16T22:45:00+07:00'), 'pickup');
     expect(res2245Pickup.notice?.openTime).toBe('09:00');
     expect(res2245Pickup.notice?.message).toBe(
-      'Quán ngưng nhận đơn từ 22:30 - 09:00 | Đặt trước từ 09:00 ngày mai 17/08 (hoặc đặt món sau 09:00 sáng).\n*Ngày nhận món dự kiến: Ngày mai 17/08'
+      'Chỉ nhận đơn đặt trước | Đơn giao hỏa tốc nhận từ 09:00 – 22:30 hằng ngày.\n*Ngày nhận món dự kiến: Ngày mai 17/08'
     );
 
     // Case 4: 23:15 (Sau 23:00 đã đóng cửa)
@@ -327,7 +327,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
     expect(res2315.notice?.openTime).toBe('10:00');
     expect(res2315.notice?.targetDateDisplay).toBe('Ngày mai 17/08');
     expect(res2315.notice?.message).toBe(
-      'Quán ngưng nhận đơn từ 22:30 - 09:00 | Đặt trước từ 10:00 ngày mai 17/08 (hoặc đặt món sau 09:00 sáng).\n*Ngày nhận món dự kiến: Ngày mai 17/08'
+      'Chỉ nhận đơn đặt trước | Đơn giao hỏa tốc nhận từ 09:00 – 22:30 hằng ngày.\n*Ngày nhận món dự kiến: Ngày mai 17/08'
     );
     expect(res2315.defaultDate).toBe('2026-08-17');
   });

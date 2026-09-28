@@ -2674,20 +2674,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   {t("delivery_time_label")}
                 </label>
 
-                {/* Microcopy banner cho Khung 1 (00:00 - 08:59) */}
-                {operatingStatus.isEarlyMorning && (
-                  <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium">
-                    {t("microcopy_early_morning")}
-                  </div>
-                )}
-
-                {/* Microcopy banner cho Khung 4 (22:31 - 23:59) */}
-                {!operatingStatus.canOrderNow && !operatingStatus.isEarlyMorning && (
-                  <div className="p-3 bg-yellow/60 border border-secondary/30 rounded-lg text-xs text-brown leading-relaxed font-medium">
-                    {t("microcopy_closed_today")}
-                  </div>
-                )}
-
                 <div className="space-y-3">
                   {/* Option 1: Giao ngay (Chỉ hiển thị khi trong giờ nhận đơn ngay 09:00 - 22:30 / canOrderNow) */}
                   {operatingStatus.canOrderNow && (
@@ -2731,18 +2717,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       </span>
                     </label>
 
-                    {/* Microcopy 3 hoặc 4 dưới ô Đặt trước */}
-                    {(deliverySchedule === "schedule" || !operatingStatus.canOrderNow) && (
+                    {/* Microcopy cảnh báo khi hết slot đặt trước trong ngày */}
+                    {operatingStatus.canOrderNow && !operatingStatus.canScheduleToday && (
                       <p className="text-xs font-normal pl-7 mt-0.5">
-                        {operatingStatus.canOrderNow && !operatingStatus.canScheduleToday ? (
-                          <span className="text-amber-700 font-medium">
-                            {t("microcopy_schedule_cutoff")}
-                          </span>
-                        ) : (
-                          <span className="text-gray-500">
-                            {t("microcopy_schedule")}
-                          </span>
-                        )}
+                        <span className="text-amber-700 font-medium">
+                          {t("microcopy_schedule_cutoff")}
+                        </span>
                       </p>
                     )}
                   </div>

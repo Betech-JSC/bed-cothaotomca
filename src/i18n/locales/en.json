@@ -289,7 +289,7 @@
   "preorder_notice": {
     "title": "Scheduled Order Notice",
     "subtitle": "Service Hours & Delivery Schedule",
-    "message": "The restaurant stops taking orders from {cutoff} - {storeOpen} | Pre-order from {openTime} {nextOpenDate} (or place order after {storeOpen} AM).",
+    "message": "Pre-orders only | Express delivery available from {storeOpen} – {cutoff} daily.",
     "expected_date": "Expected Delivery Date:",
     "slot_info": "Pickup / Delivery Slot:",
     "confirm_btn": "I understand, continue order"

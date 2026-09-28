@@ -351,8 +351,10 @@ export function checkOperatingHours(
   let message: string | null = null;
   let expectedDateNote: string | undefined = undefined;
 
+  const openHoursStr = `${storeOpenStr.replace(/^0/, "")} - ${storeCloseStr}`;
+
   if (canOrderNow) {
-    message = "Quán đang nhận đơn | Bắt đầu nhận đơn từ 9:00 - 23:00 mỗi ngày.";
+    message = `Quán đang nhận đơn | Bắt đầu nhận đơn từ ${openHoursStr} mỗi ngày.`;
     defaultDate = isTodayOutOfSlots ? tomorrowISO : todayISO;
     targetDateDisplay = isTodayOutOfSlots ? tomorrowShortDisplay : todayShortDisplay;
   } else {
@@ -369,14 +371,14 @@ export function checkOperatingHours(
     defaultDate = isBeforeOpen ? todayISO : tomorrowISO;
     targetDateDisplay = nextOpenDateDisplay;
 
-    const line1 = `Quán ngưng nhận đơn từ ${lastOrderCutoffStr} - ${storeOpenStr} | Đặt trước từ ${openTime} ngày ${nextOpenDateInSentence} (hoặc đặt món sau ${storeOpenStr} sáng).`;
+    const line1 = `Chỉ nhận đơn đặt trước | Đơn giao hỏa tốc nhận từ ${storeOpenStr} – ${lastOrderCutoffStr} hằng ngày.`;
     const line2 = `*Ngày nhận món dự kiến: ${nextOpenDateDisplay}`;
-    message = `${line1}\n${line2}`;
+    message = `Chỉ nhận đơn đặt trước | Bắt đầu nhận đơn từ ${openHoursStr} mỗi ngày.`;
     expectedDateNote = line2;
 
     notice = {
       title: "Thông Báo Đặt Hàng Hẹn Giờ",
-      message: message,
+      message: `${line1}\n${line2}`,
       targetDateISO: defaultDate,
       targetDateDisplay: nextOpenDateDisplay,
       slotInfo: `${openTime} - ${effectiveCloseStr}`,

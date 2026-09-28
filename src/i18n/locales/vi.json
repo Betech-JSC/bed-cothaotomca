@@ -289,7 +289,7 @@
   "preorder_notice": {
     "title": "Thông Báo Đặt Hàng Hẹn Giờ",
     "subtitle": "Khung giờ phục vụ & hẹn nhận món",
-    "message": "Quán ngưng nhận đơn từ {cutoff} - {storeOpen} | Đặt trước từ {openTime} ngày {nextOpenDate} (hoặc đặt món sau {storeOpen} sáng).",
+    "message": "Chỉ nhận đơn đặt trước | Đơn giao hỏa tốc nhận từ {storeOpen} – {cutoff} hằng ngày.",
     "expected_date": "Ngày nhận món dự kiến:",
     "slot_info": "Khung giờ giao / lấy hàng:",
     "confirm_btn": "Tôi đã hiểu, tiếp tục đặt hàng"

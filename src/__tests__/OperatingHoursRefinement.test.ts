@@ -119,7 +119,11 @@ describe("Operating Hours Refinement & Pickup Hours (Change: refine-delivery-sch
       expect(res0730.isAfterCutoff).toBe(false);
       expect(res0730.defaultDeliverySchedule).toBe("schedule");
       expect(res0730.defaultDate).toBe("2026-09-26");
+      expect(res0730.message).toBe("Chỉ nhận đơn đặt trước | Bắt đầu nhận đơn từ 9:00 - 23:00 mỗi ngày.");
       expect(res0730.notice).not.toBeNull();
+      expect(res0730.notice?.message).toContain(
+        "Chỉ nhận đơn đặt trước | Đơn giao hỏa tốc nhận từ 09:00 – 22:30 hằng ngày."
+      );
     });
 
     it("Khung 2: 09:00 - 21:30 (active) - canOrderNow=true, canScheduleToday=true, defaultDate=today", () => {
@@ -131,6 +135,7 @@ describe("Operating Hours Refinement & Pickup Hours (Change: refine-delivery-sch
       expect(res1400.isAfterCutoff).toBe(false);
       expect(res1400.defaultDeliverySchedule).toBe("now");
       expect(res1400.defaultDate).toBe("2026-09-26");
+      expect(res1400.message).toBe("Quán đang nhận đơn | Bắt đầu nhận đơn từ 9:00 - 23:00 mỗi ngày.");
       expect(res1400.notice).toBeNull();
     });
 
@@ -155,6 +160,7 @@ describe("Operating Hours Refinement & Pickup Hours (Change: refine-delivery-sch
       expect(res2245.isAfterCutoff).toBe(true);
       expect(res2245.defaultDeliverySchedule).toBe("schedule");
       expect(res2245.defaultDate).toBe("2026-09-27");
+      expect(res2245.message).toBe("Chỉ nhận đơn đặt trước | Bắt đầu nhận đơn từ 9:00 - 23:00 mỗi ngày.");
       expect(res2245.notice).not.toBeNull();
     });
   });
@@ -202,6 +208,9 @@ describe("Operating Hours Refinement & Pickup Hours (Change: refine-delivery-sch
 
       expect(checkout.pickup_time_notice).toContain("09:00 - 22:30");
       expect(checkout.pickup_time_notice_out_hours).toContain("09:00 - 22:30");
+      expect((viMessages as any).preorder_notice?.message).toBe(
+        "Chỉ nhận đơn đặt trước | Đơn giao hỏa tốc nhận từ {storeOpen} – {cutoff} hằng ngày."
+      );
     });
 
     it("contains English versions in en.json", () => {
@@ -212,6 +221,9 @@ describe("Operating Hours Refinement & Pickup Hours (Change: refine-delivery-sch
       expect(checkout.microcopy_schedule_cutoff).toBeDefined();
       expect(checkout.microcopy_closed_today).toBeDefined();
       expect(checkout.pickup_time_notice).toContain("09:00 - 22:30");
+      expect((enMessages as any).preorder_notice?.message).toBe(
+        "Pre-orders only | Express delivery available from {storeOpen} – {cutoff} daily."
+      );
     });
   });
 
