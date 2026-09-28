@@ -50,7 +50,7 @@ describe("Voucher Discount Calculation & Auto-Removal Unit Tests (Lỗi 2 & Lỗ
       expect(discount).not.toBe(DEFAULT_SHIPPING);
     });
 
-    it("2b. Voucher freeship loại giảm % không có max_discount -> làm tròn lên hàng nghìn (ceil to thousand)", () => {
+    it("2b. Voucher freeship loại giảm % không có max_discount -> làm tròn xuống hàng nghìn (floor to thousand)", () => {
       const percentVoucher: AppliedVoucherState = {
         id: 4,
         code: "SHIP15PCT",
@@ -59,9 +59,9 @@ describe("Voucher Discount Calculation & Auto-Removal Unit Tests (Lỗi 2 & Lỗ
         isFreeship: true,
       };
 
-      // 35,000 * 15% = 5,250 -> làm tròn lên 6,000đ
+      // 35,000 * 15% = 5,250 -> làm tròn xuống 5,000đ (thay vì làm tròn lên 6,000đ)
       const discount = calculateVoucherDiscount(percentVoucher, DEFAULT_SUBTOTAL, DEFAULT_SHIPPING);
-      expect(discount).toBe(6000);
+      expect(discount).toBe(5000);
     });
 
     it("3. Voucher freeship loại giảm toàn bộ 100% (freeship) -> trả về đúng bằng phí ship gốc", () => {
@@ -117,7 +117,7 @@ describe("Voucher Discount Calculation & Auto-Removal Unit Tests (Lỗi 2 & Lỗ
   });
 
   describe("Order Vouchers & E-Vouchers calculations", () => {
-    it("Order voucher percent with maxDiscount -> làm tròn lên hàng nghìn và chặn theo max", () => {
+    it("Order voucher percent with maxDiscount -> làm tròn xuống hàng nghìn và chặn theo max", () => {
       const pctVoucher: AppliedVoucherState = {
         id: 8,
         code: "GIAM10PCT_MAX20K",
@@ -129,8 +129,17 @@ describe("Voucher Discount Calculation & Auto-Removal Unit Tests (Lỗi 2 & Lỗ
       // subtotal 250,000 * 10% = 25,000 -> max capped at 20,000
       expect(calculateVoucherDiscount(pctVoucher, 250000, 30000)).toBe(20000);
 
-      // subtotal 155,000 * 10% = 15,500 -> ceil to 16,000
-      expect(calculateVoucherDiscount(pctVoucher, 155000, 30000)).toBe(16000);
+      // subtotal 155,000 * 10% = 15,500 -> floor to 15,000
+      expect(calculateVoucherDiscount(pctVoucher, 155000, 30000)).toBe(15000);
+
+      // subtotal 1,011,000 * 10% = 101,100 -> floor to 101,000 (không làm tròn lên 102,000)
+      const pctNoCap: AppliedVoucherState = {
+        id: 10,
+        code: "FIRST10PCT",
+        discountType: "percent",
+        value: 10,
+      };
+      expect(calculateVoucherDiscount(pctNoCap, 1011000, 20000)).toBe(101000);
     });
 
     it("E-Voucher -> có thể trừ cả vào phí ship nếu giá trị voucher lớn hơn subtotal", () => {

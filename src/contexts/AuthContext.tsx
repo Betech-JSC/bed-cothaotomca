@@ -89,7 +89,7 @@ export function calculateMemberDiscount(
   if (eligibleSubtotal <= 0) return 0;
   const tier = getMemberTier(userOrPoints);
   if (tier.discountPercent <= 0) return 0;
-  return Math.ceil((eligibleSubtotal * (tier.discountPercent / 100)) / 1000) * 1000;
+  return Math.floor((eligibleSubtotal * (tier.discountPercent / 100)) / 1000) * 1000;
 }
 
 export interface StorefrontUser {

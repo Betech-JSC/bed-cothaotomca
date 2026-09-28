@@ -324,7 +324,7 @@ export function calculateVoucherDiscount(
   if (isShipping) {
     if (type === "percent" || codeUpper.includes("PCT")) {
       const pct = voucher.value;
-      const calculated = Math.ceil((shipping * (pct / 100)) / 1000) * 1000;
+      const calculated = Math.floor((shipping * (pct / 100)) / 1000) * 1000;
       if (voucher.maxDiscount && voucher.maxDiscount > 0) {
         return Math.min(voucher.maxDiscount, calculated, shipping);
       }
@@ -341,7 +341,7 @@ export function calculateVoucherDiscount(
 
   if (type === "percent" || codeUpper.includes("PCT")) {
     const pct = voucher.value;
-    const calculated = Math.ceil((subtotal * (pct / 100)) / 1000) * 1000;
+    const calculated = Math.floor((subtotal * (pct / 100)) / 1000) * 1000;
     if (voucher.maxDiscount && voucher.maxDiscount > 0) {
       return Math.min(voucher.maxDiscount, calculated, subtotal);
     }

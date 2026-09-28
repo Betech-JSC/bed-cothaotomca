@@ -705,12 +705,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     const val = eligibleOrderDiscountPromo.discount_value;
     let disc = 0;
     if (type === "percent") {
-      disc = Math.ceil((subtotal * (val / 100)) / 1000) * 1000;
+      disc = Math.floor((subtotal * (val / 100)) / 1000) * 1000;
       if (eligibleOrderDiscountPromo.max_discount && eligibleOrderDiscountPromo.max_discount > 0) {
         disc = Math.min(disc, eligibleOrderDiscountPromo.max_discount);
       }
     } else if (type === "fixed") {
-      disc = Math.ceil(val / 1000) * 1000;
+      disc = Math.floor(val / 1000) * 1000;
       if (eligibleOrderDiscountPromo.max_discount && eligibleOrderDiscountPromo.max_discount > 0) {
         disc = Math.min(disc, eligibleOrderDiscountPromo.max_discount);
       }
