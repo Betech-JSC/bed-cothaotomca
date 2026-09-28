@@ -2056,7 +2056,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         clearCart();
       }
 
-      // Tự động lưu địa chỉ mới vào Sổ địa chỉ nếu khách hàng chọn checkbox
+      // Tự động lưu địa chỉ mới vào Danh sách địa chỉ nếu khách hàng chọn checkbox
       if (user && saveToAddressBook && (!selectedAddressId || selectedAddressId === "new") && streetAddress.trim() && selectedWard.trim()) {
         const full_addr = [streetAddress.trim(), selectedWard, selectedDistrict, selectedProvince].filter(Boolean).join(", ");
         createCustomerAddressApi({
@@ -2358,7 +2358,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   </div>
                 )}
 
-                {/* 2. Khối Chọn từ Sổ địa chỉ (dành cho khách hàng đã đăng nhập khi đã tải xong) */}
+                {/* 2. Khối Chọn từ Danh sách địa chỉ (dành cho khách hàng đã đăng nhập khi đã tải xong) */}
                 {isUserLoggedIn && !isLoadingCustomerAddresses && customerAddresses.length > 0 && (
                   <div className="space-y-2 p-3.5 bg-yellow/40 rounded-xl border border-secondary/20 font-serif animate-fade-in">
                     <div className="flex items-center justify-between">

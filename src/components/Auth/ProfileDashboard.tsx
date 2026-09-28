@@ -689,8 +689,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 <span className="text-[11px] font-medium text-gray-500 group-hover:text-gray-700">Điểm</span>
                 <svg
                   className={`w-3.5 h-3.5 transition-all duration-500 ease-in-out shrink-0 ${refreshingPoints
-                      ? "animate-spin text-secondary"
-                      : "text-gray-400 group-hover:text-secondary group-hover:rotate-180"
+                    ? "animate-spin text-secondary"
+                    : "text-gray-400 group-hover:text-secondary group-hover:rotate-180"
                     }`}
                   viewBox="0 0 24 24"
                   fill="none"
@@ -732,8 +732,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               <button
                 onClick={() => setActiveTab("info")}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${activeTab === "info"
-                    ? "bg-secondary text-white shadow-sm"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
+                  ? "bg-secondary text-white shadow-sm"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -747,23 +747,23 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               <button
                 onClick={() => setActiveTab("addresses")}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${activeTab === "addresses"
-                    ? "bg-secondary text-white shadow-sm"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
+                  ? "bg-secondary text-white shadow-sm"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                Sổ địa chỉ nhận hàng
+                Danh sách địa chỉ nhận hàng
               </button>
 
               {/* Change Password Tab */}
               <button
                 onClick={() => setActiveTab("password")}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${activeTab === "password"
-                    ? "bg-secondary text-white shadow-sm"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
+                  ? "bg-secondary text-white shadow-sm"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -777,8 +777,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               <button
                 onClick={() => setActiveTab("orders")}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm cursor-pointer ${activeTab === "orders"
-                    ? "bg-secondary text-white shadow-sm"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
+                  ? "bg-secondary text-white shadow-sm"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -831,8 +831,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                     <div
                       key={idx}
                       className={`border rounded-[1rem] p-5 md:p-6 flex flex-col gap-4 transition-all duration-200 ${isCompleted
-                          ? "bg-gray-50 border-gray-100 hover:border-gray-200"
-                          : "bg-yellow/20 border-yellow/60 hover:border-secondary/40"
+                        ? "bg-gray-50 border-gray-100 hover:border-gray-200"
+                        : "bg-yellow/20 border-yellow/60 hover:border-secondary/40"
                         }`}
                     >
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
@@ -1178,8 +1178,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 type="submit"
                 disabled={loading}
                 className={`btn font-bold h-[44px] rounded-full px-8 transition-all duration-300 text-sm cursor-pointer ${loading
-                    ? "bg-gray-200! text-gray-400! shadow-none! cursor-not-allowed"
-                    : "btn-secondary text-white shadow-sm hover:shadow-md cursor-pointer"
+                  ? "bg-gray-200! text-gray-400! shadow-none! cursor-not-allowed"
+                  : "btn-secondary text-white shadow-sm hover:shadow-md cursor-pointer"
                   } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
                 {loading ? "Đang lưu..." : t("save") || "Lưu thông tin"}
@@ -1268,8 +1268,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 type="submit"
                 disabled={passwordLoading}
                 className={`btn font-bold h-[44px] rounded-full px-8 transition-all duration-300 text-sm cursor-pointer ${passwordLoading
-                    ? "bg-gray-200! text-gray-400! shadow-none! cursor-not-allowed"
-                    : "btn-secondary text-white shadow-sm hover:shadow-md cursor-pointer"
+                  ? "bg-gray-200! text-gray-400! shadow-none! cursor-not-allowed"
+                  : "btn-secondary text-white shadow-sm hover:shadow-md cursor-pointer"
                   } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
                 {passwordLoading ? "Đang xử lý..." : "Cập nhật mật khẩu"}
@@ -1288,7 +1288,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                     <circle cx="12" cy="10" r="3"></circle>
                   </svg>
-                  Sổ địa chỉ nhận hàng
+                  Danh sách địa chỉ nhận hàng
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Lưu trữ các địa chỉ thường nhận để thanh toán đơn hàng nhanh chóng chỉ với một chạm.
@@ -1328,8 +1328,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   <div
                     key={addr.id}
                     className={`rounded-2xl p-5 border transition-all flex flex-col justify-between gap-3 ${addr.is_default
-                        ? "bg-emerald-50/40 border-emerald-300 shadow-xs"
-                        : "bg-white border-gray-200 hover:border-gray-300"
+                      ? "bg-emerald-50/40 border-emerald-300 shadow-xs"
+                      : "bg-white border-gray-200 hover:border-gray-300"
                       }`}
                   >
                     <div className="space-y-1.5">

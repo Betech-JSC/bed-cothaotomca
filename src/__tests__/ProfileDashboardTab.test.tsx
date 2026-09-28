@@ -20,7 +20,7 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => {
     const map: Record<string, string> = {
       orders_history: "Lịch sử đơn hàng",
-      addresses: "Sổ địa chỉ",
+      addresses: "Danh sách địa chỉ",
       add_new_address: "+ Thêm địa chỉ mới",
       personal_info: "Thông tin cá nhân",
       fullname: "Họ và tên",
