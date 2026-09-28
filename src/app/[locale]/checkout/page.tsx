@@ -30,6 +30,7 @@ interface Props {
     category?: string;
     variant?: string;
     price?: string;
+    mock_time?: string;
   }>;
 }
 
@@ -80,7 +81,7 @@ const defaultConfig = {
 
 export default async function CheckoutPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { slug, category, variant, price } = await searchParams;
+  const { slug, category, variant, price, mock_time } = await searchParams;
   const t = await getTranslations({ locale });
 
   const [product, config] = await Promise.all([
@@ -150,7 +151,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   return (
     <main className="py-6 md:py-14 xl:py-16">
       <div className="lg:container max-lg:px-4 space-y-8">
-        <CheckoutForm order={order} config={config} />
+        <CheckoutForm order={order} config={config} mockTime={mock_time} />
       </div>
     </main>
   );

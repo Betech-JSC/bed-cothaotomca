@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
+import { useSearchParams } from "next/navigation";
 import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
 import {
   calcOrderTotal,
@@ -66,6 +67,7 @@ export interface CheckoutOrderItem {
 interface CheckoutFormProps {
   order: CheckoutOrderItem | null;
   config: CheckoutConfig;
+  mockTime?: string;
 }
 
 // Popular districts in HN & HCMC for optimized address dropdown
@@ -92,7 +94,21 @@ const POPULAR_DISTRICTS = [
   { group: "TP. Hồ Chí Minh", value: "TP. Thủ Đức, TP. Hồ Chí Minh" },
 ];
 
-export default function CheckoutForm({ order, config }: CheckoutFormProps) {
+export default function CheckoutForm({ order, config, mockTime: propMockTime }: CheckoutFormProps) {
+  const searchParams = useSearchParams();
+  const mockTime = propMockTime || searchParams?.get("mock_time");
+
+  const mockDate = useMemo(() => {
+    const rawTime = mockTime || (typeof window !== "undefined" ? window.__MOCK_TIME__ : undefined);
+    if (rawTime && /^\d{1,2}:\d{2}$/.test(rawTime)) {
+      const [h, m] = rawTime.split(":").map(Number);
+      const d = new Date();
+      d.setHours(h, m, 0, 0);
+      return d;
+    }
+    return undefined;
+  }, [mockTime]);
+
   const { user, token, refreshUser } = useAuth();
   const t = useTranslations("checkout");
   const router = useRouter();
@@ -451,8 +467,8 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // Operating hours check (10:00 - 23:00)
   const operatingStatus = useMemo(() => {
-    return checkOperatingHours(config?.operating_hours, undefined, deliveryType);
-  }, [config?.operating_hours, deliveryType]);
+    return checkOperatingHours(config?.operating_hours, mockDate, deliveryType);
+  }, [config?.operating_hours, deliveryType, mockDate]);
 
   // 1. Tiền giảm của khuyến mại món hiện tại: sum((item.originalPrice - item.unitPrice) * quantity) (với các món có originalPrice > unitPrice)
   const totalItemDiscount = useMemo(() => {
@@ -987,12 +1003,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       if (operatingStatus.defaultDate) {
         setDeliveryDate(operatingStatus.defaultDate);
       }
+    } else {
+      setDeliverySchedule(operatingStatus.defaultDeliverySchedule);
+      if (operatingStatus.defaultDate) {
+        setDeliveryDate(operatingStatus.defaultDate);
+      }
     }
-  }, [operatingStatus.canOrderNow, operatingStatus.defaultDate]);
+  }, [operatingStatus.canOrderNow, operatingStatus.defaultDate, operatingStatus.defaultDeliverySchedule]);
 
   const availableDeliveryDates = useMemo(() => {
     const dates: { iso: string; label: string }[] = [];
-    const refDate = getVietnamDate();
+    const refDate = getVietnamDate(mockDate);
     const closeTime = deliveryType === "pickup" ? (operatingStatus.pickupClose || "22:30") : (operatingStatus.deliveryClose || "23:00");
     const outOfSlotsToday = isTodayOutOfScheduleSlots(closeTime, refDate, operatingStatus.bufferMinutes || 90, operatingStatus.scheduleCutoff || "21:30");
     const startOffset = (!operatingStatus.canOrderNow && (operatingStatus.isAfterCutoff || operatingStatus.isAfterClose)) || outOfSlotsToday || !operatingStatus.canScheduleToday ? 1 : 0;
@@ -1007,10 +1028,10 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       dates.push({ iso, label });
     }
     return dates;
-  }, [operatingStatus, deliveryType]);
+  }, [operatingStatus, deliveryType, mockDate]);
 
   const availableTimeSlots = useMemo(() => {
-    const refDate = getVietnamDate();
+    const refDate = getVietnamDate(mockDate);
     const todayISO = toISODateString(refDate);
 
     const minTime = deliveryType === "pickup" ? (operatingStatus.pickupOpen || "09:00") : (operatingStatus.deliveryOpen || "10:00");
@@ -1022,7 +1043,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
     }
 
     return generate15MinTimeSlots(minTime, maxTime, filterTime, deliveryType);
-  }, [deliveryDate, deliveryType, operatingStatus.deliveryOpen, operatingStatus.deliveryClose, operatingStatus.pickupOpen, operatingStatus.pickupClose]);
+  }, [deliveryDate, deliveryType, operatingStatus.deliveryOpen, operatingStatus.deliveryClose, operatingStatus.pickupOpen, operatingStatus.pickupClose, mockDate]);
 
   // Auto-shift delivery date if current selected date is invalid or out of available list
   useEffect(() => {

@@ -18,7 +18,38 @@ export const DEFAULT_PICKUP_CLOSE = "22:30";
 export const DEFAULT_SCHEDULE_CUTOFF = "21:30";
 export const DEFAULT_LAST_ORDER_CUTOFF = "22:30";
 
-export function getVietnamDateParts(date = new Date()): {
+declare global {
+  interface Window {
+    __MOCK_TIME__?: string;
+  }
+}
+
+export function getEffectiveNow(customDate?: Date): Date {
+  if (customDate) return customDate;
+  if (typeof window !== "undefined") {
+    let mockTime: string | null | undefined = window.__MOCK_TIME__;
+    if (!mockTime) {
+      try {
+        const search = window.location.search;
+        if (search) {
+          const params = new URLSearchParams(search);
+          mockTime = params.get("mock_time");
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (mockTime && /^\d{1,2}:\d{2}$/.test(mockTime)) {
+      const [h, m] = mockTime.split(":").map(Number);
+      const d = new Date();
+      d.setHours(h, m, 0, 0);
+      return d;
+    }
+  }
+  return new Date();
+}
+
+export function getVietnamDateParts(date?: Date): {
   year: number;
   month: number;
   day: number;
@@ -26,6 +57,7 @@ export function getVietnamDateParts(date = new Date()): {
   minute: number;
   second: number;
 } {
+  const effectiveDate = date ?? getEffectiveNow();
   try {
     const formatter = new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Ho_Chi_Minh",
@@ -37,7 +69,7 @@ export function getVietnamDateParts(date = new Date()): {
       second: "numeric",
       hour12: false,
     });
-    const parts = formatter.formatToParts(date);
+    const parts = formatter.formatToParts(effectiveDate);
     const map: Record<string, number> = {};
     for (const part of parts) {
       if (part.type !== "literal") {
@@ -54,34 +86,35 @@ export function getVietnamDateParts(date = new Date()): {
     };
   } catch (err) {
     return {
-      year: date.getFullYear(),
-      month: date.getMonth() + 1,
-      day: date.getDate(),
-      hour: date.getHours(),
-      minute: date.getMinutes(),
-      second: date.getSeconds(),
+      year: effectiveDate.getFullYear(),
+      month: effectiveDate.getMonth() + 1,
+      day: effectiveDate.getDate(),
+      hour: effectiveDate.getHours(),
+      minute: effectiveDate.getMinutes(),
+      second: effectiveDate.getSeconds(),
     };
   }
 }
 
-export function getVietnamDate(date = new Date()): Date {
+export function getVietnamDate(date?: Date): Date {
   try {
     const parts = getVietnamDateParts(date);
     return new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
   } catch (err) {
-    return new Date(date);
+    return new Date(date ?? getEffectiveNow());
   }
 }
 
-export function getVietnamTimeString(date = new Date()): string {
+export function getVietnamTimeString(date?: Date): string {
   try {
     const parts = getVietnamDateParts(date);
     const hours = parts.hour.toString().padStart(2, "0");
     const minutes = parts.minute.toString().padStart(2, "0");
     return `${hours}:${minutes}`;
   } catch (err) {
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const d = date ?? getEffectiveNow();
+    const hours = d.getHours().toString().padStart(2, "0");
+    const minutes = d.getMinutes().toString().padStart(2, "0");
     return `${hours}:${minutes}`;
   }
 }
@@ -119,11 +152,12 @@ export function ceil15Minutes(totalMinutes: number): number {
  * Formula: max(openTime, ceil15Minutes(now + bufferMinutes))
  */
 export function getEarliestPreOrderSlot(
-  referenceDate = new Date(),
+  referenceDate?: Date,
   openTime = "10:00",
   bufferMinutes = DEFAULT_BUFFER_MINUTES
 ): string {
-  const vnDate = getVietnamDate(referenceDate);
+  const effectiveRefDate = referenceDate ?? getEffectiveNow();
+  const vnDate = getVietnamDate(effectiveRefDate);
   const curMinutes = vnDate.getHours() * 60 + vnDate.getMinutes();
   const targetMinutes = curMinutes + bufferMinutes;
   const roundedTarget = ceil15Minutes(targetMinutes);
@@ -143,12 +177,13 @@ export function getEarliestPreOrderSlot(
  */
 export function isTodayOutOfScheduleSlots(
   deliveryClose = DEFAULT_DELIVERY_CLOSE,
-  referenceDate = new Date(),
+  referenceDate?: Date,
   bufferMinutes = DEFAULT_BUFFER_MINUTES,
   scheduleCutoff = DEFAULT_SCHEDULE_CUTOFF
 ): boolean {
-  const vnDate = getVietnamDate(referenceDate);
-  const curTime = getVietnamTimeString(referenceDate);
+  const effectiveRefDate = referenceDate ?? getEffectiveNow();
+  const vnDate = getVietnamDate(effectiveRefDate);
+  const curTime = getVietnamTimeString(effectiveRefDate);
 
   if (curTime > scheduleCutoff) {
     return true;
@@ -233,9 +268,10 @@ export interface OperatingCheckResult {
 
 export function checkOperatingHours(
   operatingConfig?: OperatingHoursConfig,
-  referenceDate = new Date(),
+  referenceDate?: Date,
   deliveryType: "delivery" | "pickup" = "delivery"
 ): OperatingCheckResult {
+  const refDate = referenceDate ?? getEffectiveNow();
   const storeOpenStr = operatingConfig?.store_open || DEFAULT_STORE_OPEN;
   const storeCloseStr = operatingConfig?.store_close || DEFAULT_STORE_CLOSE;
   const deliveryOpenStr = operatingConfig?.delivery_open || DEFAULT_DELIVERY_OPEN;
@@ -247,7 +283,7 @@ export function checkOperatingHours(
   const bufferMinutes = operatingConfig?.buffer_minutes ?? DEFAULT_BUFFER_MINUTES;
   const slotStep = operatingConfig?.slot_step ?? DEFAULT_SLOT_STEP;
 
-  const currentTime = getVietnamTimeString(referenceDate);
+  const currentTime = getVietnamTimeString(refDate);
 
   // 4 operational windows
   let operatingWindow: OperatingWindow;
@@ -266,7 +302,7 @@ export function checkOperatingHours(
   }
 
   const effectiveCloseStr = deliveryType === "pickup" ? pickupCloseStr : deliveryCloseStr;
-  const isTodayOutOfSlots = isTodayOutOfScheduleSlots(effectiveCloseStr, referenceDate, bufferMinutes, scheduleCutoffStr);
+  const isTodayOutOfSlots = isTodayOutOfScheduleSlots(effectiveCloseStr, refDate, bufferMinutes, scheduleCutoffStr);
 
   const isStoreOpen = currentTime >= storeOpenStr && currentTime < storeCloseStr;
   const isDeliveryOpen = currentTime >= deliveryOpenStr && currentTime < deliveryCloseStr;
@@ -282,8 +318,8 @@ export function checkOperatingHours(
   const isAfterCutoff = currentTime > lastOrderCutoffStr && currentTime < storeCloseStr;
   const isAfterClose = currentTime >= storeCloseStr;
 
-  const today = getVietnamDate(referenceDate);
-  const tomorrow = getVietnamDate(referenceDate);
+  const today = getVietnamDate(refDate);
+  const tomorrow = getVietnamDate(refDate);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   const todayISO = toISODateString(today);
