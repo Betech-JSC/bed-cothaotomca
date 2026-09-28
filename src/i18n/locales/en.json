@@ -189,6 +189,7 @@
       "reorder": "Re-order",
       "bank_info_title": "Transfer Details",
       "bank_name": "Bank Name",
+      "account_holder": "Account Holder",
       "account_number": "Account Number",
       "amount": "Amount",
       "content": "Transfer Note",

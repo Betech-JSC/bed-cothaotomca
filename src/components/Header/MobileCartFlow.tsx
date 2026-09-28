@@ -1843,7 +1843,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   if (!inline && !isCartOpen) return null;
 
-  // Render SePay QR screen if order is pending bank transfer
+  // Render VietQR screen if order is pending bank transfer
   if (pendingOrder) {
     return (
       <div

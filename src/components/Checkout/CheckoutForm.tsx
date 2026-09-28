@@ -2038,7 +2038,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             amount: appliedShippingVoucher.value,
           }
           : undefined,
-        payment_method: paymentMethod, // CASH (COD) or TRANSFER (SePay)
+        payment_method: paymentMethod, // CASH (COD) or TRANSFER (VietQR)
         branch_id: selectedBranchId,
       });
 
@@ -2071,7 +2071,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           query: { code: result.data.order_code, phone: phone.trim() },
         });
       } else {
-        // Bank transfer: Show SePay QR Code Screen
+        // Bank transfer: Show VietQR Code Screen
         setPendingOrder(result.data);
       }
     } catch (err: unknown) {

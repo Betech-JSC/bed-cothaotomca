@@ -67,10 +67,12 @@ export interface OrderInitiated {
   total: string;
   delivery_price: string;
   expire_at: string;        // ISO datetime
-  qr_url: string;           // URL ảnh QR SePay
+  qr_url: string;           // URL ảnh QR VietQR (MB Bank)
   qr_info: {
+    bank_name?: string;
     bank_code: string;
     bank_account: string;
+    account_name?: string;
     amount: number;
     content: string;        // e.g. "TCTM ORD-20260602-ABCDEF"
   };
@@ -648,4 +650,38 @@ export async function requestCancelOrderApi(
 
   return json;
 }
+
+/** Giả lập thanh toán đơn hàng (Dev/Staging) */
+export async function simulatePayment(
+  orderCode: string,
+): Promise<{ success: boolean; message: string }> {
+  const cleanCode = orderCode.replace(/^#/, "");
+  const res = await fetch(`${API_BASE}/orders/${cleanCode}/simulate-payment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Lỗi giả lập thanh toán: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export const orderService = {
+  simulatePayment,
+  getCheckoutConfig,
+  createOrder,
+  getOrderStatus,
+  getOrderByCode,
+  lookupOrders,
+  calcOrderTotal,
+  calculateVoucherDiscount,
+  getAvailableVouchers,
+  validateVoucher,
+  getAdministrativeUnits,
+  calculateShippingFee,
+  getShippingSettings,
+  cancelOrderApi,
+  requestCancelOrderApi,
+};
 
