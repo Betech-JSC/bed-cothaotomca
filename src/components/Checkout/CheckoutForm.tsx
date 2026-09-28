@@ -157,6 +157,11 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   const defaultShippingFee = parseFloat(config.default_shipping_fee) || 50000;
 
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const [quantity, setQuantity] = useState(1);
 
   // Delivery option state
@@ -169,44 +174,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
 
   // Check whether current user is authenticated (via AuthContext user/token or stored auth_token)
   const isUserLoggedIn = Boolean(
-    user ||
-    token ||
-    (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token")))
+    isMounted && (user || token || (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token"))))
   );
 
   // Customer Address Book states (for logged in customers)
-  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>(() => {
-    if (typeof window !== "undefined") {
-      const cached = getCachedCustomerAddresses();
-      if (cached.length > 0) return cached;
-    }
-    return [];
-  });
-
-  const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(() => {
-    if (typeof window !== "undefined") {
-      const cached = getCachedCustomerAddresses();
-      if (cached.length > 0) {
-        const defaultAddr = cached.find((a) => a.is_default) || cached[0];
-        return defaultAddr ? defaultAddr.id : null;
-      }
-    }
-    return null;
-  });
-
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(null);
   const [saveToAddressBook, setSaveToAddressBook] = useState(false);
-  const [isLoadingCustomerAddresses, setIsLoadingCustomerAddresses] = useState<boolean>(() => {
-    const hasAuth = Boolean(
-      user ||
-      token ||
-      (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token")))
-    );
-    if (hasAuth) {
-      const cached = typeof window !== "undefined" ? getCachedCustomerAddresses() : [];
-      return cached.length === 0;
-    }
-    return false;
-  });
+  const [isLoadingCustomerAddresses, setIsLoadingCustomerAddresses] = useState<boolean>(false);
   const hasAutoFilledDefaultAddressRef = useRef(false);
 
   // Auto-fill address details helper
@@ -241,13 +216,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         setEmail((prev) => prev || user.email || "");
       }
 
-      // If we don't have any addresses in state, ensure loading skeleton is shown
-      setCustomerAddresses((prev) => {
-        if (prev.length === 0) {
-          setIsLoadingCustomerAddresses(true);
+      const cached = getCachedCustomerAddresses();
+      if (cached.length > 0) {
+        setCustomerAddresses((prev) => (prev.length === 0 ? cached : prev));
+        const defaultAddr = cached.find((a) => a.is_default) || cached[0];
+        if (defaultAddr && !hasAutoFilledDefaultAddressRef.current) {
+          hasAutoFilledDefaultAddressRef.current = true;
+          applyAddressToForm(defaultAddr);
         }
-        return prev;
-      });
+      } else {
+        setIsLoadingCustomerAddresses(true);
+      }
 
       // Fetch fresh addresses from API (Stale-While-Revalidate if cache exists)
       getCustomerAddressesApi()
@@ -291,6 +270,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
   const [streetAddress, setStreetAddress] = useState("");
 
   const isSavedAddressSelected = Boolean(
+    isMounted &&
     isUserLoggedIn &&
     customerAddresses.length > 0 &&
     selectedAddressId &&
@@ -1225,13 +1205,9 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       (voucherCandidate.code && /^SHIP(\d+|K)?$/i.test(voucherCandidate.code))
     );
 
-    // a) Nếu voucherCandidate.can_combine_with_promotions === false VÀ activeCampaigns.length > 0:
-    if (voucherCandidate.can_combine_with_promotions === false && activeCampaigns.length > 0) {
-      return {
-        allowed: false,
-        message: "Mã giảm giá này không áp dụng đồng thời với các chương trình ưu đãi đã chọn trong giỏ hàng.",
-      };
-    }
+    // a) Nếu voucherCandidate.can_combine_with_promotions === false:
+    // Tự động ưu tiên voucher và clear CTKM xung đột khi áp dụng thay vì chặn cứng
+    // (Được xử lý tự động trong handleApplyVoucher / handleApplyVouchers)
 
     // b) Nếu là Voucher món (!isShip) VÀ có campaign trong activeCampaigns mang can_combine_with_promotions === false:
     if (!isShip) {
@@ -1376,6 +1352,12 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
         const canCombine = res.voucher.can_combine_with_promotions !== false;
 
         if (!canCombine) {
+          setSelectedCampaignIds([]);
+          try {
+            localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
+          } catch (e) {
+            console.error("Error clearing campaign IDs", e);
+          }
           // 1. Điều kiện tối thiểu của voucher (prereqPrice) được xét dựa trên originalSubtotal
           const prereqPrice = Number(res.voucher.prereq_price || 0);
           if (prereqPrice > 0 && originalSubtotal < prereqPrice) {
@@ -1671,6 +1653,14 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
       }
       setAppliedVoucher(nextFood);
       setAppliedShippingVoucher(nextShip);
+      if (nextFood?.canCombineWithPromotions === false || nextShip?.canCombineWithPromotions === false) {
+        setSelectedCampaignIds([]);
+        try {
+          localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
+        } catch (e) {
+          console.error("Error clearing campaign IDs in CheckoutForm", e);
+        }
+      }
       const appliedCount = (nextFood ? 1 : 0) + (nextShip ? 1 : 0);
       if (appliedCount > 0) {
         setVoucherCode([nextFood?.code, nextShip?.code].filter(Boolean).join(", "));
@@ -2298,7 +2288,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 <p className="body-1 text-gray-700 font-bold">{t("delivery_home")}</p>
 
                 {/* 1. Skeleton Loading khi đang tải sổ địa chỉ của khách hàng đã đăng nhập */}
-                {isUserLoggedIn && isLoadingCustomerAddresses && (
+                {isMounted && isUserLoggedIn && isLoadingCustomerAddresses && (
                   <div
                     data-testid="address-book-skeleton"
                     className="space-y-3 p-3.5 bg-yellow/30 rounded-xl border border-secondary/20 font-serif animate-pulse"
@@ -2338,7 +2328,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 )}
 
                 {/* 2. Khối Chọn từ Sổ địa chỉ (dành cho khách hàng đã đăng nhập khi đã tải xong) */}
-                {isUserLoggedIn && !isLoadingCustomerAddresses && customerAddresses.length > 0 && (
+                {isMounted && isUserLoggedIn && !isLoadingCustomerAddresses && customerAddresses.length > 0 && (
                   <div className="space-y-2 p-3.5 bg-yellow/40 rounded-xl border border-secondary/20 font-serif animate-fade-in">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
@@ -2368,17 +2358,17 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                     </select>
 
                     {/* Hiển thị tóm tắt địa chỉ đã chọn khi dùng địa chỉ trong sổ */}
-                    {/* {isSavedAddressSelected && selectedSavedAddress && (
+                    {isSavedAddressSelected && selectedSavedAddress && (
                       <div className="mt-2.5 p-3 bg-white rounded-lg border border-secondary/20 shadow-xs text-xs text-gray-700 space-y-1.5 animate-fade-in">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-gray-900 flex items-center gap-1.5">
-                            <span>👤</span>
-                            <span>{selectedSavedAddress.recipient_name}</span>
-                            <span className="text-gray-300 font-normal">|</span>
-                            <span className="text-gray-600 font-medium">{selectedSavedAddress.phone}</span>
-                          </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-bold text-gray-900 flex items-center gap-1.5 min-w-0">
+                            <span className="shrink-0">👤</span>
+                            <span className="truncate">{selectedSavedAddress.recipient_name}</span>
+                            <span className="text-gray-300 font-normal shrink-0">|</span>
+                            <span className="text-gray-600 font-medium shrink-0">{selectedSavedAddress.phone}</span>
+                          </div>
                           {selectedSavedAddress.is_default && (
-                            <span className="text-[10px] bg-secondary/10 text-secondary font-bold px-2 py-0.5 rounded-full">
+                            <span className="shrink-0 whitespace-nowrap text-[10px] sm:text-[11px] bg-secondary/10 text-secondary font-semibold px-2 py-0.5 rounded-full border border-secondary/20">
                               Mặc định
                             </span>
                           )}
@@ -2398,7 +2388,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                           </span>
                         </div>
                       </div>
-                    )} */}
+                    )}
                   </div>
                 )}
 
@@ -2406,7 +2396,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                 {!isSavedAddressSelected && (!isUserLoggedIn || !isLoadingCustomerAddresses) && (
                   <div className="space-y-4 animate-fade-in">
                     {/* Header thông báo nhập mới & nút clear nhanh nếu là khách đăng nhập chọn nhập địa chỉ khác */}
-                    {isUserLoggedIn && customerAddresses.length > 0 && (
+                    {isMounted && isUserLoggedIn && customerAddresses.length > 0 && (
                       <div className="flex items-center justify-between pb-1 border-b border-gray-200">
                         <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
                           <span>📝</span>
@@ -2550,7 +2540,7 @@ export default function CheckoutForm({ order, config }: CheckoutFormProps) {
                       ) : null}
 
                       {/* Checkbox lưu địa chỉ cho khách đã đăng nhập */}
-                      {isUserLoggedIn && (!selectedAddressId || selectedAddressId === "new") && (
+                      {isMounted && isUserLoggedIn && (!selectedAddressId || selectedAddressId === "new") && (
                         <div className="pt-1">
                           <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700 select-none">
                             <input

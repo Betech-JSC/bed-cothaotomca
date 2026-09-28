@@ -385,9 +385,11 @@ describe("Mobile Header, Navigation & CTA Refinement Suite", () => {
       expect(addToCartBtn.className).toContain("gap-1.5");
       expect(addToCartBtn.className).toContain("sm:gap-2");
 
-      // Verify cart icon responsive sizing
+      // Verify cart icon responsive sizing and hidden on mobile
       const cartIcon = addToCartBtn.querySelector("svg");
       const iconClass = cartIcon?.getAttribute("class") || "";
+      expect(iconClass).toContain("hidden");
+      expect(iconClass).toContain("sm:block");
       expect(iconClass).toContain("w-4");
       expect(iconClass).toContain("h-4");
       expect(iconClass).toContain("sm:w-5");

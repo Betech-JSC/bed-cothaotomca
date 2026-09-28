@@ -274,7 +274,8 @@
     "voucher_capsule_status": "Voucher status",
     "no_matching_products_in_cart": "No eligible products in cart",
     "buy_more_to_activate_buy_x_get_y": "Add {count} more eligible product(s) to activate this offer",
-    "view_applicable_products": "View applicable items"
+    "view_applicable_products": "View applicable items",
+    "campaign_gift_updating": "Gift list is being updated"
   },
   "gift_selector": {
     "default_title": "Choose your free gift",

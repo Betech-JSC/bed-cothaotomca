@@ -8,6 +8,10 @@ import type { CheckoutConfig } from '@/services/orderService';
 import viMessages from '@/i18n/locales/vi.json';
 
 // --- Mock routing ---
+vi.mock('@/components/Header/MobileCartFlow', () => ({
+  default: () => <div data-testid="mock-mobile-cart-flow" />,
+}));
+
 vi.mock('@/i18n/routing', () => ({
   usePathname: () => '/checkout',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),

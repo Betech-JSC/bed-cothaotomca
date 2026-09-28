@@ -1984,4 +1984,29 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(voucherCheckbox).toHaveAttribute('aria-disabled', 'true');
     expect(voucherCheckbox).toHaveAttribute('aria-checked', 'false');
   });
+
+  it('Matrix 13: Campaign order_gift_discount khi items rỗng -> Hiển thị lý do "Đang cập nhật danh sách quà tặng" dịch từ i18n', async () => {
+    const giftCampaignWithNoItems: PublicCampaignItem = {
+      id: 99,
+      name: 'Tặng Trà Đào Cho Đơn 100K',
+      description: 'Chương trình tặng quà',
+      promotion_type: 'order_gift_discount',
+      min_order_value: 50000,
+      items: [], // Danh sách quà rỗng
+    };
+    mockCampaignsList = [giftCampaignWithNoItems];
+    mockVouchersList = [];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={100000}
+        onApplyVoucher={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText('Tặng Trà Đào Cho Đơn 100K')).toBeInTheDocument();
+    expect(screen.getByText('Đang cập nhật danh sách quà tặng')).toBeInTheDocument();
+  });
 });

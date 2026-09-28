@@ -44,17 +44,41 @@ export default function CartPopup({ onClose }: CartPopupProps) {
   // Close popup when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        popupRef.current &&
-        !popupRef.current.contains(event.target as Node)
-      ) {
-        // Prevent closing if we clicked the cart toggle button in the header
-        const cartToggleBtn = document.getElementById("cart-toggle-btn");
-        if (cartToggleBtn && cartToggleBtn.contains(event.target as Node)) {
-          return;
-        }
-        onClose();
+      // 1. Không áp dụng click outside của desktop popup khi đang ở màn hình mobile (< 1280px)
+      if (typeof window !== "undefined" && window.innerWidth < 1280) {
+        return;
       }
+
+      const target = event.target as Node;
+
+      // 2. Không đóng nếu click xảy ra bên trong chính popup này
+      if (popupRef.current && popupRef.current.contains(target)) {
+        return;
+      }
+
+      // 3. Không đóng nếu click vào nút giỏ hàng trên desktop header
+      const cartToggleBtn = document.getElementById("cart-toggle-btn");
+      if (cartToggleBtn && cartToggleBtn.contains(target)) {
+        return;
+      }
+
+      // 4. Không đóng nếu click vào nút giỏ hàng mobile hoặc bên trong MobileCartFlow / Modal giỏ hàng mobile
+      const mobileToggleBtn = document.getElementById("cart-toggle-btn-mobile");
+      if (mobileToggleBtn && mobileToggleBtn.contains(target)) {
+        return;
+      }
+
+      const mobileCartDrawer = document.getElementById("mobile-cart-flow-drawer");
+      if (mobileCartDrawer && mobileCartDrawer.contains(target)) {
+        return;
+      }
+
+      const targetEl = target instanceof Element ? target : target.parentElement;
+      if (targetEl && (targetEl.closest("[data-mobile-cart]") || targetEl.closest(".coupon-modal-root"))) {
+        return;
+      }
+
+      onClose();
     }
 
     if (isCartOpen) {
@@ -69,9 +93,9 @@ export default function CartPopup({ onClose }: CartPopupProps) {
 
   return (
     <>
-      {/* Backdrop overlay */}
+      {/* Backdrop overlay (chỉ hiển thị trên desktop xl) */}
       <div
-        className="fixed inset-0 bg-black/40 z-[140] animate-in fade-in duration-200"
+        className="hidden xl:block fixed inset-0 bg-black/40 z-[140] animate-in fade-in duration-200"
         onClick={onClose}
       />
       <div

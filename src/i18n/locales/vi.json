@@ -274,7 +274,8 @@
     "voucher_capsule_status": "Trạng thái ưu đãi",
     "no_matching_products_in_cart": "Chưa có sản phẩm áp dụng trong giỏ hàng",
     "buy_more_to_activate_buy_x_get_y": "Cần mua thêm {count} sản phẩm áp dụng để kích hoạt ưu đãi",
-    "view_applicable_products": "Xem món áp dụng"
+    "view_applicable_products": "Xem món áp dụng",
+    "campaign_gift_updating": "Đang cập nhật danh sách quà tặng"
   },
   "gift_selector": {
     "default_title": "Chọn món quà tặng miễn phí",

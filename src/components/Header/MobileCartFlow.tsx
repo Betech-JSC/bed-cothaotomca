@@ -96,6 +96,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Checkout Form States
   const [name, setName] = useState("");
@@ -114,43 +118,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   // Check whether current user is authenticated
   const isUserLoggedIn = Boolean(
-    user ||
-    token ||
-    (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token")))
+    isMounted && (user || token || (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token"))))
   );
 
   // Customer Address Book states (for logged in customers)
-  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>(() => {
-    if (typeof window !== "undefined") {
-      const cached = getCachedCustomerAddresses();
-      if (cached.length > 0) return cached;
-    }
-    return [];
-  });
-
-  const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(() => {
-    if (typeof window !== "undefined") {
-      const cached = getCachedCustomerAddresses();
-      if (cached.length > 0) {
-        const defaultAddr = cached.find((a) => a.is_default) || cached[0];
-        return defaultAddr ? defaultAddr.id : null;
-      }
-    }
-    return null;
-  });
-
-  const [isLoadingCustomerAddresses, setIsLoadingCustomerAddresses] = useState<boolean>(() => {
-    const hasAuth = Boolean(
-      user ||
-      token ||
-      (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token")))
-    );
-    if (hasAuth) {
-      const cached = typeof window !== "undefined" ? getCachedCustomerAddresses() : [];
-      return cached.length === 0;
-    }
-    return false;
-  });
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(null);
+  const [isLoadingCustomerAddresses, setIsLoadingCustomerAddresses] = useState<boolean>(false);
   const hasAutoFilledDefaultAddressRef = useRef(false);
 
   // Auto-fill address details helper
@@ -185,12 +159,17 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         setEmail((prev) => prev || user.email || "");
       }
 
-      setCustomerAddresses((prev) => {
-        if (prev.length === 0) {
-          setIsLoadingCustomerAddresses(true);
+      const cached = getCachedCustomerAddresses();
+      if (cached.length > 0) {
+        setCustomerAddresses((prev) => (prev.length === 0 ? cached : prev));
+        const defaultAddr = cached.find((a) => a.is_default) || cached[0];
+        if (defaultAddr && !hasAutoFilledDefaultAddressRef.current) {
+          hasAutoFilledDefaultAddressRef.current = true;
+          applyAddressToForm(defaultAddr);
         }
-        return prev;
-      });
+      } else {
+        setIsLoadingCustomerAddresses(true);
+      }
 
       getCustomerAddressesApi()
         .then((addrs) => {
@@ -252,6 +231,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   };
 
   const isSavedAddressSelected = Boolean(
+    isMounted &&
     isUserLoggedIn &&
     selectedAddressId &&
     selectedAddressId !== "new" &&
@@ -1083,13 +1063,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       (voucherCandidate.code && /^SHIP(\d+|K)?$/i.test(voucherCandidate.code))
     );
 
-    // a) Nếu voucherCandidate.can_combine_with_promotions === false VÀ activeCampaigns.length > 0:
-    if (voucherCandidate.can_combine_with_promotions === false && activeCampaigns.length > 0) {
-      return {
-        allowed: false,
-        message: "Mã giảm giá này không áp dụng đồng thời với các chương trình ưu đãi đã chọn trong giỏ hàng.",
-      };
-    }
+    // a) Nếu voucherCandidate.can_combine_with_promotions === false:
+    // Tự động ưu tiên voucher và clear CTKM xung đột khi áp dụng thay vì chặn cứng
+    // (Được xử lý tự động trong handleApplyVoucher / handleApplyVouchersFromModal)
 
     // b) Nếu là Voucher món (!isShip) VÀ có campaign trong activeCampaigns mang can_combine_with_promotions === false:
     if (!isShip) {
@@ -1231,6 +1207,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         const canCombine = result.voucher.can_combine_with_promotions !== false;
 
         if (!canCombine) {
+          setSelectedCampaignIds([]);
+          try {
+            localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
+          } catch (e) {
+            console.error("Error clearing campaign IDs in MobileCartFlow", e);
+          }
           // 1. Điều kiện tối thiểu của voucher (prereqPrice) được xét dựa trên originalSubtotal
           const prereqPrice = Number(result.voucher.prereq_price || 0);
           if (prereqPrice > 0 && originalSubtotal < prereqPrice) {
@@ -1529,6 +1511,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       }
       setAppliedVoucher(nextFood);
       setAppliedShippingVoucher(nextShip);
+      if (nextFood?.canCombineWithPromotions === false || nextShip?.canCombineWithPromotions === false) {
+        setSelectedCampaignIds([]);
+        try {
+          localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
+        } catch (e) {
+          console.error("Error clearing campaign IDs in MobileCartFlow", e);
+        }
+      }
       const appliedCount = (nextFood ? 1 : 0) + (nextShip ? 1 : 0);
       if (appliedCount > 0) {
         setVoucherCode([nextFood?.code, nextShip?.code].filter(Boolean).join(", "));
@@ -1856,7 +1846,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   // Render SePay QR screen if order is pending bank transfer
   if (pendingOrder) {
     return (
-      <div className={inline ? "w-full p-4 flex flex-col justify-start" : "fixed inset-0 bg-yellow z-[160] overflow-y-auto p-4 flex flex-col justify-start"}>
+      <div
+        id="mobile-cart-flow-drawer"
+        data-mobile-cart="true"
+        onMouseDown={(e) => {
+          if (!inline) {
+            e.stopPropagation();
+          }
+        }}
+        className={inline ? "w-full p-4 flex flex-col justify-start" : "fixed inset-0 bg-yellow z-[160] overflow-y-auto p-4 flex flex-col justify-start"}
+      >
         <div className="max-w-md mx-auto w-full py-6 space-y-6">
           <div className="flex justify-between items-center border-b border-gray-200 pb-3">
             <h2 className="title-1 font-display text-primary font-bold">Thanh toán</h2>
@@ -1885,7 +1884,17 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }
 
   return (
-    <div className={inline ? "w-full text-gray-900 select-none" : "fixed inset-0 bg-yellow z-[160] overflow-y-auto p-4 text-gray-900 select-none"}>
+    <>
+      <div
+        id="mobile-cart-flow-drawer"
+      data-mobile-cart="true"
+      onMouseDown={(e) => {
+        if (!inline) {
+          e.stopPropagation();
+        }
+      }}
+      className={inline ? "w-full text-gray-900 select-none" : "fixed inset-0 bg-yellow z-[160] overflow-y-auto p-4 text-gray-900 select-none"}
+    >
       <div className={inline ? "w-full space-y-6" : "max-w-md mx-auto w-full py-4 space-y-6"}>
         {/* Header bar */}
         <div className="flex justify-between items-center border-b border-gray-200 pb-3">
@@ -1924,12 +1933,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               {cartItems.length === 0 ? (
                 <div className="py-8 text-center space-y-2">
                   <p className="body-1 text-gray-500 font-medium">{t("empty")}</p>
-                  <button
+                  {/* Điều hướng sang trang /product và đóng giỏ hàng khi người dùng bấm tiếp tục mua sắm */}
+                  <Link
+                    href="/product"
                     onClick={onClose}
                     className="inline-block text-sm font-semibold text-secondary hover:underline"
                   >
                     {t("continue_shopping")}
-                  </button>
+                  </Link>
                 </div>
               ) : (
                 <div className="space-y-4 divide-y divide-gray-100">
@@ -2028,6 +2039,47 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       </div>
                     );
                   })}
+                  {/* Quà tặng đơn hàng (order_gift_discount) */}
+                  {selectedOrderGiftItem && (
+                    <div className="flex gap-3 py-2.5 px-3 bg-yellow/60 rounded-xl border border-secondary/30 items-start">
+                      {selectedOrderGiftItem.image ? (
+                        <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-secondary/20 flex-shrink-0">
+                          <Image
+                            src={selectedOrderGiftItem.image}
+                            alt={selectedOrderGiftItem.product_name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="size-12 rounded-lg bg-yellow/80 border border-secondary/20 flex items-center justify-center text-[10px] font-bold text-brown uppercase flex-shrink-0 text-center">
+                          {t("order_gift_tag") || "Quà tặng"}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start gap-2">
+                          <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">{selectedOrderGiftItem.product_name}</p>
+                          <span className="body-2 text-secondary font-bold whitespace-nowrap">
+                            {selectedOrderGiftItem.campaign_price === 0 ? "0đ" : formatPrice(selectedOrderGiftItem.campaign_price)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-0.5">
+                          <p className="text-[10px] text-secondary font-bold uppercase">
+                            {t("order_gift_tag") || "Quà tặng"} x1
+                          </p>
+                          {eligibleOrderGiftPromo && eligibleOrderGiftPromo.items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setIsOrderGiftModalOpen(true)}
+                              className="text-[10px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+                            >
+                              {t("change_gift", { count: eligibleOrderGiftPromo.items.length })}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2099,10 +2151,33 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       {promotionMatrixShippingNotice}
                     </p>
                   )}
-                  <div className="flex justify-between items-center text-base">
-                    <span className="text-gray-500 font-medium">{t("voucher_label")}</span>
-                    <span className="text-primary font-bold font-display">{formatPrice(voucherDiscount)}</span>
-                  </div>
+                  {/* Khuyến mãi đơn hàng tự động */}
+                  {autoOrderDiscountAmount > 0 && (
+                    <div className="flex justify-between items-center text-base text-secondary font-semibold">
+                      <span className="flex-1 min-w-0 pr-1">{eligibleOrderDiscountPromo?.name}</span>
+                      <span className="shrink-0 whitespace-nowrap text-right">
+                        -{formatPrice(autoOrderDiscountAmount)}
+                      </span>
+                    </div>
+                  )}
+                  {/* Mã giảm giá món ăn (chỉ hiển thị khi có giảm giá > 0đ, tránh hiện chữ Liên hệ) */}
+                  {appliedVoucher && foodVoucherDiscount > 0 && (
+                    <div className="flex justify-between items-center text-base text-secondary font-semibold">
+                      <span className="text-gray-500 flex-1 min-w-0">{t("voucher_label")}</span>
+                      <span className="shrink-0 whitespace-nowrap text-right">
+                        -{formatPrice(foodVoucherDiscount)}
+                      </span>
+                    </div>
+                  )}
+                  {/* Ưu đãi chiết khấu thành viên */}
+                  {memberDiscount > 0 && (
+                    <div className="flex justify-between items-center text-base text-secondary font-semibold animate-fade-in">
+                      <span className="flex-1 min-w-0">{memberDiscountLabel || "Ưu đãi thành viên"}</span>
+                      <span className="shrink-0 whitespace-nowrap text-right">
+                        -{formatPrice(memberDiscount)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center text-base pt-2 border-t border-gray-100">
                     <span className="text-gray-900 font-bold">{t("total")}</span>
                     <span className="text-secondary font-bold font-display text-lg">{formatPrice(total)}</span>
@@ -2204,19 +2279,47 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 </span>
                               </div>
                             </div>
-                            <div className="flex items-center justify-between mt-1">
-                              <p className="text-[10px] text-gray-500 font-semibold uppercase">
-                                {isDefaultVariant(item.variant) ? `x${item.quantity}` : `${cleanVariantName(item.variant)} x${item.quantity}`}
-                              </p>
-                              {item.isOutOfStock && (
+                            <div className="flex items-center justify-between mt-1.5 gap-2">
+                              {!isDefaultVariant(item.variant) ? (
+                                <p className="text-[10px] text-gray-500 font-semibold uppercase truncate">
+                                  {cleanVariantName(item.variant)}
+                                </p>
+                              ) : (
+                                <div />
+                              )}
+                              <div className="flex items-center gap-2">
+                                {/* Tăng giảm số lượng kiểu Pill */}
+                                <div className="flex items-center border border-gray-200 rounded-full px-1.5 py-0.5 bg-white shadow-2xs">
+                                  <button
+                                    type="button"
+                                    aria-label="Giảm số lượng"
+                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                    className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs disabled:opacity-30 cursor-pointer"
+                                    disabled={item.isOutOfStock || item.quantity <= 1}
+                                  >
+                                    &minus;
+                                  </button>
+                                  <span className="w-6 text-center text-xs font-bold text-primary">
+                                    {item.quantity}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    aria-label="Tăng số lượng"
+                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                    className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs disabled:opacity-30 cursor-pointer"
+                                    disabled={item.isOutOfStock}
+                                  >
+                                    +
+                                  </button>
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => removeFromCart(item.id)}
-                                  className="text-[11px] font-medium text-red-600 hover:text-red-700 underline ml-2 cursor-pointer"
+                                  className="text-[11px] font-medium text-red-500 hover:text-red-700 underline cursor-pointer"
                                 >
                                   Xóa
                                 </button>
-                              )}
+                              </div>
                             </div>
                             {isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice && (
                               <p className="text-[11px] text-secondary mt-1">
@@ -2402,7 +2505,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                               {formatPrice(shipping)}
                             </span>
                           ) : (
-                            <span className="text-gray-500 font-bold">--</span>
+                            <span className="text-gray-500 font-bold">
+                              {appliedShippingVoucher ? (
+                                <span className="text-secondary text-xs font-semibold">
+                                  Đã lưu mã {appliedShippingVoucher.code} (tính khi nhập địa chỉ)
+                                </span>
+                              ) : (
+                                "--"
+                              )}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -2592,7 +2703,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   <p className="text-sm text-gray-700 font-bold font-serif">{t("delivery_home")}</p>
 
                   {/* 1. Skeleton Loading khi đang tải sổ địa chỉ của khách hàng đã đăng nhập */}
-                  {isUserLoggedIn && isLoadingCustomerAddresses && (
+                  {isMounted && isUserLoggedIn && isLoadingCustomerAddresses && (
                     <div
                       data-testid="address-book-skeleton"
                       className="space-y-3 p-3.5 bg-yellow/30 rounded-xl border border-secondary/20 font-serif animate-pulse"
@@ -2632,7 +2743,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   )}
 
                   {/* 2. Khối Chọn từ Sổ địa chỉ (dành cho khách hàng đã đăng nhập khi đã tải xong) */}
-                  {isUserLoggedIn && !isLoadingCustomerAddresses && customerAddresses.length > 0 && (
+                  {isMounted && isUserLoggedIn && !isLoadingCustomerAddresses && customerAddresses.length > 0 && (
                     <div className="space-y-2 p-3.5 bg-yellow/40 rounded-xl border border-secondary/20 font-serif animate-fade-in">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
@@ -2664,15 +2775,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       {/* Hiển thị tóm tắt địa chỉ đã chọn khi dùng địa chỉ trong sổ */}
                       {isSavedAddressSelected && selectedSavedAddress && (
                         <div className="mt-2.5 p-3 bg-white rounded-lg border border-secondary/20 shadow-xs text-xs text-gray-700 space-y-1.5 animate-fade-in">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-gray-900 flex items-center gap-1.5">
-                              <span>👤</span>
-                              <span>{selectedSavedAddress.recipient_name}</span>
-                              <span className="text-gray-300 font-normal">|</span>
-                              <span className="text-gray-600 font-medium">{selectedSavedAddress.phone}</span>
-                            </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="font-bold text-gray-900 flex items-center gap-1.5 min-w-0">
+                              <span className="shrink-0">👤</span>
+                              <span className="truncate">{selectedSavedAddress.recipient_name}</span>
+                              <span className="text-gray-300 font-normal shrink-0">|</span>
+                              <span className="text-gray-600 font-medium shrink-0">{selectedSavedAddress.phone}</span>
+                            </div>
                             {selectedSavedAddress.is_default && (
-                              <span className="text-[10px] bg-secondary/10 text-secondary font-bold px-2 py-0.5 rounded-full">
+                              <span className="shrink-0 whitespace-nowrap text-[10px] sm:text-[11px] bg-secondary/10 text-secondary font-semibold px-2 py-0.5 rounded-full border border-secondary/20">
                                 Mặc định
                               </span>
                             )}
@@ -2699,7 +2810,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   {/* 3. Các ô input nhập địa chỉ mới: chỉ hiển thị khi chưa chọn địa chỉ đã lưu và không đang tải */}
                   {!isSavedAddressSelected && (!isUserLoggedIn || !isLoadingCustomerAddresses) && (
                     <div className="space-y-4 animate-fade-in">
-                      {isUserLoggedIn && customerAddresses.length > 0 && (
+                      {isMounted && isUserLoggedIn && customerAddresses.length > 0 && (
                         <div className="flex items-center justify-between pb-1 border-b border-gray-200">
                           <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
                             <span>📝</span>
@@ -3122,6 +3233,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           </div>
         )}
       </div>
+    </div>
 
       <PreOrderNoticeModal
         isOpen={showNoticeModal}
@@ -3197,6 +3309,6 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           }}
         />
       )}
-    </div>
+    </>
   );
 }
