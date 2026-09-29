@@ -355,7 +355,7 @@ describe('Member Discount & Mutex Lock Tests', () => {
     });
   });
 
-  it('CheckoutForm: Khi giỏ hàng chỉ có món sale (isSale = true), khách Gold vẫn nhìn thấy dòng Ưu đãi thành viên với 0đ và ghi chú (Chỉ áp dụng cho món nguyên giá)', async () => {
+  it('CheckoutForm: Khi giỏ hàng có món sale (isSale = true, như Cá hồi ngâm tương 150k sau khi gạch 180k), khách Gold vẫn được tự động giảm 5% (-7.000 VNĐ)', async () => {
     mockCurrentUser = {
       id: 1,
       name: 'Khách Hàng Gold',
@@ -369,28 +369,27 @@ describe('Member Discount & Mutex Lock Tests', () => {
       gender: null,
     };
 
-    // Giỏ hàng chỉ có món SALE (originalPrice > unitPrice)
+    // Giỏ hàng có món SALE (originalPrice > unitPrice)
     mockCartItems = [
       {
         id: 2,
         productId: 2,
-        title: 'Cơm Thố Bò Sale',
-        productCode: 'CTB-SALE',
-        unitPrice: 80000,
-        originalPrice: 100000, // item is on sale!
+        title: 'Cá hồi ngâm tương',
+        productCode: 'CHNT-SALE',
+        unitPrice: 150000,
+        originalPrice: 180000, // item is on sale!
         quantity: 1,
-        imageUrl: '/images/bo.jpg',
+        imageUrl: '/images/cahoi.jpg',
         variant: 'Default',
       },
     ];
 
     render(<CheckoutForm config={sampleConfig} order={null} />);
 
-    // Vì toàn bộ món là món sale -> regularPriceSubtotal = 0 -> hiển thị dòng ưu đãi thành viên 0đ kèm ghi chú
+    // Món sale 150.000đ * 5% = 7.500đ -> làm tròn 7.000đ theo calculateMemberDiscount -> hiển thị dòng ưu đãi thành viên -7.000 VNĐ
     await waitFor(() => {
       expect(screen.getByText('Ưu đãi thành viên Vàng (5%)')).toBeInTheDocument();
-      expect(screen.getByText('(Chỉ áp dụng cho món nguyên giá)')).toBeInTheDocument();
-      expect(screen.getByText('0đ')).toBeInTheDocument();
+      expect(screen.getByText('-7.000 VNĐ')).toBeInTheDocument();
     });
   });
 

@@ -1040,10 +1040,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }, [subtotal, promoItemsExtraPrice]);
 
   const regularPriceSubtotal = useMemo(() => {
-    return cartItems.reduce((sum, item) => {
-      const isSale = Boolean(item.originalPrice && item.originalPrice > item.unitPrice);
-      return isSale ? sum : sum + item.unitPrice * item.quantity;
-    }, 0);
+    return cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   }, [cartItems]);
 
   const canCombineLoyaltyWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
