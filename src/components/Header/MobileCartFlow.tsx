@@ -2210,7 +2210,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     )}
                     {/* Ưu đãi chiết khấu thành viên */}
                     {user && (memberTier.tier === "gold" || memberTier.tier === "diamond") && (
-                      isExcludedByVoucher ? (
+                      !isMemberCardSelected ? (
+                        <div className="flex justify-between items-center text-sm font-medium text-gray-500 animate-fade-in gap-2">
+                          <span className="flex-1 min-w-0">
+                            Ưu đãi thành viên (Đã bỏ chọn)
+                          </span>
+                          <span className="shrink-0 whitespace-nowrap text-right font-bold">
+                            0đ
+                          </span>
+                        </div>
+                      ) : isExcludedByVoucher ? (
                         <div className="flex justify-between items-center text-sm font-medium text-gray-500 animate-fade-in gap-2">
                           <span className="flex-1 min-w-0">
                             Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)
@@ -2226,7 +2235,19 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             -{formatPrice(memberDiscount)}
                           </span>
                         </div>
-                      ) : null
+                      ) : (
+                        <div className="flex justify-between items-center text-sm font-medium text-gray-500 animate-fade-in gap-2">
+                          <div className="flex-1 min-w-0">
+                            <span>{memberDiscountLabel || "Ưu đãi thành viên"}</span>
+                            <span className="text-[11px] text-gray-500 font-normal block leading-tight mt-0.5">
+                              (Chỉ áp dụng cho món nguyên giá)
+                            </span>
+                          </div>
+                          <span className="shrink-0 whitespace-nowrap text-right font-bold">
+                            0đ
+                          </span>
+                        </div>
+                      )
                     )}
                     <div className="flex justify-between items-center text-base pt-2 border-t border-gray-100">
                       <span className="text-gray-900 font-bold">{t("total")}</span>

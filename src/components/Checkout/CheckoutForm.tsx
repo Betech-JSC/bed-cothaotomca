@@ -3293,7 +3293,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               )}
 
               {user && (memberTier.tier === "gold" || memberTier.tier === "diamond") && (
-                isExcludedByVoucher ? (
+                !isMemberCardSelected ? (
+                  <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                    <span className="flex-1 min-w-0 leading-snug">
+                      Ưu đãi thành viên (Đã bỏ chọn)
+                    </span>
+                    <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                      0đ
+                    </span>
+                  </div>
+                ) : isExcludedByVoucher ? (
                   <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                     <span className="flex-1 min-w-0 leading-snug">
                       Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)
@@ -3311,7 +3320,19 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       -{formatPrice(memberDiscount)}
                     </span>
                   </div>
-                ) : null
+                ) : (
+                  <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                    <div className="flex-1 min-w-0 leading-snug">
+                      <span>{memberDiscountLabel || "Ưu đãi thành viên"}</span>
+                      <span className="text-[11px] text-gray-500 font-normal block leading-tight mt-0.5">
+                        (Chỉ áp dụng cho món nguyên giá)
+                      </span>
+                    </div>
+                    <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                      0đ
+                    </span>
+                  </div>
+                )
               )}
 
               <div className="flex justify-between items-center text-sm font-medium border-t border-gray-200/60 pt-2.5">

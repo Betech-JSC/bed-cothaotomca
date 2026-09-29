@@ -355,7 +355,7 @@ describe('Member Discount & Mutex Lock Tests', () => {
     });
   });
 
-  it('CheckoutForm: Không tính chiết khấu thành viên trên món sale (chỉ tính trên món nguyên giá)', async () => {
+  it('CheckoutForm: Khi giỏ hàng chỉ có món sale (isSale = true), khách Gold vẫn nhìn thấy dòng Ưu đãi thành viên với 0đ và ghi chú (Chỉ áp dụng cho món nguyên giá)', async () => {
     mockCurrentUser = {
       id: 1,
       name: 'Khách Hàng Gold',
@@ -386,9 +386,11 @@ describe('Member Discount & Mutex Lock Tests', () => {
 
     render(<CheckoutForm config={sampleConfig} order={null} />);
 
-    // Vì toàn bộ món là món sale -> regularPriceSubtotal = 0 -> không có dòng giảm giá thành viên
+    // Vì toàn bộ món là món sale -> regularPriceSubtotal = 0 -> hiển thị dòng ưu đãi thành viên 0đ kèm ghi chú
     await waitFor(() => {
-      expect(screen.queryByText('Ưu đãi thành viên Vàng (5%)')).not.toBeInTheDocument();
+      expect(screen.getByText('Ưu đãi thành viên Vàng (5%)')).toBeInTheDocument();
+      expect(screen.getByText('(Chỉ áp dụng cho món nguyên giá)')).toBeInTheDocument();
+      expect(screen.getByText('0đ')).toBeInTheDocument();
     });
   });
 
