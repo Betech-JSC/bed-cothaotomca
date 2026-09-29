@@ -28,6 +28,8 @@ import {
   type ActivePromotion,
   type PromotionGiftItem,
   OrderApiError,
+  getLoyaltySettings,
+  type LoyaltySettings,
 } from "@/services/orderService";
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
@@ -308,6 +310,16 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   // Config
   const [config, setConfig] = useState<CheckoutConfig | null>(null);
   const branches = useBranches();
+
+  // Member card & loyalty settings state
+  const [isMemberCardSelected, setIsMemberCardSelected] = useState<boolean>(true);
+  const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
+
+  useEffect(() => {
+    getLoyaltySettings().then((s) => {
+      setLoyaltySettings(s);
+    });
+  }, []);
 
   // Voucher
   const [voucherCode, setVoucherCode] = useState("");
@@ -1034,18 +1046,21 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     }, 0);
   }, [cartItems]);
 
+  const canCombineLoyaltyWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
+
   const isExcludedByVoucher = useMemo(() => {
+    if (canCombineLoyaltyWithPromotions) return false;
     if (appliedVoucher && appliedVoucher.canCombineWithPromotions === false) return true;
     if (appliedShippingVoucher && appliedShippingVoucher.canCombineWithPromotions === false) return true;
     return false;
-  }, [appliedVoucher, appliedShippingVoucher]);
+  }, [canCombineLoyaltyWithPromotions, appliedVoucher, appliedShippingVoucher]);
 
   const baseMemberDiscount = useMemo(() => {
     if (!user) return 0;
     return calculateMemberDiscount(user, regularPriceSubtotal);
   }, [user, regularPriceSubtotal]);
 
-  const memberDiscount = isExcludedByVoucher ? 0 : baseMemberDiscount;
+  const memberDiscount = (!isMemberCardSelected || isExcludedByVoucher) ? 0 : baseMemberDiscount;
 
   const memberDiscountLabel = useMemo(() => {
     if (!user) return "";
@@ -2279,10 +2294,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   </div>
                 )}
 
-                {/* 3) Mã giảm giá (Voucher) */}
+                {/* 3) Mã giảm giá */}
                 {foodVoucherDiscount + Math.max(shippingDiscount, shippingVoucherDiscount) > 0 && (
                   <div className="flex justify-between items-center text-sm sm:text-base text-secondary font-semibold">
-                    <span className="text-gray-500 flex-1 min-w-0">Mã giảm giá (Voucher)</span>
+                    <span className="text-gray-500 flex-1 min-w-0">Mã giảm giá</span>
                     <span className="shrink-0 whitespace-nowrap text-right">
                       -{formatPrice(foodVoucherDiscount + Math.max(shippingDiscount, shippingVoucherDiscount))}
                     </span>
@@ -2312,13 +2327,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   </h3>
                   {user && (memberTier.tier === "gold" || memberTier.tier === "diamond") && (
                     <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-xs ${
-                        memberTier.tier === "diamond"
-                          ? "bg-purple-100 text-purple-700 border border-purple-200"
-                          : "bg-amber-100 text-amber-800 border border-amber-300"
-                      }`}
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold font-sans shadow-xs ${memberTier.tier === "diamond"
+                        ? "bg-purple-100 text-purple-700 border border-purple-200"
+                        : "bg-amber-100 text-amber-800 border border-amber-300"
+                        }`}
                     >
-                      {memberTier.tier === "diamond" ? "💎 Thành viên Kim Cương" : "🌟 Thành viên Vàng"}
+                      {memberTier.tier === "diamond" ? "💎 Hạng Diamond" : "🌟 Hạng Gold"}
                     </span>
                   )}
                 </div>
@@ -2998,6 +3012,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         memberTier={memberTier.tier}
         privateVouchers={sessionPrivateVouchers}
         onAddPrivateVoucher={handleAddPrivateVoucherFromModal}
+        isMemberCardSelected={isMemberCardSelected}
+        onToggleMemberCard={setIsMemberCardSelected}
+        loyaltySettings={loyaltySettings}
       />
 
       {/* Order Gift Selector Modal */}

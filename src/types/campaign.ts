@@ -64,6 +64,7 @@ export interface PublicCampaignItem {
   items?: PromotionGiftItem[];
   applicable_product_ids?: number[];
   applicable_variant_ids?: number[];
+  terms?: string;
   start_at?: string | null;
   end_at?: string | null;
 }

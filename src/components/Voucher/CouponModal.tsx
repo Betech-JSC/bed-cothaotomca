@@ -11,6 +11,8 @@ import {
   ActivePromotion,
   getShippingSettings,
   ShippingSettings,
+  getLoyaltySettings,
+  LoyaltySettings,
 } from "@/services/orderService";
 import {
   PublicCampaignItem,
@@ -82,6 +84,9 @@ export interface CouponModalProps {
   onAddPrivateVoucher?: (voucher: PublicVoucherItem) => void;
   campaigns?: PublicCampaignItem[];
   vouchers?: PublicVoucherItem[];
+  isMemberCardSelected?: boolean;
+  onToggleMemberCard?: (selected: boolean) => void;
+  loyaltySettings?: LoyaltySettings | null;
 }
 
 // Module-level in-memory cache to prevent layout shift / flickering on open
@@ -309,6 +314,9 @@ export default function CouponModal({
   onAddPrivateVoucher,
   campaigns: campaignsProp,
   vouchers: vouchersProp,
+  isMemberCardSelected: isMemberCardSelectedProp,
+  onToggleMemberCard,
+  loyaltySettings: loyaltySettingsProp,
 }: CouponModalProps) {
   const t = useTranslations("voucher");
   const router = useRouter();
@@ -346,6 +354,80 @@ export default function CouponModal({
     return getMemberTier(0);
   }, [currentUser, memberTier]);
 
+  const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(
+    loyaltySettingsProp || null
+  );
+
+  useEffect(() => {
+    if (loyaltySettingsProp !== undefined) {
+      setLoyaltySettings(loyaltySettingsProp);
+    } else {
+      getLoyaltySettings().then((s) => {
+        setLoyaltySettings(s);
+      });
+    }
+  }, [loyaltySettingsProp]);
+
+  const canCombineWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
+
+  const [isMemberCardSelected, setIsMemberCardSelected] = useState<boolean>(
+    isMemberCardSelectedProp !== undefined ? isMemberCardSelectedProp : true
+  );
+
+  useEffect(() => {
+    if (isMemberCardSelectedProp !== undefined) {
+      setIsMemberCardSelected(isMemberCardSelectedProp);
+    }
+  }, [isMemberCardSelectedProp]);
+
+  const isDiamond = currentUserTier === "diamond" || memberTierInfo.tier === "diamond";
+  const isGold = currentUserTier === "gold" || memberTierInfo.tier === "gold";
+  const hasMemberTierCard = isDiamond || isGold;
+  const isUpgrade = Boolean(memberTierInfo.isUpgradeCelebration);
+
+  const defaultGoldDiscount = loyaltySettings?.gold_discount_percent ?? loyaltySettings?.gold_card?.discount_percent ?? memberTierInfo.discountPercent ?? 5;
+  const defaultDiamondDiscount = loyaltySettings?.diamond_discount_percent ?? loyaltySettings?.diamond_card?.discount_percent ?? memberTierInfo.discountPercent ?? 8;
+  const upgradeDiscount = isDiamond
+    ? (loyaltySettings?.diamond_upgrade_discount_percent ?? loyaltySettings?.diamond_card?.upgrade_discount_percent ?? 10)
+    : (loyaltySettings?.gold_upgrade_discount_percent ?? loyaltySettings?.gold_card?.upgrade_discount_percent ?? 10);
+
+  const discountPercent = isUpgrade ? upgradeDiscount : isDiamond ? defaultDiamondDiscount : defaultGoldDiscount;
+
+  const memberCardTitle = useMemo(() => {
+    if (isDiamond) {
+      if (isUpgrade) return `Ưu đãi mừng lên hạng Kim Cương - Giảm ${discountPercent}%`;
+      return loyaltySettings?.diamond_card_title || `Ưu đãi Hội viên Kim Cương - Giảm ${discountPercent}%`;
+    }
+    if (isUpgrade) return `Ưu đãi mừng lên hạng Vàng - Giảm ${discountPercent}%`;
+    return loyaltySettings?.gold_card_title || `Ưu đãi Hội viên Vàng - Giảm ${discountPercent}%`;
+  }, [isDiamond, isUpgrade, discountPercent, loyaltySettings]);
+
+  const memberCardDescription = useMemo(() => {
+    if (isDiamond) {
+      return loyaltySettings?.diamond_card_description || "Áp dụng tự động cho tài khoản hạng Diamond trên các món nguyên giá.";
+    }
+    return loyaltySettings?.gold_card_description || "Áp dụng tự động cho tài khoản hạng Gold trên các món nguyên giá.";
+  }, [isDiamond, loyaltySettings]);
+
+  const memberCardBanner = isDiamond
+    ? (loyaltySettings?.diamond_card_banner_url || loyaltySettings?.diamond_card?.banner_url || loyaltySettings?.diamond_card_banner)
+    : (loyaltySettings?.gold_card_banner_url || loyaltySettings?.gold_card?.banner_url || loyaltySettings?.gold_card_banner);
+
+  const memberTierCampaignItem: PublicCampaignItem = useMemo(() => {
+    return {
+      id: "member-tier-benefit-card",
+      name: memberCardTitle,
+      description: memberCardDescription,
+      banner: memberCardBanner || null,
+      start_at: null,
+      end_at: null,
+      promotion_type: "order_discount",
+      can_combine_with_promotions: canCombineWithPromotions,
+      can_combine_with_freeship: true,
+      terms: `• Áp dụng tự động cho tài khoản ${isDiamond ? "hạng Diamond (Kim Cương)" : "hạng Gold (Vàng)"}.\n• Chiết khấu ${discountPercent}% trực tiếp trên giá trị các món nguyên giá trong giỏ hàng (không áp dụng trên món giảm giá).\n• ${canCombineWithPromotions ? "Có thể áp dụng đồng thời với các voucher và chương trình ưu đãi khác." : "Không áp dụng đồng thời với các chương trình khuyến mãi hoặc mã giảm giá khác."}\n• Quyền lợi tự động kích hoạt khi tài khoản đạt thứ hạng tương ứng.`,
+    };
+  }, [memberCardTitle, memberCardDescription, memberCardBanner, canCombineWithPromotions, isDiamond, discountPercent]);
+
   const hasMemberBenefit = useMemo(() => {
     if (isBrowseMode) return false;
     const isGoldOrDiamond =
@@ -353,7 +435,7 @@ export default function CouponModal({
       currentUserTier === "diamond" ||
       memberTierInfo.tier === "gold" ||
       memberTierInfo.tier === "diamond";
-    return isGoldOrDiamond && (subtotal ?? 0) > 0;
+    return isGoldOrDiamond && (subtotal === undefined || subtotal > 0);
   }, [isBrowseMode, currentUserTier, memberTierInfo, subtotal]);
 
   const orderIsAutoFreeship = isAutoFreeship !== undefined
@@ -760,6 +842,30 @@ export default function CouponModal({
     return allVouchers.filter((v) => selectedCodes.some((code) => code.toUpperCase() === v.code.toUpperCase()));
   }, [allVouchers, selectedCodes]);
 
+  const hasSelectedExclusiveVoucher = useMemo(() => {
+    return selectedVoucherItems.some((v) => v.can_combine_with_promotions === false);
+  }, [selectedVoucherItems]);
+
+  const hasSelectedExclusiveCampaign = useMemo(() => {
+    return selectedCampaignItems.some((c) => c.can_combine_with_promotions === false);
+  }, [selectedCampaignItems]);
+
+  const isMemberCardLocked = useMemo(() => {
+    if (isBrowseMode || canCombineWithPromotions) return false;
+    return hasSelectedExclusiveVoucher || hasSelectedExclusiveCampaign;
+  }, [isBrowseMode, canCombineWithPromotions, hasSelectedExclusiveVoucher, hasSelectedExclusiveCampaign]);
+
+  const memberCardLockReason = useMemo(() => {
+    if (!isMemberCardLocked) return "";
+    if (hasSelectedExclusiveVoucher) {
+      return "Không thể sử dụng cùng mã giảm giá đã chọn";
+    }
+    if (hasSelectedExclusiveCampaign) {
+      return t("campaign_mutex_locked") || "Không thể sử dụng cùng ưu đãi đã chọn.";
+    }
+    return "";
+  }, [isMemberCardLocked, hasSelectedExclusiveVoucher, hasSelectedExclusiveCampaign, t]);
+
   const checkCampaignMutexLock = useCallback(
     (camp: PublicCampaignItem): CampaignLockResult => {
       if (isBrowseMode) {
@@ -772,7 +878,13 @@ export default function CouponModal({
       }
 
       // Khóa campaign không áp dụng đồng thời với ưu đãi thành viên Gold/Diamond
-      if (hasMemberBenefit && camp.can_combine_with_promotions === false) {
+      if (
+        !canCombineWithPromotions &&
+        hasMemberBenefit &&
+        isMemberCardSelected &&
+        !isMemberCardLocked &&
+        camp.can_combine_with_promotions === false
+      ) {
         return {
           locked: true,
           reason: "Không áp dụng đồng thời với ưu đãi thành viên",
@@ -822,7 +934,7 @@ export default function CouponModal({
 
       return { locked: false };
     },
-    [isBrowseMode, selectedCampaignIds, selectedCampaignItems, selectedVoucherItems, hasMemberBenefit, t]
+    [isBrowseMode, selectedCampaignIds, selectedCampaignItems, selectedVoucherItems, hasMemberBenefit, isMemberCardSelected, isMemberCardLocked, canCombineWithPromotions, t]
   );
 
   const checkCampaignRealtimeLock = checkCampaignMutexLock;
@@ -834,7 +946,13 @@ export default function CouponModal({
       if (isSelected) return { locked: false };
 
       // Khóa voucher không áp dụng đồng thời với ưu đãi thành viên Gold/Diamond
-      if (hasMemberBenefit && v.can_combine_with_promotions === false) {
+      if (
+        !canCombineWithPromotions &&
+        hasMemberBenefit &&
+        isMemberCardSelected &&
+        !isMemberCardLocked &&
+        v.can_combine_with_promotions === false
+      ) {
         return {
           locked: true,
           reason: "Không áp dụng đồng thời với ưu đãi thành viên",
@@ -877,9 +995,8 @@ export default function CouponModal({
 
       return { locked: false };
     },
-    [isBrowseMode, selectedCodes, selectedVoucherItems, selectedCampaignItems, hasMemberBenefit, t]
+    [isBrowseMode, selectedCodes, selectedVoucherItems, selectedCampaignItems, hasMemberBenefit, isMemberCardSelected, isMemberCardLocked, canCombineWithPromotions, t]
   );
-
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -927,30 +1044,68 @@ export default function CouponModal({
     }
   };
 
+  const handleToggleMemberCard = useCallback(() => {
+    if (isMemberCardLocked) return;
+    setIsMemberCardSelected((prev) => {
+      const next = !prev;
+      onToggleMemberCard?.(next);
+      return next;
+    });
+  }, [isMemberCardLocked, onToggleMemberCard]);
+
   const handleToggleVoucher = useCallback(
     (code: string) => {
       const targetVoucher = allVouchers.find((v) => v.code.toUpperCase() === code.toUpperCase());
       if (!targetVoucher) return;
 
+      const isSelected = selectedCodes.some((c) => c.toUpperCase() === code.toUpperCase());
+
+      if (isSelected) {
+        setSelectedCodes((prev) => {
+          const nextCodes = prev.filter((c) => c.toUpperCase() !== code.toUpperCase());
+          // Khi khách BỎ CHỌN voucher đó: Thẻ Hội viên Vàng tự động MỞ KHÓA và TỰ ĐỘNG BẬT LẠI (checked)
+          if (!canCombineWithPromotions && targetVoucher.can_combine_with_promotions === false) {
+            const remainingExclusiveVoucher = allVouchers.some(
+              (v) => nextCodes.some((nc) => nc.toUpperCase() === v.code.toUpperCase()) && v.can_combine_with_promotions === false
+            );
+            const remainingExclusiveCampaign = selectedCampaignItems.some(
+              (c) => c.can_combine_with_promotions === false
+            );
+            if (!remainingExclusiveVoucher && !remainingExclusiveCampaign) {
+              setIsMemberCardSelected(true);
+              onToggleMemberCard?.(true);
+            }
+          }
+          return nextCodes;
+        });
+        return;
+      }
+
       const eligibility = checkVoucherEligibility(targetVoucher);
       if (!eligibility.eligible) return;
 
       const lockState = checkRealtimeLock(targetVoucher);
-      if (lockState.locked) return;
+      const isLockedOnlyByMember =
+        lockState.locked &&
+        lockState.reason === "Không áp dụng đồng thời với ưu đãi thành viên";
+
+      if (lockState.locked && !isLockedOnlyByMember) return;
+
+      // Khi khách BẤM CHỌN một voucher không cộng dồn:
+      // Hệ thống sẽ TỰ ĐỘNG BỎ CHỌN (uncheck) thẻ Hội viên Vàng và khóa thẻ này!
+      if (!canCombineWithPromotions && targetVoucher.can_combine_with_promotions === false) {
+        setIsMemberCardSelected(false);
+        onToggleMemberCard?.(false);
+      }
 
       setSelectedCodes((prev) => {
-        const isSelected = prev.some((c) => c.toUpperCase() === code.toUpperCase());
-        if (isSelected) {
-          return prev.filter((c) => c.toUpperCase() !== code.toUpperCase());
-        } else {
-          const isShip = isShipVoucher(targetVoucher);
-          const filtered = prev.filter((c) => {
-            const existing = allVouchers.find((v) => v.code.toUpperCase() === c.toUpperCase());
-            if (!existing) return true;
-            return isShip ? !isShipVoucher(existing) : !isFoodVoucher(existing);
-          });
-          return [...filtered, targetVoucher.code];
-        }
+        const isShip = isShipVoucher(targetVoucher);
+        const filtered = prev.filter((c) => {
+          const existing = allVouchers.find((v) => v.code.toUpperCase() === c.toUpperCase());
+          if (!existing) return true;
+          return isShip ? !isShipVoucher(existing) : !isFoodVoucher(existing);
+        });
+        return [...filtered, targetVoucher.code];
       });
 
       // If voucher cannot combine with promotions, auto-clear conflicting campaigns
@@ -958,7 +1113,15 @@ export default function CouponModal({
         setSelectedCampaignIds([]);
       }
     },
-    [allVouchers, checkVoucherEligibility, checkRealtimeLock]
+    [
+      allVouchers,
+      checkVoucherEligibility,
+      checkRealtimeLock,
+      selectedCodes,
+      canCombineWithPromotions,
+      onToggleMemberCard,
+      selectedCampaignItems,
+    ]
   );
 
   const handleToggleCampaign = useCallback(
@@ -966,26 +1129,52 @@ export default function CouponModal({
       const targetCamp = allCampaigns.find((c) => String(c.id) === String(id));
       if (!targetCamp) return;
 
+      const isSelected = selectedCampaignIds.some((cId) => String(cId) === String(id));
+
+      if (isSelected) {
+        setSelectedCampaignIds((prev) => {
+          const nextIds = prev.filter((cId) => String(cId) !== String(id));
+          if (!canCombineWithPromotions && targetCamp.can_combine_with_promotions === false) {
+            const remainingExclusiveCampaign = allCampaigns.some(
+              (c) => nextIds.some((nid) => String(nid) === String(c.id)) && c.can_combine_with_promotions === false
+            );
+            const remainingExclusiveVoucher = selectedVoucherItems.some(
+              (v) => v.can_combine_with_promotions === false
+            );
+            if (!remainingExclusiveCampaign && !remainingExclusiveVoucher) {
+              setIsMemberCardSelected(true);
+              onToggleMemberCard?.(true);
+            }
+          }
+          return nextIds;
+        });
+        return;
+      }
+
       const eligibility = checkCampaignEligibility(targetCamp);
       if (!eligibility.eligible) return;
 
       const lockState = checkCampaignRealtimeLock(targetCamp);
-      if (lockState.locked) return;
+      const isLockedOnlyByMember =
+        lockState.locked &&
+        lockState.reason === "Không áp dụng đồng thời với ưu đãi thành viên";
+
+      if (lockState.locked && !isLockedOnlyByMember) return;
+
+      if (!canCombineWithPromotions && targetCamp.can_combine_with_promotions === false) {
+        setIsMemberCardSelected(false);
+        onToggleMemberCard?.(false);
+      }
 
       setSelectedCampaignIds((prev) => {
-        const isSelected = prev.some((cId) => String(cId) === String(id));
-        if (isSelected) {
-          return prev.filter((cId) => String(cId) !== String(id));
-        } else {
-          if (targetCamp.can_combine_with_promotions === false) {
-            return [targetCamp.id];
-          }
-          const filtered = prev.filter((cId) => {
-            const existing = allCampaigns.find((c) => String(c.id) === String(cId));
-            return existing && existing.can_combine_with_promotions !== false;
-          });
-          return [...filtered, targetCamp.id];
+        if (targetCamp.can_combine_with_promotions === false) {
+          return [targetCamp.id];
         }
+        const filtered = prev.filter((cId) => {
+          const existing = allCampaigns.find((c) => String(c.id) === String(cId));
+          return existing && existing.can_combine_with_promotions !== false;
+        });
+        return [...filtered, targetCamp.id];
       });
 
       // Auto-clear conflicting exclusive vouchers
@@ -1000,7 +1189,16 @@ export default function CouponModal({
         });
       });
     },
-    [allCampaigns, checkCampaignEligibility, checkCampaignRealtimeLock, allVouchers]
+    [
+      allCampaigns,
+      checkCampaignEligibility,
+      checkCampaignRealtimeLock,
+      selectedCampaignIds,
+      canCombineWithPromotions,
+      onToggleMemberCard,
+      allVouchers,
+      selectedVoucherItems,
+    ]
   );
 
   const handleSkipAndContinue = useCallback(() => {
@@ -1020,7 +1218,8 @@ export default function CouponModal({
     onClose();
   }, [appliedVoucherCode, appliedVoucherCodes, onRemoveVoucher, onApplyVouchers, onApplyCampaigns, onClose]);
 
-  const totalAppliedCount = selectedCodes.length + selectedCampaignIds.length;
+  const isMemberCardEffectiveApplied = hasMemberTierCard && isMemberCardSelected && !isMemberCardLocked;
+  const totalAppliedCount = selectedCodes.length + selectedCampaignIds.length + (isMemberCardEffectiveApplied ? 1 : 0);
 
   const handleApplySelected = useCallback(async () => {
     if (totalAppliedCount === 0) {
@@ -1071,6 +1270,7 @@ export default function CouponModal({
         }
       }
 
+      onToggleMemberCard?.(isMemberCardSelected && !isMemberCardLocked);
       onClose();
     } catch (err: any) {
       setFeedbackError(err.message || "Áp dụng ưu đãi thất bại");
@@ -1088,8 +1288,11 @@ export default function CouponModal({
     onApplyVouchers,
     onApplyVoucher,
     onRemoveVoucher,
-    handleSkipAndContinue,
+    onToggleMemberCard,
+    isMemberCardSelected,
+    isMemberCardLocked,
     onClose,
+    handleSkipAndContinue,
   ]);
 
   const handleManualApply = async (e: React.FormEvent) => {
@@ -1372,7 +1575,9 @@ export default function CouponModal({
             setSelectedCampaign(camp);
             return;
           }
-          if (!isLocked) {
+          const isLockedOnlyByMember =
+            isLocked && lockState.reason === "Không áp dụng đồng thời với ưu đãi thành viên";
+          if (!isLocked || isLockedOnlyByMember) {
             handleToggleCampaign(camp.id);
           }
         }}
@@ -1610,7 +1815,9 @@ export default function CouponModal({
             handleCopyCode(v.code);
             return;
           }
-          if (!isLocked) {
+          const isLockedOnlyByMember =
+            isLocked && lockState.reason === "Không áp dụng đồng thời với ưu đãi thành viên";
+          if (!isLocked || isLockedOnlyByMember) {
             handleToggleVoucher(v.code);
           }
         }}
@@ -1702,7 +1909,9 @@ export default function CouponModal({
               aria-disabled={isLocked}
               onClick={(e) => {
                 e.stopPropagation();
-                if (!isLocked) {
+                const isLockedOnlyByMember =
+                  isLocked && lockState.reason === "Không áp dụng đồng thời với ưu đãi thành viên";
+                if (!isLocked || isLockedOnlyByMember) {
                   handleToggleVoucher(v.code);
                 }
               }}
@@ -1717,6 +1926,148 @@ export default function CouponModal({
               {isSelected && (
                 <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2.5 7L5.5 10L11.5 3.5" />
+                </svg>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderMemberTierCard = () => {
+    const isChecked = isMemberCardSelected && !isMemberCardLocked;
+    const isLocked = isMemberCardLocked;
+
+    return (
+      <div
+        key="member-tier-campaign-card"
+        data-testid="member-tier-campaign-card"
+        onClick={() => {
+          if (isBrowseMode) {
+            setSelectedCampaign(memberTierCampaignItem);
+            return;
+          }
+          if (!isLocked) {
+            handleToggleMemberCard();
+          }
+        }}
+        className={`relative rounded-2xl border transition-all overflow-hidden flex items-center gap-3.5 p-3 shadow-xs ${
+          isBrowseMode
+            ? "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer bg-white"
+            : isLocked
+              ? "opacity-50 border-gray-200 cursor-not-allowed bg-gray-50/70 select-none"
+              : isChecked
+                ? "border-secondary ring-2 ring-secondary/20 bg-yellow/40 cursor-pointer"
+                : "border-gray-200 hover:border-secondary/40 hover:shadow-md cursor-pointer bg-white"
+        }`}
+      >
+        {/* Banner / Huy hiệu bên trái w-20 h-20 sm:w-22 sm:h-22 rounded-xl */}
+        <div
+          className={`w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 relative border flex items-center justify-center ${
+            isLocked
+              ? "bg-gray-200 border-gray-300 grayscale"
+              : isDiamond
+                ? "bg-gradient-to-br from-purple-100 via-indigo-50 to-purple-200 border-purple-300/60"
+                : "bg-gradient-to-br from-amber-100 via-yellow-50 to-amber-200 border-amber-300/60"
+          }`}
+        >
+          {memberCardBanner ? (
+            <Image
+              src={formatImageUrl(memberCardBanner)}
+              alt={memberCardTitle}
+              fill
+              className="object-cover"
+              unoptimized
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center text-center p-2">
+              <span className="text-2xl drop-shadow-xs mb-0.5">
+                {isDiamond ? "💎" : "🌟"}
+              </span>
+              <span
+                className={`text-[10px] font-bold font-sans uppercase tracking-wider ${
+                  isLocked
+                    ? "text-gray-500"
+                    : isDiamond
+                      ? "text-purple-800"
+                      : "text-amber-800"
+                }`}
+              >
+                {isDiamond ? "DIAMOND" : "GOLD"}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4
+              className={`title-3 font-display font-bold leading-snug line-clamp-2 ${
+                isLocked ? "text-gray-600" : "text-primary"
+              }`}
+            >
+              {memberCardTitle}
+            </h4>
+            {isChecked && !isBrowseMode && (
+              <span className="body-3 font-sans font-bold text-secondary bg-secondary/15 px-2 py-0.5 rounded-full shrink-0">
+                {t("in_use") || "Đang dùng"}
+              </span>
+            )}
+          </div>
+
+          <div className="body-3 font-sans text-gray-500 line-clamp-2">
+            {memberCardDescription}
+          </div>
+
+          {/* Locked reason */}
+          {isLocked && memberCardLockReason && (
+            <p className="text-secondary text-xs font-semibold leading-normal animate-fade-in">
+              {memberCardLockReason}
+            </p>
+          )}
+
+          {/* Chi tiết điều kiện áp dụng › button */}
+          <div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedCampaign(memberTierCampaignItem);
+              }}
+              className="body-3 font-sans text-secondary hover:underline cursor-pointer inline-flex items-center gap-1 font-medium"
+            >
+              <span>{t("view_terms_detail") || "Chi tiết điều kiện áp dụng ›"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Checkbox bên phải */}
+        {!isBrowseMode && (
+          <div className="flex items-center justify-center pl-2 pr-4 py-3 shrink-0">
+            <div
+              role="checkbox"
+              aria-checked={isChecked}
+              aria-disabled={isLocked}
+              aria-label={memberCardTitle}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isLocked) {
+                  handleToggleMemberCard();
+                }
+              }}
+              className={`w-5 h-5 min-w-[20px] min-h-[20px] rounded-md flex items-center justify-center transition-all ${
+                isLocked
+                  ? "border border-gray-200 bg-gray-100 cursor-not-allowed text-transparent"
+                  : isChecked
+                    ? "bg-secondary text-white shadow-xs cursor-pointer"
+                    : "border-2 border-gray-300 hover:border-secondary bg-white cursor-pointer"
+              }`}
+            >
+              {isChecked && (
+                <svg className="w-3.5 h-3.5 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               )}
             </div>
@@ -1790,7 +2141,7 @@ export default function CouponModal({
             {/* Detail Scrollable Body */}
             <div className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-4">
               {/* Square Banner Image */}
-              {selectedCampaign.banner && (
+              {selectedCampaign.banner ? (
                 <div className="w-full flex justify-center">
                   <div className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-2xl overflow-hidden shadow-sm border border-secondary/20 bg-yellow/50">
                     <Image
@@ -1802,7 +2153,26 @@ export default function CouponModal({
                     />
                   </div>
                 </div>
-              )}
+              ) : selectedCampaign.id === "member-tier-benefit-card" ? (
+                <div className="w-full flex justify-center">
+                  <div
+                    className={`w-36 h-36 sm:w-40 sm:h-40 rounded-2xl flex flex-col items-center justify-center p-4 border shadow-sm ${
+                      isDiamond
+                        ? "bg-gradient-to-br from-purple-100 via-indigo-50 to-purple-200 border-purple-300"
+                        : "bg-gradient-to-br from-amber-100 via-yellow-50 to-amber-200 border-amber-300"
+                    }`}
+                  >
+                    <span className="text-4xl drop-shadow-xs mb-1">{isDiamond ? "💎" : "🌟"}</span>
+                    <span
+                      className={`text-xs font-bold font-sans uppercase tracking-wider ${
+                        isDiamond ? "text-purple-800" : "text-amber-800"
+                      }`}
+                    >
+                      {isDiamond ? "DIAMOND MEMBER" : "GOLD MEMBER"}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
 
               {/* Title */}
               <div className="text-center space-y-1">
@@ -1833,7 +2203,7 @@ export default function CouponModal({
                   {t("program_details")}
                 </h4>
                 <div className="body-2 font-sans text-gray-700 leading-relaxed whitespace-pre-line bg-gray-50 p-4 rounded-xl border border-gray-200">
-                  {selectedCampaign.description || t("default_terms")}
+                  {selectedCampaign.terms || selectedCampaign.description || t("default_terms")}
                 </div>
               </div>
             </div>
@@ -1844,6 +2214,13 @@ export default function CouponModal({
                 type="button"
                 onClick={() => {
                   if (!isBrowseMode) {
+                    if (selectedCampaign.id === "member-tier-benefit-card") {
+                      if (!isMemberCardLocked && !isMemberCardSelected) {
+                        handleToggleMemberCard();
+                      }
+                      setSelectedCampaign(null);
+                      return;
+                    }
                     const isAlreadySelected = selectedCampaignIds.some(
                       (id) => String(id) === String(selectedCampaign.id)
                     );
@@ -1964,7 +2341,7 @@ export default function CouponModal({
                   <div className="inline-block size-8 border-3 border-secondary border-t-transparent rounded-full animate-spin" />
                   <p className="body-3 font-sans text-gray-500 font-medium">Đang tải...</p>
                 </div>
-              ) : allCampaigns.length === 0 && allVouchers.length === 0 ? (
+              ) : allCampaigns.length === 0 && allVouchers.length === 0 && !hasMemberTierCard ? (
                 <div className="py-12 text-center space-y-2">
                   <p className="body-2 font-sans font-semibold text-gray-600">{t("no_vouchers")}</p>
                   <p className="body-3 font-sans text-gray-400">{t("no_vouchers_hint")}</p>
@@ -1972,16 +2349,17 @@ export default function CouponModal({
               ) : (
                 <>
                   {/* TẦNG 1: CHƯƠNG TRÌNH ƯU ĐÃI */}
-                  {allCampaigns.length > 0 && (
+                  {(allCampaigns.length > 0 || hasMemberTierCard) && (
                     <div className="space-y-3">
                       <div className="title-4 font-display text-primary uppercase tracking-wider font-bold flex items-center justify-between">
                         <span>
-                          {t("eligible_campaigns", { count: allCampaigns.length }) ||
-                            `Chương trình ưu đãi (${allCampaigns.length})`}
+                          {t("eligible_campaigns", { count: allCampaigns.length + (hasMemberTierCard ? 1 : 0) }) ||
+                            `Chương trình ưu đãi (${allCampaigns.length + (hasMemberTierCard ? 1 : 0)})`}
                         </span>
                       </div>
 
                       <div className="space-y-3">
+                        {hasMemberTierCard && renderMemberTierCard()}
                         {eligibleCampaigns.map((camp) => renderCampaignCard(camp, true))}
                         {shippingPromotionItem && renderCampaignCard(shippingPromotionItem, true)}
                         {ineligibleCampaigns.map((camp) => renderCampaignCard(camp, false))}

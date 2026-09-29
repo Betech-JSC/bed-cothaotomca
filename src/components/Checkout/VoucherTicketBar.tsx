@@ -164,8 +164,8 @@ export default function VoucherTicketBar({
 }: VoucherTicketBarProps) {
   const t = useTranslations("voucher");
 
-  const title = t("voucher_ticket_title") || t("voucher_label") || "Mã giảm giá";
-  const placeholder = t("no_voucher_applied") || t("select_or_enter_voucher") || "Chọn hoặc nhập mã";
+  const title = t("voucher_ticket_title") || "Mã giảm giá";
+  const placeholder = t("no_voucher_applied") || "Chọn hoặc nhập mã";
   const freeshipBadgeText = t("freeship_badge_text") || "FREESHIP";
   const shippingDiscountBadgeText = t("shipping_discount_badge_text") || "GIẢM SHIP";
 
@@ -205,29 +205,33 @@ export default function VoucherTicketBar({
           </span>
         </div>
 
-        {/* Ở giữa: Badge tóm tắt ưu đãi thu gọn hoặc Placeholder */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 justify-end sm:justify-start">
-          {hasAnyVoucher ? (
-            <>
-              {foodVoucher && (
-                <FoodTicketBadge text={foodVoucher.short_name || formatVoucherBadgeText(foodVoucher)} />
-              )}
-              {shipVoucher && (
-                <FreeshipTicketBadge text={shipBadgeText} />
-              )}
-              {activeCampaignName && (
-                <CampaignTicketBadge text={activeCampaignName} />
-              )}
-            </>
-          ) : (
-            <span className="text-gray-400 font-medium text-xs sm:text-sm truncate select-none pl-1">
+        {/* Ở giữa: Badge tóm tắt ưu đãi thu gọn hoặc khoảng trống co giãn */}
+        {hasAnyVoucher ? (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 justify-end sm:justify-start">
+            {foodVoucher && (
+              <FoodTicketBadge text={foodVoucher.short_name || formatVoucherBadgeText(foodVoucher)} />
+            )}
+            {shipVoucher && (
+              <FreeshipTicketBadge text={shipBadgeText} />
+            )}
+            {activeCampaignName && (
+              <CampaignTicketBadge text={activeCampaignName} />
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 min-w-0" />
+        )}
+
+        {/* Bên phải:
+            - Nếu chưa có mã: [Chọn hoặc nhập mã] nằm sát cạnh icon mũi tên > (gap-1.5 hoặc gap-1)
+            - Nếu đã có mã: Nút gỡ mã nhanh ✕ (khi có onRemove) + Icon mũi tên >
+        */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 min-w-0 justify-end">
+          {!hasAnyVoucher && (
+            <span className="text-gray-400 font-normal text-xs sm:text-sm truncate select-none">
               {placeholder}
             </span>
           )}
-        </div>
-
-        {/* Bên phải: Nút gỡ mã nhanh ✕ (khi đã áp mã) + Icon mũi tên > để mở CouponModal */}
-        <div className="flex items-center gap-1 shrink-0">
           {hasAnyVoucher && onRemove && (
             <button
               type="button"

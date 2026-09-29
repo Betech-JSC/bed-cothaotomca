@@ -254,10 +254,10 @@ describe("OpenSpec refine-mobile-cart-and-checkout-ui Test Suite", () => {
       expect(bar).toBeInTheDocument();
 
       // Left: Ticket icon + Label
-      expect(screen.getByText("Mã giảm giá (Voucher)")).toBeInTheDocument();
+      expect(screen.getByText("Mã giảm giá")).toBeInTheDocument();
 
-      // Middle: Placeholder
-      expect(screen.getByText("Chọn hoặc nhập mã ưu đãi")).toBeInTheDocument();
+      // Middle / Right: Placeholder
+      expect(screen.getByText("Chọn hoặc nhập mã")).toBeInTheDocument();
 
       // Right: Chevron button mở modal
       const selectBtn = screen.getByRole("button", { name: "Chọn mã" });

@@ -27,6 +27,8 @@ import {
   type ShippingSettings,
   type ActivePromotion,
   type PromotionGiftItem,
+  getLoyaltySettings,
+  type LoyaltySettings,
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
@@ -407,6 +409,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [validatingVoucher, setValidatingVoucher] = useState(false);
   const [isAutoVoucherApplied, setIsAutoVoucherApplied] = useState(false);
   const [confirmInfo, setConfirmInfo] = useState(false);
+
+  // Member card & loyalty settings state
+  const [isMemberCardSelected, setIsMemberCardSelected] = useState<boolean>(true);
+  const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
+
+  useEffect(() => {
+    getLoyaltySettings().then((s) => {
+      setLoyaltySettings(s);
+    });
+  }, []);
 
   // Guest VIP tier hint states
   const [guestTierHint, setGuestTierHint] = useState<GuestTierHint | null>(null);
@@ -1198,12 +1210,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const effectiveShippingFee = Math.max(0, shipping - shippingVoucherDiscount);
   const voucherDiscount = foodVoucherDiscount + shippingVoucherDiscount;
 
+  const canCombineLoyaltyWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
+
   // Check if voucher has can_combine_with_promotions === false
   const isExcludedByVoucher = useMemo(() => {
+    if (canCombineLoyaltyWithPromotions) return false;
     if (appliedVoucher && appliedVoucher.canCombineWithPromotions === false) return true;
     if (appliedShippingVoucher && appliedShippingVoucher.canCombineWithPromotions === false) return true;
     return false;
-  }, [appliedVoucher, appliedShippingVoucher]);
+  }, [canCombineLoyaltyWithPromotions, appliedVoucher, appliedShippingVoucher]);
 
   // Member Tier Discount - Tự động áp dụng chiết khấu hạng thành viên / Mừng lên hạng trên các món nguyên giá
   const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
@@ -1212,7 +1227,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return calculateMemberDiscount(user, regularPriceSubtotal);
   }, [user, regularPriceSubtotal]);
 
-  const memberDiscount = isExcludedByVoucher ? 0 : baseMemberDiscount;
+  const memberDiscount = (!isMemberCardSelected || isExcludedByVoucher) ? 0 : baseMemberDiscount;
 
   const memberDiscountLabel = useMemo(() => {
     if (!user) return "";
@@ -2166,13 +2181,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               </h2>
               {user && (memberTier.tier === "gold" || memberTier.tier === "diamond") && (
                 <span
-                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs sm:text-sm font-bold font-sans shadow-xs ${
-                    memberTier.tier === "diamond"
-                      ? "bg-purple-100 text-purple-700 border border-purple-200"
-                      : "bg-amber-100 text-amber-800 border border-amber-300"
-                  }`}
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs sm:text-sm font-bold font-sans shadow-xs ${memberTier.tier === "diamond"
+                    ? "bg-purple-100 text-purple-700 border border-purple-200"
+                    : "bg-amber-100 text-amber-800 border border-amber-300"
+                    }`}
                 >
-                  {memberTier.tier === "diamond" ? "💎 Thành viên Kim Cương" : "🌟 Thành viên Vàng"}
+                  {memberTier.tier === "diamond" ? "💎 Hạng Diamond" : "🌟 Hạng Gold"}
                 </span>
               )}
             </div>
@@ -3525,6 +3539,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         memberTier={memberTier.tier}
         privateVouchers={sessionPrivateVouchers}
         onAddPrivateVoucher={handleAddPrivateVoucherFromModal}
+        isMemberCardSelected={isMemberCardSelected}
+        onToggleMemberCard={setIsMemberCardSelected}
+        loyaltySettings={loyaltySettings}
       />
 
       {/* Order Gift Selector Modal */}

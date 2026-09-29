@@ -608,6 +608,75 @@ export async function getShippingSettings(): Promise<ShippingSettings | null> {
   }
 }
 
+export interface LoyaltyTierCardInfo {
+  title?: string;
+  badge?: string;
+  description?: string;
+  banner?: string;
+  banner_url?: string;
+  discount_percent?: number;
+  upgrade_discount_percent?: number;
+}
+
+export interface LoyaltySettings {
+  can_combine_with_promotions: boolean;
+  is_enabled: boolean;
+  gold_discount_percent: number;
+  diamond_discount_percent: number;
+  gold_upgrade_discount_percent: number;
+  diamond_upgrade_discount_percent: number;
+  gold_card_title?: string;
+  gold_card_badge?: string;
+  gold_card_description?: string;
+  gold_card_banner?: string;
+  gold_card_banner_url?: string;
+  diamond_card_title?: string;
+  diamond_card_badge?: string;
+  diamond_card_description?: string;
+  diamond_card_banner?: string;
+  diamond_card_banner_url?: string;
+  gold_card?: LoyaltyTierCardInfo;
+  diamond_card?: LoyaltyTierCardInfo;
+}
+
+export const DEFAULT_LOYALTY_SETTINGS: LoyaltySettings = {
+  can_combine_with_promotions: false,
+  is_enabled: true,
+  gold_discount_percent: 5,
+  diamond_discount_percent: 8,
+  gold_upgrade_discount_percent: 10,
+  diamond_upgrade_discount_percent: 10,
+};
+
+export async function getLoyaltySettings(): Promise<LoyaltySettings> {
+  try {
+    const cleanBase = API_BASE.replace(/\/v1$/, "");
+    const res = await fetch(`${cleanBase}/v1/loyalty/settings`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return DEFAULT_LOYALTY_SETTINGS;
+    }
+
+    const json = await res.json();
+    if (json && json.success && json.data) {
+      return {
+        ...DEFAULT_LOYALTY_SETTINGS,
+        ...json.data,
+        can_combine_with_promotions: Boolean(json.data.can_combine_with_promotions),
+      };
+    }
+    return DEFAULT_LOYALTY_SETTINGS;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("Failed to fetch loyalty settings, falling back to default:", msg);
+    return DEFAULT_LOYALTY_SETTINGS;
+  }
+}
+
 /** Hủy đơn hàng trực tiếp (dành cho đơn COD) */
 export async function cancelOrderApi(
   orderCode: string,
@@ -684,6 +753,7 @@ export const orderService = {
   getAdministrativeUnits,
   calculateShippingFee,
   getShippingSettings,
+  getLoyaltySettings,
   cancelOrderApi,
   requestCancelOrderApi,
 };

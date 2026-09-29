@@ -263,7 +263,7 @@
     "buy_more_campaign_hint": "Minimum order value {minSpend} not met. Add {missingAmount} more to apply",
     "order_now_cta": "Order now",
     "select_or_enter_voucher": "Select or enter code",
-    "voucher_ticket_title": "Discount code (Voucher)",
+    "voucher_ticket_title": "Discount code",
     "freeship_badge_text": "FREESHIP",
     "shipping_discount_badge_text": "GIẢM SHIP",
     "campaign_applied_vouchers_count": "Apply • {count} voucher(s)",

@@ -1,10 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import React from 'react';
 import CouponModal, { resetCouponModalCache } from '@/components/Voucher/CouponModal';
 import CheckoutForm from '@/components/Checkout/CheckoutForm';
-import { PublicVoucherItem, CheckoutConfig } from '@/services/orderService';
+import { PublicVoucherItem, CheckoutConfig, type LoyaltySettings } from '@/services/orderService';
 import { PublicCampaignItem } from '@/services/campaignService';
 import { getMemberTier, calculateMemberDiscount, StorefrontUser } from '@/contexts/AuthContext';
 
@@ -414,6 +414,233 @@ describe('Member Discount & Mutex Lock Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)')).toBeInTheDocument();
       expect(screen.getByText('0đ')).toBeInTheDocument();
+    });
+  });
+
+  it('Matrix Scenario 1: Khi can_combine_with_promotions === false -> Thẻ Hội viên Vàng tự động checked, Voucher độc quyền bị khóa với lý do "Không áp dụng đồng thời với ưu đãi thành viên"', async () => {
+    const vouchers: PublicVoucherItem[] = [
+      {
+        id: 1,
+        code: 'EXCLUSIVE_50K',
+        value: 50000,
+        discount_type: 'fixed',
+        can_combine_with_promotions: false,
+        can_combine_with_freeship: true,
+        customer_scope: 'all',
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        memberTier="gold"
+        subtotal={200000}
+        vouchers={vouchers}
+        campaigns={[]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('member-tier-campaign-card')).toBeInTheDocument();
+    });
+
+    // Thẻ thành viên hiển thị đúng tiêu đề
+    expect(screen.getByText('Ưu đãi Hội viên Vàng - Giảm 5%')).toBeInTheDocument();
+
+    // Checkbox thẻ thành viên tự động checked
+    const memberCardCheckbox = screen.getByRole('checkbox', { name: /Ưu đãi Hội viên Vàng - Giảm 5%/i });
+    expect(memberCardCheckbox).toHaveAttribute('aria-checked', 'true');
+    expect(memberCardCheckbox).toHaveAttribute('aria-disabled', 'false');
+
+    // Voucher độc quyền bị khóa và có lý do
+    expect(screen.getByText('EXCLUSIVE_50K')).toBeInTheDocument();
+    expect(screen.getByText('Không áp dụng đồng thời với ưu đãi thành viên')).toBeInTheDocument();
+  });
+
+  it('Matrix Scenario 2: Khi khách BẤM CHỌN voucher độc quyền -> Thẻ Hội viên Vàng tự động uncheck và bị khóa ("Không thể sử dụng cùng mã giảm giá đã chọn")', async () => {
+    const vouchers: PublicVoucherItem[] = [
+      {
+        id: 1,
+        code: 'EXCLUSIVE_50K',
+        value: 50000,
+        discount_type: 'fixed',
+        can_combine_with_promotions: false,
+        can_combine_with_freeship: true,
+        customer_scope: 'all',
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        memberTier="gold"
+        subtotal={200000}
+        vouchers={vouchers}
+        campaigns={[]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('EXCLUSIVE_50K')).toBeInTheDocument();
+    });
+
+    // Bấm chọn voucher EXCLUSIVE_50K
+    fireEvent.click(screen.getByText('EXCLUSIVE_50K'));
+
+    // Thẻ Hội viên Vàng bị uncheck và khóa
+    await waitFor(() => {
+      const memberCardCheckbox = screen.getByRole('checkbox', { name: /Ưu đãi Hội viên Vàng - Giảm 5%/i });
+      expect(memberCardCheckbox).toHaveAttribute('aria-checked', 'false');
+      expect(memberCardCheckbox).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByText('Không thể sử dụng cùng mã giảm giá đã chọn')).toBeInTheDocument();
+    });
+  });
+
+  it('Matrix Scenario 3: Khi khách BỎ CHỌN voucher độc quyền -> Thẻ Hội viên Vàng tự động mở khóa và auto-check lại', async () => {
+    const vouchers: PublicVoucherItem[] = [
+      {
+        id: 1,
+        code: 'EXCLUSIVE_50K',
+        value: 50000,
+        discount_type: 'fixed',
+        can_combine_with_promotions: false,
+        can_combine_with_freeship: true,
+        customer_scope: 'all',
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        memberTier="gold"
+        subtotal={200000}
+        vouchers={vouchers}
+        campaigns={[]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('EXCLUSIVE_50K')).toBeInTheDocument();
+    });
+
+    // 1. Chọn voucher
+    fireEvent.click(screen.getByText('EXCLUSIVE_50K'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Không thể sử dụng cùng mã giảm giá đã chọn')).toBeInTheDocument();
+    });
+
+    // 2. Bỏ chọn voucher
+    fireEvent.click(screen.getByText('EXCLUSIVE_50K'));
+
+    // 3. Thẻ thành viên tự động mở khóa và auto-check
+    await waitFor(() => {
+      const memberCardCheckbox = screen.getByRole('checkbox', { name: /Ưu đãi Hội viên Vàng - Giảm 5%/i });
+      expect(memberCardCheckbox).toHaveAttribute('aria-checked', 'true');
+      expect(memberCardCheckbox).toHaveAttribute('aria-disabled', 'false');
+      expect(screen.queryByText('Không thể sử dụng cùng mã giảm giá đã chọn')).not.toBeInTheDocument();
+      // Voucher lại bị khóa trở lại
+      expect(screen.getByText('Không áp dụng đồng thời với ưu đãi thành viên')).toBeInTheDocument();
+    });
+  });
+
+  it('Matrix Scenario 4: Khách hàng có thể tự bấm BỎ CHỌN thẻ Hội viên Vàng để mở khóa voucher không cộng dồn', async () => {
+    const vouchers: PublicVoucherItem[] = [
+      {
+        id: 1,
+        code: 'EXCLUSIVE_50K',
+        value: 50000,
+        discount_type: 'fixed',
+        can_combine_with_promotions: false,
+        can_combine_with_freeship: true,
+        customer_scope: 'all',
+      },
+    ];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        memberTier="gold"
+        subtotal={200000}
+        vouchers={vouchers}
+        campaigns={[]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('member-tier-campaign-card')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Không áp dụng đồng thời với ưu đãi thành viên')).toBeInTheDocument();
+
+    // Bấm vào thẻ Hội viên để bỏ chọn thủ công
+    fireEvent.click(screen.getByTestId('member-tier-campaign-card'));
+
+    await waitFor(() => {
+      const memberCardCheckbox = screen.getByRole('checkbox', { name: /Ưu đãi Hội viên Vàng - Giảm 5%/i });
+      expect(memberCardCheckbox).toHaveAttribute('aria-checked', 'false');
+      // Voucher không còn bị khóa bởi ưu đãi thành viên
+      expect(screen.queryByText('Không áp dụng đồng thời với ưu đãi thành viên')).not.toBeInTheDocument();
+    });
+  });
+
+  it('Matrix Scenario 5: Khi can_combine_with_promotions === true -> Cả thẻ Hội viên và Voucher đều có thể chọn đồng thời mà không bị khóa', async () => {
+    const vouchers: PublicVoucherItem[] = [
+      {
+        id: 1,
+        code: 'EXCLUSIVE_50K',
+        value: 50000,
+        discount_type: 'fixed',
+        can_combine_with_promotions: false,
+        can_combine_with_freeship: true,
+        customer_scope: 'all',
+      },
+    ];
+
+    const combinableLoyaltySettings: LoyaltySettings = {
+      is_enabled: true,
+      can_combine_with_promotions: true,
+      gold_discount_percent: 5,
+      diamond_discount_percent: 8,
+      gold_upgrade_discount_percent: 10,
+      diamond_upgrade_discount_percent: 10,
+    };
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        memberTier="gold"
+        subtotal={200000}
+        vouchers={vouchers}
+        campaigns={[]}
+        loyaltySettings={combinableLoyaltySettings}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('member-tier-campaign-card')).toBeInTheDocument();
+    });
+
+    // Thẻ Hội viên checked
+    const memberCardCheckbox = screen.getByRole('checkbox', { name: /Ưu đãi Hội viên Vàng - Giảm 5%/i });
+    expect(memberCardCheckbox).toHaveAttribute('aria-checked', 'true');
+
+    // Voucher KHÔNG bị khóa
+    expect(screen.queryByText('Không áp dụng đồng thời với ưu đãi thành viên')).not.toBeInTheDocument();
+
+    // Chọn voucher
+    fireEvent.click(screen.getByText('EXCLUSIVE_50K'));
+
+    // Cả hai đều được chọn đồng thời!
+    await waitFor(() => {
+      expect(memberCardCheckbox).toHaveAttribute('aria-checked', 'true');
+      expect(memberCardCheckbox).toHaveAttribute('aria-disabled', 'false');
+      expect(screen.queryByText('Không thể sử dụng cùng mã giảm giá đã chọn')).not.toBeInTheDocument();
     });
   });
 });

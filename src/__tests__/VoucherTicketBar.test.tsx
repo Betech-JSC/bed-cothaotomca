@@ -42,7 +42,7 @@ vi.mock('next-intl', () => ({
 }));
 
 describe('VoucherTicketBar Component Tests', () => {
-  it('1. Trạng thái chưa chọn mã -> Tiêu đề ngoài khung, khung capsule rounded-full, placeholder "Chọn hoặc nhập mã ưu đãi", nút "Chọn mã"', () => {
+  it('1. Trạng thái chưa chọn mã -> Tiêu đề ngoài khung, khung capsule rounded-full, placeholder "Chọn hoặc nhập mã", nút "Chọn mã"', () => {
     const handleClick = vi.fn();
     const handleRemove = vi.fn();
 
@@ -56,7 +56,7 @@ describe('VoucherTicketBar Component Tests', () => {
     );
 
     // 1. Tiêu đề nằm độc lập phía trên khung với font-display, font-bold, text-primary
-    const titleLabel = screen.getByText('Mã giảm giá (Voucher)');
+    const titleLabel = screen.getByText('Mã giảm giá');
     expect(titleLabel).toBeInTheDocument();
     expect(titleLabel.className).toContain('text-primary');
     expect(titleLabel.className).toContain('font-bold');
@@ -72,7 +72,7 @@ describe('VoucherTicketBar Component Tests', () => {
     expect(capsule?.className).toContain('min-h-[46px]');
 
     // 3. Văn bản placeholder khi chưa có mã
-    expect(screen.getByText('Chọn hoặc nhập mã ưu đãi')).toBeInTheDocument();
+    expect(screen.getByText('Chọn hoặc nhập mã')).toBeInTheDocument();
 
     // 4. Nút "Chọn mã" (icon điều hướng) hiển thị, nút "Xóa" KHÔNG hiển thị
     const selectBtn = screen.getByRole('button', { name: 'Chọn mã' });
@@ -120,7 +120,7 @@ describe('VoucherTicketBar Component Tests', () => {
     expect(foodBadge.className).toContain('rounded-full');
 
     // Không còn placeholder
-    expect(screen.queryByText('Chọn hoặc nhập mã ưu đãi')).not.toBeInTheDocument();
+    expect(screen.queryByText('Chọn hoặc nhập mã')).not.toBeInTheDocument();
 
     // Cả 2 nút "Chọn mã" và "Xóa" đều hiển thị
     const selectBtn = screen.getByRole('button', { name: 'Chọn mã' });
