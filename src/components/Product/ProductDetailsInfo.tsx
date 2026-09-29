@@ -102,15 +102,15 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
         {selectedSize.price > 0 ? (
           <div className="flex flex-col items-start gap-1 py-1">
             {selectedSize.original_price && selectedSize.original_price > selectedSize.price ? (
-              <span className="inline-block bg-primary text-white text-xs font-bold px-2.5 py-0.5 rounded-[4px] tracking-wide">
+              <span className="inline-block bg-primary text-white text-[11px] md:text-xs font-bold px-2 md:px-2.5 py-0.5 rounded-[4px] tracking-wide">
                 -{(selectedSize as any).discount_percent || Math.round(((selectedSize.original_price - selectedSize.price) / selectedSize.original_price) * 100)}%
               </span>
             ) : null}
-            <div className="text-2xl md:text-[28px] font-display font-bold text-secondary leading-tight">
+            <div className="text-[28px] sm:text-3xl md:text-[28px] font-display font-bold text-secondary leading-tight">
               {formatPrice(selectedSize.price)}
             </div>
             {selectedSize.original_price && selectedSize.original_price > selectedSize.price ? (
-              <div className="text-sm md:text-base font-semibold text-gray-400 line-through leading-tight">
+              <div className="text-xs md:text-base font-semibold text-gray-400 line-through leading-tight">
                 {formatPrice(selectedSize.original_price)}
               </div>
             ) : null}

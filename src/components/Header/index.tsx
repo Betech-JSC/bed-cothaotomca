@@ -482,8 +482,8 @@ const MobileMenu = ({
 
   return (
     <nav aria-label="Mobile main navigation" className="w-full xl:hidden relative">
-      <div className="flex w-full items-center justify-between py-1 relative">
-        <Logo width={75} height={48} className="h-12" />
+      <div className="flex w-full items-center justify-between py-1.5 relative">
+        <Logo width={62} height={40} className="h-10" />
         <div className="flex items-center gap-3 shrink-0">
           {/* 1. Search */}
           <button

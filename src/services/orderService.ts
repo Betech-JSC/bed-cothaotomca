@@ -39,6 +39,9 @@ export interface CreateOrderPayload {
   items: CreateOrderItem[];
   discount?: number;
   member_discount?: number;
+  member_tier?: string;
+  tier_discount_percent?: number;
+  is_upgrade_reward?: boolean;
   description?: string;
   is_apply_voucher?: boolean;
   voucher?: {

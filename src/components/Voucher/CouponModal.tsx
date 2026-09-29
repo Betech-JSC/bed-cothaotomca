@@ -20,7 +20,7 @@ import {
 } from "@/services/campaignService";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
-import { useAuth, StorefrontUser } from "@/contexts/AuthContext";
+import { useAuth, StorefrontUser, getMemberTier } from "@/contexts/AuthContext";
 
 export function formatPrivateVoucherError(errMsg: string): string {
   const msgLower = (errMsg || "").toLowerCase();
@@ -333,6 +333,28 @@ export default function CouponModal({
     memberTier ||
     (currentUser?.tier || resolveTierFromPoints(currentUser?.points || 0))
   ).toLowerCase();
+
+  const memberTierInfo = useMemo(() => {
+    if (currentUser) {
+      return getMemberTier(currentUser);
+    }
+    if (memberTier) {
+      const t = memberTier.toLowerCase();
+      if (t === "diamond") return getMemberTier(800);
+      if (t === "gold") return getMemberTier(400);
+    }
+    return getMemberTier(0);
+  }, [currentUser, memberTier]);
+
+  const hasMemberBenefit = useMemo(() => {
+    if (isBrowseMode) return false;
+    const isGoldOrDiamond =
+      currentUserTier === "gold" ||
+      currentUserTier === "diamond" ||
+      memberTierInfo.tier === "gold" ||
+      memberTierInfo.tier === "diamond";
+    return isGoldOrDiamond && (subtotal ?? 0) > 0;
+  }, [isBrowseMode, currentUserTier, memberTierInfo, subtotal]);
 
   const orderIsAutoFreeship = isAutoFreeship !== undefined
     ? isAutoFreeship
@@ -738,7 +760,7 @@ export default function CouponModal({
     return allVouchers.filter((v) => selectedCodes.some((code) => code.toUpperCase() === v.code.toUpperCase()));
   }, [allVouchers, selectedCodes]);
 
-  const checkCampaignRealtimeLock = useCallback(
+  const checkCampaignMutexLock = useCallback(
     (camp: PublicCampaignItem): CampaignLockResult => {
       if (isBrowseMode) {
         return { locked: false };
@@ -747,6 +769,14 @@ export default function CouponModal({
       const isSelected = selectedCampaignIds.some((id) => String(id) === String(camp.id));
       if (isSelected) {
         return { locked: false };
+      }
+
+      // Khóa campaign không áp dụng đồng thời với ưu đãi thành viên Gold/Diamond
+      if (hasMemberBenefit && camp.can_combine_with_promotions === false) {
+        return {
+          locked: true,
+          reason: "Không áp dụng đồng thời với ưu đãi thành viên",
+        };
       }
 
       // 1. Kiểm tra khóa lẫn nhau giữa các Campaign (Mutex Lock)
@@ -792,14 +822,24 @@ export default function CouponModal({
 
       return { locked: false };
     },
-    [isBrowseMode, selectedCampaignIds, selectedCampaignItems, selectedVoucherItems, t]
+    [isBrowseMode, selectedCampaignIds, selectedCampaignItems, selectedVoucherItems, hasMemberBenefit, t]
   );
+
+  const checkCampaignRealtimeLock = checkCampaignMutexLock;
 
   const checkRealtimeLock = useCallback(
     (v: PublicVoucherItem): { locked: boolean; reason?: string } => {
       if (isBrowseMode) return { locked: false };
       const isSelected = selectedCodes.some((c) => c.toUpperCase() === v.code.toUpperCase());
       if (isSelected) return { locked: false };
+
+      // Khóa voucher không áp dụng đồng thời với ưu đãi thành viên Gold/Diamond
+      if (hasMemberBenefit && v.can_combine_with_promotions === false) {
+        return {
+          locked: true,
+          reason: "Không áp dụng đồng thời với ưu đãi thành viên",
+        };
+      }
 
       const isShip = isShipVoucher(v);
       const isFood = isFoodVoucher(v);
@@ -837,7 +877,7 @@ export default function CouponModal({
 
       return { locked: false };
     },
-    [isBrowseMode, selectedCodes, selectedVoucherItems, selectedCampaignItems, t]
+    [isBrowseMode, selectedCodes, selectedVoucherItems, selectedCampaignItems, hasMemberBenefit, t]
   );
 
 
@@ -918,7 +958,7 @@ export default function CouponModal({
         setSelectedCampaignIds([]);
       }
     },
-    [allVouchers, checkVoucherEligibility]
+    [allVouchers, checkVoucherEligibility, checkRealtimeLock]
   );
 
   const handleToggleCampaign = useCallback(
@@ -960,7 +1000,7 @@ export default function CouponModal({
         });
       });
     },
-    [allCampaigns, checkCampaignEligibility, allVouchers]
+    [allCampaigns, checkCampaignEligibility, checkCampaignRealtimeLock, allVouchers]
   );
 
   const handleSkipAndContinue = useCallback(() => {
@@ -1136,6 +1176,12 @@ export default function CouponModal({
           } else {
             setFeedbackError(formatPrivateVoucherError(eligibility.reason || ""));
           }
+          return;
+        }
+
+        const lockCheck = checkRealtimeLock(newVoucher);
+        if (lockCheck.locked) {
+          setFeedbackError(lockCheck.reason || "Mã giảm giá không thể sử dụng cùng các ưu đãi hiện tại.");
           return;
         }
 

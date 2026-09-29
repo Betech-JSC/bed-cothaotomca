@@ -76,9 +76,9 @@ export function FoodTicketBadge({ text }: { text: string }) {
   return (
     <span
       data-testid="food-ticket-badge"
-      className="inline-flex items-center rounded-full px-3 py-1 text-xs uppercase font-bold bg-[#FDF0ED] border border-[#CD4829] text-[#CD4829] select-none shrink-0"
+      className="inline-flex items-center rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs uppercase font-bold bg-[#FDF0ED] border border-[#CD4829] text-[#CD4829] select-none shrink-0"
     >
-      <span className="truncate max-w-[120px] sm:max-w-[180px]">{text}</span>
+      <span className="truncate max-w-[90px] xs:max-w-[120px] sm:max-w-[180px]">{text}</span>
     </span>
   );
 }
@@ -87,9 +87,9 @@ export function FreeshipTicketBadge({ text }: { text: string }) {
   return (
     <span
       data-testid="freeship-ticket-badge"
-      className="inline-flex items-center rounded-full px-3 py-1 text-xs uppercase font-bold bg-[#EBF0FA] border border-[#142A68] text-[#142A68] select-none shrink-0"
+      className="inline-flex items-center rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs uppercase font-bold bg-[#EBF0FA] border border-[#142A68] text-[#142A68] select-none shrink-0"
     >
-      <span className="truncate max-w-[140px] sm:max-w-[200px]">{text}</span>
+      <span className="truncate max-w-[90px] xs:max-w-[140px] sm:max-w-[200px]">{text}</span>
     </span>
   );
 }
@@ -98,10 +98,59 @@ export function CampaignTicketBadge({ text }: { text: string }) {
   return (
     <span
       data-testid="campaign-ticket-badge"
-      className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-[#FEF9E7] border border-[#F5D585] text-[#8A5800] select-none shrink-0"
+      className="inline-flex items-center rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs font-bold bg-[#FEF9E7] border border-[#F5D585] text-[#8A5800] select-none shrink-0"
     >
-      <span className="truncate max-w-[140px] sm:max-w-[200px]">{text}</span>
+      <span className="truncate max-w-[90px] xs:max-w-[140px] sm:max-w-[200px]">{text}</span>
     </span>
+  );
+}
+
+export function TicketIcon({ className = "size-4 sm:size-5 text-[#CD4829]" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+      />
+    </svg>
+  );
+}
+
+export function ChevronRightIcon({ className = "size-4 text-gray-400" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+export function CloseIcon({ className = "size-3.5 text-gray-400" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2.5}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
   );
 }
 
@@ -115,8 +164,8 @@ export default function VoucherTicketBar({
 }: VoucherTicketBarProps) {
   const t = useTranslations("voucher");
 
-  const title = t("voucher_ticket_title") || "Mã giảm giá (Voucher)";
-  const placeholder = t("no_voucher_applied") || "Chọn hoặc nhập mã ưu đãi";
+  const title = t("voucher_ticket_title") || t("voucher_label") || "Mã giảm giá";
+  const placeholder = t("no_voucher_applied") || t("select_or_enter_voucher") || "Chọn hoặc nhập mã";
   const freeshipBadgeText = t("freeship_badge_text") || "FREESHIP";
   const shippingDiscountBadgeText = t("shipping_discount_badge_text") || "GIẢM SHIP";
 
@@ -143,18 +192,21 @@ export default function VoucherTicketBar({
 
   return (
     <div className={`w-full ${className}`}>
-      {/* 1. Tiêu đề ngoài khung (phía trên) */}
-      <label className="block text-primary font-bold font-display text-base mb-2 select-none">
-        {title}
-      </label>
+      {/* Khung chứa dạng Shopee 1 hàng ngang duy nhất */}
+      <div
+        onClick={onClick}
+        className="rounded-full border border-gray-300 hover:border-secondary/40 py-2.5 px-3.5 min-h-[46px] bg-white flex items-center justify-between gap-2 flex-nowrap shadow-xs cursor-pointer transition-colors"
+      >
+        {/* Bên trái: Icon Vé Ưu đãi (Ticket SVG màu cam/đỏ) + Label "Mã giảm giá" */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <TicketIcon className="size-4 sm:size-5 text-[#CD4829] shrink-0" />
+          <span className="text-primary font-bold font-display text-xs sm:text-sm whitespace-nowrap select-none">
+            {title}
+          </span>
+        </div>
 
-      {/* 2. Khung chứa dạng Capsule viên thuốc */}
-      <div className="rounded-full border border-gray-300 py-2.5 px-3.5 min-h-[46px] bg-white flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap shadow-xs">
-        {/* Bên trái (Chips hoặc Placeholder) */}
-        <div
-          onClick={onClick}
-          className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1 cursor-pointer pl-1"
-        >
+        {/* Ở giữa: Badge tóm tắt ưu đãi thu gọn hoặc Placeholder */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 justify-end sm:justify-start">
           {hasAnyVoucher ? (
             <>
               {foodVoucher && (
@@ -168,22 +220,14 @@ export default function VoucherTicketBar({
               )}
             </>
           ) : (
-            <span className="text-gray-400 font-medium text-xs sm:text-sm pl-3 select-none">
+            <span className="text-gray-400 font-medium text-xs sm:text-sm truncate select-none pl-1">
               {placeholder}
             </span>
           )}
         </div>
 
-        {/* Bên phải (Nút chức năng) */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={onClick}
-            className="rounded-full px-4 py-1.5 text-xs sm:text-sm font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer select-none transition-all"
-            aria-label={t("btn_select_voucher") || "Chọn mã"}
-          >
-            {t("btn_select_voucher") || "Chọn mã"}
-          </button>
+        {/* Bên phải: Nút gỡ mã nhanh ✕ (khi đã áp mã) + Icon mũi tên > để mở CouponModal */}
+        <div className="flex items-center gap-1 shrink-0">
           {hasAnyVoucher && onRemove && (
             <button
               type="button"
@@ -192,16 +236,28 @@ export default function VoucherTicketBar({
                 e.stopPropagation();
                 onRemove();
               }}
-              className="rounded-full px-3 py-1 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 cursor-pointer select-none transition-all"
+              className="size-6 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 active:scale-90 transition-all cursor-pointer shrink-0"
               aria-label={t("btn_remove_voucher") || "Xóa"}
+              title={t("btn_remove_voucher") || "Xóa"}
             >
-              {t("btn_remove_voucher") || "Xóa"}
+              <CloseIcon className="size-3.5" />
             </button>
           )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick();
+            }}
+            aria-label={t("btn_select_voucher") || "Chọn mã"}
+            className="size-6 flex items-center justify-center text-gray-400 hover:text-primary transition-colors cursor-pointer shrink-0"
+          >
+            <ChevronRightIcon className="size-4" />
+          </button>
         </div>
       </div>
 
-      {/* 3. Dòng trạng thái bên dưới khung */}
+      {/* Dòng trạng thái bên dưới khung */}
       {appliedCount > 0 && (
         <p className="text-xs text-emerald-700 font-semibold px-2 flex items-center gap-1.5 mt-1.5 animate-fade-in">
           <span>✓</span>

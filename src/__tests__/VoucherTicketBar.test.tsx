@@ -74,11 +74,9 @@ describe('VoucherTicketBar Component Tests', () => {
     // 3. Văn bản placeholder khi chưa có mã
     expect(screen.getByText('Chọn hoặc nhập mã ưu đãi')).toBeInTheDocument();
 
-    // 4. Nút "Chọn mã" hiển thị với px-4 py-1.5, nút "Xóa" KHÔNG hiển thị
+    // 4. Nút "Chọn mã" (icon điều hướng) hiển thị, nút "Xóa" KHÔNG hiển thị
     const selectBtn = screen.getByRole('button', { name: 'Chọn mã' });
     expect(selectBtn).toBeInTheDocument();
-    expect(selectBtn.className).toContain('px-4');
-    expect(selectBtn.className).toContain('py-1.5');
     expect(screen.queryByRole('button', { name: 'Xóa' })).not.toBeInTheDocument();
 
     // 5. Click nút "Chọn mã" kích hoạt callback onClick

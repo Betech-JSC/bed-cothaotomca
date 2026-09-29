@@ -1198,13 +1198,31 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const effectiveShippingFee = Math.max(0, shipping - shippingVoucherDiscount);
   const voucherDiscount = foodVoucherDiscount + shippingVoucherDiscount;
 
+  // Check if voucher has can_combine_with_promotions === false
+  const isExcludedByVoucher = useMemo(() => {
+    if (appliedVoucher && appliedVoucher.canCombineWithPromotions === false) return true;
+    if (appliedShippingVoucher && appliedShippingVoucher.canCombineWithPromotions === false) return true;
+    return false;
+  }, [appliedVoucher, appliedShippingVoucher]);
+
   // Member Tier Discount - Tự động áp dụng chiết khấu hạng thành viên / Mừng lên hạng trên các món nguyên giá
   const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
-  const memberDiscount = useMemo(() => {
+  const baseMemberDiscount = useMemo(() => {
     if (!user) return 0;
     return calculateMemberDiscount(user, regularPriceSubtotal);
   }, [user, regularPriceSubtotal]);
-  const memberDiscountLabel = memberTier.label;
+
+  const memberDiscount = isExcludedByVoucher ? 0 : baseMemberDiscount;
+
+  const memberDiscountLabel = useMemo(() => {
+    if (!user) return "";
+    const isDiamond = memberTier.tier === "diamond";
+    const tierNameVi = isDiamond ? "Kim Cương" : "Vàng";
+    if (memberTier.isUpgradeCelebration) {
+      return `Ưu đãi mừng lên hạng ${tierNameVi} (${memberTier.discountPercent}%)`;
+    }
+    return `Ưu đãi thành viên ${tierNameVi} (${memberTier.discountPercent}%)`;
+  }, [user, memberTier]);
 
   const total = Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
@@ -2019,6 +2037,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             : [],
         discount: voucherDiscount + autoOrderDiscountAmount + memberDiscount,
         member_discount: memberDiscount,
+        member_tier: user && (memberTier.tier === "gold" || memberTier.tier === "diamond") ? memberTier.tier : undefined,
+        tier_discount_percent: user && (memberTier.tier === "gold" || memberTier.tier === "diamond") ? memberTier.discountPercent : undefined,
+        is_upgrade_reward: user && (memberTier.tier === "gold" || memberTier.tier === "diamond") ? Boolean(memberTier.isUpgradeCelebration) : undefined,
         description: description.trim() || undefined,
         is_apply_voucher: !!(appliedVoucher || appliedShippingVoucher),
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
@@ -2139,9 +2160,22 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               </div>
             </div>
 
-            <h2 className="title-1 text-primary border-b border-gray-100 pb-3">
-              Thông tin liên hệ
-            </h2>
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h2 className="title-1 text-primary">
+                Thông tin liên hệ
+              </h2>
+              {user && (memberTier.tier === "gold" || memberTier.tier === "diamond") && (
+                <span
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs sm:text-sm font-bold font-sans shadow-xs ${
+                    memberTier.tier === "diamond"
+                      ? "bg-purple-100 text-purple-700 border border-purple-200"
+                      : "bg-amber-100 text-amber-800 border border-amber-300"
+                  }`}
+                >
+                  {memberTier.tier === "diamond" ? "💎 Thành viên Kim Cương" : "🌟 Thành viên Vàng"}
+                </span>
+              )}
+            </div>
 
             {/* Họ và tên */}
             <div className="space-y-2">
@@ -3244,15 +3278,26 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 </div>
               )}
 
-              {memberDiscount > 0 && (
-                <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
-                  <span className="flex-1 min-w-0 leading-snug">
-                    {memberDiscountLabel || "Ưu đãi thành viên"}
-                  </span>
-                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
-                    -{formatPrice(memberDiscount)}
-                  </span>
-                </div>
+              {user && (memberTier.tier === "gold" || memberTier.tier === "diamond") && (
+                isExcludedByVoucher ? (
+                  <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                    <span className="flex-1 min-w-0 leading-snug">
+                      Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)
+                    </span>
+                    <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                      0đ
+                    </span>
+                  </div>
+                ) : memberDiscount > 0 ? (
+                  <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                    <span className="flex-1 min-w-0 leading-snug">
+                      {memberDiscountLabel || "Ưu đãi thành viên"}
+                    </span>
+                    <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                      -{formatPrice(memberDiscount)}
+                    </span>
+                  </div>
+                ) : null
               )}
 
               <div className="flex justify-between items-center text-sm font-medium border-t border-gray-200/60 pt-2.5">

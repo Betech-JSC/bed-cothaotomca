@@ -170,7 +170,9 @@ describe('Mobile Cart Click Fix: CartPopup must not close MobileCartFlow on clic
     expect(mockCartState.updateQuantity).toHaveBeenCalledWith('cart-item-1', 1);
 
     // 3. Click "[Xóa]" button inside mobile container
-    const deleteBtn = Array.from(plusButtons).find((b) => b.textContent?.includes('Xóa'));
+    const deleteBtn = Array.from(plusButtons).find(
+      (b) => b.textContent?.includes('Xóa') || b.getAttribute('aria-label')?.includes('Xóa')
+    );
     expect(deleteBtn).toBeDefined();
     fireEvent.mouseDown(deleteBtn!);
     fireEvent.click(deleteBtn!);
@@ -179,7 +181,9 @@ describe('Mobile Cart Click Fix: CartPopup must not close MobileCartFlow on clic
     expect(mockCartState.removeFromCart).toHaveBeenCalledWith('cart-item-1');
 
     // 4. Click voucher "Chọn mã" button inside mobile container
-    const selectVoucherBtn = Array.from(plusButtons).find((b) => b.textContent?.includes('Chọn mã'));
+    const selectVoucherBtn = Array.from(plusButtons).find(
+      (b) => b.textContent?.includes('Chọn mã') || b.getAttribute('aria-label')?.includes('Chọn mã')
+    );
     expect(selectVoucherBtn).toBeDefined();
     fireEvent.mouseDown(selectVoucherBtn!);
     fireEvent.click(selectVoucherBtn!);
