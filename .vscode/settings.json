@@ -3,13 +3,6 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "editor.tabSize": 2,
-  "task.allowAutomaticTasks": true,
   "debug.openDebug": "neverOpen",
-  "terminal.integrated.inheritEnv": false,
-  "tasks": {
-    "label": "lint on open",
-    "type": "shell",
-    "command": "npm run lint",
-    "runOn": "folderOpen"
-  }
+  "terminal.integrated.inheritEnv": false
 }
