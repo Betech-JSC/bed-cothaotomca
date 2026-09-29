@@ -7,6 +7,8 @@ import CardProduct from "@/components/Card/CardProduct";
 import Header from "@/components/Header";
 import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
 import MobileCartFlow from "@/components/Header/MobileCartFlow";
+import FloatingVoucherButton from "@/components/Voucher/FloatingVoucherButton";
+import PaymentQRScreen, { isValidHttpUrl } from "@/components/Checkout/PaymentQRScreen";
 import viMessages from "@/i18n/locales/vi.json";
 import { formatPrice } from "@/lib/format";
 
@@ -177,29 +179,30 @@ describe("Mobile UI Refinements: Card, Header Logo, Product Details, and Step 2 
       ],
     };
 
-    it("renders sale price with text-[19px] sm:text-xl md:text-xl font-extrabold tracking-tight leading-tight", () => {
+    it("renders sale price with text-xl sm:text-2xl md:text-xl font-extrabold font-display tracking-tight leading-tight", () => {
       render(<CardProduct item={discountedItem} />);
 
       const salePrice = screen.getByText(formatPrice(180000));
       expect(salePrice).toBeInTheDocument();
       expect(salePrice.className).toContain("title-2");
       expect(salePrice.className).toContain("text-secondary");
-      expect(salePrice.className).toContain("text-[19px]");
-      expect(salePrice.className).toContain("sm:text-xl");
+      expect(salePrice.className).toContain("text-xl");
+      expect(salePrice.className).toContain("sm:text-2xl");
       expect(salePrice.className).toContain("md:text-xl");
       expect(salePrice.className).toContain("font-extrabold");
+      expect(salePrice.className).toContain("font-display");
       expect(salePrice.className).toContain("tracking-tight");
       expect(salePrice.className).toContain("leading-tight");
     });
 
-    it("renders strikethrough original price with text-gray-400 line-through text-[11px] sm:text-xs md:text-sm font-medium mb-0.5", () => {
+    it("renders strikethrough original price with text-xs sm:text-xs md:text-sm text-gray-400 line-through font-medium mb-0.5", () => {
       render(<CardProduct item={discountedItem} />);
 
       const origPrice = screen.getByText(formatPrice(220000));
       expect(origPrice).toBeInTheDocument();
       expect(origPrice.className).toContain("text-gray-400");
       expect(origPrice.className).toContain("line-through");
-      expect(origPrice.className).toContain("text-[11px]");
+      expect(origPrice.className).toContain("text-xs");
       expect(origPrice.className).toContain("sm:text-xs");
       expect(origPrice.className).toContain("md:text-sm");
       expect(origPrice.className).toContain("font-medium");
@@ -220,7 +223,7 @@ describe("Mobile UI Refinements: Card, Header Logo, Product Details, and Step 2 
 
       const salePrice = screen.getByText(formatPrice(150000));
       expect(salePrice).toBeInTheDocument();
-      expect(salePrice.className).toContain("text-[19px]");
+      expect(salePrice.className).toContain("text-xl");
       expect(salePrice.className).toContain("font-extrabold");
 
       // No strikethrough price element
@@ -328,6 +331,34 @@ describe("Mobile UI Refinements: Card, Header Logo, Product Details, and Step 2 
       expect(origPrice.className).toContain("line-through");
       expect(origPrice.className).toContain("leading-tight");
     });
+
+    it("calls addToCart and opens cart drawer on mobile (<1024px) when clicking 'Mua ngay'", () => {
+      Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 500 });
+      render(<ProductDetailsInfo productData={productDataWithDiscount} />);
+
+      const buyNowBtn = screen.getByRole("button", { name: /mua ngay/i });
+      fireEvent.click(buyNowBtn);
+
+      expect(mockCartState.addToCart).toHaveBeenCalled();
+      expect(mockCartState.setIsCartOpen).toHaveBeenCalledWith(true);
+    });
+
+    it("calls addToCart and redirects to checkout on desktop (>=1024px) when clicking 'Mua ngay'", () => {
+      Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1200 });
+      const originalLocation = window.location;
+      delete (window as any).location;
+      (window as any).location = { href: "" };
+
+      render(<ProductDetailsInfo productData={productDataWithDiscount} />);
+
+      const buyNowBtn = screen.getByRole("button", { name: /mua ngay/i });
+      fireEvent.click(buyNowBtn);
+
+      expect(mockCartState.addToCart).toHaveBeenCalled();
+      expect(window.location.href).toBe("/checkout");
+
+      (window as any).location = originalLocation;
+    });
   });
 
   // =========================================================================
@@ -409,6 +440,77 @@ describe("Mobile UI Refinements: Card, Header Logo, Product Details, and Step 2 
       const trashBtn = screen.getByRole("button", { name: "Xóa món" });
       expect(trashBtn).toBeInTheDocument();
       expect(trashBtn.className).toContain("text-red-500");
+    });
+
+    it("renders Step 1 CTA button with label 'Tiếp tục'", () => {
+      render(<MobileCartFlow inline={false} />);
+      const ctaBtn = screen.getByRole("button", { name: "Tiếp tục" });
+      expect(ctaBtn).toBeInTheDocument();
+      expect(ctaBtn.className).toContain("bg-secondary");
+    });
+  });
+
+  // =========================================================================
+  // Scope 5: Nút nổi Ưu đãi (FloatingVoucherButton.tsx)
+  // =========================================================================
+  describe("5. FloatingVoucherButton Mobile Mini Capsule & Desktop Sizing", () => {
+    it("renders with mini capsule classes on mobile and full sizing on desktop", () => {
+      render(<FloatingVoucherButton />);
+
+      const button = screen.getByRole("button", { name: "Xem ưu đãi và khuyến mãi" });
+      expect(button).toBeInTheDocument();
+      expect(button.className).toContain("px-2");
+      expect(button.className).toContain("py-1");
+      expect(button.className).toContain("gap-1");
+      expect(button.className).toContain("md:px-3.5");
+      expect(button.className).toContain("md:py-2.5");
+      expect(button.className).toContain("md:gap-2");
+
+      const label = screen.getByText("Ưu đãi");
+      expect(label.className).toContain("text-[11px]");
+      expect(label.className).toContain("md:title-3");
+    });
+  });
+
+  // =========================================================================
+  // Scope 6: Kiểm tra URL và Fallback VietQR (PaymentQRScreen.tsx)
+  // =========================================================================
+  describe("6. PaymentQRScreen Client Validation & Fallback", () => {
+    it("correctly identifies valid and invalid URLs via isValidHttpUrl", () => {
+      expect(isValidHttpUrl("https://img.vietqr.io/image/MB-0123-compact2.png")).toBe(true);
+      expect(isValidHttpUrl("http://example.com/qr.png")).toBe(true);
+      expect(isValidHttpUrl("data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==")).toBe(true);
+      expect(isValidHttpUrl("00020101021238540010A00000072701260006970422")).toBe(false);
+      expect(isValidHttpUrl("")).toBe(false);
+      expect(isValidHttpUrl(undefined)).toBe(false);
+    });
+
+    it("falls back to generated VietQR QuickLink when qr_url is invalid", () => {
+      const orderWithRawCode: any = {
+        order_code: "ORD-12345",
+        status: "pending",
+        payment_status: "pending",
+        subtotal: "150000",
+        total: "180000",
+        delivery_price: "30000",
+        expire_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        qr_url: "00020101021238540010A00000072701260006970422",
+        qr_info: {
+          bank_code: "MB",
+          bank_account: "0999999999",
+          account_name: "CO THAO TOM CA",
+          amount: 180000,
+          content: "ORD-12345",
+        },
+      };
+
+      render(<PaymentQRScreen orderData={orderWithRawCode} phone="0901234567" />);
+
+      const img = screen.getByRole("img", { name: "QR thanh toán VietQR" });
+      expect(img).toBeInTheDocument();
+      expect(img.getAttribute("src")).toContain("https://img.vietqr.io/image/MB-0999999999-compact2.png");
+      expect(img.getAttribute("src")).toContain("amount=180000");
+      expect(img.getAttribute("src")).toContain("addInfo=ORD-12345");
     });
   });
 });

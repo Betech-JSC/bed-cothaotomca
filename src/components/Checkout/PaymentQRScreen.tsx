@@ -40,6 +40,11 @@ function useCountdown(expireAt: string) {
   };
 }
 
+export function isValidHttpUrl(url?: string | null): boolean {
+  if (!url || typeof url !== "string") return false;
+  return url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:image/");
+}
+
 export default function PaymentQRScreen({
   orderData,
   phone,
@@ -56,6 +61,28 @@ export default function PaymentQRScreen({
   const [simulateError, setSimulateError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+
+  const fallbackBankCode = orderData.qr_info?.bank_code || orderData.qr_info?.bank_name || "MB";
+  const fallbackAccountNumber = (orderData.qr_info as any)?.account_number || orderData.qr_info?.bank_account || "";
+  const fallbackAccountName = orderData.qr_info?.account_name || "";
+  const fallbackAmount = orderData.total || orderData.qr_info?.amount || 0;
+  const fallbackAddInfo = orderData.order_code || orderData.qr_info?.content || "";
+
+  const quickLinkFallback = `https://img.vietqr.io/image/${fallbackBankCode}-${fallbackAccountNumber}-compact2.png?amount=${fallbackAmount}&addInfo=${encodeURIComponent(fallbackAddInfo)}&accountName=${encodeURIComponent(fallbackAccountName)}`;
+
+  const [currentQrUrl, setCurrentQrUrl] = useState<string>(() => {
+    return isValidHttpUrl(orderData.qr_url) ? orderData.qr_url : quickLinkFallback;
+  });
+
+  useEffect(() => {
+    setCurrentQrUrl(isValidHttpUrl(orderData.qr_url) ? orderData.qr_url : quickLinkFallback);
+  }, [orderData.qr_url, quickLinkFallback]);
+
+  const handleImageError = () => {
+    if (currentQrUrl !== quickLinkFallback) {
+      setCurrentQrUrl(quickLinkFallback);
+    }
+  };
 
   // Redirect khi đã thanh toán thành công hoặc đã đồng bộ
   useEffect(() => {
@@ -81,7 +108,7 @@ export default function PaymentQRScreen({
     if (countdown.isExpired || downloading) return;
     setDownloading(true);
     try {
-      const response = await fetch(orderData.qr_url);
+      const response = await fetch(currentQrUrl);
       if (!response.ok) throw new Error("Fetch QR image failed");
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -99,7 +126,7 @@ export default function PaymentQRScreen({
       console.warn("Blob download failed, fallback to direct open/download link", err);
       try {
         const link = document.createElement("a");
-        link.href = orderData.qr_url;
+        link.href = currentQrUrl;
         link.target = "_blank";
         link.download = `QR_Thanh_Toan_${orderData.order_code}.png`;
         document.body.appendChild(link);
@@ -154,11 +181,12 @@ export default function PaymentQRScreen({
               </div>
             ) : (
               <Image
-                src={orderData.qr_url}
+                src={currentQrUrl}
                 alt="QR thanh toán VietQR"
                 fill
                 className="object-contain"
                 unoptimized
+                onError={handleImageError}
               />
             )}
           </div>

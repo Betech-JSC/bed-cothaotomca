@@ -28,6 +28,22 @@ const nextConfig = {
         protocol: "https",
         hostname: "cothaotomca.vn",
       },
+      {
+        protocol: "https",
+        hostname: "img.vietqr.io",
+      },
+      {
+        protocol: "https",
+        hostname: "api.vietqr.io",
+      },
+      {
+        protocol: "https",
+        hostname: "dev.vietqr.org",
+      },
+      {
+        protocol: "https",
+        hostname: "pro.vietqr.vn",
+      },
     ],
   },
 };

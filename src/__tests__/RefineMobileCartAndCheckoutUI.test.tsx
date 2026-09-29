@@ -329,7 +329,7 @@ describe("OpenSpec refine-mobile-cart-and-checkout-ui Test Suite", () => {
       render(<MobileCartFlow inline={false} />);
 
       // Chuyển sang Bước 2
-      const checkoutBtn = screen.getByRole("button", { name: /Tiến hành đặt hàng|Thanh toán/i });
+      const checkoutBtn = screen.getByRole("button", { name: /Tiếp tục|Tiến hành đặt hàng|Thanh toán/i });
       fireEvent.click(checkoutBtn);
 
       // Nút quay lại Bước 1 (mũi tên ←)

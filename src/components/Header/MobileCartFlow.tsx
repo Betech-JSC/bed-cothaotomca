@@ -2272,7 +2272,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       : "bg-secondary hover:bg-secondary/95 text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)]"
                       }`}
                   >
-                    {t("checkout")}
+                    {t("continue") || "Tiếp tục"}
                   </button>
                 </>
               )}

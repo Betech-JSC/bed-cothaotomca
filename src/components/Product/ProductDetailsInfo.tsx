@@ -21,7 +21,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
-  const { addToCart } = useCart();
+  const { addToCart, setIsCartOpen } = useCart();
 
   const selectedSize = productData.sizes[selectedSizeIndex];
 
@@ -169,7 +169,11 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                 onClick={() => {
                   if (!isSelectedOutOfStock) {
                     handleAddToCart();
-                    window.location.href = "/checkout";
+                    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                      setIsCartOpen(true);
+                    } else {
+                      window.location.href = "/checkout";
+                    }
                   }
                 }}
                 className={`btn !min-w-0 w-full px-2 sm:px-3 text-[13px] sm:text-sm md:text-base font-bold tracking-normal flex items-center justify-center gap-1.5 sm:gap-2 ${
