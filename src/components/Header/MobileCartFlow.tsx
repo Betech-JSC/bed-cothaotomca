@@ -40,7 +40,7 @@ import {
   checkGuestTierByPhone,
   type GuestTierHint,
 } from "@/services/authService";
-import { buildDeliveryAddress, cleanDuplicateAddressParts } from "@/data/wardMapping";
+import { buildDeliveryAddress, cleanDuplicateAddressParts, resolveNewWardName } from "@/data/wardMapping";
 import GuestTierHintBanner from "@/components/Checkout/GuestTierHintBanner";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getEarliestPreOrderSlot, getVietnamDate, getVietnamTimeString, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
@@ -133,10 +133,21 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     setSelectedAddressId(addr.id);
     if (addr.recipient_name) setName(addr.recipient_name);
     if (addr.phone) setPhone(addr.phone);
-    if (addr.province) setSelectedProvince(addr.province);
+    if (addr.province) {
+      const cleanProv = addr.province.includes("Hồ Chí Minh") ? "TP. Hồ Chí Minh" : addr.province;
+      setSelectedProvince(cleanProv);
+    }
     if (addr.district) setSelectedDistrict(addr.district);
-    if (addr.ward) setSelectedWard(addr.ward);
-    if (addr.ward_id) setSelectedWardId(addr.ward_id);
+
+    // Tự động ánh xạ tên Phường cũ (VD: Phường 14) sang Phường mới (Nhiêu Lộc / Hòa Hưng)
+    const fullContext = addr.full_address || addr.street_address || "";
+    const resolvedName = resolveNewWardName(addr.ward || "", addr.district, fullContext);
+    const finalWard = resolvedName || addr.ward || "";
+    setSelectedWard(finalWard);
+    if (addr.ward_id) {
+      setSelectedWardId(addr.ward_id);
+    }
+
     const addrStreet = addr.street_address || addr.full_address || "";
     if (addrStreet) setStreetAddress(addrStreet);
   }, []);
