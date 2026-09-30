@@ -979,8 +979,28 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   });
   const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>("10:00");
   const [showNoticeModal, setShowNoticeModal] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        if (sessionStorage.getItem("preorder_notice_dismissed") === "true") {
+          return false;
+        }
+      } catch {
+        // ignore
+      }
+    }
     return !operatingStatus.canOrderNow && !!operatingStatus.notice;
   });
+
+  const handleCloseNoticeModal = useCallback(() => {
+    setShowNoticeModal(false);
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("preorder_notice_dismissed", "true");
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!operatingStatus.canOrderNow) {
@@ -3446,7 +3466,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
       <PreOrderNoticeModal
         isOpen={showNoticeModal}
-        onClose={() => setShowNoticeModal(false)}
+        onClose={handleCloseNoticeModal}
         notice={operatingStatus.notice}
       />
 

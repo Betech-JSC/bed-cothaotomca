@@ -300,7 +300,31 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [deliverySchedule, setDeliverySchedule] = useState<"now" | "schedule">("now");
   const [deliveryDate, setDeliveryDate] = useState<string>("");
   const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>("10:00");
-  const [showNoticeModal, setShowNoticeModal] = useState<boolean>(false);
+  const [showNoticeModal, setShowNoticeModal] = useState<boolean>(() => {
+    if (inline) return false;
+    if (typeof window !== "undefined") {
+      try {
+        if (sessionStorage.getItem("preorder_notice_dismissed") === "true") {
+          return false;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return false;
+  });
+
+  const handleCloseNoticeModal = useCallback(() => {
+    setShowNoticeModal(false);
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("preorder_notice_dismissed", "true");
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
   const [description, setDescription] = useState("");
   const [confirmInfo, setConfirmInfo] = useState(true);
@@ -370,13 +394,20 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     if (operatingStatus) {
       if (!operatingStatus.canOrderNow) {
         setDeliverySchedule("schedule");
-        setShowNoticeModal(!!operatingStatus.notice);
+        if (!inline) {
+          const isDismissed =
+            typeof window !== "undefined" &&
+            sessionStorage.getItem("preorder_notice_dismissed") === "true";
+          if (!isDismissed) {
+            setShowNoticeModal(!!operatingStatus.notice);
+          }
+        }
       }
       if (operatingStatus.defaultDate) {
         setDeliveryDate(operatingStatus.defaultDate);
       }
     }
-  }, [operatingStatus]);
+  }, [operatingStatus, inline]);
 
   const availableDeliveryDates = useMemo(() => {
     const dates: { iso: string; label: string }[] = [];
@@ -3214,11 +3245,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       </div>
     </div>
 
-      <PreOrderNoticeModal
-        isOpen={showNoticeModal}
-        onClose={() => setShowNoticeModal(false)}
-        notice={operatingStatus.notice}
-      />
+      {!inline && (
+        <PreOrderNoticeModal
+          isOpen={showNoticeModal}
+          onClose={handleCloseNoticeModal}
+          notice={operatingStatus.notice}
+        />
+      )}
 
       <CouponModal
         isOpen={isVoucherModalOpen}
