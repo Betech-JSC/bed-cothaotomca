@@ -4,6 +4,8 @@ import "@testing-library/jest-dom";
 import React from "react";
 import MobileCartFlow from "@/components/Header/MobileCartFlow";
 import VoucherTicketBar from "@/components/Checkout/VoucherTicketBar";
+import FloatingVoucherButton from "@/components/Voucher/FloatingVoucherButton";
+import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 import viMessages from "@/i18n/locales/vi.json";
 import { formatPrice } from "@/lib/format";
 
@@ -39,6 +41,8 @@ vi.mock("next-intl", () => ({
 }));
 
 // Mock routing
+let mockCurrentPath = "/";
+
 vi.mock("@/i18n/routing", () => ({
   Link: ({ children, href, className, ...props }: any) => (
     <a href={typeof href === "string" ? href : "#"} className={className} {...props}>
@@ -46,7 +50,7 @@ vi.mock("@/i18n/routing", () => ({
     </a>
   ),
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
-  usePathname: () => "/checkout",
+  usePathname: () => mockCurrentPath,
 }));
 
 vi.mock("@/i18n/i18n-navigation", () => ({
@@ -56,7 +60,7 @@ vi.mock("@/i18n/i18n-navigation", () => ({
     </a>
   ),
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
-  usePathname: () => "/checkout",
+  usePathname: () => mockCurrentPath,
 }));
 
 vi.mock("next/image", () => ({
@@ -107,10 +111,85 @@ vi.mock("@/contexts/BranchContext", () => ({
   }),
 }));
 
+let mockShippingResult: any = {
+  fee: 30000,
+  shipping_fee: 30000,
+  original_fee: 30000,
+  shipping_discount: 0,
+  is_freeship: false,
+  is_deliverable: true,
+  is_configured_area: true,
+  branch_id: 1,
+  branch_name: "Chi nhánh 1",
+  message: null,
+};
+
+let mockAvailableVouchers: any[] = [];
+
+vi.mock("@/services/orderService", async () => {
+  const actual: any = await vi.importActual("@/services/orderService");
+  return {
+    ...actual,
+    getCheckoutConfig: vi.fn(async () => ({
+      default_shipping_fee: "30000",
+      operating_hours: { enabled: true, start_hour: 9, end_hour: 23 },
+      branches: [{ id: 1, branchName: "Chi nhánh 1", address: "123 Le Loi" }],
+      payment_methods: { cod: { enabled: true }, qr: { enabled: true } },
+    })),
+    getAvailableVouchers: vi.fn(async () => mockAvailableVouchers),
+    getShippingSettings: vi.fn(async () => null),
+    getAdministrativeUnits: vi.fn(async () => []),
+    getLoyaltySettings: vi.fn(async () => null),
+    calculateShippingFee: vi.fn(async () => mockShippingResult),
+    validateVoucher: vi.fn(async (code: string) => {
+      const v = mockAvailableVouchers.find((item) => item.code === code);
+      if (v) {
+        return { valid: true, voucher: v, message: "Hợp lệ" };
+      }
+      return { valid: false, message: "Mã không hợp lệ" };
+    }),
+  };
+});
+
+vi.mock("@/services/generalSettingService", () => ({
+  getGeneralSettings: vi.fn(async () => ({ hotline: "024.9999.7122" })),
+}));
+
+vi.mock("@/services/authService", async () => {
+  const actual: any = await vi.importActual("@/services/authService");
+  return {
+    ...actual,
+    getCustomerAddressesApi: vi.fn(async () => []),
+    getCachedCustomerAddresses: vi.fn(() => []),
+    setCachedCustomerAddresses: vi.fn(),
+    checkGuestTierByPhone: vi.fn(async () => null),
+  };
+});
+
+vi.mock("@/services/campaignService", () => ({
+  getActiveCampaigns: vi.fn(async () => []),
+}));
+
 describe("OpenSpec refine-mobile-cart-and-checkout-ui Test Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCurrentPath = "/";
+    window.__MOCK_TIME__ = "11:00";
+    localStorage.clear();
     mockUser = null;
+    mockAvailableVouchers = [];
+    mockShippingResult = {
+      fee: 30000,
+      shipping_fee: 30000,
+      original_fee: 30000,
+      shipping_discount: 0,
+      is_freeship: false,
+      is_deliverable: true,
+      is_configured_area: true,
+      branch_id: 1,
+      branch_name: "Chi nhánh 1",
+      message: null,
+    };
     mockCartItems = [
       {
         id: "item-1",
@@ -329,7 +408,7 @@ describe("OpenSpec refine-mobile-cart-and-checkout-ui Test Suite", () => {
       render(<MobileCartFlow inline={false} />);
 
       // Chuyển sang Bước 2
-      const checkoutBtn = screen.getByRole("button", { name: /Tiếp tục|Tiến hành đặt hàng|Thanh toán/i });
+      const checkoutBtn = screen.getByRole("button", { name: /^Tiếp tục$/i });
       fireEvent.click(checkoutBtn);
 
       // Nút quay lại Bước 1 (mũi tên ←)
@@ -339,6 +418,191 @@ describe("OpenSpec refine-mobile-cart-and-checkout-ui Test Suite", () => {
 
       // Quay lại Bước 1: hiển thị lại sản phẩm
       expect(screen.getByText("Cá Bống Kho Tiêu")).toBeInTheDocument();
+    });
+  });
+
+  // =========================================================================
+  // Part 5: OpenSpec refine-mobile-cart-pricing-and-operating-notice
+  // =========================================================================
+  describe("Phần 5: refine-mobile-cart-pricing-and-operating-notice", () => {
+    it("Task 1: Thứ tự giá món ăn trong giỏ hàng Mobile (giá bán ở trên, giá gốc gạch ngang ở dưới)", () => {
+      render(<MobileCartFlow inline={false} />);
+
+      // Giá bán sau giảm
+      const unitPrice = screen.getByText(formatPrice(120000));
+      expect(unitPrice).toBeInTheDocument();
+      expect(unitPrice.className).toContain("font-display");
+      expect(unitPrice.className).toContain("text-secondary");
+      expect(unitPrice.className).toContain("font-bold");
+
+      // Giá gốc gạch ngang
+      const origPrice = screen.getByText(formatPrice(150000));
+      expect(origPrice).toBeInTheDocument();
+      expect(origPrice.className).toContain("line-through");
+      expect(origPrice.className).toContain("text-gray-400");
+
+      // Kiểm tra thứ tự DOM: unitPrice nằm trên origPrice trong cùng container
+      const priceContainer = unitPrice.parentElement;
+      expect(priceContainer).toBe(origPrice.parentElement);
+      expect(unitPrice.compareDocumentPosition(origPrice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("Task 2.1: PreOrderNoticeModal hỗ trợ prop zIndex tùy chọn, mặc định z-50", () => {
+      const notice = {
+        title: "Thông Báo Ngoài Giờ",
+        message: "Cửa hàng hiện đóng cửa.",
+        storeOpen: "09:00",
+        cutoff: "22:30",
+        slotInfo: "10:00 - 23:00",
+        targetDateDisplay: "Hôm nay",
+      };
+
+      const { rerender } = render(
+        <PreOrderNoticeModal isOpen={true} onClose={vi.fn()} notice={notice as any} />
+      );
+
+      // Mặc định: z-50 cho Desktop
+      const backdropDefault = document.querySelector(".fixed.inset-0");
+      expect(backdropDefault?.className).toContain("z-50");
+
+      // Khi truyền zIndex="z-[200]" cho Mobile
+      rerender(
+        <PreOrderNoticeModal isOpen={true} onClose={vi.fn()} notice={notice as any} zIndex="z-[200]" />
+      );
+      const backdropMobile = document.querySelector(".fixed.inset-0");
+      expect(backdropMobile?.className).toContain("z-[200]");
+    });
+
+    it("Task 2.2: MobileCartFlow tự động mở PreOrderNoticeModal ngoài giờ với zIndex z-[200]", () => {
+      window.__MOCK_TIME__ = "08:00"; // ngoài giờ phục vụ
+      render(<MobileCartFlow inline={false} />);
+
+      // PreOrderNoticeModal tự động mở
+      expect(screen.getByText("Thông Báo Đặt Hàng Hẹn Giờ")).toBeInTheDocument();
+      const modalBackdrop = document.querySelector(".fixed.inset-0.z-\\[200\\]");
+      expect(modalBackdrop).toBeInTheDocument();
+    });
+
+    it("Task 3: Nút Ưu Đãi Nổi đạt chuẩn touch target ~38-40px và vị trí an toàn", () => {
+      const { container } = render(<FloatingVoucherButton />);
+
+      // Container vị trí bottom-5 left-3.5
+      const wrapper = container.querySelector(".fixed");
+      expect(wrapper?.className).toContain("bottom-5");
+      expect(wrapper?.className).toContain("left-3.5");
+
+      // Nút bấm: px-3.5 py-2
+      const btn = screen.getByRole("button", { name: "Xem ưu đãi và khuyến mãi" });
+      expect(btn.className).toContain("px-3.5");
+      expect(btn.className).toContain("py-2");
+
+      // Chữ "Ưu đãi": font-display text-xs sm:text-sm md:title-3 font-bold
+      const text = screen.getByText("Ưu đãi");
+      expect(text.className).toContain("text-xs");
+      expect(text.className).toContain("font-bold");
+
+      // Icon vé
+      const svg = btn.querySelector("svg");
+      expect(svg?.getAttribute("class")).toContain("w-4.5");
+      expect(svg?.getAttribute("class")).toContain("h-4.5");
+    });
+
+    it("Task 4.1: Dòng Phí giao hàng Step 1 hiển thị giá gốc gạch ngang khi có Freeship hoặc giảm ship", async () => {
+      mockShippingResult = {
+        fee: 0,
+        shipping_fee: 0,
+        original_fee: 35000,
+        shipping_discount: 35000,
+        is_freeship: true,
+        is_deliverable: true,
+      };
+
+      render(<MobileCartFlow inline={false} />);
+
+      await screen.findByText(formatPrice(35000));
+      expect(screen.getByText("0đ")).toBeInTheDocument();
+      const origFee = screen.getByText(formatPrice(35000));
+      expect(origFee.className).toContain("line-through");
+      expect(origFee.className).toContain("text-gray-400");
+    });
+
+    it("Task 4.2: Dòng Phí giao hàng Step 2 nằm dưới Tạm tính và hiển thị đúng theo chuẩn Desktop", async () => {
+      mockShippingResult = {
+        fee: 20000,
+        shipping_fee: 20000,
+        original_fee: 30000,
+        shipping_discount: 10000,
+        is_freeship: false,
+        is_deliverable: true,
+      };
+
+      render(<MobileCartFlow inline={true} />);
+
+      // Phí giao hàng nằm ngay dưới Tạm tính
+      const subtotalLabel = screen.getByText("Tạm tính");
+      const shippingLabel = screen.getByText("Phí giao hàng");
+      expect(subtotalLabel.compareDocumentPosition(shippingLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+      // Trong Step 2, khi chưa chọn địa chỉ/phường xã thì phí vận chuyển hiển thị '--' (chuẩn Desktop)
+      expect(screen.getByText("--")).toBeInTheDocument();
+    });
+
+    it("Task 4.3: Dòng Mã giảm giá Step 2 chỉ hiển thị tiền giảm món, không gộp giảm ship", async () => {
+      mockAvailableVouchers = [
+        {
+          id: 1,
+          code: "GIAM20K",
+          title: "Giảm 20k món ăn",
+          value: 20000,
+          discount_type: "fixed",
+          discountType: "fixed",
+          can_combine_with_promotions: true,
+          prereq_price: 100000,
+        },
+      ];
+
+      // Đơn hàng có cả giảm ship 10k
+      mockShippingResult = {
+        fee: 20000,
+        shipping_fee: 20000,
+        original_fee: 30000,
+        shipping_discount: 10000,
+        is_freeship: false,
+        is_deliverable: true,
+      };
+
+      // Lưu voucher vào localStorage để MobileCartFlow tự load
+      localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify(["GIAM20K"]));
+
+      render(<MobileCartFlow inline={true} />);
+
+      // Dòng Mã giảm giá chỉ hiển thị -20.000 VNĐ (tiền giảm món), KHÔNG gộp -30.000 VNĐ
+      await screen.findByText(`-${formatPrice(20000)}`);
+      expect(screen.getByText(`-${formatPrice(20000)}`)).toBeInTheDocument();
+      expect(screen.queryByText(`-${formatPrice(30000)}`)).not.toBeInTheDocument();
+    });
+
+    it("Task 4.4: Dòng Mã giảm giá Step 2 ẩn hoàn toàn khi không có voucher giảm món", async () => {
+      // Chỉ có freeship, không có voucher giảm món
+      mockShippingResult = {
+        fee: 0,
+        shipping_fee: 0,
+        original_fee: 30000,
+        shipping_discount: 30000,
+        is_freeship: true,
+        is_deliverable: true,
+      };
+
+      localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
+
+      render(<MobileCartFlow inline={true} />);
+
+      // Chờ tóm tắt đơn hàng hiển thị
+      expect(await screen.findByText("Tổng thanh toán")).toBeInTheDocument();
+
+      // Dòng "Mã giảm giá" trong bảng tóm tắt không render (không có số tiền âm -...đ)
+      const negativePrices = screen.queryAllByText(/^-\d/);
+      expect(negativePrices.length).toBe(0);
     });
   });
 });

@@ -45,17 +45,17 @@ export default function FloatingVoucherButton() {
 
   return (
     <>
-      <div className="fixed bottom-4 left-3 md:bottom-8 md:left-8 z-40 select-none pointer-events-auto">
+      <div className="fixed bottom-5 left-3.5 md:bottom-8 md:left-8 z-40 select-none pointer-events-auto">
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center gap-1 md:gap-2 px-2 py-1 md:px-3.5 md:py-2.5 bg-white text-secondary rounded-full shadow-[0_6px_20px_rgba(205,72,41,0.22)] hover:shadow-[0_10px_28px_rgba(205,72,41,0.35)] hover:scale-105 active:scale-95 transition-all duration-300 border-2 border-secondary/30 hover:border-secondary cursor-pointer animate-in fade-in"
+          className="group relative flex items-center gap-1.5 md:gap-2 px-3.5 py-2 md:px-3.5 md:py-2.5 bg-white text-secondary rounded-full shadow-[0_6px_20px_rgba(205,72,41,0.22)] hover:shadow-[0_10px_28px_rgba(205,72,41,0.35)] hover:scale-105 active:scale-95 transition-all duration-300 border-2 border-secondary/30 hover:border-secondary cursor-pointer animate-in fade-in"
           aria-label="Xem ưu đãi và khuyến mãi"
         >
           {/* Brand-colored Ticket Icon */}
-          <div className="w-4 h-4 md:w-6 md:h-6 flex items-center justify-center text-secondary">
+          <div className="w-5 h-5 md:w-6 md:h-6 flex items-center justify-center text-secondary">
             <svg
-              className="w-3.5 h-3.5 md:w-5 md:h-5 fill-none stroke-current"
+              className="w-4.5 h-4.5 md:w-5 md:h-5 fill-none stroke-current"
               viewBox="0 0 24 24"
               strokeWidth="2.2"
               strokeLinecap="round"
@@ -67,21 +67,21 @@ export default function FloatingVoucherButton() {
           </div>
 
           {/* Clean "Ưu đãi" text matching brand visual */}
-          <span className="font-display text-[11px] md:title-3 font-bold text-secondary tracking-tight md:tracking-wide pr-0.5">
+          <span className="font-display text-xs sm:text-sm md:title-3 font-bold text-secondary tracking-tight md:tracking-wide pr-0.5">
             Ưu đãi
           </span>
 
           {/* Badge count */}
           {totalPromotions > 0 && (
-            <span className="bg-secondary text-white font-display font-bold text-[9px] md:text-[11px] px-1 md:px-1.5 py-0 md:py-0.2 rounded-full min-w-[15px] md:min-w-[20px] text-center shadow-xs shrink-0">
+            <span className="bg-secondary text-white font-display font-bold text-[10px] md:text-[11px] px-1.5 py-0.5 md:py-0.2 rounded-full min-w-[18px] md:min-w-[20px] text-center shadow-xs shrink-0">
               {totalPromotions}
             </span>
           )}
 
           {/* Subtle pulse ring */}
-          <span className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 flex h-2 w-2 md:h-3 md:w-3">
+          <span className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 flex h-2.5 w-2.5 md:h-3 md:w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary/40 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-secondary" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 md:h-3 md:w-3 bg-secondary" />
           </span>
         </button>
       </div>

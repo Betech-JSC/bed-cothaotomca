@@ -299,17 +299,49 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const availableWards = useMemo(() => {
     return currentProvinceData?.wards || [];
   }, [currentProvinceData]);
-  const [deliverySchedule, setDeliverySchedule] = useState<"now" | "schedule">("now");
-  const [deliveryDate, setDeliveryDate] = useState<string>("");
-  const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>("10:00");
-  const [showNoticeModal, setShowNoticeModal] = useState<boolean>(false);
-  const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
-  const [description, setDescription] = useState("");
-  const [confirmInfo, setConfirmInfo] = useState(true);
 
   // Config
   const [config, setConfig] = useState<CheckoutConfig | null>(null);
   const branches = useBranches();
+
+  // Operating hours check (09:00 - 23:00)
+  const operatingStatus = useMemo(() => {
+    return checkOperatingHours(config?.operating_hours, undefined, deliveryType);
+  }, [config?.operating_hours, deliveryType]);
+
+  const [deliverySchedule, setDeliverySchedule] = useState<"now" | "schedule">(() => {
+    return operatingStatus.defaultDeliverySchedule || "now";
+  });
+  const [deliveryDate, setDeliveryDate] = useState<string>(() => {
+    return operatingStatus.defaultDate || "";
+  });
+  const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>("10:00");
+  const [showNoticeModal, setShowNoticeModal] = useState<boolean>(() => {
+    return !operatingStatus.canOrderNow && !!operatingStatus.notice;
+  });
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
+  const [description, setDescription] = useState("");
+  const [confirmInfo, setConfirmInfo] = useState(true);
+
+  useEffect(() => {
+    if (operatingStatus) {
+      if (!operatingStatus.canOrderNow) {
+        setDeliverySchedule("schedule");
+        if (operatingStatus.notice) {
+          setShowNoticeModal(true);
+        }
+      }
+      if (operatingStatus.defaultDate) {
+        setDeliveryDate(operatingStatus.defaultDate);
+      }
+    }
+  }, [operatingStatus]);
+
+  useEffect(() => {
+    if ((isCartOpen || inline) && !operatingStatus.canOrderNow && !!operatingStatus.notice) {
+      setShowNoticeModal(true);
+    }
+  }, [isCartOpen, inline, operatingStatus.canOrderNow, operatingStatus.notice]);
 
   // Member card & loyalty settings state
   const [isMemberCardSelected, setIsMemberCardSelected] = useState<boolean>(true);
@@ -369,23 +401,6 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   // Pending order (bank transfer QR)
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
-
-  // Operating hours check (09:00 - 23:00)
-  const operatingStatus = useMemo(() => {
-    return checkOperatingHours(config?.operating_hours, undefined, deliveryType);
-  }, [config?.operating_hours, deliveryType]);
-
-  useEffect(() => {
-    if (operatingStatus) {
-      if (!operatingStatus.canOrderNow) {
-        setDeliverySchedule("schedule");
-        setShowNoticeModal(!!operatingStatus.notice);
-      }
-      if (operatingStatus.defaultDate) {
-        setDeliveryDate(operatingStatus.defaultDate);
-      }
-    }
-  }, [operatingStatus]);
 
   const availableDeliveryDates = useMemo(() => {
     const dates: { iso: string; label: string }[] = [];
@@ -545,6 +560,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [freeshipReason, setFreeshipReason] = useState<string | null>(null);
   const [isDeliverable, setIsDeliverable] = useState<boolean>(true);
   const [shippingMessage, setShippingMessage] = useState<string | null>(null);
+  const [calculatingShipping, setCalculatingShipping] = useState<boolean>(false);
 
   useEffect(() => {
     getShippingSettings().then(setShippingSettings);
@@ -699,9 +715,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       setIsFreeship(false);
       setIsDeliverable(true);
       setShippingMessage(null);
+      setCalculatingShipping(false);
       return;
     }
 
+    setCalculatingShipping(true);
     calculateShippingFee({
       province: selectedProvince,
       district: selectedDistrict,
@@ -756,6 +774,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       })
       .catch((err) => {
         console.error("Failed to calculate shipping in mobile cart flow:", err);
+      })
+      .finally(() => {
+        setCalculatingShipping(false);
       });
   }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, appliedShippingVoucher, config?.branches, cartCampaignG1]);
 
@@ -2003,18 +2024,18 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 )}
                               </div>
                               <div className="text-right shrink-0">
-                                {!isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice ? (
-                                  <p className="text-xs text-gray-400 line-through font-medium leading-tight">
-                                    {formatPrice(item.originalPrice)}
-                                  </p>
-                                ) : null}
-                                <span className="font-display text-secondary text-base sm:text-lg font-bold leading-tight whitespace-nowrap">
+                                <span className="font-display text-secondary text-base sm:text-lg font-bold leading-tight whitespace-nowrap block">
                                   {formatPrice(
                                     isBestDealVoucherApplied
                                       ? ((item.originalPrice && item.originalPrice > item.unitPrice) ? item.originalPrice : item.unitPrice)
                                       : item.unitPrice
                                   )}
                                 </span>
+                                {!isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice ? (
+                                  <p className="text-xs text-gray-400 line-through font-medium leading-tight">
+                                    {formatPrice(item.originalPrice)}
+                                  </p>
+                                ) : null}
                               </div>
                             </div>
                             {!isDefaultVariant(item.variant) && (
@@ -2176,18 +2197,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   )}
 
                   {/* Summary Panel */}
-                  <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3">
+                  <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3 font-sans">
+                    {/* 1) Tạm tính */}
                     <div className="flex justify-between items-center text-base">
                       <span className="text-gray-500 font-medium">{t("subtotal")}</span>
                       <span className="text-primary font-bold font-display">{formatPrice(displaySubtotal)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-base">
-                      <span className="text-gray-500 font-medium">{t("shipping_fee")}</span>
-                      <span className="text-primary font-bold font-display">
-                        {!selectedDistrict ? "--" : isFreeship ? "0đ" : shipping > 0 ? formatPrice(shipping) : "--"}
-                      </span>
-                    </div>
-                    {/* Khuyến mãi đơn hàng tự động */}
+
+                    {/* 2) Khuyến mãi đơn hàng tự động */}
                     {autoOrderDiscountAmount > 0 && (
                       <div className="flex justify-between items-center text-base text-secondary font-semibold">
                         <span className="flex-1 min-w-0 pr-1">{eligibleOrderDiscountPromo?.name}</span>
@@ -2196,7 +2213,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         </span>
                       </div>
                     )}
-                    {/* Mã giảm giá món ăn (chỉ hiển thị khi có giảm giá > 0đ, tránh hiện chữ Liên hệ) */}
+
+                    {/* 3) Mã giảm giá món ăn (chỉ hiển thị khi có giảm giá > 0đ, tránh hiện chữ Liên hệ) */}
                     {appliedVoucher && foodVoucherDiscount > 0 && (
                       <div className="flex justify-between items-center text-base text-secondary font-semibold">
                         <span className="text-gray-500 flex-1 min-w-0">{t("voucher_label")}</span>
@@ -2205,7 +2223,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         </span>
                       </div>
                     )}
-                    {/* Ưu đãi chiết khấu thành viên */}
+
+                    {/* 4) Ưu đãi chiết khấu thành viên */}
                     {user && (memberTier.tier === "gold" || memberTier.tier === "diamond") && (
                       !isMemberCardSelected ? (
                         <div className="flex justify-between items-center text-sm font-medium text-gray-500 animate-fade-in gap-2">
@@ -2246,10 +2265,44 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         </div>
                       )
                     )}
+
+                    {/* 5) Phí vận chuyển (ở Bước 1) */}
+                    <div className="flex justify-between items-center text-base">
+                      <span className="text-gray-500 font-medium">{t("shipping_fee")}</span>
+                      <div className="text-right">
+                        {isFreeship ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            {originalFee > 0 && (
+                              <span className="text-xs text-gray-400 line-through font-medium">
+                                {formatPrice(originalFee)}
+                              </span>
+                            )}
+                            <span className="text-secondary font-bold font-display">0đ</span>
+                          </div>
+                        ) : (shippingDiscount > 0 || shippingVoucherDiscount > 0) && originalFee > shipping ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className="text-xs text-gray-400 line-through font-medium">
+                              {formatPrice(originalFee)}
+                            </span>
+                            <span className="text-primary font-bold font-display">
+                              {formatPrice(shipping)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-primary font-bold font-display">
+                            {deliveryType === "pickup" ? "0đ" : shipping > 0 ? formatPrice(shipping) : "--"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 6) Tổng thanh toán */}
                     <div className="flex justify-between items-center text-base pt-2 border-t border-gray-100">
                       <span className="text-gray-900 font-bold">{t("total")}</span>
                       <span className="text-secondary font-bold font-display text-lg">{formatPrice(total)}</span>
                     </div>
+
+                    {/* 7) Dòng tích lũy điểm thưởng */}
                     {user && total > 0 && Math.floor(total / 10000) > 0 && (
                       <div className="text-xs text-secondary font-semibold text-right flex items-center justify-end gap-1.5 pt-2 border-t border-dashed border-gray-200">
                         <span>Đơn hàng này sẽ tích lũy thêm {Math.floor(total / 10000)} điểm</span>
@@ -2294,41 +2347,198 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 </div>
               </div>
 
-              {/* Thẻ Tóm tắt Tiền tinh gọn 4 dòng */}
-              <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-3 font-sans">
+              {/* Thẻ Tóm tắt Tiền tinh gọn Step 2 */}
+              <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-2.5 font-sans">
                 {/* 1) Tạm tính */}
-                <div className="flex justify-between items-center text-sm sm:text-base">
-                  <span className="text-gray-500 font-medium">{t("subtotal")}</span>
-                  <span className="text-primary font-bold font-display">{formatPrice(displaySubtotal)}</span>
+                <div className="flex justify-between items-center text-sm font-medium">
+                  <span className="text-gray-600">{t("subtotal")}</span>
+                  <span className="text-primary font-bold text-base">
+                    {formatPrice(displaySubtotal)}
+                  </span>
                 </div>
 
-                {/* 2) Giảm giá (CTKM / Thành viên) */}
-                {autoOrderDiscountAmount + memberDiscount > 0 && (
-                  <div className="flex justify-between items-center text-sm sm:text-base text-secondary font-semibold">
-                    <span className="flex-1 min-w-0 pr-1">Giảm giá (CTKM / Thành viên)</span>
-                    <span className="shrink-0 whitespace-nowrap text-right">
-                      -{formatPrice(autoOrderDiscountAmount + memberDiscount)}
+                {/* 2) Giảm giá chiến dịch đơn hàng (order_discount) */}
+                {autoOrderDiscountAmount > 0 && (
+                  <div className="flex justify-between items-start gap-3 text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 animate-fade-in">
+                    <div className="flex-1 min-w-0 pr-1 leading-snug">
+                      <span>{eligibleOrderDiscountPromo?.name}</span>
+                    </div>
+                    <span className="font-bold text-base shrink-0 whitespace-nowrap text-right leading-snug">
+                      -{formatPrice(autoOrderDiscountAmount)}
                     </span>
                   </div>
                 )}
 
-                {/* 3) Mã giảm giá */}
-                {foodVoucherDiscount + Math.max(shippingDiscount, shippingVoucherDiscount) > 0 && (
-                  <div className="flex justify-between items-center text-sm sm:text-base text-secondary font-semibold">
-                    <span className="text-gray-500 flex-1 min-w-0">Mã giảm giá</span>
-                    <span className="shrink-0 whitespace-nowrap text-right">
-                      -{formatPrice(foodVoucherDiscount + Math.max(shippingDiscount, shippingVoucherDiscount))}
+                {/* 3) Mã giảm giá món ăn (CHỈ HIỂN THỊ KHI appliedVoucher && foodVoucherDiscount > 0) */}
+                {appliedVoucher && foodVoucherDiscount > 0 && (
+                  <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2">
+                    <span className="flex-1 min-w-0 leading-snug">{t("voucher_label")}</span>
+                    <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                      -{formatPrice(foodVoucherDiscount)}
                     </span>
                   </div>
                 )}
 
-                {/* 4) Tổng thanh toán */}
-                <div className="flex justify-between items-center text-base pt-2 border-t border-gray-100">
-                  <span className="text-gray-900 font-bold">{t("total")}</span>
-                  <span className="text-secondary font-bold font-display text-lg">{formatPrice(total)}</span>
+                {/* 4) Ưu đãi thành viên */}
+                {user && (memberTier.tier === "gold" || memberTier.tier === "diamond") && (
+                  !isMemberCardSelected ? (
+                    <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                      <span className="flex-1 min-w-0 leading-snug">
+                        Ưu đãi thành viên (Đã bỏ chọn)
+                      </span>
+                      <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                        0đ
+                      </span>
+                    </div>
+                  ) : isExcludedByVoucher ? (
+                    <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                      <span className="flex-1 min-w-0 leading-snug">
+                        Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)
+                      </span>
+                      <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                        0đ
+                      </span>
+                    </div>
+                  ) : memberDiscount > 0 ? (
+                    <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                      <span className="flex-1 min-w-0 leading-snug">
+                        {memberDiscountLabel || "Ưu đãi thành viên"}
+                      </span>
+                      <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                        -{formatPrice(memberDiscount)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                      <div className="flex-1 min-w-0 leading-snug">
+                        <span>{memberDiscountLabel || "Ưu đãi thành viên"}</span>
+                        <span className="text-[11px] text-gray-500 font-normal block leading-tight mt-0.5">
+                          (Chỉ áp dụng cho món nguyên giá)
+                        </span>
+                      </div>
+                      <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                        0đ
+                      </span>
+                    </div>
+                  )
+                )}
+
+                {/* 5) Phí giao hàng (hỗ trợ đầy đủ các trạng thái như Desktop) */}
+                <div className="flex justify-between items-center text-sm font-medium border-t border-gray-200/60 pt-2.5">
+                  <span className="text-gray-600 flex items-center gap-1.5">
+                    <span>{t("shipping_fee")}</span>
+                    {calculatingShipping && (
+                      <span className="text-xs text-gray-400 animate-pulse">(Đang tính...)</span>
+                    )}
+                  </span>
+                  <div className="text-right">
+                    {deliveryType === "pickup" ? (
+                      <span className="text-secondary font-bold text-base">0đ ({t("delivery_pickup")})</span>
+                    ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
+                      <span className="text-gray-500 font-bold text-base">--</span>
+                    ) : (shippingVoucherDiscount > 0 || appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship"))) ? (
+                      effectiveShippingFee === 0 ? (
+                        <div className="flex items-center gap-2">
+                          {shipping > 0 && (
+                            <span className="text-xs text-gray-400 line-through">
+                              {formatPrice(shipping)}
+                            </span>
+                          )}
+                          <span className="text-secondary font-bold text-base">0đ</span>
+                          <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
+                            Mã {appliedShippingVoucher?.code || appliedVoucher?.code}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-end gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 line-through">
+                              {formatPrice(shipping)}
+                            </span>
+                            <span className="text-primary font-bold text-base">
+                              {formatPrice(effectiveShippingFee)}
+                            </span>
+                            <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
+                              Mã {appliedShippingVoucher?.code || appliedVoucher?.code}
+                            </span>
+                          </div>
+                          <span className="text-xs text-secondary font-semibold">
+                            Giảm {formatPrice(shippingVoucherDiscount)} phí vận chuyển
+                          </span>
+                        </div>
+                      )
+                    ) : isFreeship ? (
+                      <div className="flex items-center gap-2">
+                        {originalFee > 0 && (
+                          <span className="text-xs text-gray-400 line-through">
+                            {formatPrice(originalFee)}
+                          </span>
+                        )}
+                        <span className="text-secondary font-bold text-base">0đ</span>
+                        <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
+                          {appliedShippingVoucher
+                            ? `Mã ${appliedShippingVoucher.code}`
+                            : appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship")
+                              ? `Mã ${appliedVoucher.code}`
+                              : "Freeship tự động"}
+                        </span>
+                      </div>
+                    ) : shippingDiscount > 0 && shippingFee < originalFee ? (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400 line-through">
+                            {formatPrice(originalFee)}
+                          </span>
+                          <span className="text-primary font-bold text-base">
+                            {formatPrice(shippingFee)}
+                          </span>
+                        </div>
+                        <span className="text-xs text-secondary font-semibold">
+                          Giảm {formatPrice(shippingDiscount)} phí vận chuyển
+                        </span>
+                      </div>
+                    ) : shipping > 0 ? (
+                      <span className="text-primary font-bold text-base">
+                        {formatPrice(shipping)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500 font-bold text-base">--</span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Dòng tích lũy điểm thưởng */}
+                {/* Thông báo inline đỏ dưới dòng phí ship theo Promotion Matrix */}
+                {promotionMatrixShippingNotice && (
+                  <p className="text-xs text-red-600 font-semibold px-1 pt-1 animate-fade-in">
+                    {promotionMatrixShippingNotice}
+                  </p>
+                )}
+
+                {/* Thẻ Cảnh báo Chưa hỗ trợ giao hàng */}
+                {deliveryType === "delivery" && !isDeliverable && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs text-red-800 font-medium space-y-1.5 animate-fade-in">
+                    <p className="text-red-900 font-bold text-sm">
+                      Khu vực này hiện chưa hỗ trợ giao hàng tận nơi.
+                    </p>
+                    <p className="text-red-700 leading-relaxed">
+                      Vui lòng chọn <strong>&quot;{t("delivery_pickup")}&quot;</strong> hoặc liên hệ Hotline:{" "}
+                      <a href={`tel:${hotline.replace(/[^0-9+]/g, "")}`} className="font-bold underline text-red-900 hover:text-red-950">
+                        {hotline}
+                      </a>{" "}
+                      để được hỗ trợ.
+                    </p>
+                  </div>
+                )}
+
+                {/* 6) Tổng thanh toán */}
+                <div className="flex justify-between items-center border-t border-gray-200/80 pt-3 gap-2">
+                  <span className="text-gray-900 font-bold text-sm flex-1 min-w-0">{t("total")}</span>
+                  <span className="text-xl font-display text-secondary font-extrabold shrink-0 whitespace-nowrap text-right tracking-tight">
+                    {formatPrice(total)}
+                  </span>
+                </div>
+
+                {/* 7) Dòng tích lũy điểm thưởng */}
                 {user && total > 0 && Math.floor(total / 10000) > 0 && (
                   <div className="text-xs text-secondary font-semibold text-right flex items-center justify-end gap-1.5 pt-2 border-t border-dashed border-gray-200">
                     <span>Đơn hàng này sẽ tích lũy thêm {Math.floor(total / 10000)} điểm</span>
@@ -2994,6 +3204,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         isOpen={showNoticeModal}
         onClose={() => setShowNoticeModal(false)}
         notice={operatingStatus.notice}
+        zIndex="z-[200]"
       />
 
       <CouponModal

@@ -8,12 +8,14 @@ interface PreOrderNoticeModalProps {
   isOpen: boolean;
   onClose: () => void;
   notice: PreOrderNotice | null;
+  zIndex?: string;
 }
 
 export default function PreOrderNoticeModal({
   isOpen,
   onClose,
   notice,
+  zIndex = "z-50",
 }: PreOrderNoticeModalProps) {
   const t = useTranslations("preorder_notice");
 
@@ -30,7 +32,7 @@ export default function PreOrderNoticeModal({
     : notice.message;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in`}>
       <div
         className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 transform transition-all scale-100 border border-gray-100"
         role="dialog"
