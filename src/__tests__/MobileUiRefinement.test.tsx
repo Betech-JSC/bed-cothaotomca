@@ -459,15 +459,15 @@ describe("Mobile UI Refinements: Card, Header Logo, Product Details, and Step 2 
 
       const button = screen.getByRole("button", { name: "Xem ưu đãi và khuyến mãi" });
       expect(button).toBeInTheDocument();
-      expect(button.className).toContain("px-2");
-      expect(button.className).toContain("py-1");
-      expect(button.className).toContain("gap-1");
+      expect(button.className).toContain("px-3.5");
+      expect(button.className).toContain("py-2");
+      expect(button.className).toContain("gap-1.5");
       expect(button.className).toContain("md:px-3.5");
       expect(button.className).toContain("md:py-2.5");
       expect(button.className).toContain("md:gap-2");
 
       const label = screen.getByText("Ưu đãi");
-      expect(label.className).toContain("text-[11px]");
+      expect(label.className).toContain("text-xs");
       expect(label.className).toContain("md:title-3");
     });
   });
