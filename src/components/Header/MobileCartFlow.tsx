@@ -393,8 +393,8 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   // Pending order (bank transfer QR)
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
 
-  // Accordion summary expanded
-  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+  // Accordion summary expanded (default expanded so items are visible like on PC)
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
 
   // Operating hours check (09:00 - 23:00)
   const operatingStatus = useMemo(() => {
