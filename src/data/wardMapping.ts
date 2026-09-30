@@ -207,3 +207,60 @@ export function buildDeliveryAddress(
   return cleanDuplicateAddressParts(parts.join(", "));
 }
 
+/**
+ * Tự động tìm tên Phường mới sáp nhập từ tên Phường cũ và Quận/Huyện.
+ * Hỗ trợ các trường hợp P.14 Quận 3 (Rạch Bùng Binh) -> Nhiêu Lộc / Hòa Hưng.
+ */
+export function resolveNewWardName(
+  oldWardName: string,
+  district?: string,
+  contextText?: string
+): string | null {
+  if (!oldWardName) return null;
+  const cleanWard = oldWardName.trim();
+  const cleanDist = district ? district.trim().toLowerCase() : "";
+  const cleanCtx = contextText ? contextText.toLowerCase() : "";
+
+  // Trích xuất số phường nếu là dạng P.14, Phường 14, 14
+  const numMatch = cleanWard.match(/(?:p\.?|phường|phuong)?\s*0?(\d+)/i);
+  const wardNum = numMatch ? parseInt(numMatch[1], 10) : null;
+
+  // Quận 3
+  if (cleanDist.includes("3") || cleanCtx.includes("quận 3") || cleanCtx.includes("quan 3")) {
+    if (cleanCtx.includes("rạch bùng binh") || cleanCtx.includes("rach bung binh")) {
+      return "Nhiêu Lộc";
+    }
+    if (wardNum === 14 || wardNum === 13 || wardNum === 12) {
+      return "Hòa Hưng";
+    }
+    if (wardNum === 9 || wardNum === 10 || wardNum === 11) {
+      return "Nhiêu Lộc";
+    }
+    if (wardNum !== null && wardNum >= 1 && wardNum <= 3) {
+      return "Bàn Cờ";
+    }
+  }
+
+  // Gò Vấp
+  if (cleanDist.includes("gò vấp") || cleanDist.includes("go vap")) {
+    if (wardNum === 14) return "An Hội Tây";
+    if (wardNum === 8 || wardNum === 9) return "An Hội Đông";
+  }
+
+  // Tân Bình
+  if (cleanDist.includes("tân bình") || cleanDist.includes("tan binh")) {
+    if (wardNum === 14) return "Tân Sơn Nhất";
+  }
+
+  // Tra cứu theo HCMC_WARD_OLD_NAME_MAP
+  for (const [newWard, oldWards] of Object.entries(HCMC_WARD_OLD_NAME_MAP)) {
+    const list = oldWards.split(",").map((s) => s.trim().toLowerCase());
+    const normalizedWard = `p.${wardNum}`;
+    if (wardNum !== null && list.some((item) => item === normalizedWard)) {
+      return newWard;
+    }
+  }
+
+  return null;
+}
+

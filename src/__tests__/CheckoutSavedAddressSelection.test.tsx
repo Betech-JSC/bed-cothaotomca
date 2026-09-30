@@ -541,4 +541,39 @@ describe('Checkout Saved Address Selection & Conditional Rendering Tests', () =>
     expect(screen.getByTestId('desktop-street-address-input')).toBeInTheDocument();
     expect(screen.getByText('Lưu địa chỉ này vào danh sách địa chỉ')).toBeInTheDocument();
   });
+
+  it('11. Khi chọn địa chỉ có tên phường cũ (Phường 14, Quận 3, 73 Rạch Bùng Binh), hệ thống tự động ánh xạ sang Phường mới khi tính phí ship', async () => {
+    const oldWardAddresses = [
+      {
+        id: 77,
+        user_id: 101,
+        recipient_name: 'Lê Duy Khanh',
+        phone: '0983728371',
+        province: 'TP. Hồ Chí Minh',
+        district: 'Quận 3',
+        ward: 'Phường 14',
+        street_address: '73 rạch bùng binh',
+        full_address: '73 rạch bùng binh, Phường 14, Quận 3, TP. Hồ Chí Minh',
+        is_default: true,
+      },
+    ];
+    vi.mocked(getCustomerAddressesApi).mockResolvedValueOnce(oldWardAddresses as any);
+
+    render(<CheckoutForm order={null} config={mockConfigData} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn từ danh sách địa chỉ')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(mockCalculateShippingFee).toHaveBeenCalledWith(
+        expect.objectContaining({
+          province: 'TP. Hồ Chí Minh',
+          district: 'Quận 3',
+          ward: 'Nhiêu Lộc',
+        })
+      );
+    });
+  });
 });
+

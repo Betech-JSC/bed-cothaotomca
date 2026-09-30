@@ -38,7 +38,7 @@ import {
   type CustomerAddress,
 } from "@/services/authService";
 import GuestTierHintBanner from "./GuestTierHintBanner";
-import { buildDeliveryAddress, cleanDuplicateAddressParts } from "@/data/wardMapping";
+import { buildDeliveryAddress, cleanDuplicateAddressParts, resolveNewWardName } from "@/data/wardMapping";
 import { checkGuestTierByPhone, type GuestTierHint } from "@/services/authService";
 
 import { useAuth, getMemberTier, calculateMemberDiscount } from "@/contexts/AuthContext";
@@ -206,13 +206,25 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     setSelectedAddressId(addr.id);
     if (addr.recipient_name) setName(addr.recipient_name);
     if (addr.phone) setPhone(addr.phone);
-    if (addr.province) setSelectedProvince(addr.province);
+    if (addr.province) {
+      const cleanProv = addr.province.includes("Hồ Chí Minh") ? "TP. Hồ Chí Minh" : addr.province;
+      setSelectedProvince(cleanProv);
+    }
     if (addr.district) setSelectedDistrict(addr.district);
-    if (addr.ward) setSelectedWard(addr.ward);
-    if (addr.ward_id) setSelectedWardId(addr.ward_id);
+
+    // Tự động ánh xạ tên Phường cũ (VD: Phường 14) sang Phường mới (Nhiêu Lộc / Hòa Hưng)
+    const fullContext = addr.full_address || addr.street_address || "";
+    const resolvedName = resolveNewWardName(addr.ward || "", addr.district, fullContext);
+    const finalWard = resolvedName || addr.ward || "";
+    setSelectedWard(finalWard);
+    if (addr.ward_id) {
+      setSelectedWardId(addr.ward_id);
+    }
+
     const addrStreet = addr.street_address || addr.full_address || "";
     if (addrStreet) setStreetAddress(addrStreet);
   }, []);
+
 
   // Auto-fill from cached address immediately on client mount if available
   useEffect(() => {
@@ -323,15 +335,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     setSaveToAddressBook(false);
     const addr = customerAddresses.find((a) => a.id === addrId);
     if (addr) {
-      setSelectedAddressId(addr.id);
-      if (addr.recipient_name) setName(addr.recipient_name);
-      if (addr.phone) setPhone(addr.phone);
-      if (addr.province) setSelectedProvince(addr.province);
-      if (addr.district) setSelectedDistrict(addr.district);
-      if (addr.ward) setSelectedWard(addr.ward);
-      if (addr.ward_id) setSelectedWardId(addr.ward_id);
-      const addrStreet = addr.street_address || addr.full_address || "";
-      if (addrStreet) setStreetAddress(addrStreet);
+      applyAddressToForm(addr);
       setFieldErrors((prev) => {
         const next = { ...prev };
         delete next["delivery.ward"];
