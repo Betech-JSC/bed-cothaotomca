@@ -31,3 +31,6 @@ yarn-error.log*
 .vercel
 config.bat
 *.log
+
+# Local IDE settings
+.vscode/
