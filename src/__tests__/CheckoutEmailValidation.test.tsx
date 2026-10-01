@@ -383,7 +383,7 @@ describe('Checkout Email Validation & UI Audit Tests', () => {
   // 3. KIỂM THỬ MOBILE FORM (MobileCartFlow.tsx)
   // =========================================================================
   describe('3. Mobile Form (MobileCartFlow.tsx) Email Field & Validation', () => {
-    it('Nhãn Email hiển thị dấu * màu đỏ (RequiredMark)', async () => {
+    it('Nhãn Email không hiển thị dấu * (Email là tùy chọn trên mobile)', async () => {
       const { container } = render(<MobileCartFlow inline={true} />);
 
       const emailInput = container.querySelector('input[type="email"]') as HTMLInputElement;
@@ -392,44 +392,75 @@ describe('Checkout Email Validation & UI Audit Tests', () => {
       const emailLabel = emailInput.closest('.space-y-3')?.querySelector('label');
       expect(emailLabel).toBeInTheDocument();
       expect(emailLabel?.textContent).toContain('Email');
-      expect(emailLabel?.textContent).toContain('*');
+      expect(emailLabel?.textContent).not.toContain('*');
 
-      // Kiểm tra dấu * màu đỏ từ RequiredMark
+      // Đảm bảo không có RequiredMark
       const requiredStar = emailLabel?.querySelector('.text-red-600');
-      expect(requiredStar).toBeInTheDocument();
-      expect(requiredStar?.textContent?.trim()).toBe('*');
+      expect(requiredStar).not.toBeInTheDocument();
     });
 
-    it('Input Email có thuộc tính required và placeholder là "Email"', async () => {
+    it('Các trường Họ tên, Số điện thoại có dấu *, trong khi Email không có *', async () => {
+      const { container } = render(<MobileCartFlow inline={true} />);
+
+      const nameInput = screen.getByPlaceholderText('Họ và tên');
+      const nameLabel = nameInput.closest('.space-y-3')?.querySelector('label');
+      expect(nameLabel?.textContent).toContain('*');
+      expect(nameLabel?.querySelector('.text-red-600')).toBeInTheDocument();
+
+      const phoneInput = screen.getByPlaceholderText('Số điện thoại');
+      const phoneLabel = phoneInput.closest('.space-y-3')?.querySelector('label');
+      expect(phoneLabel?.textContent).toContain('*');
+      expect(phoneLabel?.querySelector('.text-red-600')).toBeInTheDocument();
+
+      const emailInput = container.querySelector('input[type="email"]') as HTMLInputElement;
+      const emailLabel = emailInput.closest('.space-y-3')?.querySelector('label');
+      expect(emailLabel?.textContent).not.toContain('*');
+      expect(emailLabel?.querySelector('.text-red-600')).not.toBeInTheDocument();
+    });
+
+    it('Input Email KHÔNG có thuộc tính required và placeholder là "Email"', async () => {
       const { container } = render(<MobileCartFlow inline={true} />);
       const emailInput = container.querySelector('input[type="email"]') as HTMLInputElement;
 
-      expect(emailInput).toBeRequired();
+      expect(emailInput).not.toBeRequired();
       expect(emailInput).toHaveAttribute('placeholder', 'Email');
       expect(emailInput.type).toBe('email');
     });
 
-    it('Validation on submit: bắt buộc nhập email (báo "Vui lòng nhập địa chỉ email.")', async () => {
+    it('Submit form: cho phép để trống email (không bắt buộc, không báo lỗi "Vui lòng nhập địa chỉ email.")', async () => {
       const { container } = render(<MobileCartFlow inline={true} />);
 
-      // Điền họ tên và số điện thoại hợp lệ để vượt qua bước validate trước email
+      // Điền họ tên và số điện thoại hợp lệ
       const nameInput = screen.getByPlaceholderText('Họ và tên');
       fireEvent.change(nameInput, { target: { value: 'Trần Thị B' } });
 
       const phoneInput = screen.getByPlaceholderText('Số điện thoại');
       fireEvent.change(phoneInput, { target: { value: '0987654321' } });
 
-      // Để trống email và nhấn nút Đặt hàng
+      // Chọn phương thức tự đến lấy để không cần điền địa chỉ giao hàng phức tạp
+      const pickupBtn = screen.getByRole('button', { name: /Tự đến lấy/i });
+      fireEvent.click(pickupBtn);
+
+      // Check confirm info checkbox
+      const confirmCheckbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+      if (confirmCheckbox && !confirmCheckbox.checked) {
+        fireEvent.click(confirmCheckbox);
+      }
+
+      // Nhấn nút Đặt hàng khi email để trống
       const submitBtn = screen.getByRole('button', { name: /(Đặt hàng|Lên lịch giao hàng)/i });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
-        expect(container).toHaveTextContent('Vui lòng nhập địa chỉ email.');
+        expect(container).not.toHaveTextContent('Vui lòng nhập địa chỉ email.');
       });
-      expect(mockCreateOrder).not.toHaveBeenCalled();
+      // Đơn hàng được gửi đi thành công với email rỗng / undefined
+      await waitFor(() => {
+        expect(mockCreateOrder).toHaveBeenCalled();
+      });
     });
 
-    it('Validation on submit: kiểm tra định dạng email (báo "Email không hợp lệ. Vui lòng kiểm tra lại.")', async () => {
+    it('Validation on submit: kiểm tra định dạng email khi có nhập (báo "Email không hợp lệ. Vui lòng kiểm tra lại.")', async () => {
       const { container } = render(<MobileCartFlow inline={true} />);
 
       const nameInput = screen.getByPlaceholderText('Họ và tên');

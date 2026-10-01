@@ -10,8 +10,8 @@ vi.mock('next-intl', () => ({
   useTranslations: (namespace?: string) => {
     const translations: Record<string, Record<string, string>> = {
       voucher: {
-        voucher_ticket_title: 'Mã giảm giá (Voucher)',
-        no_voucher_applied: 'Chọn hoặc nhập mã ưu đãi',
+        voucher_ticket_title: 'Mã giảm giá',
+        no_voucher_applied: 'Chọn hoặc nhập mã',
         btn_select_voucher: 'Chọn mã',
         btn_remove_voucher: 'Xóa',
         applied_vouchers_success_count: 'Đã áp dụng thành công {count} ưu đãi!',

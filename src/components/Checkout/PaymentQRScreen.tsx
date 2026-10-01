@@ -6,7 +6,7 @@ import { useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useOrderStatus } from "@/hooks/useOrderStatus";
 import { formatPrice } from "@/lib/format";
-import type { OrderInitiated } from "@/services/orderService";
+import { orderService, type OrderInitiated } from "@/services/orderService";
 
 interface PaymentQRScreenProps {
   orderData: OrderInitiated;
@@ -40,6 +40,11 @@ function useCountdown(expireAt: string) {
   };
 }
 
+export function isValidHttpUrl(url?: string | null): boolean {
+  if (!url || typeof url !== "string") return false;
+  return url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:image/");
+}
+
 export default function PaymentQRScreen({
   orderData,
   phone,
@@ -51,9 +56,33 @@ export default function PaymentQRScreen({
   const { data: statusData, error: statusError } = useOrderStatus(
     orderData.order_code,
   );
-  const [copied, setCopied] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [simulating, setSimulating] = useState(false);
+  const [simulateError, setSimulateError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+
+  const fallbackBankCode = orderData.qr_info?.bank_code || orderData.qr_info?.bank_name || "MB";
+  const fallbackAccountNumber = (orderData.qr_info as any)?.account_number || orderData.qr_info?.bank_account || "";
+  const fallbackAccountName = orderData.qr_info?.account_name || "";
+  const fallbackAmount = orderData.total || orderData.qr_info?.amount || 0;
+  const fallbackAddInfo = orderData.order_code || orderData.qr_info?.content || "";
+
+  const quickLinkFallback = `https://img.vietqr.io/image/${fallbackBankCode}-${fallbackAccountNumber}-compact2.png?amount=${fallbackAmount}&addInfo=${encodeURIComponent(fallbackAddInfo)}&accountName=${encodeURIComponent(fallbackAccountName)}`;
+
+  const [currentQrUrl, setCurrentQrUrl] = useState<string>(() => {
+    return isValidHttpUrl(orderData.qr_url) ? orderData.qr_url : quickLinkFallback;
+  });
+
+  useEffect(() => {
+    setCurrentQrUrl(isValidHttpUrl(orderData.qr_url) ? orderData.qr_url : quickLinkFallback);
+  }, [orderData.qr_url, quickLinkFallback]);
+
+  const handleImageError = () => {
+    if (currentQrUrl !== quickLinkFallback) {
+      setCurrentQrUrl(quickLinkFallback);
+    }
+  };
 
   // Redirect khi đã thanh toán thành công hoặc đã đồng bộ
   useEffect(() => {
@@ -65,11 +94,11 @@ export default function PaymentQRScreen({
     }
   }, [statusData, router, orderData.order_code, phone]);
 
-  const handleCopy = async (text: string) => {
+  const handleCopy = async (text: string, key: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
     } catch {
       /* ignore */
     }
@@ -79,7 +108,7 @@ export default function PaymentQRScreen({
     if (countdown.isExpired || downloading) return;
     setDownloading(true);
     try {
-      const response = await fetch(orderData.qr_url);
+      const response = await fetch(currentQrUrl);
       if (!response.ok) throw new Error("Fetch QR image failed");
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -97,7 +126,7 @@ export default function PaymentQRScreen({
       console.warn("Blob download failed, fallback to direct open/download link", err);
       try {
         const link = document.createElement("a");
-        link.href = orderData.qr_url;
+        link.href = currentQrUrl;
         link.target = "_blank";
         link.download = `QR_Thanh_Toan_${orderData.order_code}.png`;
         document.body.appendChild(link);
@@ -114,36 +143,22 @@ export default function PaymentQRScreen({
     }
   };
 
-  const amount = orderData.qr_info.amount;
-  const content = orderData.qr_info.content;
-  const bankAccount = orderData.qr_info.bank_account;
-  const bankCode = orderData.qr_info.bank_code;
+  const amount = orderData.qr_info?.amount ?? 0;
+  const content = orderData.qr_info?.content ?? "";
+  const bankAccount = orderData.qr_info?.bank_account ?? "";
+  const bankCode = orderData.qr_info?.bank_name || orderData.qr_info?.bank_code || "";
+  const accountName = orderData.qr_info?.account_name ?? "";
 
   const handleSimulatePayment = async () => {
     try {
-      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
-      const res = await fetch(`${baseUrl}/sepay/webhook`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Apikey BepCoThaoSecured2026",
-        },
-        body: JSON.stringify({
-          id: Math.floor(Math.random() * 100000) + 1,
-          gateway: "Vietcombank",
-          transactionDate: new Date().toISOString().slice(0, 19).replace("T", " "),
-          accountNumber: bankAccount,
-          code: "MOCK_SEPAY_" + orderData.order_code,
-          content: content,
-          transferType: "in",
-          transferAmount: amount,
-          referenceCode: "FT" + Math.floor(Math.random() * 10000000),
-        }),
-      });
-      const data = await res.json();
-      console.log("Simulated payment response:", data);
-    } catch (err) {
-      console.error("Failed to simulate payment:", err);
+      setSimulating(true);
+      setSimulateError(null);
+      await orderService.simulatePayment(orderData.order_code);
+      // Polling tự động sẽ phát hiện order đã "paid" và redirect
+    } catch (err: any) {
+      setSimulateError(err?.message || "Giả lập thanh toán thất bại");
+    } finally {
+      setSimulating(false);
     }
   };
 
@@ -166,11 +181,12 @@ export default function PaymentQRScreen({
               </div>
             ) : (
               <Image
-                src={orderData.qr_url}
-                alt="QR thanh toán SePay"
+                src={currentQrUrl}
+                alt="QR thanh toán VietQR"
                 fill
                 className="object-contain"
                 unoptimized
+                onError={handleImageError}
               />
             )}
           </div>
@@ -279,13 +295,26 @@ export default function PaymentQRScreen({
 
         {/* DEV ONLY: Simulate Payment Button (Requires explicit NEXT_PUBLIC_ENABLE_DEV_PAYMENT=true) */}
         {process.env.NEXT_PUBLIC_ENABLE_DEV_PAYMENT === "true" && !countdown.isExpired && (
-          <button
-            type="button"
-            onClick={handleSimulatePayment}
-            className="w-full py-2.5 px-4 rounded-xl border border-dashed border-secondary/40 bg-yellow/60 hover:bg-yellow text-brown text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 mt-2"
-          >
-            Giả lập thanh toán thành công (Dev)
-          </button>
+          <div className="w-full">
+            <button
+              type="button"
+              onClick={handleSimulatePayment}
+              disabled={simulating}
+              className="w-full py-2.5 px-4 rounded-xl border border-dashed border-secondary/40 bg-yellow/60 hover:bg-yellow text-brown text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 mt-2 disabled:opacity-50 cursor-pointer"
+            >
+              {simulating ? (
+                <>
+                  <span className="animate-spin inline-block">⟳</span>
+                  <span>Đang giả lập VietQR...</span>
+                </>
+              ) : (
+                "Giả lập thanh toán VietQR thành công (Dev)"
+              )}
+            </button>
+            {simulateError && (
+              <p className="text-red-500 text-xs mt-1 text-center">{simulateError}</p>
+            )}
+          </div>
         )}
       </div>
 
@@ -298,6 +327,7 @@ export default function PaymentQRScreen({
             {[
               { label: t("qr.bank_name"), value: bankCode },
               { label: t("qr.account_number"), value: bankAccount, copyable: true },
+              { label: t("qr.account_holder"), value: accountName, copyable: true },
               {
                 label: t("qr.amount"),
                 value: formatPrice(amount),
@@ -317,16 +347,16 @@ export default function PaymentQRScreen({
                     className={`body-1 break-all text-right ${row.highlight ? "title-2 text-secondary" : "text-gray-900"
                       } ${row.mono ? "font-mono text-sm" : ""}`}
                   >
-                    {row.value}
+                    {row.value || "—"}
                   </span>
-                  {row.copyable && (
+                  {row.copyable && Boolean(row.value) && (
                     <button
                       type="button"
-                      onClick={() => handleCopy(row.copyValue ?? row.value)}
-                      className="shrink-0 text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-primary hover:text-white transition-colors"
+                      onClick={() => handleCopy(row.copyValue ?? row.value, row.label)}
+                      className="shrink-0 text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-primary hover:text-white transition-colors cursor-pointer"
                       title={t("qr.copy")}
                     >
-                      {copied ? "✓" : t("qr.copy")}
+                      {copiedKey === row.label ? "✓" : t("qr.copy")}
                     </button>
                   )}
                 </div>

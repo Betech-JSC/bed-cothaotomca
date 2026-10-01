@@ -39,6 +39,9 @@ export interface CreateOrderPayload {
   items: CreateOrderItem[];
   discount?: number;
   member_discount?: number;
+  member_tier?: string;
+  tier_discount_percent?: number;
+  is_upgrade_reward?: boolean;
   description?: string;
   is_apply_voucher?: boolean;
   voucher?: {
@@ -67,10 +70,12 @@ export interface OrderInitiated {
   total: string;
   delivery_price: string;
   expire_at: string;        // ISO datetime
-  qr_url: string;           // URL ảnh QR SePay
+  qr_url: string;           // URL ảnh QR VietQR (MB Bank)
   qr_info: {
+    bank_name?: string;
     bank_code: string;
     bank_account: string;
+    account_name?: string;
     amount: number;
     content: string;        // e.g. "TCTM ORD-20260602-ABCDEF"
   };
@@ -603,6 +608,75 @@ export async function getShippingSettings(): Promise<ShippingSettings | null> {
   }
 }
 
+export interface LoyaltyTierCardInfo {
+  title?: string;
+  badge?: string;
+  description?: string;
+  banner?: string;
+  banner_url?: string;
+  discount_percent?: number;
+  upgrade_discount_percent?: number;
+}
+
+export interface LoyaltySettings {
+  can_combine_with_promotions: boolean;
+  is_enabled: boolean;
+  gold_discount_percent: number;
+  diamond_discount_percent: number;
+  gold_upgrade_discount_percent: number;
+  diamond_upgrade_discount_percent: number;
+  gold_card_title?: string;
+  gold_card_badge?: string;
+  gold_card_description?: string;
+  gold_card_banner?: string;
+  gold_card_banner_url?: string;
+  diamond_card_title?: string;
+  diamond_card_badge?: string;
+  diamond_card_description?: string;
+  diamond_card_banner?: string;
+  diamond_card_banner_url?: string;
+  gold_card?: LoyaltyTierCardInfo;
+  diamond_card?: LoyaltyTierCardInfo;
+}
+
+export const DEFAULT_LOYALTY_SETTINGS: LoyaltySettings = {
+  can_combine_with_promotions: false,
+  is_enabled: true,
+  gold_discount_percent: 5,
+  diamond_discount_percent: 8,
+  gold_upgrade_discount_percent: 10,
+  diamond_upgrade_discount_percent: 10,
+};
+
+export async function getLoyaltySettings(): Promise<LoyaltySettings> {
+  try {
+    const cleanBase = API_BASE.replace(/\/v1$/, "");
+    const res = await fetch(`${cleanBase}/v1/loyalty/settings`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return DEFAULT_LOYALTY_SETTINGS;
+    }
+
+    const json = await res.json();
+    if (json && json.success && json.data) {
+      return {
+        ...DEFAULT_LOYALTY_SETTINGS,
+        ...json.data,
+        can_combine_with_promotions: Boolean(json.data.can_combine_with_promotions),
+      };
+    }
+    return DEFAULT_LOYALTY_SETTINGS;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("Failed to fetch loyalty settings, falling back to default:", msg);
+    return DEFAULT_LOYALTY_SETTINGS;
+  }
+}
+
 /** Hủy đơn hàng trực tiếp (dành cho đơn COD) */
 export async function cancelOrderApi(
   orderCode: string,
@@ -648,4 +722,39 @@ export async function requestCancelOrderApi(
 
   return json;
 }
+
+/** Giả lập thanh toán đơn hàng (Dev/Staging) */
+export async function simulatePayment(
+  orderCode: string,
+): Promise<{ success: boolean; message: string }> {
+  const cleanCode = orderCode.replace(/^#/, "");
+  const res = await fetch(`${API_BASE}/orders/${cleanCode}/simulate-payment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Lỗi giả lập thanh toán: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export const orderService = {
+  simulatePayment,
+  getCheckoutConfig,
+  createOrder,
+  getOrderStatus,
+  getOrderByCode,
+  lookupOrders,
+  calcOrderTotal,
+  calculateVoucherDiscount,
+  getAvailableVouchers,
+  validateVoucher,
+  getAdministrativeUnits,
+  calculateShippingFee,
+  getShippingSettings,
+  getLoyaltySettings,
+  cancelOrderApi,
+  requestCancelOrderApi,
+};
 

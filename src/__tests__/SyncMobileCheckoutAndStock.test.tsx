@@ -657,13 +657,13 @@ describe('sync-mobile-checkout-and-stock Changes Test Suite', () => {
   // 4. MobileCartFlow Step 2 Parity (VoucherTicketBar, Address Book, Guest Banner)
   // =========================================================================
   describe('4. MobileCartFlow Step 2 Parity Features', () => {
-    it('Step 2 renders VoucherTicketBar with action callbacks', async () => {
+    it('Step 2 does not render VoucherTicketBar (optimized for mobile step 2)', async () => {
       render(<MobileCartFlow inline={true} />);
 
       await waitFor(() => {
-        // VoucherTicketBar should be present in Step 2
-        const ticketBar = screen.getByText(/Mã ưu đãi/i);
-        expect(ticketBar).toBeInTheDocument();
+        // VoucherTicketBar should NOT be present in Step 2
+        const ticketBar = screen.queryByText(/Mã ưu đãi/i);
+        expect(ticketBar).not.toBeInTheDocument();
       });
     });
 

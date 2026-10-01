@@ -335,13 +335,13 @@ describe('Checkout Promotion & Modal Flow Tests', () => {
     });
 
     // Bấm nút "Xóa" trên VoucherTicketBar (cả mobile và desktop)
-    const removeBtns = container.querySelectorAll('button.bg-red-50');
+    const removeBtns = container.querySelectorAll('button[aria-label="Xóa"], button.bg-red-50');
     expect(removeBtns.length).toBeGreaterThan(0);
     removeBtns.forEach((btn) => fireEvent.click(btn));
 
     await waitFor(() => {
       expect(screen.queryByTestId('campaign-ticket-badge')).not.toBeInTheDocument();
-      expect(screen.getAllByText('Chọn hoặc nhập mã ưu đãi')[0]).toBeInTheDocument();
+      expect(screen.getAllByText(/Chọn hoặc nhập mã/)[0]).toBeInTheDocument();
     });
 
     expect(JSON.parse(localStorage.getItem('cothaotomca_selected_campaign_ids') || '[]')).toEqual([]);
@@ -355,13 +355,13 @@ describe('Checkout Promotion & Modal Flow Tests', () => {
       expect(screen.getAllByTestId('food-ticket-badge')[0]).toBeInTheDocument();
     });
 
-    const removeBtnsVoucher = container2.querySelectorAll('button.bg-red-50');
+    const removeBtnsVoucher = container2.querySelectorAll('button[aria-label="Xóa"], button.bg-red-50');
     expect(removeBtnsVoucher.length).toBeGreaterThan(0);
     removeBtnsVoucher.forEach((btn) => fireEvent.click(btn));
 
     await waitFor(() => {
       expect(screen.queryByTestId('food-ticket-badge')).not.toBeInTheDocument();
-      expect(screen.getAllByText('Chọn hoặc nhập mã ưu đãi')[0]).toBeInTheDocument();
+      expect(screen.getAllByText(/Chọn hoặc nhập mã/)[0]).toBeInTheDocument();
     });
 
     expect(JSON.parse(localStorage.getItem('cothaotomca_applied_voucher_codes') || '[]')).toEqual([]);
@@ -377,14 +377,14 @@ describe('Checkout Promotion & Modal Flow Tests', () => {
       expect(screen.getAllByTestId('food-ticket-badge')[0]).toBeInTheDocument();
     });
 
-    const removeBtnsAll = container3.querySelectorAll('button.bg-red-50');
+    const removeBtnsAll = container3.querySelectorAll('button[aria-label="Xóa"], button.bg-red-50');
     expect(removeBtnsAll.length).toBeGreaterThan(0);
     removeBtnsAll.forEach((btn) => fireEvent.click(btn));
 
     await waitFor(() => {
       expect(screen.queryByTestId('campaign-ticket-badge')).not.toBeInTheDocument();
       expect(screen.queryByTestId('food-ticket-badge')).not.toBeInTheDocument();
-      expect(screen.getAllByText('Chọn hoặc nhập mã ưu đãi')[0]).toBeInTheDocument();
+      expect(screen.getAllByText(/Chọn hoặc nhập mã/)[0]).toBeInTheDocument();
     });
 
     expect(JSON.parse(localStorage.getItem('cothaotomca_selected_campaign_ids') || '[]')).toEqual([]);

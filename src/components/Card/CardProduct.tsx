@@ -237,11 +237,11 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         </div>
         <div className="mt-auto pt-2 flex flex-col items-center justify-center">
           {hasDiscount && originalPrice ? (
-            <span className="text-gray-400 line-through text-xs md:text-sm font-medium">
+            <span className="text-xs sm:text-xs md:text-sm text-gray-400 line-through font-medium mb-0.5">
               {formatPrice(originalPrice)}
             </span>
           ) : null}
-          <span className="title-2 text-secondary text-base md:text-xl font-bold">
+          <span className="title-2 text-secondary text-xl sm:text-2xl md:text-xl font-extrabold font-display tracking-tight leading-tight">
             {formatPrice(price)}
           </span>
         </div>
