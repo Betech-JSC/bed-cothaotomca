@@ -1129,6 +1129,8 @@ export default function CouponModal({
       const targetCamp = allCampaigns.find((c) => String(c.id) === String(id));
       if (!targetCamp) return;
 
+      setFeedbackError(null);
+
       const isSelected = selectedCampaignIds.some((cId) => String(cId) === String(id));
 
       if (isSelected) {
@@ -1170,10 +1172,17 @@ export default function CouponModal({
         if (targetCamp.can_combine_with_promotions === false) {
           return [targetCamp.id];
         }
-        const filtered = prev.filter((cId) => {
+        let filtered = prev.filter((cId) => {
           const existing = allCampaigns.find((c) => String(c.id) === String(cId));
           return existing && existing.can_combine_with_promotions !== false;
         });
+        // Mutex: Khi chọn campaign mới thuộc order_discount, tự động uncheck campaign order_discount đã chọn trước đó
+        if (targetCamp.promotion_type === "order_discount") {
+          filtered = filtered.filter((cId) => {
+            const existing = allCampaigns.find((c) => String(c.id) === String(cId));
+            return existing?.promotion_type !== "order_discount";
+          });
+        }
         return [...filtered, targetCamp.id];
       });
 

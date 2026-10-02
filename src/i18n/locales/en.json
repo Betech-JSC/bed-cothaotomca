@@ -39,6 +39,7 @@
     "order-now": "Order now",
     "message-now": "Message now",
     "add_to_cart": "Add to Cart",
+    "add_to_cart_short": "Add to Cart",
     "out_of_stock": "Sold out",
     "order_now_count": "Order now ({count})"
   },

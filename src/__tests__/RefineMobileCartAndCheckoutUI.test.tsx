@@ -240,14 +240,14 @@ describe("OpenSpec refine-mobile-cart-and-checkout-ui Test Suite", () => {
       expect(origPrice.className).toContain("line-through");
       expect(origPrice.className).toContain("font-medium");
 
-      // Giá bán: font-display, text-secondary, font-bold, text-base sm:text-lg
+      // Giá bán: font-display, text-secondary, font-bold, text-[13px] sm:text-sm
       const unitPrice = screen.getByText(formatPrice(120000));
       expect(unitPrice).toBeInTheDocument();
       expect(unitPrice.className).toContain("font-display");
       expect(unitPrice.className).toContain("text-secondary");
       expect(unitPrice.className).toContain("font-bold");
-      expect(unitPrice.className).toContain("text-base");
-      expect(unitPrice.className).toContain("sm:text-lg");
+      expect(unitPrice.className).toContain("text-[13px]");
+      expect(unitPrice.className).toContain("sm:text-sm");
     });
   });
 
@@ -507,7 +507,7 @@ describe("OpenSpec refine-mobile-cart-and-checkout-ui Test Suite", () => {
       expect(svg?.getAttribute("class")).toContain("h-4.5");
     });
 
-    it("Task 4.1: Dòng Phí giao hàng Step 1 hiển thị giá gốc gạch ngang khi có Freeship hoặc giảm ship", async () => {
+    it("Task 4.1: Dòng Phí giao hàng Step 1 hiển thị '--' khi chưa chọn địa chỉ/phường xã theo chuẩn Desktop", async () => {
       mockShippingResult = {
         fee: 0,
         shipping_fee: 0,
@@ -519,11 +519,10 @@ describe("OpenSpec refine-mobile-cart-and-checkout-ui Test Suite", () => {
 
       render(<MobileCartFlow inline={false} />);
 
-      await screen.findByText(formatPrice(35000));
-      expect(screen.getByText("0đ")).toBeInTheDocument();
-      const origFee = screen.getByText(formatPrice(35000));
-      expect(origFee.className).toContain("line-through");
-      expect(origFee.className).toContain("text-gray-400");
+      // Theo chuẩn đồng bộ Desktop (CheckoutForm.tsx), khi chưa chọn địa chỉ/phường xã (!selectedWard), phí giao hàng hiển thị '--' thay vì tính phí giả định
+      const shippingLabel = screen.getByText("Phí giao hàng");
+      expect(shippingLabel).toBeInTheDocument();
+      expect(screen.getByText("--")).toBeInTheDocument();
     });
 
     it("Task 4.2: Dòng Phí giao hàng Step 2 nằm dưới Tạm tính và hiển thị đúng theo chuẩn Desktop", async () => {

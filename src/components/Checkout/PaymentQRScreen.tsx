@@ -321,7 +321,7 @@ export default function PaymentQRScreen({
       {/* Payment Info Panel */}
       <div className="lg:col-span-7 space-y-4">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
-          <h2 className="headline-2 text-primary">{t("qr.bank_info_title")}</h2>
+          <h2 className="text-lg sm:text-xl lg:headline-2 font-display font-bold text-primary">{t("qr.bank_info_title")}</h2>
 
           <div className="space-y-3">
             {[
@@ -341,10 +341,10 @@ export default function PaymentQRScreen({
                 key={row.label}
                 className="flex items-center justify-between gap-3 py-3 border-b border-gray-100 last:border-0"
               >
-                <span className="label-1 text-gray-500 shrink-0">{row.label}</span>
+                <span className="text-xs sm:text-sm lg:label-1 text-gray-500 shrink-0">{row.label}</span>
                 <div className="flex items-center gap-2 min-w-0">
                   <span
-                    className={`body-1 break-all text-right ${row.highlight ? "title-2 text-secondary" : "text-gray-900"
+                    className={`text-xs sm:text-sm lg:body-1 break-words text-right ${row.highlight ? "title-2 text-secondary" : "text-gray-900"
                       } ${row.mono ? "font-mono text-sm" : ""}`}
                   >
                     {row.value || "—"}
@@ -383,9 +383,9 @@ export default function PaymentQRScreen({
           <div className="border-t border-gray-100 pt-4 space-y-2 body-1 text-gray-700">
             <p className="label-1 text-gray-500">{t("order_summary") || "Mã đơn hàng"}</p>
             <p className="title-2 font-mono text-primary">{orderData.order_code?.startsWith("#") ? orderData.order_code : `#${orderData.order_code}`}</p>
-            <div className="flex justify-between pt-2 headline-2 text-primary">
-              <span>{t("total") || "Tổng thanh toán"}</span>
-              <span className="text-secondary">{formatPrice(amount)}</span>
+            <div className="flex justify-between pt-2 text-primary">
+              <span className="whitespace-nowrap font-bold">{t("total") || "Tổng thanh toán"}</span>
+              <span className="whitespace-nowrap font-display text-secondary lg:headline-2">{formatPrice(amount)}</span>
             </div>
           </div>
         </div>

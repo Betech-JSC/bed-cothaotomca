@@ -29,6 +29,10 @@ export interface VoucherTicketBarProps {
     is_freeship?: boolean;
   } | null;
   activeCampaignName?: string | null;
+  memberTierName?: string;
+  memberDiscountAmount?: number;
+  memberDiscountPercent?: number;
+  isMemberApplied?: boolean;
   onClick: () => void;
   onRemove?: () => void;
   className?: string;
@@ -62,6 +66,29 @@ export function formatVoucherBadgeText(voucher: {
   return voucher.code ? `-${voucher.code}` : "";
 }
 
+export function formatMemberBadgeText(
+  tierName?: string,
+  amount?: number,
+  percent?: number
+): string {
+  if (tierName && (tierName.includes("-") || tierName.includes("%"))) {
+    return tierName;
+  }
+  const tier = (tierName || "").trim();
+  if (amount && amount > 0) {
+    if (amount % 1000 !== 0) {
+      const k = (amount / 1000).toFixed(1).replace(".", ",");
+      return tier ? `${tier} -${k}kđ` : `-${k}kđ`;
+    }
+    const k = `${amount / 1000}k`;
+    return tier ? `${tier} -${k}` : `-${k}`;
+  }
+  if (percent && percent > 0) {
+    return tier ? `${tier} -${percent}%` : `-${percent}%`;
+  }
+  return tier ? (tier.toLowerCase().includes("hội viên") || tier.toLowerCase().includes("hạng") ? tier : `Hội viên ${tier}`) : "Hội viên";
+}
+
 export function isShippingVoucher(v: { code: string; discountType?: string; isFreeship?: boolean }): boolean {
   return Boolean(
     v.isFreeship ||
@@ -78,7 +105,7 @@ export function FoodTicketBadge({ text }: { text: string }) {
       data-testid="food-ticket-badge"
       className="inline-flex items-center rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs uppercase font-bold bg-[#FDF0ED] border border-[#CD4829] text-[#CD4829] select-none shrink-0"
     >
-      <span className="truncate max-w-[90px] xs:max-w-[120px] sm:max-w-[180px]">{text}</span>
+      <span className="truncate max-w-[85px] xs:max-w-[110px] sm:max-w-[180px]">{text}</span>
     </span>
   );
 }
@@ -89,7 +116,7 @@ export function FreeshipTicketBadge({ text }: { text: string }) {
       data-testid="freeship-ticket-badge"
       className="inline-flex items-center rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs uppercase font-bold bg-[#EBF0FA] border border-[#142A68] text-[#142A68] select-none shrink-0"
     >
-      <span className="truncate max-w-[90px] xs:max-w-[140px] sm:max-w-[200px]">{text}</span>
+      <span className="truncate max-w-[85px] xs:max-w-[110px] sm:max-w-[200px]">{text}</span>
     </span>
   );
 }
@@ -100,7 +127,18 @@ export function CampaignTicketBadge({ text }: { text: string }) {
       data-testid="campaign-ticket-badge"
       className="inline-flex items-center rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs font-bold bg-[#FEF9E7] border border-[#F5D585] text-[#8A5800] select-none shrink-0"
     >
-      <span className="truncate max-w-[90px] xs:max-w-[140px] sm:max-w-[200px]">{text}</span>
+      <span className="truncate max-w-[85px] xs:max-w-[110px] sm:max-w-[200px]">{text}</span>
+    </span>
+  );
+}
+
+export function MemberTicketBadge({ text }: { text: string }) {
+  return (
+    <span
+      data-testid="member-ticket-badge"
+      className="inline-flex items-center rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs font-bold bg-[#F3E8FF] border border-[#A855F7] text-[#6B21A8] select-none shrink-0"
+    >
+      <span className="truncate max-w-[85px] xs:max-w-[110px] sm:max-w-[160px]">{text}</span>
     </span>
   );
 }
@@ -158,6 +196,10 @@ export default function VoucherTicketBar({
   appliedVoucher,
   appliedShippingVoucher,
   activeCampaignName,
+  memberTierName,
+  memberDiscountAmount,
+  memberDiscountPercent,
+  isMemberApplied,
   onClick,
   onRemove,
   className = "",
@@ -178,8 +220,15 @@ export default function VoucherTicketBar({
     shipVoucher = appliedVoucher;
   }
 
-  const hasAnyVoucher = Boolean(foodVoucher || shipVoucher || activeCampaignName);
-  const appliedCount = (foodVoucher ? 1 : 0) + (shipVoucher ? 1 : 0) + (activeCampaignName ? 1 : 0);
+  const isMemberActive = Boolean(
+    isMemberApplied && (memberDiscountAmount !== undefined ? memberDiscountAmount > 0 : true)
+  );
+  const hasAnyVoucher = Boolean(foodVoucher || shipVoucher || activeCampaignName || isMemberActive);
+  const appliedCount =
+    (foodVoucher ? 1 : 0) +
+    (shipVoucher ? 1 : 0) +
+    (activeCampaignName ? 1 : 0) +
+    (isMemberActive ? 1 : 0);
 
   const maxDiscountVal = shipVoucher ? (shipVoucher.maxDiscount ?? shipVoucher.max_discount) : null;
   const shipBadgeText = shipVoucher
@@ -198,16 +247,20 @@ export default function VoucherTicketBar({
         className="rounded-full border border-gray-300 hover:border-secondary/40 py-2.5 px-3.5 min-h-[46px] bg-white flex items-center justify-between gap-2 flex-nowrap shadow-xs cursor-pointer transition-colors"
       >
         {/* Bên trái: Icon Vé Ưu đãi (Ticket SVG màu cam/đỏ) + Label "Mã giảm giá" */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 min-w-max">
           <TicketIcon className="size-4 sm:size-5 text-[#CD4829] shrink-0" />
-          <span className="text-primary font-bold font-display text-xs sm:text-sm whitespace-nowrap select-none">
+          <span
+            className={`text-primary font-bold font-display text-xs sm:text-sm whitespace-nowrap select-none ${
+              hasAnyVoucher ? "hidden sm:inline" : ""
+            }`}
+          >
             {title}
           </span>
         </div>
 
         {/* Ở giữa: Badge tóm tắt ưu đãi thu gọn hoặc khoảng trống co giãn */}
         {hasAnyVoucher ? (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 justify-end sm:justify-start">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 justify-start">
             {foodVoucher && (
               <FoodTicketBadge text={foodVoucher.short_name || formatVoucherBadgeText(foodVoucher)} />
             )}
@@ -216,6 +269,11 @@ export default function VoucherTicketBar({
             )}
             {activeCampaignName && (
               <CampaignTicketBadge text={activeCampaignName} />
+            )}
+            {isMemberActive && (
+              <MemberTicketBadge
+                text={formatMemberBadgeText(memberTierName, memberDiscountAmount, memberDiscountPercent)}
+              />
             )}
           </div>
         ) : (

@@ -39,6 +39,7 @@
     "order-now": "Đặt ngay",
     "message-now": "Nhắn tin ngay",
     "add_to_cart": "Thêm vào giỏ hàng",
+    "add_to_cart_short": "Thêm vào giỏ",
     "out_of_stock": "Tạm hết hàng",
     "order_now_count": "Đặt hàng ({count})"
   },

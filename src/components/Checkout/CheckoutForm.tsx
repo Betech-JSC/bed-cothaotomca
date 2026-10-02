@@ -3198,6 +3198,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 appliedVoucher={appliedVoucher}
                 appliedShippingVoucher={appliedShippingVoucher}
                 activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.name}
+                memberTierName={memberTier.name}
+                memberDiscountAmount={memberDiscount}
+                memberDiscountPercent={memberTier.discountPercent}
+                isMemberApplied={memberDiscount > 0}
                 onClick={() => setIsVoucherModalOpen(true)}
                 onRemove={handleRemovePromotionFromBar}
               />

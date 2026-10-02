@@ -484,7 +484,7 @@ const MobileMenu = ({
     <nav aria-label="Mobile main navigation" className="w-full xl:hidden relative">
       <div className="flex w-full items-center justify-between py-1.5 relative">
         <Logo width={62} height={40} className="h-10" />
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* 1. Search */}
           <button
             onClick={onToggleSearch}
@@ -494,21 +494,7 @@ const MobileMenu = ({
             <Search />
           </button>
 
-          {/* 2. Account Profile */}
-          <Link
-            href="/profile"
-            className="text-yellow hover:text-secondary duration-300 ease-in-out shrink-0 flex items-center justify-center cursor-pointer p-1"
-            aria-label="Tài khoản"
-          >
-            <UserCircle size={24} />
-          </Link>
-
-          {/* 3. Language Switcher */}
-          <div className="shrink-0 flex items-center">
-            <LanguageSwitcher />
-          </div>
-
-          {/* 4. Cart Toggle */}
+          {/* 2. Cart Toggle */}
           <div className="relative shrink-0 flex items-center">
             <button
               id="cart-toggle-btn-mobile"
@@ -524,6 +510,23 @@ const MobileMenu = ({
               )}
             </button>
             <MobileCartFlow onClose={() => setIsCartOpen(false)} />
+          </div>
+
+          {/* 3. Account Profile */}
+          <Link
+            href="/profile"
+            className="text-yellow hover:text-secondary duration-300 ease-in-out shrink-0 flex items-center justify-center cursor-pointer p-1"
+            aria-label="Tài khoản"
+          >
+            <UserCircle size={24} />
+          </Link>
+
+          {/* Divider between User interactions and System utilities */}
+          <div className="h-4 w-px bg-white/20 mx-0.5" aria-hidden="true" />
+
+          {/* 4. Language Switcher */}
+          <div className="shrink-0 flex items-center">
+            <LanguageSwitcher />
           </div>
 
           {/* 5. Hamburger Menu Toggle Button */}

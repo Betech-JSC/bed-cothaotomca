@@ -789,10 +789,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
           </div>
         </div>
 
-        {/* Logout Button */}
+        {/* Logout Button (Desktop only) */}
         <button
           onClick={onLogout}
-          className="w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 py-3 rounded-[24px] font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+          className="hidden lg:flex w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 py-3 rounded-[24px] font-bold text-sm transition-all duration-300 items-center justify-center gap-2 shadow-sm cursor-pointer"
         >
           {t("logout")}
         </button>
@@ -834,7 +834,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                         : "bg-yellow/20 border-yellow/60 hover:border-secondary/40"
                         }`}
                     >
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
+                      {/* Hàng 1: Mã giao dịch + Ngày giao dịch + Tổng cộng tiền */}
+                      <div className="flex justify-between items-start md:items-center gap-4 w-full">
                         <div className="flex flex-wrap items-center gap-y-3">
                           <div className="pr-4 md:pr-6">
                             <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1 uppercase">
@@ -855,55 +856,51 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                               {formatDate(order.created_at)}
                             </span>
                           </div>
-
-                          <div className="hidden sm:block h-10 w-px bg-gray-200/90 self-center mx-2 md:mx-4" />
-
-                          <div className="pl-2 md:px-4">
-                            <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1">
-                              {t("status") || "Trạng thái"}
-                            </span>
-                            <div>{renderOrderStatusBadge(order)}</div>
-                          </div>
                         </div>
 
-                        <div className="flex items-center gap-3 self-end md:self-center flex-wrap">
-                          <div className="text-right mr-1">
-                            <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1">
-                              Tổng cộng
-                            </span>
-                            <span className="text-[1.125rem] md:text-[1.25rem] font-bold text-secondary">
-                              {formatPrice(order.total)}
-                            </span>
-                          </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1">
+                            Tổng cộng
+                          </span>
+                          <span className="text-[1.125rem] md:text-[1.25rem] font-bold text-secondary">
+                            {formatPrice(order.total)}
+                          </span>
+                        </div>
+                      </div>
 
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setExpandedOrderCode(isExpanded ? null : order.order_code)}
-                              className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-secondary/40 hover:bg-amber-50/50 text-xs font-bold text-gray-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                            >
-                              <span>{isExpanded ? (t("hide_details") || "Thu gọn") : (t("view_details") || "Xem chi tiết")}</span>
-                              <svg
-                                className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
+                      {/* Hàng 2: Trạng thái đơn hàng (bên trái) + Nút Xem chi tiết / Mua lại (bên phải) */}
+                      <div className="flex justify-between items-center gap-3 w-full pt-2 border-t border-gray-100/80">
+                        <div>
+                          {renderOrderStatusBadge(order)}
+                        </div>
 
-                            <button
-                              type="button"
-                              onClick={(e) => handleReorder(order, e)}
-                              className="px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/90 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedOrderCode(isExpanded ? null : order.order_code)}
+                            className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-secondary/40 hover:bg-amber-50/50 text-xs font-bold text-gray-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                          >
+                            <span>{isExpanded ? (t("hide_details") || "Thu gọn") : (t("view_details") || "Xem chi tiết")}</span>
+                            <svg
+                              className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
                             >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                              </svg>
-                              <span>{t("reorder") || "Mua lại"}</span>
-                            </button>
-                          </div>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleReorder(order, e)}
+                            className="px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/90 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            </svg>
+                            <span>{t("reorder") || "Mua lại"}</span>
+                          </button>
                         </div>
                       </div>
 
@@ -1287,7 +1284,8 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                     <circle cx="12" cy="10" r="3"></circle>
                   </svg>
-                  Danh sách địa chỉ nhận hàng
+                  <span className="sm:hidden">Danh sách địa chỉ</span>
+                  <span className="hidden sm:inline">Danh sách địa chỉ nhận hàng</span>
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Lưu trữ các địa chỉ thường nhận để thanh toán đơn hàng nhanh chóng chỉ với một chạm.
@@ -1396,6 +1394,16 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
             )}
           </div>
         )}
+
+        {/* Mobile Logout Button (nằm ngay dưới nội dung tab đang chọn) */}
+        <div className="lg:hidden mt-6 pt-4 border-t border-gray-100">
+          <button
+            onClick={onLogout}
+            className="w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 py-3 rounded-[24px] font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+          >
+            {t("logout")}
+          </button>
+        </div>
       </div>
 
       {/* MODAL THÊM / SỬA ĐỊA CHỈ */}

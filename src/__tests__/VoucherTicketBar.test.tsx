@@ -4,9 +4,11 @@ import '@testing-library/jest-dom';
 import React from 'react';
 import VoucherTicketBar, {
   formatVoucherBadgeText,
+  formatMemberBadgeText,
   FoodTicketBadge,
   FreeshipTicketBadge,
   CampaignTicketBadge,
+  MemberTicketBadge,
 } from '@/components/Checkout/VoucherTicketBar';
 import viMessages from '@/i18n/locales/vi.json';
 
@@ -370,5 +372,70 @@ describe('VoucherTicketBar Component Tests', () => {
     const foodBadge = screen.getByTestId('food-ticket-badge');
     expect(foodBadge).toBeInTheDocument();
     expect(foodBadge).toHaveTextContent('Giảm 50K Món');
+  });
+
+  it('11. Trạng thái có quyền lợi hội viên -> Hiển thị MemberTicketBadge (tím sang trọng) và đếm vào appliedCount', () => {
+    const handleClick = vi.fn();
+
+    render(
+      <VoucherTicketBar
+        appliedVoucher={null}
+        appliedShippingVoucher={null}
+        memberTierName="VÀNG"
+        memberDiscountAmount={15000}
+        memberDiscountPercent={5}
+        isMemberApplied={true}
+        onClick={handleClick}
+      />
+    );
+
+    const memberBadge = screen.getByTestId('member-ticket-badge');
+    expect(memberBadge).toBeInTheDocument();
+    expect(memberBadge).toHaveTextContent('VÀNG -15k');
+
+    // Màu tím sang trọng
+    expect(memberBadge.className).toContain('text-[#6B21A8]');
+    expect(memberBadge.className).toContain('bg-[#F3E8FF]');
+    expect(memberBadge.className).toContain('border-[#A855F7]');
+    expect(memberBadge.className).toContain('rounded-full');
+
+    // Dòng thông báo thành công hiển thị 1 ưu đãi
+    expect(screen.getByText('Đã áp dụng thành công 1 ưu đãi!')).toBeInTheDocument();
+  });
+
+  it('12. Khi có voucher được áp dụng -> Tiêu đề "Mã giảm giá" có class hidden sm:inline và layout container justify-start', () => {
+    const { container } = render(
+      <VoucherTicketBar
+        appliedVoucher={{ code: 'SALE10', value: 10000, discountAmount: 10000 }}
+        appliedShippingVoucher={null}
+        onClick={vi.fn()}
+      />
+    );
+
+    // Tiêu đề "Mã giảm giá" có class hidden sm:inline khi có mã
+    const titleLabel = screen.getByText('Mã giảm giá');
+    expect(titleLabel.className).toContain('hidden');
+    expect(titleLabel.className).toContain('sm:inline');
+
+    // Khối icon bên trái có min-w-max shrink-0
+    const leftBlock = container.querySelector('.shrink-0.min-w-max');
+    expect(leftBlock).toBeInTheDocument();
+
+    // Container badge dùng justify-start
+    const badgeContainer = container.querySelector('.justify-start');
+    expect(badgeContainer).toBeInTheDocument();
+  });
+
+  it('13. Helper formatMemberBadgeText định dạng chuẩn xác các trường hợp thành viên', () => {
+    // Số tiền chẵn nghìn
+    expect(formatMemberBadgeText('VÀNG', 15000)).toBe('VÀNG -15k');
+    // Số tiền lẻ nghìn
+    expect(formatMemberBadgeText('KIM CƯƠNG', 15500)).toBe('KIM CƯƠNG -15,5kđ');
+    // Chỉ có %
+    expect(formatMemberBadgeText('VÀNG', 0, 10)).toBe('VÀNG -10%');
+    // Chuỗi có sẵn định dạng
+    expect(formatMemberBadgeText('🌟 VÀNG -5%')).toBe('🌟 VÀNG -5%');
+    // Fallback tên hạng
+    expect(formatMemberBadgeText('Gold')).toBe('Hội viên Gold');
   });
 });
