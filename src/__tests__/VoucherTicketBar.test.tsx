@@ -438,4 +438,35 @@ describe('VoucherTicketBar Component Tests', () => {
     // Fallback tên hạng
     expect(formatMemberBadgeText('Gold')).toBe('Hội viên Gold');
   });
+
+  it('14. Trạng thái chỉ có quyền lợi hội viên (không có voucher/campaign khác) -> Hiển thị nút Xóa ✕ và click gọi onRemove để tắt hội viên', () => {
+    const handleClick = vi.fn();
+    const handleRemove = vi.fn();
+
+    render(
+      <VoucherTicketBar
+        appliedVoucher={null}
+        appliedShippingVoucher={null}
+        memberTierName="VÀNG"
+        memberDiscountAmount={60000}
+        memberDiscountPercent={5}
+        isMemberApplied={true}
+        onClick={handleClick}
+        onRemove={handleRemove}
+      />
+    );
+
+    // Badge hội viên hiển thị
+    const memberBadge = screen.getByTestId('member-ticket-badge');
+    expect(memberBadge).toBeInTheDocument();
+    expect(memberBadge).toHaveTextContent('VÀNG -60k');
+
+    // Nút Xóa hiển thị
+    const removeBtn = screen.getByRole('button', { name: 'Xóa' });
+    expect(removeBtn).toBeInTheDocument();
+
+    // Click nút Xóa gọi onRemove
+    fireEvent.click(removeBtn);
+    expect(handleRemove).toHaveBeenCalledTimes(1);
+  });
 });

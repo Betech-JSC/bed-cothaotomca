@@ -1535,6 +1535,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const handleClearAllPromotions = useCallback(() => {
     handleRemoveVoucher();
     handleRemoveCampaign();
+    setIsMemberCardSelected(false);
   }, [handleRemoveVoucher, handleRemoveCampaign]);
 
   const handleRemovePromotionFromBar = useCallback(() => {
@@ -1546,10 +1547,12 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       handleRemoveVoucher();
     } else if (hasCampaigns) {
       handleRemoveCampaign();
+    } else if (isMemberCardSelected) {
+      setIsMemberCardSelected(false);
     } else {
       handleClearAllPromotions();
     }
-  }, [appliedVoucher, appliedShippingVoucher, selectedCampaignIds, handleClearAllPromotions, handleRemoveVoucher, handleRemoveCampaign]);
+  }, [appliedVoucher, appliedShippingVoucher, selectedCampaignIds, isMemberCardSelected, handleClearAllPromotions, handleRemoveVoucher, handleRemoveCampaign]);
 
   const handleApplyVoucherFromModal = useCallback((code: string) => {
     return handleApplyVoucher(code);

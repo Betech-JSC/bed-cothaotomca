@@ -293,6 +293,7 @@ export default function VoucherTicketBar({
           {hasAnyVoucher && onRemove && (
             <button
               type="button"
+              data-testid="remove-voucher-button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

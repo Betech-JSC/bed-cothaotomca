@@ -375,6 +375,50 @@ describe('ConsolidatedMobileFlow Comprehensive Test Suite', () => {
       const ctaBtn = screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i });
       expect(ctaBtn).toBeInTheDocument();
     });
+
+    it('Task 3.5: Nút tắt ✕ trên VoucherTicketBar tắt Thẻ hội viên (isMemberCardSelected = false), gỡ badge khỏi bar, đưa discount về 0đ; khi click mở lại CouponModal có thể kích hoạt lại', async () => {
+      mockIsCartOpen = true;
+      render(<MobileCartFlow inline={false} />);
+
+      // Ban đầu: Khách hàng Gold có badge hội viên trên VoucherTicketBar
+      const memberBadge = screen.getByTestId('member-ticket-badge');
+      expect(memberBadge).toBeInTheDocument();
+      expect(memberBadge).toHaveTextContent(/GOLD/i);
+
+      // Nút Xóa ✕ hiển thị trên thanh vé
+      const removeBtn = screen.getByRole('button', { name: 'Xóa' });
+      expect(removeBtn).toBeInTheDocument();
+
+      // Bấm nút ✕ để tắt quyền lợi hội viên
+      fireEvent.click(removeBtn);
+
+      // Chip hội viên biến mất khỏi thanh vé
+      expect(screen.queryByTestId('member-ticket-badge')).not.toBeInTheDocument();
+
+      // Thanh vé trở về trạng thái placeholder
+      expect(screen.getByText('Chọn hoặc nhập mã')).toBeInTheDocument();
+
+      // Tóm tắt đơn hàng hiển thị đã bỏ chọn ưu đãi thành viên 0đ
+      expect(screen.getByText('Ưu đãi thành viên (Đã bỏ chọn)')).toBeInTheDocument();
+
+      // Bấm vào thanh vé để mở lại CouponModal
+      const selectBtn = screen.getByRole('button', { name: 'Chọn mã' });
+      fireEvent.click(selectBtn);
+
+      // Trong CouponModal, thẻ hội viên hiển thị
+      const memberCard = await screen.findByTestId('member-tier-campaign-card');
+      expect(memberCard).toBeInTheDocument();
+
+      // Click vào card hội viên để bật lại
+      fireEvent.click(memberCard);
+
+      // Áp dụng lại
+      const applyBtn = screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i });
+      fireEvent.click(applyBtn);
+
+      // Badge hội viên xuất hiện trở lại trên thanh vé
+      expect(await screen.findByTestId('member-ticket-badge')).toBeInTheDocument();
+    });
   });
 
   // =========================================================================

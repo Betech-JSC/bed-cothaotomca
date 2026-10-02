@@ -27,6 +27,8 @@ import {
   type ShippingSettings,
   type ActivePromotion,
   type PromotionGiftItem,
+  getLoyaltySettings,
+  type LoyaltySettings,
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
@@ -411,6 +413,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [validatingVoucher, setValidatingVoucher] = useState(false);
   const [isAutoVoucherApplied, setIsAutoVoucherApplied] = useState(false);
   const [confirmInfo, setConfirmInfo] = useState(false);
+
+  // Member card & loyalty settings state
+  const [isMemberCardSelected, setIsMemberCardSelected] = useState<boolean>(true);
+  const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
+
+  useEffect(() => {
+    getLoyaltySettings().then((s) => {
+      setLoyaltySettings(s);
+    });
+  }, []);
 
   // Guest VIP tier hint states
   const [guestTierHint, setGuestTierHint] = useState<GuestTierHint | null>(null);
@@ -1224,10 +1236,20 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   // Member Tier Discount - Tự động áp dụng chiết khấu hạng thành viên / Mừng lên hạng trên các món nguyên giá
   const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
+
+  const canCombineLoyaltyWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
+
+  const isExcludedByVoucher = useMemo(() => {
+    if (canCombineLoyaltyWithPromotions) return false;
+    if (appliedVoucher && appliedVoucher.canCombineWithPromotions === false) return true;
+    if (appliedShippingVoucher && appliedShippingVoucher.canCombineWithPromotions === false) return true;
+    return false;
+  }, [canCombineLoyaltyWithPromotions, appliedVoucher, appliedShippingVoucher]);
+
   const memberDiscount = useMemo(() => {
-    if (!user) return 0;
+    if (!user || !isMemberCardSelected || isExcludedByVoucher) return 0;
     return calculateMemberDiscount(user, regularPriceSubtotal);
-  }, [user, regularPriceSubtotal]);
+  }, [user, isMemberCardSelected, isExcludedByVoucher, regularPriceSubtotal]);
   const memberDiscountLabel = memberTier.label;
 
   const total = Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
@@ -1615,6 +1637,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const handleClearAllPromotions = useCallback(() => {
     handleRemoveVoucher();
     handleRemoveCampaign();
+    setIsMemberCardSelected(false);
   }, [handleRemoveVoucher, handleRemoveCampaign]);
 
   const handleRemovePromotionFromBar = useCallback(() => {
@@ -1626,10 +1649,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       handleRemoveVoucher();
     } else if (hasCampaigns) {
       handleRemoveCampaign();
+    } else if (isMemberCardSelected) {
+      setIsMemberCardSelected(false);
     } else {
       handleClearAllPromotions();
     }
-  }, [appliedVoucher, appliedShippingVoucher, selectedCampaignIds, handleClearAllPromotions, handleRemoveVoucher, handleRemoveCampaign]);
+  }, [appliedVoucher, appliedShippingVoucher, selectedCampaignIds, isMemberCardSelected, handleClearAllPromotions, handleRemoveVoucher, handleRemoveCampaign]);
 
   const handleApplyVouchers = async (codes: string[]) => {
     if (!codes || codes.length === 0) {
@@ -3201,7 +3226,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 memberTierName={memberTier.name}
                 memberDiscountAmount={memberDiscount}
                 memberDiscountPercent={memberTier.discountPercent}
-                isMemberApplied={memberDiscount > 0}
+                isMemberApplied={memberDiscount > 0 && !isExcludedByVoucher}
                 onClick={() => setIsVoucherModalOpen(true)}
                 onRemove={handleRemovePromotionFromBar}
               />
@@ -3272,15 +3297,35 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 </div>
               )}
 
-              {memberDiscount > 0 && (
-                <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
-                  <span className="flex-1 min-w-0 leading-snug">
-                    {memberDiscountLabel || "Ưu đãi thành viên"}
-                  </span>
-                  <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
-                    -{formatPrice(memberDiscount)}
-                  </span>
-                </div>
+              {user && (memberTier.tier === "gold" || memberTier.tier === "diamond") && (
+                !isMemberCardSelected ? (
+                  <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                    <span className="flex-1 min-w-0 leading-snug">
+                      Ưu đãi thành viên (Đã bỏ chọn)
+                    </span>
+                    <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                      0đ
+                    </span>
+                  </div>
+                ) : isExcludedByVoucher ? (
+                  <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                    <span className="flex-1 min-w-0 leading-snug">
+                      Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)
+                    </span>
+                    <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                      0đ
+                    </span>
+                  </div>
+                ) : memberDiscount > 0 ? (
+                  <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
+                    <span className="flex-1 min-w-0 leading-snug">
+                      {memberDiscountLabel || "Ưu đãi thành viên"}
+                    </span>
+                    <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
+                      -{formatPrice(memberDiscount)}
+                    </span>
+                  </div>
+                ) : null
               )}
 
               <div className="flex justify-between items-center text-sm font-medium border-t border-gray-200/60 pt-2.5">
@@ -3508,6 +3553,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         memberTier={memberTier.tier}
         privateVouchers={sessionPrivateVouchers}
         onAddPrivateVoucher={handleAddPrivateVoucherFromModal}
+        isMemberCardSelected={isMemberCardSelected}
+        onToggleMemberCard={setIsMemberCardSelected}
+        loyaltySettings={loyaltySettings}
       />
 
       {/* Order Gift Selector Modal */}
