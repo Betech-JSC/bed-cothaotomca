@@ -268,29 +268,29 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     setPasswordError(null);
 
     if (!passwordData.current_password) {
-      setPasswordError("Vui lòng nhập mật khẩu hiện tại.");
+      setPasswordError(t("password_required") || "Vui lòng nhập mật khẩu hiện tại.");
       return;
     }
     if (passwordData.new_password.length < 6) {
-      setPasswordError("Mật khẩu mới phải có ít nhất 6 ký tự.");
+      setPasswordError(t("password_min") || "Mật khẩu mới phải có ít nhất 6 ký tự.");
       return;
     }
     if (passwordData.new_password !== passwordData.new_password_confirmation) {
-      setPasswordError("Mật khẩu xác nhận không trùng khớp.");
+      setPasswordError(t("password_mismatch") || "Mật khẩu xác nhận không trùng khớp.");
       return;
     }
 
     setPasswordLoading(true);
     try {
       const res = await changePasswordApi(passwordData);
-      setPasswordSuccess(res.message || "Đổi mật khẩu thành công!");
+      setPasswordSuccess(res.message || t("password_change_success") || "Đổi mật khẩu thành công!");
       setPasswordData({
         current_password: "",
         new_password: "",
         new_password_confirmation: "",
       });
     } catch (err: any) {
-      setPasswordError(err.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại.");
+      setPasswordError(err.message || t("password_change_failed") || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại.");
     } finally {
       setPasswordLoading(false);
     }
@@ -336,12 +336,12 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       await setDefaultCustomerAddressApi(id);
       await fetchAddresses();
     } catch (err: any) {
-      alert(err.message || "Không thể đặt làm địa chỉ mặc định.");
+      alert(err.message || t("set_default_failed"));
     }
   };
 
   const handleDeleteAddress = async (id: number) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa địa chỉ này?")) return;
+    if (!window.confirm(t("delete_address_confirm") || "Bạn có chắc chắn muốn xóa địa chỉ này?")) return;
     try {
       await deleteCustomerAddressApi(id);
       await fetchAddresses();
@@ -353,11 +353,11 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   const handleSaveAddressModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addressForm.recipient_name.trim() || !addressForm.phone.trim()) {
-      setAddressModalError("Vui lòng điền họ tên và số điện thoại người nhận.");
+      setAddressModalError(t("recipient_info_required"));
       return;
     }
     if (!addressForm.ward.trim() || !addressForm.street_address.trim()) {
-      setAddressModalError("Vui lòng chọn Phường/Xã và nhập số nhà tên đường.");
+      setAddressModalError(t("ward_and_street_required"));
       return;
     }
 
@@ -403,7 +403,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       setAddressModalOpen(false);
       await fetchAddresses();
     } catch (err: any) {
-      setAddressModalError(err.message || "Lưu địa chỉ thất bại.");
+      setAddressModalError(err.message || t("save_address_failed"));
     } finally {
       setSavingAddress(false);
     }
@@ -678,14 +678,14 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               <button
                 onClick={handleRefreshPoints}
                 disabled={refreshingPoints}
-                title={refreshingPoints ? "Đang đồng bộ điểm..." : "Bấm để cập nhật lại điểm"}
+                title={refreshingPoints ? t("syncing_points") : t("click_to_refresh_points")}
                 className={`group inline-flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:text-secondary bg-white/90 hover:bg-white px-3 py-1.5 rounded-full border border-gray-200/80 shadow-xs transition-all duration-200 cursor-pointer active:scale-95 disabled:cursor-wait ${refreshingPoints ? "opacity-75" : ""
                   }`}
               >
                 <span className={`font-extrabold text-secondary text-sm leading-none transition-opacity duration-300 ${refreshingPoints ? "animate-pulse" : ""}`}>
                   {user.points?.toLocaleString("vi-VN") || 0}
                 </span>
-                <span className="text-[11px] font-medium text-gray-500 group-hover:text-gray-700">Điểm</span>
+                <span className="text-[11px] font-medium text-gray-500 group-hover:text-gray-700">{t("points_label")}</span>
                 <svg
                   className={`w-3.5 h-3.5 transition-all duration-500 ease-in-out shrink-0 ${refreshingPoints
                     ? "animate-spin text-secondary"
@@ -739,7 +739,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   <path d="M10 10C12.2091 10 14 8.20914 14 6C14 3.79086 12.2091 2 10 2C7.79086 2 6 3.79086 6 6C6 8.20914 7.79086 10 10 10Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M3 17C3 14.2386 6.13401 12 10 12C13.866 12 17 14.2386 17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                {t("title") || "Thông tin cá nhân"}
+                {t("tab_personal_info")}
               </button>
 
               {/* Address Book Tab */}
@@ -754,7 +754,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                Danh sách địa chỉ nhận hàng
+                {t("tab_addresses")}
               </button>
 
               {/* Change Password Tab */}
@@ -769,7 +769,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
-                Đổi mật khẩu
+                {t("tab_password")}
               </button>
 
               {/* Order History Tab */}
@@ -783,7 +783,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                {t("order_history") || "Lịch sử đơn hàng"}
+                {t("tab_orders")}
               </button>
             </div>
           </div>
@@ -813,7 +813,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
             <div className="flex flex-col gap-4">
               {loadingOrders ? (
                 <div className="text-center py-12 text-gray-500 font-medium text-[14px] animate-pulse">
-                  Đang tải đơn hàng...
+                  {t("loading_orders")}
                 </div>
               ) : orders.length === 0 ? (
                 <div className="text-center py-12 text-gray-400 font-medium text-[14px]">
@@ -834,14 +834,14 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                         : "bg-yellow/20 border-yellow/60 hover:border-secondary/40"
                         }`}
                     >
-                      {/* Hàng 1: Mã giao dịch + Ngày giao dịch + Tổng cộng tiền */}
+                      {/* Hàng 1: Mã giao dịch + Ngày giao dịch & Badge + Tổng cộng tiền */}
                       <div className="flex justify-between items-start md:items-center gap-4 w-full">
                         <div className="flex flex-wrap items-center gap-y-3">
                           <div className="pr-4 md:pr-6">
                             <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1 uppercase">
                               {t("order_code") || "MÃ GIAO DỊCH"}
                             </span>
-                            <span className="text-[1.125rem] md:text-[1.25rem] font-bold text-primary font-mono">
+                            <span className="text-xs sm:text-sm md:text-base font-bold font-mono text-primary whitespace-nowrap">
                               {formattedCode}
                             </span>
                           </div>
@@ -852,15 +852,18 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                             <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1 uppercase">
                               {t("order_date") || "NGÀY GIAO DỊCH"}
                             </span>
-                            <span className="text-[1rem] md:text-[1.125rem] font-semibold text-gray-900">
-                              {formatDate(order.created_at)}
-                            </span>
+                            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                              <span className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 whitespace-nowrap">
+                                {formatDate(order.created_at)}
+                              </span>
+                              {renderOrderStatusBadge(order)}
+                            </div>
                           </div>
                         </div>
 
                         <div className="text-right shrink-0">
                           <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1">
-                            Tổng cộng
+                            {t("total_payment_label")}
                           </span>
                           <span className="text-[1.125rem] md:text-[1.25rem] font-bold text-secondary">
                             {formatPrice(order.total)}
@@ -868,40 +871,34 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                         </div>
                       </div>
 
-                      {/* Hàng 2: Trạng thái đơn hàng (bên trái) + Nút Xem chi tiết / Mua lại (bên phải) */}
-                      <div className="flex justify-between items-center gap-3 w-full pt-2 border-t border-gray-100/80">
-                        <div>
-                          {renderOrderStatusBadge(order)}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedOrderCode(isExpanded ? null : order.order_code)}
-                            className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-secondary/40 hover:bg-amber-50/50 text-xs font-bold text-gray-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                      {/* Hàng 2: Nút Xem chi tiết / Mua lại dồn sang bên phải */}
+                      <div className="flex justify-end items-center gap-2 w-full pt-2 border-t border-gray-100/80">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedOrderCode(isExpanded ? null : order.order_code)}
+                          className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-secondary/40 hover:bg-amber-50/50 text-xs font-bold text-gray-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                        >
+                          <span>{isExpanded ? (t("hide_details") || "Thu gọn") : (t("view_details") || "Xem chi tiết")}</span>
+                          <svg
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
                           >
-                            <span>{isExpanded ? (t("hide_details") || "Thu gọn") : (t("view_details") || "Xem chi tiết")}</span>
-                            <svg
-                              className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
 
-                          <button
-                            type="button"
-                            onClick={(e) => handleReorder(order, e)}
-                            className="px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/90 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                            </svg>
-                            <span>{t("reorder") || "Mua lại"}</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => handleReorder(order, e)}
+                          className="px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/90 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                          </svg>
+                          <span>{t("reorder") || "Mua lại"}</span>
+                        </button>
                       </div>
 
                       {/* Expandable Order Details */}
@@ -910,7 +907,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                           {/* Items Section */}
                           <div className="space-y-2">
                             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                              Danh sách món đã đặt ({order.items?.length || 0})
+                              {t("order_items_list", { count: order.items?.length || 0 })}
                             </h4>
                             <div className="bg-white/90 rounded-xl border border-gray-100 divide-y divide-gray-100 overflow-hidden">
                               {order.items && order.items.length > 0 ? (
@@ -943,13 +940,13 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                                             </span>
                                           )}
                                           <span>
-                                            Số lượng: <strong className="text-gray-900">{item.quantity}</strong>
+                                            {t("quantity")}: <strong className="text-gray-900">{item.quantity}</strong>
                                           </span>
                                           <span>x {formatPrice(item.price)}</span>
                                         </div>
                                         {item.note && (
                                           <p className="text-xs text-amber-700 bg-amber-50/70 px-2 py-0.5 rounded mt-1 inline-block">
-                                            Ghi chú: {item.note}
+                                            {t("note")}: {item.note}
                                           </p>
                                         )}
                                       </div>
@@ -963,7 +960,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                                 ))
                               ) : (
                                 <div className="p-4 text-center text-sm text-gray-400">
-                                  Không có dữ liệu chi tiết món ăn.
+                                  {t("no_order_items")}
                                 </div>
                               )}
                             </div>
@@ -978,25 +975,25 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
-                                Thông tin giao nhận
+                                {t("delivery_info")}
                               </h5>
                               <div className="text-xs text-gray-700 space-y-1">
                                 <p>
-                                  <span className="text-gray-400">Người nhận:</span>{" "}
+                                  <span className="text-gray-400">{t("receiver")}:</span>{" "}
                                   <strong>{order.delivery?.receiver || user.name}</strong>
                                   {(order.delivery?.contact_number || user.phone) && (
                                     <span className="text-gray-500"> - {order.delivery?.contact_number || user.phone}</span>
                                   )}
                                 </p>
                                 <p>
-                                  <span className="text-gray-400">Hình thức:</span>{" "}
+                                  <span className="text-gray-400">{t("delivery_method")}:</span>{" "}
                                   <span className="font-semibold text-primary">
-                                    {order.delivery_type === "pickup" ? "Tự đến lấy tại chi nhánh" : "Giao hàng tận nơi"}
+                                    {order.delivery_type === "pickup" ? t("delivery_method_pickup") : t("delivery_method_delivery")}
                                   </span>
                                 </p>
                                 <p>
-                                  <span className="text-gray-400">Địa chỉ:</span>{" "}
-                                  <span>{cleanDuplicateAddressParts(order.delivery?.address || "") || "Nhận tại cửa hàng"}</span>
+                                  <span className="text-gray-400">{t("address_label")}:</span>{" "}
+                                  <span>{cleanDuplicateAddressParts(order.delivery?.address || "") || t("pickup_at_store")}</span>
                                 </p>
                               </div>
                             </div>
@@ -1007,29 +1004,29 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                                 <svg className="w-4 h-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                Chi tiết thanh toán
+                                {t("payment_details")}
                               </h5>
                               <div className="text-xs text-gray-700 space-y-1.5">
                                 <div className="flex justify-between">
-                                  <span className="text-gray-500">Tạm tính:</span>
+                                  <span className="text-gray-500">{t("subtotal_label")}:</span>
                                   <span className="font-medium">{formatPrice(order.subtotal || order.total)}</span>
                                 </div>
                                 {parseFloat(order.discount || "0") > 0 && (
                                   <div className="flex justify-between text-emerald-600">
-                                    <span>Giảm giá / Ưu đãi:</span>
+                                    <span>{t("discount_label")}:</span>
                                     <span className="font-medium">- {formatPrice(order.discount || "0")}</span>
                                   </div>
                                 )}
                                 <div className="flex justify-between">
-                                  <span className="text-gray-500">Phí giao hàng:</span>
+                                  <span className="text-gray-500">{t("shipping_fee_label")}:</span>
                                   <span className="font-medium">
                                     {parseFloat(order.delivery?.price || "0") > 0
                                       ? formatPrice(order.delivery?.price || "0")
-                                      : "Miễn phí"}
+                                      : t("free_shipping")}
                                   </span>
                                 </div>
                                 <div className="flex justify-between border-t border-gray-100 pt-1.5 text-sm">
-                                  <span className="font-bold text-gray-900">Tổng thanh toán:</span>
+                                  <span className="font-bold text-gray-900">{t("total_payment_label")}:</span>
                                   <span className="font-bold text-secondary font-mono">{formatPrice(order.total)}</span>
                                 </div>
                               </div>
@@ -1056,7 +1053,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                               </svg>
-                              <span>{t("reorder") || "Mua lại đơn này"}</span>
+                              <span>{t("reorder_this_order") || t("reorder")}</span>
                             </button>
                           </div>
                         </div>
@@ -1140,7 +1137,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Ngày sinh (dob) */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-primary block flex items-center justify-between">
-                  <span>Ngày sinh</span>
+                  <span>{t("dob")}</span>
                 </label>
                 <input
                   type="date"
@@ -1154,7 +1151,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Giới tính (gender) */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-primary block">
-                  Giới tính
+                  {t("gender")}
                 </label>
                 <select
                   name="gender"
@@ -1162,9 +1159,9 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   onChange={handleInputChange}
                   className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900 cursor-pointer"
                 >
-                  <option value="male">Nam</option>
-                  <option value="female">Nữ</option>
-                  <option value="other">Khác</option>
+                  <option value="male">{t("gender_male")}</option>
+                  <option value="female">{t("gender_female")}</option>
+                  <option value="other">{t("gender_other")}</option>
                 </select>
               </div>
             </div>
@@ -1178,7 +1175,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   : "btn-secondary text-white shadow-sm hover:shadow-md cursor-pointer"
                   } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
-                {loading ? "Đang lưu..." : t("save") || "Lưu thông tin"}
+                {loading ? t("saving") : t("save")}
               </button>
             </div>
           </form>
@@ -1192,7 +1189,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
               </svg>
-              Đổi mật khẩu tài khoản
+              {t("change_password_title")}
             </h3>
 
             {passwordSuccess && (
@@ -1209,7 +1206,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-primary block">
-                  Mật khẩu hiện tại <span className="text-red-500">*</span>
+                  {t("current_password")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="password"
@@ -1218,14 +1215,14 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                     setPasswordData((prev) => ({ ...prev, current_password: e.target.value }))
                   }
                   required
-                  placeholder="Nhập mật khẩu hiện tại"
+                  placeholder={t("current_password_placeholder")}
                   className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-primary block">
-                  Mật khẩu mới <span className="text-red-500">*</span>
+                  {t("new_password")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="password"
@@ -1234,14 +1231,14 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                     setPasswordData((prev) => ({ ...prev, new_password: e.target.value }))
                   }
                   required
-                  placeholder="Tối thiểu 6 ký tự"
+                  placeholder={t("new_password_placeholder")}
                   className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-primary block">
-                  Xác nhận mật khẩu mới <span className="text-red-500">*</span>
+                  {t("confirm_new_password")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="password"
@@ -1253,7 +1250,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                     }))
                   }
                   required
-                  placeholder="Nhập lại mật khẩu mới"
+                  placeholder={t("confirm_new_password_placeholder")}
                   className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
@@ -1268,7 +1265,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   : "btn-secondary text-white shadow-sm hover:shadow-md cursor-pointer"
                   } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
-                {passwordLoading ? "Đang xử lý..." : "Cập nhật mật khẩu"}
+                {passwordLoading ? t("processing") : t("update_password_btn")}
               </button>
             </div>
           </form>
@@ -1284,11 +1281,11 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                     <circle cx="12" cy="10" r="3"></circle>
                   </svg>
-                  <span className="sm:hidden">Danh sách địa chỉ</span>
-                  <span className="hidden sm:inline">Danh sách địa chỉ nhận hàng</span>
+                  <span className="sm:hidden">{t("tab_addresses_short")}</span>
+                  <span className="hidden sm:inline">{t("tab_addresses")}</span>
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Lưu trữ các địa chỉ thường nhận để thanh toán đơn hàng nhanh chóng chỉ với một chạm.
+                  {t("address_list_desc")}
                 </p>
               </div>
 
@@ -1297,26 +1294,26 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 onClick={handleOpenAddAddress}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-secondary text-white text-sm font-bold shadow-sm hover:bg-secondary/90 transition-all cursor-pointer shrink-0"
               >
-                <span>+ Thêm địa chỉ mới</span>
+                <span>{t("add_new_address")}</span>
               </button>
             </div>
 
             {loadingAddresses ? (
               <div className="text-center py-12 text-gray-500 animate-pulse text-sm">
-                Đang tải danh sách địa chỉ...
+                {t("loading_addresses")}
               </div>
             ) : addresses.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-8 space-y-3">
                 <div className="text-4xl">📍</div>
                 <p className="text-gray-500 text-sm font-medium">
-                  Bạn chưa lưu địa chỉ nhận hàng nào.
+                  {t("no_addresses_saved")}
                 </p>
                 <button
                   type="button"
                   onClick={handleOpenAddAddress}
                   className="text-secondary font-bold text-sm underline cursor-pointer"
                 >
-                  Thêm địa chỉ đầu tiên ngay
+                  {t("add_first_address_now")}
                 </button>
               </div>
             ) : (
@@ -1335,7 +1332,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                           <span>{addr.recipient_name}</span>
                           {addr.is_default && (
                             <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-wider">
-                              Mặc định
+                              {t("default_badge")}
                             </span>
                           )}
                         </div>
@@ -1351,7 +1348,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                       {addr.notes && (
                         <p className="text-xs text-gray-500 italic">
-                          Ghi chú: {addr.notes}
+                          {t("note")}: {addr.notes}
                         </p>
                       )}
                     </div>
@@ -1363,11 +1360,11 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                           onClick={() => handleSetDefaultAddress(addr.id)}
                           className="text-gray-600 hover:text-secondary font-semibold transition-all cursor-pointer"
                         >
-                          ★ Đặt làm mặc định
+                          ★ {t("set_default_btn")}
                         </button>
                       ) : (
                         <span className="text-emerald-700 font-semibold">
-                          ✓ Địa chỉ nhận hàng chính
+                          ✓ {t("default_main_address")}
                         </span>
                       )}
 
@@ -1377,14 +1374,14 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                           onClick={() => handleOpenEditAddress(addr)}
                           className="text-primary hover:text-secondary font-bold cursor-pointer"
                         >
-                          Sửa
+                          {t("edit_btn")}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteAddress(addr.id)}
                           className="text-red-500 hover:text-red-700 font-bold cursor-pointer"
                         >
-                          Xóa
+                          {t("delete_btn")}
                         </button>
                       </div>
                     </div>
@@ -1413,7 +1410,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <h3 className="font-display font-bold text-lg text-primary flex items-center gap-2">
                 <span>📍</span>
-                <span>{editingAddress ? "Chỉnh sửa địa chỉ" : "Thêm địa chỉ nhận hàng"}</span>
+                <span>{editingAddress ? t("modal_edit_address_title") : t("modal_add_address_title")}</span>
               </h3>
               <button
                 type="button"
@@ -1434,7 +1431,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-primary block">
-                    Tên người nhận <span className="text-red-500">*</span>
+                    {t("recipient_name")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -1450,7 +1447,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-primary block">
-                    Số điện thoại <span className="text-red-500">*</span>
+                    {t("recipient_phone")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
@@ -1468,7 +1465,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Tỉnh / Thành */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-primary block">
-                  Tỉnh / Thành phố <span className="text-red-500">*</span>
+                  {t("city_province")} <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={addressForm.province}
@@ -1503,7 +1500,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Phường / Xã with Combobox */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-primary block">
-                  Phường / Xã (Khu vực giao) <span className="text-red-500">*</span>
+                  {t("ward")} <span className="text-red-500">*</span>
                 </label>
                 <WardSelectCombobox
                   wards={availableWards}
@@ -1531,7 +1528,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Số nhà, tên đường */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-primary block">
-                  Số nhà, tên đường <span className="text-red-500">*</span>
+                  {t("street_address")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -1548,7 +1545,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Ghi chú */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-600 block">
-                  Ghi chú giao hàng (nếu có)
+                  {t("delivery_notes")}
                 </label>
                 <input
                   type="text"
@@ -1572,7 +1569,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                     }
                     className="rounded text-secondary focus:ring-secondary size-4"
                   />
-                  <span>Đặt làm địa chỉ nhận hàng mặc định</span>
+                  <span>{t("set_as_default_address")}</span>
                 </label>
               </div>
 
@@ -1582,7 +1579,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   onClick={() => setAddressModalOpen(false)}
                   className="px-5 py-2 rounded-full border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-all cursor-pointer"
                 >
-                  Hủy
+                  {t("cancel")}
                 </button>
                 <button
                   type="submit"
@@ -1590,7 +1587,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   className={`px-6 py-2 rounded-full bg-secondary text-white font-bold text-sm shadow-sm hover:bg-secondary/90 transition-all cursor-pointer ${savingAddress ? "opacity-75 cursor-not-allowed" : ""
                     }`}
                 >
-                  {savingAddress ? "Đang lưu..." : "Lưu địa chỉ"}
+                  {savingAddress ? t("saving") : t("save_address")}
                 </button>
               </div>
             </form>

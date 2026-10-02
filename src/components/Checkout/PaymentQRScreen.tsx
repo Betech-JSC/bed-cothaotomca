@@ -12,6 +12,7 @@ interface PaymentQRScreenProps {
   orderData: OrderInitiated;
   phone: string;
   onCancel?: () => void;
+  onSuccess?: () => void;
 }
 
 function useCountdown(expireAt: string) {
@@ -49,6 +50,7 @@ export default function PaymentQRScreen({
   orderData,
   phone,
   onCancel,
+  onSuccess,
 }: PaymentQRScreenProps) {
   const t = useTranslations("checkout");
   const router = useRouter();
@@ -87,12 +89,13 @@ export default function PaymentQRScreen({
   // Redirect khi đã thanh toán thành công hoặc đã đồng bộ
   useEffect(() => {
     if (statusData?.payment_status === "paid" || statusData?.status === "synced") {
+      onSuccess?.();
       router.push({
         pathname: "/order-success",
         query: { code: orderData.order_code, phone },
       });
     }
-  }, [statusData, router, orderData.order_code, phone]);
+  }, [statusData, router, orderData.order_code, phone, onSuccess]);
 
   const handleCopy = async (text: string, key: string) => {
     try {

@@ -78,6 +78,7 @@ export interface CampaignEligibilityResult {
 export interface CampaignLockResult {
   locked: boolean;
   reason?: string;
+  reasonCode?: string;
 }
 
 export interface CheckoutConfigDeliveryType {

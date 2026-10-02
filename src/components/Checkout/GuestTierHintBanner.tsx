@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
 
 interface GuestTierHintBannerProps {
   tier: "gold" | "diamond";
@@ -20,6 +21,7 @@ export default function GuestTierHintBanner({
   autoDismissMs = 0,
   isUpgradeCelebration = false,
 }: GuestTierHintBannerProps) {
+  const t = useTranslations("checkout");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const startTimer = () => {
@@ -56,39 +58,39 @@ export default function GuestTierHintBanner({
       <p className="font-serif text-sm text-primary leading-snug flex-1 min-w-0">
         {isUpgradeCelebration ? (
           <>
-            🎉 Chúc mừng bạn vừa thăng hạng{" "}
+            🎉 {t("guest_hint_celebration_prefix") || "Chúc mừng bạn vừa thăng hạng"}{" "}
             <span className="font-bold text-secondary">{tierLabel}</span>!{" "}
             <Link
-              href={loginHref}
+              href={loginHref as any}
               className="font-bold text-primary underline-offset-2 hover:underline"
             >
-              Đăng nhập
+              {t("guest_hint_login") || "Đăng nhập"}
             </Link>{" "}
-            để nhận ngay ưu đãi{" "}
+            {t("guest_hint_celebration_mid") || "để nhận ngay ưu đãi"}{" "}
             <span className="font-bold text-secondary">
-              Mừng lên hạng giảm {discountPercent}%
+              {t("guest_hint_celebration_benefit", { percent: discountPercent }) || `Mừng lên hạng giảm ${discountPercent}%`}
             </span>{" "}
-            cho đơn hàng này.
+            {t("guest_hint_celebration_suffix") || "cho đơn hàng này."}
           </>
         ) : (
           <>
-            🎁 Số điện thoại này đang có ưu đãi giảm{" "}
+            🎁 {t("guest_hint_benefit_prefix") || "Số điện thoại này đang có ưu đãi giảm"}{" "}
             <span className="font-bold text-secondary">{discountPercent}%</span>{" "}
-            hạng{" "}
+            {t("guest_hint_benefit_tier") || "hạng"}{" "}
             <span className="font-bold text-secondary">{tierLabel}</span>.{" "}
             <Link
-              href={loginHref}
+              href={loginHref as any}
               className="font-bold text-primary underline-offset-2 hover:underline"
             >
-              Đăng nhập
+              {t("guest_hint_login") || "Đăng nhập"}
             </Link>{" "}
-            để nhận ưu đãi ngay.
+            {t("guest_hint_benefit_suffix") || "để nhận ưu đãi ngay."}
           </>
         )}
       </p>
       <button
         type="button"
-        aria-label="Đóng thông báo"
+        aria-label={t("guest_hint_close") || "Đóng thông báo"}
         onClick={onDismiss}
         className="text-primary/60 hover:text-primary font-bold text-base leading-none cursor-pointer shrink-0 mt-0.5"
       >

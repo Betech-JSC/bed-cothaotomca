@@ -1097,18 +1097,18 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const validatePhoneInput = (val: string): string | null => {
     const clean = val.trim().replace(/\s+/g, "");
     if (!clean) {
-      return "Vui lòng nhập số điện thoại.";
+      return t("validation.phone_required") || "Vui lòng nhập số điện thoại.";
     }
     const normalized = clean.startsWith("+84") ? "0" + clean.slice(3) : clean;
     const phoneRegex = /^0[35789]\d{8}$/;
     if (!phoneRegex.test(normalized)) {
-      return "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
+      return t("validation.phone_invalid") || "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
     }
     if (/^(\d)\1{9}$/.test(normalized)) {
-      return "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
+      return t("validation.phone_invalid") || "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
     }
     if (normalized === "0123456789") {
-      return "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
+      return t("validation.phone_invalid") || "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
     }
     return null;
   };
@@ -1116,24 +1116,24 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const validateNameInput = (val: string): string | null => {
     const clean = val.trim();
     if (!clean) {
-      return "Vui lòng nhập họ và tên.";
+      return t("validation.name_required") || "Vui lòng nhập họ và tên.";
     }
     if (clean.length < 2) {
-      return "Họ và tên quá ngắn. Vui lòng nhập tối thiểu 2 ký tự.";
+      return t("validation.name_min") || "Họ và tên quá ngắn. Vui lòng nhập tối thiểu 2 ký tự.";
     }
     const nameRegex = /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ\s'-]+$/u;
     if (!nameRegex.test(clean)) {
-      return "Họ và tên không hợp lệ. Vui lòng không nhập số hoặc ký tự đặc biệt.";
+      return t("validation.name_invalid") || "Họ và tên không hợp lệ. Vui lòng không nhập số hoặc ký tự đặc biệt.";
     }
     return null;
   };
 
   const validateEmailInput = (val: string): string | null => {
     const clean = val.trim();
-    if (!clean) return "Vui lòng nhập địa chỉ email.";
+    if (!clean) return t("validation.email_required") || "Vui lòng nhập địa chỉ email.";
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(clean)) {
-      return "Email không hợp lệ. Vui lòng kiểm tra lại.";
+      return t("validation.email_invalid") || "Email không hợp lệ. Vui lòng kiểm tra lại.";
     }
     return null;
   };
@@ -1250,7 +1250,25 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     if (!user || !isMemberCardSelected || isExcludedByVoucher) return 0;
     return calculateMemberDiscount(user, regularPriceSubtotal);
   }, [user, isMemberCardSelected, isExcludedByVoucher, regularPriceSubtotal]);
-  const memberDiscountLabel = memberTier.label;
+
+  const memberDiscountLabel = useMemo(() => {
+    if (!user || memberTier.discountPercent <= 0) return "";
+    const tierName = memberTier.name;
+    if (memberTier.isUpgradeCelebration) {
+      return (
+        t("cost_summary.member_upgrade_label", {
+          tier: tierName,
+          percent: memberTier.discountPercent,
+        }) || memberTier.label
+      );
+    }
+    return (
+      t("cost_summary.member_discount_label", {
+        tier: tierName,
+        percent: memberTier.discountPercent,
+      }) || memberTier.label
+    );
+  }, [user, memberTier, t]);
 
   const total = Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
@@ -1327,7 +1345,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const handleApplyVoucher = async (codeOverride?: string, isAuto = false) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
     if (!code) {
-      setVoucherError("Vui lòng nhập mã giảm giá.");
+      setVoucherError(t("validation.voucher_input_required") || "Vui lòng nhập mã giảm giá.");
       setVoucherSuccess(null);
       setBestDealNotice(null);
       return;
@@ -1843,13 +1861,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     const opCheck = checkOperatingHours(config?.operating_hours, undefined, deliveryType);
 
     if (isCartCheckout && cartItems.length === 0) {
-      setError("Giỏ hàng của bạn đang trống.");
+      setError(t("empty") || "Giỏ hàng của bạn đang trống.");
       setLoading(false);
       return;
     }
 
     if (isCartCheckout && isOutOfStockOverall) {
-      setError("Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng.");
+      setError(t("oos_warning") || "Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng.");
       setLoading(false);
       return;
     }
@@ -1878,21 +1896,21 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     if (deliveryType === "delivery") {
       if (!isSavedAddressSelected) {
         if (!selectedWard.trim() && !selectedWardId) {
-          errs["delivery.ward"] = "* Vui lòng chọn Phường / Xã (Khu vực giao).";
+          errs["delivery.ward"] = t("validation.ward_required") || "* Vui lòng chọn Phường / Xã (Khu vực giao).";
         }
         if (!streetAddress.trim()) {
-          errs["delivery.address"] = "Vui lòng nhập số nhà và tên đường.";
+          errs["delivery.address"] = t("validation.address_required") || "Vui lòng nhập số nhà và tên đường.";
         }
       } else {
         if (!streetAddress.trim() && !selectedSavedAddress?.full_address) {
-          errs["delivery.address"] = "Vui lòng nhập số nhà và tên đường.";
+          errs["delivery.address"] = t("validation.address_required") || "Vui lòng nhập số nhà và tên đường.";
         }
       }
     }
 
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
-      setError("Vui lòng kiểm tra lại thông tin còn thiếu hoặc chưa chính xác.");
+      setError(t("validation.form_incomplete") || "Vui lòng kiểm tra lại thông tin còn thiếu hoặc chưa chính xác.");
       setLoading(false);
       return;
     }
@@ -1908,7 +1926,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       const maxAllowed = opCheck.deliveryClose || "23:00";
 
       if (!expectedDeliveryTime) {
-        const msg = `Vui lòng chọn giờ nhận hàng mong muốn (khung giờ ${minAllowed} - ${maxAllowed}).`;
+        const msg = t("validation.delivery_time_required", { min: minAllowed, max: maxAllowed }) || `Vui lòng chọn giờ nhận hàng mong muốn (khung giờ ${minAllowed} - ${maxAllowed}).`;
         setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
@@ -2154,6 +2172,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       <PaymentQRScreen
         orderData={pendingOrder}
         phone={phone.trim()}
+        onSuccess={() => setPendingOrder(null)}
         onCancel={() => setPendingOrder(null)}
       />
     );
@@ -2366,10 +2385,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
                         <span className="text-sm">📍</span>
-                        <span>Đang tải danh sách địa chỉ...</span>
+                        <span>{t("loading_addresses")}</span>
                       </span>
                       <span className="text-xs text-secondary/60 font-semibold">
-                        Vui lòng chờ...
+                        {t("please_wait") || "Vui lòng chờ..."}
                       </span>
                     </div>
 
@@ -2552,7 +2571,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           }
                         }}
                         hasError={!!fieldError("delivery.ward")}
-                        errorMessage={fieldError("delivery.ward") || "* Vui lòng chọn Phường / Xã (Khu vực giao)."}
+                        errorMessage={fieldError("delivery.ward") || t("validation.ward_required") || "* Vui lòng chọn Phường / Xã (Khu vực giao)."}
                       />
                     </div>
 
@@ -2841,7 +2860,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             ))
                           ) : (
                             <option value="" disabled>
-                              Hôm nay đã hết khung giờ (Vui lòng chọn ngày mai)
+                              {t("preorder_closed_today") || "Hôm nay đã hết khung giờ (Vui lòng chọn ngày mai)"}
                             </option>
                           )}
                         </select>
@@ -2944,7 +2963,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             </p>
                             {item.isOutOfStock && (
                               <span className="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold text-red-600 bg-red-100 rounded-full">
-                                Tạm hết hàng
+                                {t("out_of_stock")}
                               </span>
                             )}
                           </div>
@@ -3301,7 +3320,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 !isMemberCardSelected ? (
                   <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                     <span className="flex-1 min-w-0 leading-snug">
-                      Ưu đãi thành viên (Đã bỏ chọn)
+                      {t("cost_summary.member_discount_unselected") || "Ưu đãi thành viên (Đã bỏ chọn)"}
                     </span>
                     <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                       0đ
@@ -3310,7 +3329,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 ) : isExcludedByVoucher ? (
                   <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                     <span className="flex-1 min-w-0 leading-snug">
-                      Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)
+                      {t("cost_summary.member_discount_mutex") || "Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)"}
                     </span>
                     <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                       0đ
@@ -3319,7 +3338,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 ) : memberDiscount > 0 ? (
                   <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                     <span className="flex-1 min-w-0 leading-snug">
-                      {memberDiscountLabel || "Ưu đãi thành viên"}
+                      {memberDiscountLabel || t("cost_summary.member_discount_default") || "Ưu đãi thành viên"}
                     </span>
                     <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                       -{formatPrice(memberDiscount)}
@@ -3422,14 +3441,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               {deliveryType === "delivery" && !isDeliverable && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs text-red-800 font-medium space-y-1.5 animate-fade-in">
                   <p className="text-red-900 font-bold text-sm">
-                    Khu vực này hiện chưa hỗ trợ giao hàng tận nơi.
+                    {t("delivery_area_not_supported_title")}
                   </p>
                   <p className="text-red-700 leading-relaxed">
-                    Vui lòng chọn <strong>&quot;{t("delivery_pickup")}&quot;</strong> hoặc liên hệ Hotline:{" "}
+                    {t("delivery_area_not_supported_lead")} <strong>&quot;{t("delivery_pickup")}&quot;</strong> {t("delivery_area_not_supported_or_contact")}{" "}
                     <a href={`tel:${hotline.replace(/[^0-9+]/g, "")}`} className="font-bold underline text-red-900 hover:text-red-950">
                       {hotline}
                     </a>{" "}
-                    để được hỗ trợ.
+                    {t("delivery_area_not_supported_for_help")}
                   </p>
                 </div>
               )}
@@ -3443,7 +3462,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
               {user && total > 0 && Math.floor(total / 10000) > 0 && (
                 <div className="text-xs text-secondary font-semibold text-right flex items-center justify-end gap-1.5 pt-2 border-t border-dashed border-gray-200">
-                  <span>Đơn hàng này sẽ tích lũy thêm {Math.floor(total / 10000)} điểm</span>
+                  <span>{t("cost_summary.order_points_accumulated", { points: Math.floor(total / 10000) })}</span>
                 </div>
               )}
             </div>
@@ -3489,7 +3508,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             {/* Cảnh báo tạm hết hàng */}
             {isCartCheckout && isOutOfStockOverall && (
               <p className="text-red-500 text-xs text-center font-medium">
-                Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng
+                {t("oos_warning")}
               </p>
             )}
 
@@ -3504,7 +3523,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               {loading
                 ? t("submitting")
                 : deliveryType === "delivery" && !isDeliverable
-                  ? "Khu vực chưa hỗ trợ giao"
+                  ? t("delivery_area_not_supported_btn")
                   : !operatingStatus.canOrderNow || (deliveryType === "delivery" && deliverySchedule === "schedule")
                     ? (t("preorder_cta") || "Đặt trước")
                     : t("place_order")}

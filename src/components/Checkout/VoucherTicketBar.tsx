@@ -69,7 +69,8 @@ export function formatVoucherBadgeText(voucher: {
 export function formatMemberBadgeText(
   tierName?: string,
   amount?: number,
-  percent?: number
+  percent?: number,
+  memberPrefix: string = "Hội viên"
 ): string {
   if (tierName && (tierName.includes("-") || tierName.includes("%"))) {
     return tierName;
@@ -86,7 +87,13 @@ export function formatMemberBadgeText(
   if (percent && percent > 0) {
     return tier ? `${tier} -${percent}%` : `-${percent}%`;
   }
-  return tier ? (tier.toLowerCase().includes("hội viên") || tier.toLowerCase().includes("hạng") ? tier : `Hội viên ${tier}`) : "Hội viên";
+  return tier
+    ? tier.toLowerCase().includes("hội viên") ||
+      tier.toLowerCase().includes("hạng") ||
+      tier.toLowerCase().includes("member")
+      ? tier
+      : `${memberPrefix} ${tier}`
+    : memberPrefix;
 }
 
 export function isShippingVoucher(v: { code: string; discountType?: string; isFreeship?: boolean }): boolean {
@@ -230,6 +237,8 @@ export default function VoucherTicketBar({
     (activeCampaignName ? 1 : 0) +
     (isMemberActive ? 1 : 0);
 
+  const memberBadgePrefix = t("member_badge_prefix") || "Hội viên";
+
   const maxDiscountVal = shipVoucher ? (shipVoucher.maxDiscount ?? shipVoucher.max_discount) : null;
   const shipBadgeText = shipVoucher
     ? shipVoucher.short_name && shipVoucher.short_name.trim()
@@ -272,7 +281,7 @@ export default function VoucherTicketBar({
             )}
             {isMemberActive && (
               <MemberTicketBadge
-                text={formatMemberBadgeText(memberTierName, memberDiscountAmount, memberDiscountPercent)}
+                text={formatMemberBadgeText(memberTierName, memberDiscountAmount, memberDiscountPercent, memberBadgePrefix)}
               />
             )}
           </div>

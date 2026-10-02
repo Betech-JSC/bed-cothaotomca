@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
 import CouponModal from "./CouponModal";
 import { getAvailableVouchers, PublicVoucherItem, getShippingSettings, ShippingSettings } from "@/services/orderService";
 import { getActiveCampaigns, PublicCampaignItem } from "@/services/campaignService";
 import { useCart } from "@/contexts/CartContext";
 
 export default function FloatingVoucherButton() {
+  const t = useTranslations("voucher");
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [vouchers, setVouchers] = useState<PublicVoucherItem[]>([]);
@@ -50,7 +52,7 @@ export default function FloatingVoucherButton() {
           type="button"
           onClick={() => setIsOpen(true)}
           className="group relative flex items-center gap-1.5 md:gap-2 px-3.5 py-2 md:px-3.5 md:py-2.5 bg-white text-secondary rounded-full shadow-[0_6px_20px_rgba(205,72,41,0.22)] hover:shadow-[0_10px_28px_rgba(205,72,41,0.35)] hover:scale-105 active:scale-95 transition-all duration-300 border-2 border-secondary/30 hover:border-secondary cursor-pointer animate-in fade-in"
-          aria-label="Xem ưu đãi và khuyến mãi"
+          aria-label={t("floating_button_aria") || "Xem ưu đãi và khuyến mãi"}
         >
           {/* Brand-colored Ticket Icon */}
           <div className="w-5 h-5 md:w-6 md:h-6 flex items-center justify-center text-secondary">
@@ -68,7 +70,7 @@ export default function FloatingVoucherButton() {
 
           {/* Clean "Ưu đãi" text matching brand visual */}
           <span className="font-display text-xs sm:text-sm md:title-3 font-bold text-secondary tracking-tight md:tracking-wide pr-0.5">
-            Ưu đãi
+            {t("floating_button_label") || "Ưu đãi"}
           </span>
 
           {/* Badge count */}

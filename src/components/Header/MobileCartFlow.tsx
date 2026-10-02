@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
-import { useRouter, Link } from "@/i18n/routing";
+import { useRouter, Link, usePathname } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
@@ -83,6 +83,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const { user, token, refreshUser } = useAuth();
   const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
   const router = useRouter();
+  const pathname = usePathname();
   const t = useTranslations("checkout");
 
   const hasRefreshedUserRef = useRef(false);
@@ -439,6 +440,15 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
   // Pending order (bank transfer QR)
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
+
+  // Safety net: nếu route chuyển sang /order-success thì đảm bảo đóng drawer
+  useEffect(() => {
+    if (pathname === "/order-success" || pathname?.includes("order-success") || pathname?.includes("dat-hang-thanh-cong")) {
+      if (pendingOrder) setPendingOrder(null);
+      if (step !== 1) setStep(1);
+      onClose?.();
+    }
+  }, [pathname, pendingOrder, step, onClose]);
   const availableDeliveryDates = useMemo(() => {
     const dates: { iso: string; label: string }[] = [];
     const refDate = getVietnamDate();
@@ -1145,14 +1155,23 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const memberDiscount = (!isMemberCardSelected || isExcludedByVoucher) ? 0 : baseMemberDiscount;
 
   const memberDiscountLabel = useMemo(() => {
-    if (!user) return "";
-    const isDiamond = memberTier.tier === "diamond";
-    const tierNameVi = isDiamond ? "Kim Cương" : "Vàng";
+    if (!user || memberTier.discountPercent <= 0) return "";
+    const tierName = memberTier.name;
     if (memberTier.isUpgradeCelebration) {
-      return `Ưu đãi mừng lên hạng ${tierNameVi} (${memberTier.discountPercent}%)`;
+      return (
+        t("cost_summary.member_upgrade_label", {
+          tier: tierName,
+          percent: memberTier.discountPercent,
+        }) || memberTier.label
+      );
     }
-    return `Ưu đãi thành viên ${tierNameVi} (${memberTier.discountPercent}%)`;
-  }, [user, memberTier]);
+    return (
+      t("cost_summary.member_discount_label", {
+        tier: tierName,
+        percent: memberTier.discountPercent,
+      }) || memberTier.label
+    );
+  }, [user, memberTier, t]);
 
   const total = Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
@@ -1230,7 +1249,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const handleApplyVoucher = async (codeOverride?: string) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
     if (!code) {
-      setVoucherError("Vui lòng nhập mã giảm giá.");
+      setVoucherError(t("validation.voucher_input_required"));
       setVoucherSuccess(null);
       setBestDealNotice(null);
       return;
@@ -1720,13 +1739,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     setFieldErrors({});
 
     if (cartItems.length === 0) {
-      setError("Giỏ hàng của bạn đang trống.");
+      setError(t("empty"));
       setLoading(false);
       return;
     }
 
     if (isOutOfStockOverall) {
-      setError("Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng.");
+      setError(t("oos_warning"));
       setLoading(false);
       return;
     }
@@ -1734,13 +1753,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     const opCheck = checkOperatingHours(config?.operating_hours, undefined, deliveryType);
 
     if (!name.trim()) {
-      setFieldErrors(prev => ({ ...prev, name: "Vui lòng nhập họ và tên." }));
+      setFieldErrors(prev => ({ ...prev, name: t("validation.name_required") }));
       setLoading(false);
       return;
     }
 
     if (!phone.trim()) {
-      setFieldErrors(prev => ({ ...prev, phone: "Vui lòng nhập số điện thoại." }));
+      setFieldErrors(prev => ({ ...prev, phone: t("validation.phone_required") }));
       setLoading(false);
       return;
     }
@@ -1749,7 +1768,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     if (cleanEmail) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(cleanEmail)) {
-        setFieldErrors((prev) => ({ ...prev, email: "Email không hợp lệ. Vui lòng kiểm tra lại." }));
+        setFieldErrors((prev) => ({ ...prev, email: t("validation.email_invalid") }));
         setLoading(false);
         return;
       }
@@ -1758,31 +1777,31 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     if (deliveryType === "delivery") {
       if (!isSavedAddressSelected) {
         if (!selectedWard && !selectedWardId) {
-          setFieldErrors((prev) => ({ ...prev, ward: "Vui lòng chọn Phường / Xã." }));
+          setFieldErrors((prev) => ({ ...prev, ward: t("validation.ward_required") }));
           setLoading(false);
           return;
         }
         if (!streetAddress.trim()) {
-          setFieldErrors((prev) => ({ ...prev, address: "Vui lòng nhập địa chỉ chi tiết." }));
+          setFieldErrors((prev) => ({ ...prev, address: t("validation.address_detail_required") }));
           setLoading(false);
           return;
         }
       } else {
         if (!streetAddress.trim() && !selectedSavedAddress?.full_address) {
-          setFieldErrors((prev) => ({ ...prev, address: "Vui lòng nhập địa chỉ chi tiết." }));
+          setFieldErrors((prev) => ({ ...prev, address: t("validation.address_detail_required") }));
           setLoading(false);
           return;
         }
       }
       if (!isDeliverable) {
-        setError("Khu vực bạn chọn hiện chưa hỗ trợ giao hàng. Vui lòng chọn địa chỉ khác.");
+        setError(t("validation.delivery_not_supported"));
         setLoading(false);
         return;
       }
     }
 
     if (!confirmInfo) {
-      setError("Vui lòng xác nhận thông tin giao hàng chính xác.");
+      setError(t("validation.confirm_info_required"));
       setLoading(false);
       return;
     }
@@ -1809,7 +1828,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       const maxAllowed = opCheck.deliveryClose || "23:00";
 
       if (!expectedDeliveryTime) {
-        const msg = `Vui lòng chọn giờ nhận hàng mong muốn (khung giờ ${minAllowed} - ${maxAllowed}).`;
+        const msg = t("validation.delivery_time_required", { min: minAllowed, max: maxAllowed });
         setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
@@ -1997,7 +2016,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       if (err instanceof OrderApiError) {
         setError(err.message);
       } else {
-        setError("Đặt hàng thất bại. Vui lòng thử lại.");
+        setError(t("validation.order_failed"));
       }
     } finally {
       setLoading(false);
@@ -2021,7 +2040,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       >
         <div className="max-w-md mx-auto w-full py-6 space-y-6">
           <div className="flex justify-between items-center border-b border-gray-200 pb-3">
-            <h2 className="title-1 font-display text-primary font-bold">Thanh toán</h2>
+            <h2 className="title-1 font-display text-primary font-bold">{t("checkout")}</h2>
             {!inline && (
               <button
                 onClick={() => {
@@ -2038,6 +2057,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
           <PaymentQRScreen
             orderData={pendingOrder}
             phone={phone}
+            onSuccess={() => {
+              setPendingOrder(null);
+              setStep(1);
+              onClose?.();
+            }}
             onCancel={() => {
               setPendingOrder(null);
             }}
@@ -2144,7 +2168,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 )}
                                 {isOut && (
                                   <span className="inline-block text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.2 rounded mt-0.5">
-                                    [Tạm hết hàng]
+                                    [{t("out_of_stock")}]
                                   </span>
                                 )}
                               </div>
@@ -2353,7 +2377,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       !isMemberCardSelected ? (
                         <div className="flex justify-between items-center text-sm font-medium text-gray-500 animate-fade-in gap-2">
                           <span className="flex-1 min-w-0">
-                            Ưu đãi thành viên (Đã bỏ chọn)
+                            {t("cost_summary.member_discount_unselected")}
                           </span>
                           <span className="shrink-0 whitespace-nowrap text-right font-bold">
                             0đ
@@ -2362,7 +2386,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       ) : isExcludedByVoucher ? (
                         <div className="flex justify-between items-center text-sm font-medium text-gray-500 animate-fade-in gap-2">
                           <span className="flex-1 min-w-0">
-                            Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)
+                            {t("cost_summary.member_discount_mutex")}
                           </span>
                           <span className="shrink-0 whitespace-nowrap text-right font-bold">
                             0đ
@@ -2370,7 +2394,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         </div>
                       ) : memberDiscount > 0 ? (
                         <div className="flex justify-between items-center text-base text-secondary font-semibold animate-fade-in">
-                          <span className="flex-1 min-w-0">{memberDiscountLabel || "Ưu đãi thành viên"}</span>
+                          <span className="flex-1 min-w-0">{memberDiscountLabel || t("cost_summary.member_discount_default")}</span>
                           <span className="shrink-0 whitespace-nowrap text-right">
                             -{formatPrice(memberDiscount)}
                           </span>
@@ -2378,9 +2402,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       ) : (
                         <div className="flex justify-between items-center text-sm font-medium text-gray-500 animate-fade-in gap-2">
                           <div className="flex-1 min-w-0">
-                            <span>{memberDiscountLabel || "Ưu đãi thành viên"}</span>
+                            <span>{memberDiscountLabel || t("cost_summary.member_discount_default")}</span>
                             <span className="text-[11px] text-gray-500 font-normal block leading-tight mt-0.5">
-                              (Chỉ áp dụng cho món nguyên giá)
+                              {t("cost_summary.regular_price_only")}
                             </span>
                           </div>
                           <span className="shrink-0 whitespace-nowrap text-right font-bold">
@@ -2476,7 +2500,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     {/* 7) Dòng tích lũy điểm thưởng */}
                     {user && total > 0 && Math.floor(total / 10000) > 0 && (
                       <div className="text-xs text-secondary font-semibold text-right flex items-center justify-end gap-1.5 pt-2 border-t border-dashed border-gray-200">
-                        <span>Đơn hàng này sẽ tích lũy thêm {Math.floor(total / 10000)} điểm</span>
+                        <span>{t("cost_summary.order_points_accumulated", { points: Math.floor(total / 10000) })}</span>
                       </div>
                     )}
                   </div>
@@ -2484,7 +2508,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   {/* Submit button step 1 */}
                   {isOutOfStockOverall && (
                     <p className="text-red-500 text-xs text-center font-medium">
-                      {t("oos_warning") || "Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng"}
+                      {t("oos_warning")}
                     </p>
                   )}
                   <button
@@ -2555,7 +2579,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   !isMemberCardSelected ? (
                     <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                       <span className="flex-1 min-w-0 leading-snug">
-                        Ưu đãi thành viên (Đã bỏ chọn)
+                        {t("cost_summary.member_discount_unselected")}
                       </span>
                       <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                         0đ
@@ -2564,7 +2588,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   ) : isExcludedByVoucher ? (
                     <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                       <span className="flex-1 min-w-0 leading-snug">
-                        Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)
+                        {t("cost_summary.member_discount_mutex")}
                       </span>
                       <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                         0đ
@@ -2573,7 +2597,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   ) : memberDiscount > 0 ? (
                     <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                       <span className="flex-1 min-w-0 leading-snug">
-                        {memberDiscountLabel || "Ưu đãi thành viên"}
+                        {memberDiscountLabel || t("cost_summary.member_discount_default")}
                       </span>
                       <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                         -{formatPrice(memberDiscount)}
@@ -2582,9 +2606,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   ) : (
                     <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                       <div className="flex-1 min-w-0 leading-snug">
-                        <span>{memberDiscountLabel || "Ưu đãi thành viên"}</span>
+                        <span>{memberDiscountLabel || t("cost_summary.member_discount_default")}</span>
                         <span className="text-[11px] text-gray-500 font-normal block leading-tight mt-0.5">
-                          (Chỉ áp dụng cho món nguyên giá)
+                          {t("cost_summary.regular_price_only")}
                         </span>
                       </div>
                       <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
@@ -2689,14 +2713,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 {deliveryType === "delivery" && !isDeliverable && (
                   <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-xs text-red-800 font-medium space-y-1.5 animate-fade-in">
                     <p className="text-red-900 font-bold text-sm">
-                      Khu vực này hiện chưa hỗ trợ giao hàng tận nơi.
+                      {t("delivery_area_not_supported_title")}
                     </p>
                     <p className="text-red-700 leading-relaxed">
-                      Vui lòng chọn <strong>&quot;{t("delivery_pickup")}&quot;</strong> hoặc liên hệ Hotline:{" "}
+                      {t("delivery_area_not_supported_lead")} <strong>&quot;{t("delivery_pickup")}&quot;</strong> {t("delivery_area_not_supported_or_contact")}{" "}
                       <a href={`tel:${hotline.replace(/[^0-9+]/g, "")}`} className="font-bold underline text-red-900 hover:text-red-950">
                         {hotline}
                       </a>{" "}
-                      để được hỗ trợ.
+                      {t("delivery_area_not_supported_for_help")}
                     </p>
                   </div>
                 )}
@@ -2712,7 +2736,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 {/* 7) Dòng tích lũy điểm thưởng */}
                 {user && total > 0 && Math.floor(total / 10000) > 0 && (
                   <div className="text-xs text-secondary font-semibold text-right flex items-center justify-end gap-1.5 pt-2 border-t border-dashed border-gray-200">
-                    <span>Đơn hàng này sẽ tích lũy thêm {Math.floor(total / 10000)} điểm</span>
+                    <span>{t("cost_summary.order_points_accumulated", { points: Math.floor(total / 10000) })}</span>
                   </div>
                 )}
               </div>
@@ -2861,10 +2885,10 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
                             <span className="text-sm">📍</span>
-                            <span>Đang tải danh sách địa chỉ...</span>
+                            <span>{t("loading_addresses")}</span>
                           </span>
                           <span className="text-xs text-secondary/60 font-semibold">
-                            Vui lòng chờ...
+                            {t("please_wait")}
                           </span>
                         </div>
 
@@ -3044,7 +3068,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                             }
                           }}
                           hasError={!!fieldErrors.ward}
-                          errorMessage={fieldErrors.ward || "* Vui lòng chọn Phường / Xã (Khu vực giao)."}
+                          errorMessage={fieldErrors.ward || t("validation.ward_required")}
                         />
 
                         <div className="space-y-3">
@@ -3260,7 +3284,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                                 ))
                               ) : (
                                 <option value="" disabled>
-                                  Hôm nay đã hết khung giờ (Vui lòng chọn ngày mai)
+                                  {t("preorder_closed_today")}
                                 </option>
                               )}
                             </select>
@@ -3349,7 +3373,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               {/* Submit checkout button */}
               {isOutOfStockOverall && (
                 <p className="text-red-500 text-xs text-center font-medium">
-                  {t("oos_warning") || "Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng"}
+                  {t("oos_warning")}
                 </p>
               )}
               <button
@@ -3361,7 +3385,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 {loading
                   ? t("submitting")
                   : deliveryType === "delivery" && !isDeliverable
-                    ? "Khu vực chưa hỗ trợ giao"
+                    ? t("delivery_area_not_supported_btn")
                     : !operatingStatus.canOrderNow || (deliveryType === "delivery" && deliverySchedule === "schedule")
                       ? (t("preorder_cta") || "Đặt trước")
                       : t("place_order")}
