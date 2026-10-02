@@ -147,7 +147,7 @@
     "delivery_operating_notice": "Bếp nhận đơn từ {storeOpen} và giao món từ {deliveryOpen} - {cutoff}. Đơn đặt trong khung giờ đóng cửa sẽ được xử lý vào sáng hôm sau.",
     "early_morning_note": "* Khách nhận món sớm nhất từ {openTime} (Bếp mở nhận đơn từ 9:00).",
     "payment_method_label": "Phương thức thanh toán",
-    "payment_qr_desc": "Chuyển khoản / Quét mã QR (Khuyên dùng)",
+    "payment_qr_desc": "Chuyển khoản / Quét mã QR",
     "payment_cod_desc": "Tiền mặt khi nhận hàng (COD)",
     "payment_pickup_desc": "Thanh toán trực tiếp tại chi nhánh",
     "confirm_info_checkbox": "Tôi đã kiểm tra kỹ số điện thoại, địa chỉ và thời gian nhận món.",

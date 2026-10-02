@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { postApi } from "@/services/apiService";
+import { clearAllPromotionStorage } from "@/utils/promotionStorage";
 
 export interface CustomerTierStatus {
   tier: "member" | "gold" | "diamond";
@@ -314,6 +315,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    clearAllPromotionStorage();
     localStorage.removeItem("auth_token");
     localStorage.removeItem("cothaotomca_cached_customer_addresses");
     setToken(null);

@@ -3,8 +3,9 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/i18n-navigation";
 import { defaultLocale, locales as supportedLocales } from "@/i18n/config";
 
-export async function generateMetadata({ params }: { params: { locale?: string } }): Promise<Metadata> {
-  const locale = params?.locale || defaultLocale;
+export async function generateMetadata({ params }: { params: Promise<{ locale?: string }> }): Promise<Metadata> {
+  const resolvedParams = await params;
+  const locale = resolvedParams?.locale || defaultLocale;
   const useLocale = supportedLocales.includes(locale as any) ? locale : defaultLocale;
   const t = await getTranslations({ locale: useLocale, namespace: "errors.500" });
 
@@ -15,8 +16,9 @@ export async function generateMetadata({ params }: { params: { locale?: string }
   };
 }
 
-export default async function ErrorPage({ params }: { params: { locale?: string } }) {
-  const locale = params?.locale || defaultLocale;
+export default async function ErrorPage({ params }: { params: Promise<{ locale?: string }> }) {
+  const resolvedParams = await params;
+  const locale = resolvedParams?.locale || defaultLocale;
   const useLocale = supportedLocales.includes(locale as any) ? locale : defaultLocale;
   const t = await getTranslations({ locale: useLocale, namespace: "errors.500" });
 

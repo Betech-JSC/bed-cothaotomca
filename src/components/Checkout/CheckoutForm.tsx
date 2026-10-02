@@ -54,6 +54,14 @@ import CouponModal, { evaluateCampaignEligibility } from "@/components/Voucher/C
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
 import GiftSelectorModal from "./GiftSelectorModal";
 import VoucherTicketBar from "./VoucherTicketBar";
+import {
+  clearAllPromotionStorage,
+  pruneStoredVoucherCode,
+  setStoredVoucherCodes,
+  getStoredVoucherCodes,
+  getStoredCampaignIds,
+  setStoredCampaignIds,
+} from "@/utils/promotionStorage";
 
 export interface CheckoutOrderItem {
   productId: number;
@@ -589,11 +597,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   const handleApplyCampaigns = useCallback((ids: (number | string)[]) => {
     setSelectedCampaignIds(ids);
-    try {
-      localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify(ids));
-    } catch (e) {
-      console.error("Error saving campaign IDs to localStorage in CheckoutForm", e);
-    }
+    setStoredCampaignIds(ids);
   }, []);
 
   // Auto-prune stale selected campaigns if cart changes and campaign is no longer eligible
@@ -615,11 +619,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
     if (validCampaignIds.length !== selectedCampaignIds.length) {
       setSelectedCampaignIds(validCampaignIds);
-      try {
-        localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify(validCampaignIds));
-      } catch (e) {
-        console.error("Error auto-pruning campaign IDs from localStorage in CheckoutForm", e);
-      }
+      setStoredCampaignIds(validCampaignIds);
     }
   }, [selectedCampaignIds, configState.active_promotions, subtotal, originalSubtotal, checkoutCartItems]);
 
@@ -1182,6 +1182,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     if (appliedVoucher.canCombineWithPromotions === false) {
       // 1. Kiểm tra prereqPrice dựa trên originalSubtotal
       if (appliedVoucher.prereqPrice && originalSubtotal < appliedVoucher.prereqPrice) {
+        pruneStoredVoucherCode(appliedVoucher.code);
         setAppliedVoucher(null);
         setVoucherSuccess(null);
         setBestDealNotice(null);
@@ -1211,6 +1212,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     } else {
       // Với voucher cộng dồn, kiểm tra prereqPrice dựa trên saleSubtotal
       if (appliedVoucher.prereqPrice && saleSubtotal < appliedVoucher.prereqPrice) {
+        pruneStoredVoucherCode(appliedVoucher.code);
         setAppliedVoucher(null);
         setVoucherSuccess(null);
         setBestDealNotice(null);
@@ -1220,6 +1222,30 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       }
     }
   }, [appliedVoucher, originalSubtotal, saleSubtotal, totalItemDiscount, shipping]);
+
+  // Tự động dọn dẹp voucher/khuyến mãi và thẻ thành viên khi người dùng chưa đăng nhập hoặc vừa đăng xuất
+  useEffect(() => {
+    if (!user) {
+      const hasActivePromos = Boolean(appliedVoucher || appliedShippingVoucher || selectedCampaignIds.length > 0);
+      if (hasActivePromos) {
+        setAppliedVoucher(null);
+        setAppliedShippingVoucher(null);
+        setSelectedCampaignIds([]);
+        setVoucherCode("");
+        setVoucherSuccess(null);
+        setVoucherError(null);
+        setBestDealNotice(null);
+        clearAllPromotionStorage();
+      }
+      if (isMemberCardSelected) {
+        setIsMemberCardSelected(false);
+      }
+    } else {
+      if (!isMemberCardSelected) {
+        setIsMemberCardSelected(true);
+      }
+    }
+  }, [user, appliedVoucher, appliedShippingVoucher, selectedCampaignIds, isMemberCardSelected]);
 
   const foodVoucherDiscount = useMemo(() => {
     if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") return 0;
@@ -1439,11 +1465,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
         if (!canCombine) {
           setSelectedCampaignIds([]);
-          try {
-            localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
-          } catch (e) {
-            console.error("Error clearing campaign IDs", e);
-          }
+          setStoredCampaignIds([]);
           // 1. Điều kiện tối thiểu của voucher (prereqPrice) được xét dựa trên originalSubtotal
           const prereqPrice = Number(res.voucher.prereq_price || 0);
           if (prereqPrice > 0 && originalSubtotal < prereqPrice) {
@@ -1516,14 +1538,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           }
           setVoucherSuccess(res.message || "Áp dụng mã giảm giá thành công!");
           setBestDealNotice(null);
-          try {
-            const codesToStore = isCandidateFreeship
-              ? [appliedVoucher && !appliedVoucher.isFreeship ? appliedVoucher.code : null, res.voucher.code].filter(Boolean) as string[]
-              : [res.voucher.code, appliedShippingVoucher?.code].filter(Boolean) as string[];
-            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify(codesToStore));
-          } catch (e) {
-            console.error("Error saving applied voucher to localStorage", e);
-          }
+          const codesToStore = isCandidateFreeship
+            ? [appliedVoucher && !appliedVoucher.isFreeship ? appliedVoucher.code : null, res.voucher.code].filter(Boolean) as string[]
+            : [res.voucher.code, appliedShippingVoucher?.code].filter(Boolean) as string[];
+          setStoredVoucherCodes(codesToStore);
           return true;
         } else {
           // can_combine_with_promotions === true
@@ -1578,14 +1596,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           }
           setVoucherSuccess(res.message || "Áp dụng mã giảm giá thành công!");
           setBestDealNotice(null);
-          try {
-            const codesToStore = isCandidateFreeship
-              ? [appliedVoucher && !appliedVoucher.isFreeship ? appliedVoucher.code : null, res.voucher.code].filter(Boolean) as string[]
-              : [res.voucher.code, appliedShippingVoucher?.code].filter(Boolean) as string[];
-            localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify(codesToStore));
-          } catch (e) {
-            console.error("Error saving applied voucher to localStorage", e);
-          }
+          const codesToStore = isCandidateFreeship
+            ? [appliedVoucher && !appliedVoucher.isFreeship ? appliedVoucher.code : null, res.voucher.code].filter(Boolean) as string[]
+            : [res.voucher.code, appliedShippingVoucher?.code].filter(Boolean) as string[];
+          setStoredVoucherCodes(codesToStore);
           return true;
         }
       } else {
@@ -1636,20 +1650,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     setVoucherError(null);
     setBestDealNotice(null);
     setIsAutoVoucherApplied(false);
-    try {
-      localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify([]));
-    } catch (e) {
-      console.error("Error clearing applied vouchers from localStorage", e);
-    }
+    setStoredVoucherCodes([]);
   }, []);
 
   const handleRemoveCampaign = useCallback(() => {
     setSelectedCampaignIds([]);
-    try {
-      localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
-    } catch (e) {
-      console.error("Error clearing applied campaigns from localStorage", e);
-    }
+    setStoredCampaignIds([]);
   }, []);
 
   const handleClearAllPromotions = useCallback(() => {
@@ -1744,23 +1750,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       setAppliedShippingVoucher(nextShip);
       if (nextFood?.canCombineWithPromotions === false || nextShip?.canCombineWithPromotions === false) {
         setSelectedCampaignIds([]);
-        try {
-          localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([]));
-        } catch (e) {
-          console.error("Error clearing campaign IDs in CheckoutForm", e);
-        }
+        setStoredCampaignIds([]);
       }
       const appliedCount = (nextFood ? 1 : 0) + (nextShip ? 1 : 0);
       if (appliedCount > 0) {
         setVoucherCode([nextFood?.code, nextShip?.code].filter(Boolean).join(", "));
         setVoucherSuccess(`Đã áp dụng thành công ${appliedCount} ưu đãi!`);
         setIsVoucherModalOpen(false);
-        try {
-          const appliedCodes = [nextFood?.code, nextShip?.code].filter(Boolean) as string[];
-          localStorage.setItem("cothaotomca_applied_voucher_codes", JSON.stringify(appliedCodes));
-        } catch (e) {
-          console.error("Error saving applied vouchers to localStorage in CheckoutForm", e);
-        }
+        const appliedCodes = [nextFood?.code, nextShip?.code].filter(Boolean) as string[];
+        setStoredVoucherCodes(appliedCodes);
       } else {
         handleRemoveVoucher();
         if (validationError) {
@@ -1793,31 +1791,17 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const hasLoadedStoredPromotionsRef = useRef(false);
   useEffect(() => {
     if (hasLoadedStoredPromotionsRef.current) return;
-    try {
-      const storedCamps = localStorage.getItem("cothaotomca_selected_campaign_ids");
-      if (storedCamps) {
-        const parsed = JSON.parse(storedCamps);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSelectedCampaignIds(parsed);
-        }
-      }
-    } catch (e) {
-      console.error("Error restoring campaign IDs from localStorage in CheckoutForm", e);
+    const storedCamps = getStoredCampaignIds();
+    if (storedCamps.length > 0) {
+      setSelectedCampaignIds(storedCamps);
     }
 
     if (originalSubtotal > 0) {
-      try {
-        const storedVouchers = localStorage.getItem("cothaotomca_applied_voucher_codes");
-        if (storedVouchers) {
-          const parsed = JSON.parse(storedVouchers);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            hasLoadedStoredPromotionsRef.current = true;
-            handleApplyVouchers(parsed).catch(() => { });
-            return;
-          }
-        }
-      } catch (e) {
-        console.error("Error restoring voucher codes from localStorage in CheckoutForm", e);
+      const storedVouchers = getStoredVoucherCodes();
+      if (storedVouchers.length > 0) {
+        hasLoadedStoredPromotionsRef.current = true;
+        handleApplyVouchers(storedVouchers).catch(() => { });
+        return;
       }
       hasLoadedStoredPromotionsRef.current = true;
     }
@@ -2112,6 +2096,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       if (isCartCheckout) {
         clearCart();
       }
+
+      // Reset sạch state khuyến mãi và xóa toàn bộ localStorage promotion keys
+      clearAllPromotionStorage();
+      setAppliedVoucher(null);
+      setAppliedShippingVoucher(null);
+      setSelectedCampaignIds([]);
+      setVoucherCode("");
+      setVoucherSuccess(null);
+      setVoucherError(null);
+      setBestDealNotice(null);
 
       // Tự động lưu địa chỉ mới vào Danh sách địa chỉ nếu khách hàng chọn checkbox
       if (user && saveToAddressBook && (!selectedAddressId || selectedAddressId === "new") && streetAddress.trim() && selectedWard.trim()) {
@@ -3459,12 +3453,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   {formatPrice(total)}
                 </span>
               </div>
-
-              {user && total > 0 && Math.floor(total / 10000) > 0 && (
-                <div className="text-xs text-secondary font-semibold text-right flex items-center justify-end gap-1.5 pt-2 border-t border-dashed border-gray-200">
-                  <span>{t("cost_summary.order_points_accumulated", { points: Math.floor(total / 10000) })}</span>
-                </div>
-              )}
             </div>
 
             {/* Confirm details check checkbox */}

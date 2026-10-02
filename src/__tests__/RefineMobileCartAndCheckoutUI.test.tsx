@@ -210,24 +210,18 @@ describe("OpenSpec refine-mobile-cart-and-checkout-ui Test Suite", () => {
   // Part 1: Hiển thị giá món chuẩn nhận diện thương hiệu & Điểm thưởng Loyalty
   // =========================================================================
   describe("Phần 1: Chuẩn hóa hiển thị giá món và tích hợp điểm thưởng Loyalty", () => {
-    it("Task 1.1: Hiển thị dòng tích lũy điểm thưởng ở khối Summary Bước 1 khi user đăng nhập và total > 0", () => {
+    it("Task 1.1: Không hiển thị dòng tích lũy điểm thưởng ở khối Summary Bước 1 khi user đăng nhập", () => {
       mockUser = { id: 1, name: "Nguyen Van A", phone: "0901234567" };
       render(<MobileCartFlow inline={false} />);
 
-      // Tổng thanh toán: 120.000 * 2 = 240.000đ + 30.000 shipping = 270.000đ -> Tích lũy Math.floor(270000 / 10000) = 27 điểm
-      const pointsText = screen.getByText(/Đơn hàng này sẽ tích lũy thêm\s+27\s+điểm/i);
-      expect(pointsText).toBeInTheDocument();
-      expect(pointsText.closest("div")?.className).toContain("text-secondary");
-      expect(pointsText.closest("div")?.className).toContain("font-semibold");
+      expect(screen.queryByText(/Đơn hàng này sẽ tích lũy thêm/i)).not.toBeInTheDocument();
     });
 
-    it("Task 1.2: Hiển thị dòng điểm thưởng ở Bước 2 đồng bộ nhất quán", () => {
+    it("Task 1.2: Không hiển thị dòng điểm thưởng ở Bước 2", () => {
       mockUser = { id: 1, name: "Nguyen Van A", phone: "0901234567" };
       render(<MobileCartFlow inline={true} />);
 
-      const pointsText = screen.getByText(/Đơn hàng này sẽ tích lũy thêm\s+27\s+điểm/i);
-      expect(pointsText).toBeInTheDocument();
-      expect(pointsText.closest("div")?.className).toContain("text-secondary");
+      expect(screen.queryByText(/Đơn hàng này sẽ tích lũy thêm/i)).not.toBeInTheDocument();
     });
 
     it("Task 1.3: Cập nhật typography giá món trong giỏ hàng Bước 1", () => {
@@ -400,8 +394,8 @@ describe("OpenSpec refine-mobile-cart-and-checkout-ui Test Suite", () => {
       // 4) Tổng thanh toán
       expect(screen.getByText("Tổng thanh toán")).toBeInTheDocument();
 
-      // Điểm tích lũy
-      expect(screen.getByText(/Đơn hàng này sẽ tích lũy thêm/i)).toBeInTheDocument();
+      // Điểm tích lũy không còn hiển thị
+      expect(screen.queryByText(/Đơn hàng này sẽ tích lũy thêm/i)).not.toBeInTheDocument();
     });
 
     it("Task 4.3: Nút quay lại Bước 1 hoạt động bình thường", () => {

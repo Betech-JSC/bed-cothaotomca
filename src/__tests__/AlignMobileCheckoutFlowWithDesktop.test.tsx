@@ -340,8 +340,8 @@ describe("Align Mobile Checkout Flow With Desktop Tests", () => {
       // 6. Tổng thanh toán
       expect(screen.getByText("Tổng thanh toán")).toBeInTheDocument();
 
-      // 7. Điểm tích lũy
-      expect(screen.getByText(/Đơn hàng này sẽ tích lũy thêm/)).toBeInTheDocument();
+      // 7. Điểm tích lũy không còn hiển thị trên UI Desktop & Mobile
+      expect(screen.queryByText(/Đơn hàng này sẽ tích lũy thêm/)).not.toBeInTheDocument();
     });
 
     it("Step 2 displays Pickup as 0đ (Tự đến lấy) when pickup deliveryType is selected", async () => {
