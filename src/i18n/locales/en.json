@@ -208,7 +208,9 @@
       "note_processing": "Your order will be processed within seconds after receiving payment"
     },
     "guest_hint_celebration": "🎉 Congratulations on reaching {tier} tier! {login} to receive your {percent}% Upgrade Celebration discount for this order.",
-    "guest_hint_benefit": "🎁 This phone number is eligible for a {percent}% discount ({tier} tier). {login} to claim your benefit now.",
+    "guest_hint_benefit": "You are a {tier} member! {login} to get your exclusive member discount of {percent}% on this order.",
+    "guest_hint_member_rich": "You are a <b>{rank}</b> member! <login>Log in</login> to get your exclusive member discount of {percent}% on this order.",
+    "guest_hint_checking": "Checking your benefits...",
     "guest_hint_login": "Log in",
     "guest_hint_close": "Close notice",
     "ward_select_label": "Ward / Commune (Delivery Area)",
@@ -255,10 +257,7 @@
     "guest_hint_celebration_prefix": "Congratulations on reaching",
     "guest_hint_celebration_mid": "to receive your",
     "guest_hint_celebration_benefit": "{percent}% Upgrade Celebration discount",
-    "guest_hint_celebration_suffix": "for this order.",
-    "guest_hint_benefit_prefix": "This phone number has a",
-    "guest_hint_benefit_tier": "tier",
-    "guest_hint_benefit_suffix": "to claim your benefit now."
+    "guest_hint_celebration_suffix": "for this order."
   },
   "voucher": {
     "modal_title": "Your Discount Offers",

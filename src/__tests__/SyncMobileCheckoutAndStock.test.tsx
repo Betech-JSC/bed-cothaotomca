@@ -37,10 +37,29 @@ vi.mock('next-intl', () => ({
       return text;
     };
 
+    // t.rich: nội suy {value} rồi thay <tag>chunk</tag> bằng callback render tương ứng
     t.rich = (key: string, values?: Record<string, any>) => {
-      let text = resolveKey(key);
-      if (!values) return text;
-      return text;
+      if (!values) return resolveKey(key);
+      const plainValues = Object.fromEntries(
+        Object.entries(values).filter(([, v]) => typeof v !== 'function')
+      );
+      const text: string = t(key, plainValues);
+      const parts: React.ReactNode[] = [];
+      const tagRe = /<(\w+)>(.*?)<\/\1>/g;
+      let last = 0;
+      let match: RegExpExecArray | null;
+      while ((match = tagRe.exec(text))) {
+        if (match.index > last) parts.push(text.slice(last, match.index));
+        const renderTag = values[match[1]];
+        parts.push(
+          <React.Fragment key={match.index}>
+            {typeof renderTag === 'function' ? renderTag(match[2]) : match[2]}
+          </React.Fragment>
+        );
+        last = match.index + match[0].length;
+      }
+      if (last < text.length) parts.push(text.slice(last));
+      return parts;
     };
 
     return t;
@@ -55,7 +74,16 @@ vi.mock('@/i18n/routing', () => ({
   usePathname: () => mockPathname,
   useRouter: () => ({ push: mockPush }),
   Link: ({ children, href, className, onClick, ...rest }: any) => (
-    <a href={href} className={className} onClick={onClick} {...rest}>
+    <a
+      href={
+        typeof href === 'string'
+          ? href
+          : `${href?.pathname}${href?.query ? `?${new URLSearchParams(href.query).toString()}` : ''}`
+      }
+      className={className}
+      onClick={onClick}
+      {...rest}
+    >
       {children}
     </a>
   ),
@@ -700,9 +728,20 @@ describe('sync-mobile-checkout-and-stock Changes Test Suite', () => {
       fireEvent.change(phoneInput, { target: { value: '0901234567' } });
 
       await waitFor(() => {
-        expect(screen.getByText(/hạng/i)).toBeInTheDocument();
-        expect(screen.getByText(/GOLD/i)).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            (_, el) =>
+              el?.tagName === 'P' &&
+              el.textContent ===
+                'Bạn là thành viên hạng GOLD! Đăng nhập để nhận ngay ưu đãi đặc quyền thành viên giảm 5% cho đơn hàng này.'
+          )
+        ).toBeInTheDocument();
+        expect(screen.getByText('GOLD')).toHaveClass('font-bold');
       });
+
+      const loginLink = Array.from(container.querySelectorAll('a')).find((a) => a.textContent === 'Đăng nhập');
+      expect(loginLink).toBeDefined();
+      expect(loginLink!.getAttribute('href')).toBe(`/login?redirect=${encodeURIComponent('/checkout')}`);
     });
   });
 

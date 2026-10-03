@@ -81,6 +81,30 @@ vi.mock('next-intl', () => ({
       return text;
     };
 
+    // Minimal t.rich: nội suy {value} rồi thay <tag>chunk</tag> bằng callback render tương ứng
+    t.rich = (key: string, values: Record<string, any> = {}) => {
+      const plainValues = Object.fromEntries(
+        Object.entries(values).filter(([, v]) => typeof v !== 'function')
+      );
+      const text: string = t(key, plainValues);
+      const parts: React.ReactNode[] = [];
+      const tagRe = /<(\w+)>(.*?)<\/\1>/g;
+      let last = 0;
+      let match: RegExpExecArray | null;
+      while ((match = tagRe.exec(text))) {
+        if (match.index > last) parts.push(text.slice(last, match.index));
+        const render = values[match[1]];
+        parts.push(
+          <React.Fragment key={match.index}>
+            {typeof render === 'function' ? render(match[2]) : match[2]}
+          </React.Fragment>
+        );
+        last = match.index + match[0].length;
+      }
+      if (last < text.length) parts.push(text.slice(last));
+      return parts;
+    };
+
     return t;
   },
 }));
@@ -229,6 +253,37 @@ describe('Comprehensive i18n & Voucher Standardization Tests', () => {
       expect(screen.getByText(/Congratulations on reaching/i)).toBeInTheDocument();
       expect(screen.getByText(/Log in/i)).toBeInTheDocument();
       expect(screen.getByText('×')).toBeInTheDocument();
+
+      // Nhánh ưu đãi thường trực (is_upgrade_celebration=false) — câu rich-text mới
+      currentLocale = 'vi';
+      rerender(
+        <GuestTierHintBanner
+          tier="gold"
+          discountPercent={5}
+          isUpgradeCelebration={false}
+          loginHref="/login"
+          onDismiss={handleClose}
+        />
+      );
+      expect(screen.getByRole('status').querySelector('p')!.textContent).toBe(
+        'Bạn là thành viên hạng GOLD! Đăng nhập để nhận ngay ưu đãi đặc quyền thành viên giảm 5% cho đơn hàng này.'
+      );
+      expect(screen.getByRole('link', { name: 'Đăng nhập' })).toHaveAttribute('href', '/login');
+
+      currentLocale = 'en';
+      rerender(
+        <GuestTierHintBanner
+          tier="diamond"
+          discountPercent={8}
+          isUpgradeCelebration={false}
+          loginHref="/login"
+          onDismiss={handleClose}
+        />
+      );
+      expect(screen.getByRole('status').querySelector('p')!.textContent).toBe(
+        'You are a DIAMOND member! Log in to get your exclusive member discount of 8% on this order.'
+      );
+      expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login');
     });
 
     it('FloatingVoucherButton render chuẩn đa ngôn ngữ cho CTA nút nổi', () => {

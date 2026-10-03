@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ComponentProps } from "react";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 
 interface GuestTierHintBannerProps {
   tier: "gold" | "diamond";
   discountPercent: number;
-  loginHref: string;
+  loginHref: ComponentProps<typeof Link>["href"];
   onDismiss: () => void;
   autoDismissMs?: number;
   isUpgradeCelebration?: boolean;
@@ -61,7 +61,7 @@ export default function GuestTierHintBanner({
             🎉 {t("guest_hint_celebration_prefix") || "Chúc mừng bạn vừa thăng hạng"}{" "}
             <span className="font-bold text-secondary">{tierLabel}</span>!{" "}
             <Link
-              href={loginHref as any}
+              href={loginHref}
               className="font-bold text-primary underline-offset-2 hover:underline"
             >
               {t("guest_hint_login") || "Đăng nhập"}
@@ -73,19 +73,19 @@ export default function GuestTierHintBanner({
             {t("guest_hint_celebration_suffix") || "cho đơn hàng này."}
           </>
         ) : (
-          <>
-            🎁 {t("guest_hint_benefit_prefix") || "Số điện thoại này đang có ưu đãi giảm"}{" "}
-            <span className="font-bold text-secondary">{discountPercent}%</span>{" "}
-            {t("guest_hint_benefit_tier") || "hạng"}{" "}
-            <span className="font-bold text-secondary">{tierLabel}</span>.{" "}
-            <Link
-              href={loginHref as any}
-              className="font-bold text-primary underline-offset-2 hover:underline"
-            >
-              {t("guest_hint_login") || "Đăng nhập"}
-            </Link>{" "}
-            {t("guest_hint_benefit_suffix") || "để nhận ưu đãi ngay."}
-          </>
+          t.rich("guest_hint_member_rich", {
+            rank: tierLabel,
+            percent: discountPercent,
+            b: (chunks) => <span className="font-bold text-secondary">{chunks}</span>,
+            login: (chunks) => (
+              <Link
+                href={loginHref}
+                className="font-bold text-primary underline-offset-2 hover:underline"
+              >
+                {chunks}
+              </Link>
+            ),
+          })
         )}
       </p>
       <button

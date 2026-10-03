@@ -272,11 +272,13 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [guestTierDismissed, setGuestTierDismissed] = useState(false);
 
   // Auto-check guest VIP tier hint as soon as 10+ digits are typed
+  // Chỉ phụ thuộc [phone, user, guestTierDismissed] (KHÔNG có guestTierHint) để tránh vòng lặp
+  // gọi API mỗi khi kết quả cập nhật state; bỏ qua response cũ nhờ cờ `cancelled`.
   useEffect(() => {
     const cleanPhone = phone.trim().replace(/\s/g, "");
     if (user || guestTierDismissed || cleanPhone.length < 10) {
-      if (guestTierHint && cleanPhone.length < 10) {
-        setGuestTierHint(null);
+      if (cleanPhone.length < 10) {
+        setGuestTierHint((prev) => (prev ? null : prev));
       }
       return;
     }
@@ -286,22 +288,30 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       return;
     }
 
+    let cancelled = false;
     const timer = setTimeout(() => {
       setGuestTierChecking(true);
       checkGuestTierByPhone(cleanPhone)
         .then((hint) => {
+          if (cancelled) return;
           setGuestTierHint(hint && hint.hasBenefit ? hint : null);
         })
         .catch(() => {
+          if (cancelled) return;
           setGuestTierHint(null);
         })
         .finally(() => {
+          if (cancelled) return;
           setGuestTierChecking(false);
         });
     }, 400);
 
-    return () => clearTimeout(timer);
-  }, [phone, user, guestTierDismissed, guestTierHint]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      setGuestTierChecking(false);
+    };
+  }, [phone, user, guestTierDismissed]);
 
   // Load administrative units catalog
   useEffect(() => {
@@ -2734,7 +2744,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     <GuestTierHintBanner
                       tier={guestTierHint.tier as "gold" | "diamond"}
                       discountPercent={guestTierHint.discountPercent}
-                      loginHref="/vi/login?redirect=/vi/checkout"
+                      loginHref={{ pathname: "/login", query: { redirect: "/checkout" } }}
                       isUpgradeCelebration={guestTierHint.isUpgradeCelebration}
                       onDismiss={() => {
                         setGuestTierDismissed(true);

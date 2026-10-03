@@ -208,7 +208,9 @@
       "note_processing": "Đơn hàng sẽ được xử lý trong vài giây sau khi nhận tiền"
     },
     "guest_hint_celebration": "🎉 Chúc mừng bạn vừa thăng hạng {tier}! {login} để nhận ngay ưu đãi Mừng lên hạng giảm {percent}% cho đơn hàng này.",
-    "guest_hint_benefit": "🎁 Số điện thoại này đang có ưu đãi giảm {percent}% hạng {tier}. {login} để nhận ưu đãi ngay.",
+    "guest_hint_benefit": "Bạn là thành viên hạng {tier}! {login} để nhận ngay ưu đãi đặc quyền thành viên giảm {percent}% cho đơn hàng này.",
+    "guest_hint_member_rich": "Bạn là thành viên hạng <b>{rank}</b>! <login>Đăng nhập</login> để nhận ngay ưu đãi đặc quyền thành viên giảm {percent}% cho đơn hàng này.",
+    "guest_hint_checking": "Đang kiểm tra ưu đãi...",
     "guest_hint_login": "Đăng nhập",
     "guest_hint_close": "Đóng thông báo",
     "ward_select_label": "Phường / Xã (Khu vực giao)",
@@ -255,10 +257,7 @@
     "guest_hint_celebration_prefix": "Chúc mừng bạn vừa thăng hạng",
     "guest_hint_celebration_mid": "để nhận ngay ưu đãi",
     "guest_hint_celebration_benefit": "Mừng lên hạng giảm {percent}%",
-    "guest_hint_celebration_suffix": "cho đơn hàng này.",
-    "guest_hint_benefit_prefix": "Số điện thoại này đang có ưu đãi giảm",
-    "guest_hint_benefit_tier": "hạng",
-    "guest_hint_benefit_suffix": "để nhận ưu đãi ngay."
+    "guest_hint_celebration_suffix": "cho đơn hàng này."
   },
   "voucher": {
     "modal_title": "Phiếu ưu đãi của bạn",

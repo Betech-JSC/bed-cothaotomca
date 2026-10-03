@@ -6,6 +6,11 @@ import { useSearchParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/i18n-navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { verifyEmailApi, resendActivationApi } from "@/services/authService";
+import { getSafeRedirectPath } from "@/lib/safeRedirect";
+
+// `redirect` là pathname nội bộ động (đã qua getSafeRedirectPath) nên cần ép kiểu
+// sang href typed-pathnames của router next-intl tại một điểm duy nhất.
+type RouterHref = Parameters<ReturnType<typeof useRouter>["push"]>[0];
 
 type LoginFormProps = {
   onLoginSuccess?: () => void;
@@ -16,6 +21,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
   const { login, loginWithGoogle, loginWithToken } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const redirectTarget = getSafeRedirectPath(searchParams?.get("redirect")) as RouterHref;
 
   const phoneParam = searchParams?.get("phone") || "";
   const emailParam = searchParams?.get("email") || "";
@@ -98,7 +104,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
         if (onLoginSuccess) {
           onLoginSuccess();
         } else {
-          router.push("/profile");
+          router.push(redirectTarget);
         }
       } else {
         setError(res.message || "Xác thực tài khoản Google thất bại.");
@@ -118,7 +124,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
     } else {
       initializeGoogle();
     }
-  }, [loading, loginWithGoogle, router, onLoginSuccess]);
+  }, [loading, loginWithGoogle, router, onLoginSuccess, redirectTarget]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -137,7 +143,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
         if (onLoginSuccess) {
           onLoginSuccess();
         } else {
-          router.push("/profile");
+          router.push(redirectTarget);
         }
       } else {
         setErrorCode(res.error_code || null);
@@ -180,7 +186,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
           if (onLoginSuccess) {
             onLoginSuccess();
           } else {
-            router.push("/profile");
+            router.push(redirectTarget);
           }
         }, 1200);
       } else {

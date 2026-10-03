@@ -4,6 +4,18 @@ import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import { getMemberTier, calculateMemberDiscount, type StorefrontUser } from '@/contexts/AuthContext';
 import GuestTierHintBanner from '@/components/Checkout/GuestTierHintBanner';
+import { NextIntlClientProvider } from 'next-intl';
+import viMessages from '@/i18n/locales/vi.json';
+
+vi.mock('@/i18n/routing', () => ({
+  Link: ({ children, href, ...props }: any) => (
+    <a href={typeof href === 'string' ? href : href?.pathname} {...props}>
+      {children}
+    </a>
+  ),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => '/',
+}));
 
 describe('CustomerTierUpgradeCelebration Tests', () => {
   it('identifies newly upgraded Gold celebration reward (10%)', () => {
@@ -96,14 +108,16 @@ describe('CustomerTierUpgradeCelebration Tests', () => {
   it('renders celebration announcement in GuestTierHintBanner', () => {
     const onDismiss = vi.fn();
     render(
-      <GuestTierHintBanner
-        tier="gold"
-        discountPercent={10}
-        isUpgradeCelebration={true}
-        loginHref="/vi/login?redirect=/vi/checkout"
-        onDismiss={onDismiss}
-        autoDismissMs={0}
-      />
+      <NextIntlClientProvider locale="vi" messages={viMessages} timeZone="Asia/Ho_Chi_Minh">
+        <GuestTierHintBanner
+          tier="gold"
+          discountPercent={10}
+          isUpgradeCelebration={true}
+          loginHref={{ pathname: '/login', query: { redirect: '/checkout' } }}
+          onDismiss={onDismiss}
+          autoDismissMs={0}
+        />
+      </NextIntlClientProvider>
     );
 
     expect(

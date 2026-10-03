@@ -2,94 +2,121 @@ import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
+import { NextIntlClientProvider } from 'next-intl';
 import viMessages from '@/i18n/locales/vi.json';
+import enMessages from '@/i18n/locales/en.json';
 import GuestTierHintBanner from '@/components/Checkout/GuestTierHintBanner';
 
+// Link next-intl được mock: serialize href object thành `pathname?query` để assert.
 vi.mock('@/i18n/routing', () => ({
-  Link: ({ children, href, ...props }: any) => (
-    <a href={typeof href === 'string' ? href : href?.pathname} {...props}>
-      {children}
-    </a>
-  ),
+  Link: ({ children, href, ...props }: any) => {
+    const hrefStr =
+      typeof href === 'string'
+        ? href
+        : `${href?.pathname}${href?.query ? `?${new URLSearchParams(href.query).toString()}` : ''}`;
+    return (
+      <a href={hrefStr} {...props}>
+        {children}
+      </a>
+    );
+  },
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => '/',
 }));
 
-vi.mock('next-intl', () => ({
-  useTranslations: (namespace?: string) => {
-    return (key: string, values?: Record<string, any>) => {
-      const fullPath = namespace ? `${namespace}.${key}` : key;
-      const parts = fullPath.split('.');
-      let current: any = viMessages;
-      for (const p of parts) {
-        if (current && typeof current === 'object' && p in current) {
-          current = current[p];
-        } else {
-          return key;
-        }
-      }
-      let text = typeof current === 'string' ? current : key;
-      if (values) {
-        Object.entries(values).forEach(([k, v]) => {
-          text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
-        });
-      }
-      return text;
-    };
-  },
-}));
+const LOGIN_HREF = { pathname: '/login' as const, query: { redirect: '/checkout' } };
+
+const renderBanner = (
+  props: Partial<React.ComponentProps<typeof GuestTierHintBanner>> = {},
+  locale: 'vi' | 'en' = 'vi'
+) => {
+  const onDismiss = props.onDismiss ?? vi.fn();
+  const utils = render(
+    <NextIntlClientProvider locale={locale} messages={locale === 'en' ? enMessages : viMessages} timeZone="Asia/Ho_Chi_Minh">
+      <GuestTierHintBanner
+        tier="gold"
+        discountPercent={5}
+        loginHref={LOGIN_HREF}
+        autoDismissMs={0}
+        {...props}
+        onDismiss={onDismiss}
+      />
+    </NextIntlClientProvider>
+  );
+  return { ...utils, onDismiss };
+};
+
+const bannerText = () => screen.getByRole('status').querySelector('p')!.textContent;
+
+describe('GuestTierHintBanner — nhánh ưu đãi thường trực (text chính xác theo spec)', () => {
+  it('VI — GOLD 5%: đúng câu đã chốt, GOLD in đậm, "Đăng nhập" là link có redirect', () => {
+    renderBanner({ tier: 'gold', discountPercent: 5 }, 'vi');
+
+    expect(bannerText()).toBe(
+      'Bạn là thành viên hạng GOLD! Đăng nhập để nhận ngay ưu đãi đặc quyền thành viên giảm 5% cho đơn hàng này.'
+    );
+    const rank = screen.getByText('GOLD');
+    expect(rank).toHaveClass('font-bold');
+    const link = screen.getByRole('link', { name: 'Đăng nhập' });
+    expect(link.getAttribute('href')).toContain('/login');
+    expect(link.getAttribute('href')).toContain('redirect=');
+    expect(link.getAttribute('href')).toContain(encodeURIComponent('/checkout'));
+    expect(bannerText()).not.toContain('🎁');
+  });
+
+  it('VI — DIAMOND 8%: đúng câu đã chốt', () => {
+    renderBanner({ tier: 'diamond', discountPercent: 8 }, 'vi');
+
+    expect(bannerText()).toBe(
+      'Bạn là thành viên hạng DIAMOND! Đăng nhập để nhận ngay ưu đãi đặc quyền thành viên giảm 8% cho đơn hàng này.'
+    );
+    expect(screen.getByText('DIAMOND')).toHaveClass('font-bold');
+  });
+
+  it('EN — GOLD 5%: đúng câu tiếng Anh', () => {
+    renderBanner({ tier: 'gold', discountPercent: 5 }, 'en');
+
+    expect(bannerText()).toBe('You are a GOLD member! Log in to get your exclusive member discount of 5% on this order.');
+    expect(screen.getByText('GOLD')).toHaveClass('font-bold');
+    expect(screen.getByRole('link', { name: 'Log in' }).getAttribute('href')).toContain('/login');
+  });
+
+  it('EN — DIAMOND 8%: đúng câu tiếng Anh, "Log in" là link có redirect', () => {
+    renderBanner({ tier: 'diamond', discountPercent: 8 }, 'en');
+
+    expect(bannerText()).toBe(
+      'You are a DIAMOND member! Log in to get your exclusive member discount of 8% on this order.'
+    );
+    expect(screen.getByText('DIAMOND')).toHaveClass('font-bold');
+    const link = screen.getByRole('link', { name: 'Log in' });
+    expect(link.getAttribute('href')).toContain('/login');
+    expect(link.getAttribute('href')).toContain('redirect=');
+  });
+});
+
+describe('GuestTierHintBanner — nhánh mừng lên hạng (giữ nguyên nội dung cũ)', () => {
+  it('VI — giữ nguyên câu mừng lên hạng kèm 🎉', () => {
+    renderBanner({ tier: 'gold', discountPercent: 10, isUpgradeCelebration: true }, 'vi');
+
+    expect(bannerText()).toBe(
+      '🎉 Chúc mừng bạn vừa thăng hạng GOLD! Đăng nhập để nhận ngay ưu đãi Mừng lên hạng giảm 10% cho đơn hàng này.'
+    );
+    expect(screen.getByRole('link', { name: 'Đăng nhập' }).getAttribute('href')).toContain('/login');
+  });
+
+  it('EN — giữ nguyên câu mừng lên hạng', () => {
+    renderBanner({ tier: 'diamond', discountPercent: 15, isUpgradeCelebration: true }, 'en');
+
+    expect(bannerText()).toBe(
+      '🎉 Congratulations on reaching DIAMOND! Log in to receive your 15% Upgrade Celebration discount for this order.'
+    );
+  });
+});
 
 describe('GuestTierHintBanner (Kịch bản 1: Banner khách vãng lai không bị tự tắt sau 2 giây)', () => {
-  it('hiển thị đúng thông tin ưu đãi cho khách VIP hạng GOLD', () => {
-    const onDismiss = vi.fn();
-    render(
-      <GuestTierHintBanner
-        tier="gold"
-        discountPercent={5}
-        loginHref="/vi/login?redirect=/vi/checkout"
-        onDismiss={onDismiss}
-        autoDismissMs={0}
-      />
-    );
-
-    expect(screen.getByText(/Số điện thoại này đang có ưu đãi giảm/i)).toBeInTheDocument();
-    expect(screen.getByText('5%')).toBeInTheDocument();
-    expect(screen.getByText('GOLD')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Đăng nhập/i })).toHaveAttribute(
-      'href',
-      '/vi/login?redirect=/vi/checkout'
-    );
-  });
-
-  it('hiển thị đúng thông tin ưu đãi cho khách VIP hạng DIAMOND', () => {
-    const onDismiss = vi.fn();
-    render(
-      <GuestTierHintBanner
-        tier="diamond"
-        discountPercent={8}
-        loginHref="/vi/login?redirect=/vi/checkout"
-        onDismiss={onDismiss}
-        autoDismissMs={0}
-      />
-    );
-
-    expect(screen.getByText('8%')).toBeInTheDocument();
-    expect(screen.getByText('DIAMOND')).toBeInTheDocument();
-  });
-
   it('không bị tự động biến mất sau 2 giây (autoDismissMs = 0)', () => {
     vi.useFakeTimers();
-    const onDismiss = vi.fn();
-
-    render(
-      <GuestTierHintBanner
-        tier="gold"
-        discountPercent={5}
-        loginHref="/vi/login?redirect=/vi/checkout"
-        onDismiss={onDismiss}
-        autoDismissMs={0}
-      />
-    );
+    const { onDismiss } = renderBanner({ autoDismissMs: 0 });
 
     // Tua thời gian qua 2 giây và 5 giây
     act(() => {
@@ -106,16 +133,7 @@ describe('GuestTierHintBanner (Kịch bản 1: Banner khách vãng lai không b�
   });
 
   it('gọi hàm onDismiss khi người dùng bấm nút [×]', () => {
-    const onDismiss = vi.fn();
-    render(
-      <GuestTierHintBanner
-        tier="gold"
-        discountPercent={5}
-        loginHref="/vi/login?redirect=/vi/checkout"
-        onDismiss={onDismiss}
-        autoDismissMs={0}
-      />
-    );
+    const { onDismiss } = renderBanner();
 
     const closeBtn = screen.getByRole('button', { name: /Đóng thông báo/i });
     fireEvent.click(closeBtn);

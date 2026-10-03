@@ -1,24 +1,32 @@
 "use client";
 
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import LoginForm from "./LoginForm";
 import Image from "next/image";
 import AnimateOnScroll from "@/components/Animated/animated-appear";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "@/i18n/i18n-navigation";
+import { getSafeRedirectPath } from "@/lib/safeRedirect";
+
+// `redirect` là pathname nội bộ động (đã qua getSafeRedirectPath) nên cần ép kiểu
+// sang href typed-pathnames của router next-intl tại một điểm duy nhất.
+type RouterHref = Parameters<ReturnType<typeof useRouter>["push"]>[0];
 
 const SignInContainer = () => {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = getSafeRedirectPath(searchParams?.get("redirect")) as RouterHref;
 
   useEffect(() => {
     if (!loading && user) {
-      router.push("/profile");
+      router.push(redirectTarget);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, redirectTarget]);
 
   const handleLoginSuccess = () => {
-    router.push("/profile");
+    router.push(redirectTarget);
   };
 
   if (loading || user) {

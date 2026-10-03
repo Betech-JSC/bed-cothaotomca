@@ -438,32 +438,43 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [guestTierDismissed, setGuestTierDismissed] = useState(false);
 
   // Auto-check guest VIP tier hint as soon as 10+ digits are typed
+  // Chỉ phụ thuộc [phone, user, guestTierDismissed]: không gọi lại khi kết quả cập nhật state,
+  // và bỏ qua response cũ (stale) khi SĐT đã đổi nhờ cờ `cancelled` trong cleanup.
   useEffect(() => {
     const cleanPhone = phone.trim().replace(/\s/g, "");
     if (user || guestTierDismissed || cleanPhone.length < 10) {
-      if (guestTierHint && cleanPhone.length < 10) {
-        setGuestTierHint(null);
+      if (cleanPhone.length < 10) {
+        setGuestTierHint((prev) => (prev ? null : prev));
       }
       return;
     }
     const err = validatePhoneInput(cleanPhone);
     if (err) return;
 
+    let cancelled = false;
     const timer = setTimeout(() => {
       setGuestTierChecking(true);
       checkGuestTierByPhone(cleanPhone)
         .then((hint) => {
+          if (cancelled) return;
           setGuestTierHint(hint && hint.hasBenefit ? hint : null);
         })
         .catch(() => {
+          if (cancelled) return;
           setGuestTierHint(null);
         })
         .finally(() => {
+          if (cancelled) return;
           setGuestTierChecking(false);
         });
     }, 400);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      // Request đang bay bị huỷ kết quả → tắt loading tại đây để text loading không bị kẹt
+      setGuestTierChecking(false);
+    };
   }, [phone, user, guestTierDismissed]);
 
   useEffect(() => {
@@ -1151,25 +1162,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       else delete next[fieldKey];
       return next;
     });
-
-    // Guest VIP tier hint: trigger only when phone is valid, user not logged in, cart not empty, and hint not dismissed
-    if (
-      fieldKey === "customer.phone" &&
-      !err &&
-      !user &&
-      !guestTierDismissed &&
-      phone.trim().replace(/\s/g, "").length >= 10 &&
-      (cartItems.length > 0 || !!order)
-    ) {
-      setGuestTierChecking(true);
-      checkGuestTierByPhone(phone)
-        .then((hint) => {
-          setGuestTierHint(hint && hint.hasBenefit ? hint : null);
-        })
-        .finally(() => {
-          setGuestTierChecking(false);
-        });
-    }
   };
 
   // Sau khi tạo đơn thành công → chuyển sang màn hình QR
@@ -2273,7 +2265,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 <GuestTierHintBanner
                   tier={guestTierHint.tier as "gold" | "diamond"}
                   discountPercent={guestTierHint.discountPercent}
-                  loginHref="/vi/login?redirect=/vi/checkout"
+                  loginHref={{ pathname: "/login", query: { redirect: "/checkout" } }}
                   isUpgradeCelebration={guestTierHint.isUpgradeCelebration}
                   onDismiss={() => {
                     setGuestTierDismissed(true);
@@ -2284,7 +2276,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               )}
               {!user && guestTierChecking && (
                 <p className="text-xs text-primary/50 font-serif mt-1 animate-pulse">
-                  Đang kiểm tra ưu đãi...
+                  {t("guest_hint_checking")}
                 </p>
               )}
             </div>
