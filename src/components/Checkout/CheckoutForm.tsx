@@ -530,17 +530,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return 0;
   }, [isCartCheckout, cartItems, order, quantity]);
 
-  // Tạm tính các món nguyên giá (không có giảm giá món), dùng để tính chiết khấu thành viên
+  // Tạm tính các món áp dụng chiết khấu thành viên (áp dụng trên toàn bộ các món bao gồm cả món sale)
   const regularPriceSubtotal = useMemo(() => {
     if (isCartCheckout) {
-      return cartItems.reduce((sum, item) => {
-        const isSale = Boolean(item.originalPrice && item.originalPrice > item.unitPrice);
-        return isSale ? sum : sum + item.unitPrice * item.quantity;
-      }, 0);
+      return cartItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
     }
     if (order) {
-      const isSale = Boolean(order.originalPrice && order.originalPrice > order.unitPrice);
-      return isSale ? 0 : order.unitPrice * quantity;
+      return order.unitPrice * quantity;
     }
     return 0;
   }, [isCartCheckout, cartItems, order, quantity]);

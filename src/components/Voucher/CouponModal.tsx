@@ -408,9 +408,9 @@ export default function CouponModal({
 
   const memberCardDescription = useMemo(() => {
     if (isDiamond) {
-      return loyaltySettings?.diamond_card_description || t("member_tier_desc_diamond") || "Áp dụng tự động cho tài khoản hạng Diamond trên các món nguyên giá.";
+      return loyaltySettings?.diamond_card_description || t("member_tier_desc_diamond") || "Áp dụng tự động cho tài khoản hạng Diamond trên đơn hàng.";
     }
-    return loyaltySettings?.gold_card_description || t("member_tier_desc_gold") || "Áp dụng tự động cho tài khoản hạng Gold trên các món nguyên giá.";
+    return loyaltySettings?.gold_card_description || t("member_tier_desc_gold") || "Áp dụng tự động cho tài khoản hạng Gold trên đơn hàng.";
   }, [isDiamond, loyaltySettings, t]);
 
   const memberCardBanner = isDiamond
@@ -420,7 +420,7 @@ export default function CouponModal({
   const memberTierCampaignItem: PublicCampaignItem = useMemo(() => {
     const tierName = isDiamond ? "Diamond" : "Gold";
     const bullet1 = t("member_terms_bullet_tier", { tier: tierName }) || `• Áp dụng tự động cho tài khoản ${isDiamond ? "hạng Diamond (Kim Cương)" : "hạng Gold (Vàng)"}.`;
-    const bullet2 = t("member_terms_bullet_discount", { percent: discountPercent }) || `• Chiết khấu ${discountPercent}% trực tiếp trên giá trị các món nguyên giá trong giỏ hàng (không áp dụng trên món giảm giá).`;
+    const bullet2 = t("member_terms_bullet_discount", { percent: discountPercent }) || `• Chiết khấu ${discountPercent}% trực tiếp trên giá trị đơn hàng.`;
     const bullet3 = canCombineWithPromotions
       ? (t("member_terms_bullet_combinable") || "• Có thể áp dụng đồng thời với các voucher và chương trình ưu đãi khác.")
       : (t("member_terms_bullet_non_combinable") || "• Không áp dụng đồng thời với các chương trình khuyến mãi hoặc mã giảm giá khác.");
