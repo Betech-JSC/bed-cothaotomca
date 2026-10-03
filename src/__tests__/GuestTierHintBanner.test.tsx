@@ -140,4 +140,24 @@ describe('GuestTierHintBanner (Kịch bản 1: Banner khách vãng lai không b�
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
+
+  it('gọi hàm onLoginClick khi người dùng bấm link "Đăng nhập" (standard)', () => {
+    const onLoginClick = vi.fn();
+    renderBanner({ onLoginClick });
+
+    const link = screen.getByRole('link', { name: 'Đăng nhập' });
+    fireEvent.click(link);
+
+    expect(onLoginClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('gọi hàm onLoginClick khi người dùng bấm link "Đăng nhập" (celebration)', () => {
+    const onLoginClick = vi.fn();
+    renderBanner({ onLoginClick, isUpgradeCelebration: true });
+
+    const link = screen.getByRole('link', { name: 'Đăng nhập' });
+    fireEvent.click(link);
+
+    expect(onLoginClick).toHaveBeenCalledTimes(1);
+  });
 });

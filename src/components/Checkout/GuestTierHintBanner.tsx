@@ -11,6 +11,7 @@ interface GuestTierHintBannerProps {
   onDismiss: () => void;
   autoDismissMs?: number;
   isUpgradeCelebration?: boolean;
+  onLoginClick?: () => void;
 }
 
 export default function GuestTierHintBanner({
@@ -20,6 +21,7 @@ export default function GuestTierHintBanner({
   onDismiss,
   autoDismissMs = 0,
   isUpgradeCelebration = false,
+  onLoginClick,
 }: GuestTierHintBannerProps) {
   const t = useTranslations("checkout");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -62,6 +64,7 @@ export default function GuestTierHintBanner({
             <span className="font-bold text-secondary">{tierLabel}</span>!{" "}
             <Link
               href={loginHref}
+              onClick={onLoginClick}
               className="font-bold text-primary underline-offset-2 hover:underline"
             >
               {t("guest_hint_login") || "Đăng nhập"}
@@ -80,6 +83,7 @@ export default function GuestTierHintBanner({
             login: (chunks) => (
               <Link
                 href={loginHref}
+                onClick={onLoginClick}
                 className="font-bold text-primary underline-offset-2 hover:underline"
               >
                 {chunks}

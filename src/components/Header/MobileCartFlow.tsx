@@ -459,9 +459,11 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   // Pending order (bank transfer QR)
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
 
-  // Safety net: nếu route chuyển sang /order-success thì đảm bảo đóng drawer
+  // Safety net: nếu route chuyển sang trang auth hoặc /order-success thì đảm bảo đóng drawer
   useEffect(() => {
-    if (pathname === "/order-success" || pathname?.includes("order-success") || pathname?.includes("dat-hang-thanh-cong")) {
+    const isAuthPage = pathname?.includes("signin") || pathname?.includes("login") || pathname?.includes("dang-nhap");
+    const isOrderSuccess = pathname === "/order-success" || pathname?.includes("order-success") || pathname?.includes("dat-hang-thanh-cong");
+    if (isAuthPage || isOrderSuccess) {
       if (pendingOrder) setPendingOrder(null);
       if (step !== 1) setStep(1);
       onClose?.();
@@ -2744,7 +2746,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     <GuestTierHintBanner
                       tier={guestTierHint.tier as "gold" | "diamond"}
                       discountPercent={guestTierHint.discountPercent}
-                      loginHref={{ pathname: "/login", query: { redirect: "/checkout" } }}
+                      loginHref={{
+                        pathname: "/signin",
+                        query: {
+                          redirect: "/checkout",
+                          ...(phone?.trim() ? { phone: phone.trim() } : {})
+                        }
+                      }}
+                      onLoginClick={onClose}
                       isUpgradeCelebration={guestTierHint.isUpgradeCelebration}
                       onDismiss={() => {
                         setGuestTierDismissed(true);

@@ -2261,7 +2261,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 <GuestTierHintBanner
                   tier={guestTierHint.tier as "gold" | "diamond"}
                   discountPercent={guestTierHint.discountPercent}
-                  loginHref={{ pathname: "/login", query: { redirect: "/checkout" } }}
+                  loginHref={{
+                    pathname: "/signin",
+                    query: {
+                      redirect: "/checkout",
+                      ...(phone?.trim() ? { phone: phone.trim() } : {})
+                    }
+                  }}
                   isUpgradeCelebration={guestTierHint.isUpgradeCelebration}
                   onDismiss={() => {
                     setGuestTierDismissed(true);

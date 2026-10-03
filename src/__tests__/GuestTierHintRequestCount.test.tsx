@@ -261,7 +261,7 @@ describe('Guest tier hint — số request tra cứu hạng (change: guest-membe
 
       const loginLink = Array.from(desktopForm.querySelectorAll('a')).find((a) => a.textContent === 'Đăng nhập');
       expect(loginLink).toBeDefined();
-      expect(loginLink!.getAttribute('href')).toBe(`/login?redirect=${encodeURIComponent('/checkout')}`);
+      expect(loginLink!.getAttribute('href')).toBe(`/signin?redirect=${encodeURIComponent('/checkout')}&phone=0901234567`);
     });
 
     it('hiển thị text loading i18n trong lúc chờ response, ẩn khi có kết quả', async () => {
@@ -374,7 +374,7 @@ describe('Guest tier hint — số request tra cứu hạng (change: guest-membe
 
       const loginLink = Array.from(container.querySelectorAll('a')).find((a) => a.textContent === 'Đăng nhập');
       expect(loginLink).toBeDefined();
-      expect(loginLink!.getAttribute('href')).toBe(`/login?redirect=${encodeURIComponent('/checkout')}`);
+      expect(loginLink!.getAttribute('href')).toBe(`/signin?redirect=${encodeURIComponent('/checkout')}&phone=0901234567`);
     });
 
     it('xoá SĐT còn < 10 số → banner ẩn, không request mới', async () => {
