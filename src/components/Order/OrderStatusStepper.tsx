@@ -8,6 +8,8 @@ export interface OrderStatusStepperProps {
   syncStatus?: string;
   deliveryType?: string;
   className?: string;
+  isScheduled?: boolean;
+  expectedDelivery?: string;
 }
 
 export default function OrderStatusStepper({
@@ -15,11 +17,14 @@ export default function OrderStatusStepper({
   syncStatus,
   deliveryType,
   className = "",
+  isScheduled,
+  expectedDelivery,
 }: OrderStatusStepperProps) {
   const t = useTranslations("orderStepper");
   const s = (status || "pending").toLowerCase();
   const sync = (syncStatus || "").toLowerCase();
   const isPickup = (deliveryType || "").toLowerCase() === "pickup";
+  const isScheduledOrder = Boolean(isScheduled || expectedDelivery);
 
   // Check cancellation or expired status
   if (s === "cancelled" || s === "expired") {
@@ -71,7 +76,11 @@ export default function OrderStatusStepper({
     isCompleted;
 
   const step1Title = t("step1_title");
-  const step1Desc = isPickup ? t("step1_desc_pickup") : t("step1_desc");
+  const step1Desc = isPickup
+    ? t("step1_desc_pickup")
+    : isScheduledOrder
+    ? t("step1_desc_scheduled")
+    : t("step1_desc");
   const step2Title = isCompleted ? t("step2_title_completed") : t("step2_title");
   const step2Desc = isCompleted
     ? (isPickup ? t("step2_desc_completed_pickup") : t("step2_desc_completed"))

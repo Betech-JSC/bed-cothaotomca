@@ -141,6 +141,7 @@ export default function OrderSuccessClient({
   }
 
   const isPickup = order.delivery_type === "pickup";
+  const isScheduled = Boolean(order?.delivery?.expected_delivery);
   const customerName = order.customer?.name || "";
   const expectedTime = formatExpectedTime(order);
   const paymentMethodText = order.payment?.method === "CASH"
@@ -189,9 +190,13 @@ export default function OrderSuccessClient({
       {/* Confirmation Notice Box */}
       <div className="bg-yellow/60 border border-secondary/30 rounded-2xl p-4 md:p-5 text-center max-w-2xl mx-auto space-y-2 font-sans">
         <p className="text-brown text-sm md:text-base leading-relaxed font-normal text-balance">
-          {isPickup ? t("notice_message_pickup") : t("notice_message")}
+          {isPickup
+            ? t("notice_message_pickup")
+            : isScheduled
+            ? t("notice_message_scheduled")
+            : t("notice_message")}
         </p>
-        <p className="text-brown text-sm md:text-base font-medium">
+        <p className="text-brown text-sm md:text-base font-medium mt-2">
           {t.rich("hotline_support", {
             hotline,
             link: (chunks) => (
@@ -212,6 +217,8 @@ export default function OrderSuccessClient({
           status={order?.status}
           syncStatus={order?.sync_status}
           deliveryType={order?.delivery_type}
+          isScheduled={isScheduled}
+          expectedDelivery={order?.delivery?.expected_delivery}
         />
       </div>
 

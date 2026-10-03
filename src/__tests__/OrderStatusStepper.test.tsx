@@ -80,6 +80,57 @@ describe("OrderStatusStepper 3-Stage Flow Test Suite", () => {
       const step2Heading = screen.getByText(viMessages.orderStepper.step2_title).closest("h4");
       expect(step2Heading?.className).toContain("text-gray-400");
     });
+
+    it("renders scheduled description in Stage 1 when expectedDelivery is provided", () => {
+      render(
+        <OrderStatusStepper
+          status="pending"
+          deliveryType="delivery"
+          expectedDelivery="2026-10-04T12:00:00"
+        />
+      );
+
+      expect(screen.getByText(viMessages.orderStepper.step1_title)).toBeInTheDocument();
+      expect(screen.getByText(viMessages.orderStepper.step1_desc_scheduled)).toBeInTheDocument();
+    });
+
+    it("renders scheduled description in Stage 1 when isScheduled=true", () => {
+      render(
+        <OrderStatusStepper
+          status="pending"
+          deliveryType="delivery"
+          isScheduled={true}
+        />
+      );
+
+      expect(screen.getByText(viMessages.orderStepper.step1_title)).toBeInTheDocument();
+      expect(screen.getByText(viMessages.orderStepper.step1_desc_scheduled)).toBeInTheDocument();
+    });
+
+    it("renders pickup description in Stage 1 when deliveryType='pickup'", () => {
+      render(
+        <OrderStatusStepper
+          status="pending"
+          deliveryType="pickup"
+          expectedDelivery="2026-10-04T12:00:00"
+        />
+      );
+
+      expect(screen.getByText(viMessages.orderStepper.step1_title)).toBeInTheDocument();
+      expect(screen.getByText(viMessages.orderStepper.step1_desc_pickup)).toBeInTheDocument();
+    });
+
+    it("renders immediate description in Stage 1 for regular delivery order", () => {
+      render(
+        <OrderStatusStepper
+          status="pending"
+          deliveryType="delivery"
+        />
+      );
+
+      expect(screen.getByText(viMessages.orderStepper.step1_title)).toBeInTheDocument();
+      expect(screen.getByText(viMessages.orderStepper.step1_desc)).toBeInTheDocument();
+    });
   });
 
   describe("Giai đoạn 2: Đã xác nhận & xuất hóa đơn (Confirmed / Processing / Shipping)", () => {
