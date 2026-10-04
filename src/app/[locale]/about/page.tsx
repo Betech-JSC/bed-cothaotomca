@@ -24,9 +24,23 @@ export async function generateMetadata({
   const meta = await getMetaPage('about', locale).catch(() => null);
   if (!meta) return {};
 
-  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
+  const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('localhost:3000'))
+    ? process.env.NEXT_PUBLIC_BASE_URL
+    : 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
-  const canonicalUrl = meta.canonical_url || `${baseUrl}/${locale}/about`;
+
+  let canonicalUrl = meta.canonical_url;
+  if (canonicalUrl && canonicalUrl.includes('localhost:3000')) {
+    canonicalUrl = canonicalUrl.replace(/https?:\/\/localhost:3000/g, baseUrl);
+  }
+  if (!canonicalUrl) {
+    canonicalUrl = `${baseUrl}/${locale}/about`;
+  }
+
+  let ogImage = meta.og_image;
+  if (ogImage && ogImage.includes('localhost:3000')) {
+    ogImage = ogImage.replace(/https?:\/\/localhost:3000/g, baseUrl);
+  }
 
   let robots: any = undefined;
   if (meta.noindex || meta.nofollow) {
@@ -52,7 +66,7 @@ export async function generateMetadata({
       title: meta.seo_title || undefined,
       description: meta.seo_description || undefined,
       url: canonicalUrl,
-      images: meta.og_image ? [meta.og_image] : undefined,
+      images: ogImage ? [ogImage] : undefined,
       type: 'website',
     },
   };
