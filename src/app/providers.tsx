@@ -1,6 +1,7 @@
 "use client";
 
 import ScrollRestoration from "@/components/ScrollRestoration";
+import PasswordGate from "@/components/Common/PasswordGate";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 
@@ -10,7 +11,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <AuthProvider>
       <CartProvider>
         <ScrollRestoration />
-        {children}
+        <PasswordGate>{children}</PasswordGate>
       </CartProvider>
     </AuthProvider>
   );
