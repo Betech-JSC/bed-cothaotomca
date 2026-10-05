@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={defaultLocale}>
-      <body>
+    <html lang={defaultLocale} className="overflow-x-hidden max-w-full w-full">
+      <body className="overflow-x-hidden max-w-full w-full">
         {/* Hardcoded Google Analytics Tag */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-DWYQVDL3BZ"

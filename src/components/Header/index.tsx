@@ -572,8 +572,8 @@ const MobileMenu = ({
 
       {/* Mobile Sidebar Menu Drawer */}
       <div
-        className={`bg-primary fixed inset-x-0 bottom-0 top-[3.25rem] z-[100] w-full p-6 space-y-6 shadow-2xl transition-transform duration-300 ease-in-out overflow-y-auto ${
-          open ? "translate-x-0" : "-translate-x-full"
+        className={`bg-primary fixed inset-x-0 bottom-0 top-[3.25rem] z-[100] w-full p-6 space-y-6 shadow-2xl transition-all duration-300 ease-in-out overflow-y-auto ${
+          open ? "translate-x-0 visible opacity-100 pointer-events-auto" : "-translate-x-full invisible opacity-0 pointer-events-none"
         }`}
         role="dialog"
         aria-modal="true"

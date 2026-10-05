@@ -7,13 +7,15 @@ const config = {
   theme: {
     screens: {
       // Mobile nhỏ & vừa
-      xs: "480px",        // Điện thoại màn hình lớn (iPhone Pro Max, Galaxy Plus/Ultra)
-      sm: "640px",        // Tablet mini / điện thoại xoay ngang
-      md: "768px",        // iPad / Tablet đứng
-      lg: "1024px",       // iPad Pro / Laptop nhỏ (13 inch)
-      xl: "1280px",       // Laptop phổ thông (14-15 inch)
-      "2xl": "1440px",    // Chuẩn Desktop Figma / Màn hình 1440p
-      "3xl": "1920px",    // Màn hình Full HD / UltraWide
+      "2xs": "375px",        // iPhone SE / Màn hình nhỏ
+      xs: "390px",          // iPhone tiêu chuẩn & Pro / Android hiện đại
+      "mobile-lg": "428px", // iPhone Plus & Pro Max / Phablet
+      sm: "640px",          // Tablet mini / điện thoại xoay ngang
+      md: "768px",          // iPad / Tablet đứng
+      lg: "1024px",         // iPad Pro / Laptop nhỏ (13 inch)
+      xl: "1280px",         // Laptop phổ thông (14-15 inch)
+      "2xl": "1440px",      // Chuẩn Desktop Figma / Màn hình 1440p
+      "3xl": "1920px",      // Màn hình Full HD / UltraWide
 
       // Max-width (Desktop-first helper classes)
       "max-3xl": { max: "1919px" },
@@ -22,7 +24,9 @@ const config = {
       "max-lg": { max: "1023px" },
       "max-md": { max: "767px" },
       "max-sm": { max: "639px" },
-      "max-xs": { max: "479px" },
+      "max-mobile-lg": { max: "427px" },
+      "max-xs": { max: "389px" },
+      "max-2xs": { max: "374px" },
     },
     container: {
       center: true,

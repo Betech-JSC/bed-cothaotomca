@@ -12,11 +12,17 @@
 @plugin "@tailwindcss/typography";
 @plugin "@tailwindcss/aspect-ratio";
 
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+  position: relative;
+}
+
 body {
   -webkit-font-smoothing: antialiased;
 }
-
-html {}
 
 body,
 main,
@@ -105,13 +111,5 @@ footer {
 @media (min-width: 80rem) {
   .container {
     max-width: 76rem !important;
-  }
-}
-
-@media (min-width: 40rem) and (max-width: 47.9375rem) {
-  .container {
-    max-width: 24.375rem !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
   }
 }

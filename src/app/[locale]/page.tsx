@@ -206,7 +206,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </AnimateOnScroll>
         </div>
 
-        <div className="absolute -bottom-6 -right-16 max-w-[180px] md:max-w-[320px] xl:max-w-[427px] w-full h-[150px] md:h-[260px] xl:h-[350px]">
+        <div className="absolute -bottom-6 right-0 md:-right-16 max-w-[180px] md:max-w-[320px] xl:max-w-[427px] w-full h-[150px] md:h-[260px] xl:h-[350px]">
           <AnimateOnScroll animate="slideright" delay={0} className="w-full h-full">
             <Image
               src="/images/home/image-crab.png"
@@ -224,7 +224,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <AnimateOnScroll animate="slideup" delay={0} className='z-10 relative'>
                   <h1 className="display-1 text-primary">{t('home.section-2.title')}</h1>
                 </AnimateOnScroll>
-                <div className="absolute block top-16 md:top-6 -right-6 md:-right-20 xl:-right-20 size-[120px] md:size-[220px] xl:size-[250px]">
+                <div className="absolute block top-16 md:top-6 right-0 md:-right-20 xl:-right-20 size-[120px] md:size-[220px] xl:size-[250px]">
                   <Image
                     src="/images/home/image-certificate.png"
                     alt="image certificate"
