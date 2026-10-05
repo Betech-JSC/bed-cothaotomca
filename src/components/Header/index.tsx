@@ -157,14 +157,20 @@ const Header = () => {
   }, [isSearchOpen]);
 
   useEffect(() => {
-    if (isMobileOpen) {
-      document.body.classList.add("overflow-hidden");
-    } else {
-      document.body.classList.remove("overflow-hidden");
-    }
+    if (!isMobileOpen) return;
+
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
 
     return () => {
-      document.body.classList.remove("overflow-hidden");
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.touchAction = originalTouchAction;
     };
   }, [isMobileOpen]);
 
@@ -197,7 +203,7 @@ const Header = () => {
 
   return (
     <header
-      className={`bg-primary sticky top-0 z-[100] w-full xl:h-[6.5rem] flex items-center transition-[padding] duration-300 ease-in-out ${isSticky ? "lg:py-1" : "lg:py-3"
+      className={`bg-primary ${isMobileOpen ? "fixed top-0 inset-x-0" : "sticky top-0"} z-[100] w-full xl:h-[6.5rem] flex items-center transition-[padding] duration-300 ease-in-out ${isSticky ? "lg:py-1" : "lg:py-3"
         }`}
       aria-label="Site header"
     >
@@ -563,7 +569,7 @@ const MobileMenu = ({
 
       {/* Mobile Drawer Overlay Backdrop */}
       <div
-        className={`fixed inset-x-0 bottom-0 top-[3.25rem] z-[90] bg-black/60 backdrop-blur-xs transition-opacity duration-300 ${
+        className={`fixed inset-x-0 bottom-0 top-[3.25rem] z-[90] bg-black/60 backdrop-blur-xs transition-opacity duration-300 touch-none ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -572,7 +578,7 @@ const MobileMenu = ({
 
       {/* Mobile Sidebar Menu Drawer */}
       <div
-        className={`bg-primary fixed inset-x-0 bottom-0 top-[3.25rem] z-[100] w-full p-6 space-y-6 shadow-2xl transition-all duration-300 ease-in-out overflow-y-auto ${
+        className={`bg-primary fixed inset-x-0 bottom-0 top-[3.25rem] z-[100] w-full p-6 space-y-6 shadow-2xl transition-all duration-300 ease-in-out overflow-y-auto overscroll-contain touch-pan-y ${
           open ? "translate-x-0 visible opacity-100 pointer-events-auto" : "-translate-x-full invisible opacity-0 pointer-events-none"
         }`}
         role="dialog"
