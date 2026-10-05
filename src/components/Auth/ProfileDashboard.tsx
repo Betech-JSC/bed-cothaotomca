@@ -1115,7 +1115,6 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   value={formData.phone}
                   onChange={handleInputChange}
                   required
-                  placeholder="0912345678"
                   className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
@@ -1440,7 +1439,6 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                       setAddressForm((prev) => ({ ...prev, recipient_name: e.target.value }))
                     }
                     required
-                    placeholder="Nguyễn Văn A"
                     className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[40px] text-gray-900"
                   />
                 </div>
@@ -1456,7 +1454,6 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                       setAddressForm((prev) => ({ ...prev, phone: e.target.value }))
                     }
                     required
-                    placeholder="0912345678"
                     className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[40px] text-gray-900"
                   />
                 </div>
