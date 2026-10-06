@@ -166,3 +166,52 @@ export function formatRichTextContent(content: string | undefined | null): strin
 
   return processed;
 }
+
+/**
+ * Format date time locked to Asia/Ho_Chi_Minh (GMT+7)
+ * Output: HH:mm DD/MM/YYYY (or HH:mm:ss DD/MM/YYYY if includeSeconds=true)
+ */
+export function formatVietnamDateTime(
+  date: Date | string | number | null | undefined,
+  includeSeconds: boolean = false
+): string {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(includeSeconds ? { second: "2-digit" } : {}),
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour12: false,
+  };
+
+  const formatter = new Intl.DateTimeFormat("en-GB", options);
+  const parts = formatter.formatToParts(d);
+  const getPart = (type: string) => parts.find((p) => p.type === type)?.value || "";
+
+  const hour = getPart("hour");
+  const minute = getPart("minute");
+  const second = getPart("second");
+  const day = getPart("day");
+  const month = getPart("month");
+  const year = getPart("year");
+
+  const timeStr = includeSeconds ? `${hour}:${minute}:${second}` : `${hour}:${minute}`;
+  return `${timeStr} ${day}/${month}/${year}`;
+}
+
+/**
+ * Helper to check if an order uses COD payment (cash on delivery)
+ */
+export function isCodPayment(order: any): boolean {
+  if (!order) return false;
+  if (order.is_cod === true) return true;
+  const method = (order.payment?.method || order.payment_method || "").toUpperCase();
+  return method === "COD" || method === "CASH";
+}
+

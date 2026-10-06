@@ -14,6 +14,8 @@ import {
 import { getGeneralSettings } from "@/services/generalSettingService";
 import OrderStatusStepper from "@/components/Order/OrderStatusStepper";
 import { cleanDuplicateAddressParts } from "@/data/wardMapping";
+import { formatVietnamDateTime, isCodPayment } from "@/lib/format";
+import { usePrecisionCountdown } from "@/hooks/usePrecisionCountdown";
 
 interface OrderDetailData {
   order_code: string;
@@ -21,6 +23,7 @@ interface OrderDetailData {
   sync_status: string;
   payment_status: string;
   payment_method?: string;
+  is_cod?: boolean;
   can_cancel: boolean;
   cancel_window_expires_at?: string;
   remaining_cancel_seconds?: number;
@@ -93,8 +96,12 @@ export default function OrderLookupPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  // Countdown timer for 15-minute window
-  const [secondsLeft, setSecondsLeft] = useState<number>(0);
+  // Precision Countdown timer for 15-minute window
+  const { secondsLeft, formattedTime } = usePrecisionCountdown({
+    initialSeconds: order?.remaining_cancel_seconds,
+    expiresAt: order?.cancel_window_expires_at,
+    enabled: Boolean(order && isCodPayment(order) && order.can_cancel),
+  });
 
   const fetchOrders = async (codeStr: string, phoneStr: string) => {
     const trimmedCode = codeStr.trim();
@@ -121,7 +128,6 @@ export default function OrderLookupPage() {
           const singleOrder = res[0] as unknown as OrderDetailData;
           setOrder(singleOrder);
           setOrderList([]);
-          setSecondsLeft(singleOrder.remaining_cancel_seconds || 0);
         } else {
           const list = (res as unknown as OrderDetailData[]).slice(0, 5);
           setOrderList(list);
@@ -131,7 +137,6 @@ export default function OrderLookupPage() {
         const fetchedOrder = res as unknown as OrderDetailData;
         setOrder(fetchedOrder);
         setOrderList([]);
-        setSecondsLeft(fetchedOrder.remaining_cancel_seconds || 0);
       } else {
         setOrder(null);
         setOrderList([]);
@@ -160,23 +165,6 @@ export default function OrderLookupPage() {
       fetchOrders(codeParam, phoneParam);
     }
   }, [searchParams]);
-
-  // Live Timer Countdown effect
-  useEffect(() => {
-    if (secondsLeft <= 0) return;
-
-    const timer = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [secondsLeft]);
 
   // Polling for live status updates if active order is pending
   useEffect(() => {
@@ -219,7 +207,6 @@ export default function OrderLookupPage() {
 
   const handleSelectOrder = (selectedOrder: OrderDetailData) => {
     setOrder(selectedOrder);
-    setSecondsLeft(selectedOrder.remaining_cancel_seconds || 0);
   };
 
   const handleBackToList = () => {
@@ -480,7 +467,7 @@ export default function OrderLookupPage() {
                     <div className="text-xs text-gray-500">
                       <span>{t("order_date")}: </span>
                       <span className="font-medium text-gray-700">
-                        {item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "—"}
+                        {item.created_at ? formatVietnamDateTime(item.created_at) : "—"}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500">
@@ -538,7 +525,7 @@ export default function OrderLookupPage() {
                   <svg className="w-3.5 h-3.5 text-yellow/80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>{t("created_at")}: {order.created_at ? new Date(order.created_at).toLocaleString("vi-VN") : "—"}</span>
+                  <span>{t("created_at")}: {order.created_at ? formatVietnamDateTime(order.created_at) : "—"}</span>
                 </div>
               </div>
               <div className="relative z-10 flex flex-col items-start sm:items-end gap-2.5">
@@ -601,7 +588,7 @@ export default function OrderLookupPage() {
             {order.status !== "cancelled" &&
               order.status !== "expired" &&
               order.status !== "cancel_requested" &&
-              (order.payment?.method === "COD" || order.payment_method === "COD") && (
+              isCodPayment(order) && (
                 <div
                   className={`p-6 border-b border-gray-100 relative ${
                     order.can_cancel && secondsLeft > 0
@@ -624,6 +611,12 @@ export default function OrderLookupPage() {
                           <p className="text-xs text-brown/80 mt-1">
                             {t("cancel_modal_desc")}
                           </p>
+                          {order.cancel_window_expires_at && (
+                            <p className="text-xs text-brown/70 mt-1 flex items-center gap-1 font-medium">
+                              <span>Hạn chót:</span>
+                              <strong className="text-brown">{formatVietnamDateTime(order.cancel_window_expires_at)}</strong>
+                            </p>
+                          )}
                         </>
                       ) : !order.can_cancel ? (
                         <>
@@ -659,7 +652,7 @@ export default function OrderLookupPage() {
                       {order.can_cancel && secondsLeft > 0 ? (
                         <>
                           <div className="bg-white text-secondary font-mono font-bold text-lg px-4 py-2 rounded-xl border border-secondary/20 shadow-xs">
-                            {formatTimer(secondsLeft)}
+                            {formattedTime}
                           </div>
                           <button
                             onClick={() => {
@@ -699,12 +692,12 @@ export default function OrderLookupPage() {
                 </div>
                 {order.cancelled_at && (
                   <div className="text-xs text-gray-600">
-                    {t("created_at")}: {new Date(order.cancelled_at).toLocaleString("vi-VN")}
+                    {t("created_at")}: {formatVietnamDateTime(order.cancelled_at)}
                   </div>
                 )}
                 {order.cancel_requested_at && (
                   <div className="text-xs text-gray-600">
-                    {t("created_at")}: {new Date(order.cancel_requested_at).toLocaleString("vi-VN")}
+                    {t("created_at")}: {formatVietnamDateTime(order.cancel_requested_at)}
                   </div>
                 )}
                 {order.cancel_reason && (

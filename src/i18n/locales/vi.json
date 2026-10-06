@@ -415,7 +415,22 @@
     "order_code_label": "Mã đơn hàng:",
     "lookup_tip": "Dùng mã này + SĐT để tra cứu đơn hàng trực tiếp trên website.",
     "lookup_button": "Tra cứu đơn hàng",
-    "payment_card": "Thẻ (Visa/Master/ATM)"
+    "payment_card": "Thẻ (Visa/Master/ATM)",
+    "order_time": "Thời gian đặt hàng",
+    "cancel_order": "Hủy đơn hàng",
+    "cancel_order_15m": "Hủy đơn hàng (15m)",
+    "cancel_banner_desc": "Bạn có thể tự hủy đơn hàng trong vòng 15 phút nếu cần thay đổi món hoặc thông tin nhận hàng.",
+    "cancel_deadline": "Hạn chót:",
+    "cancel_modal_title": "Xác nhận hủy đơn hàng",
+    "cancel_modal_desc": "Bạn có chắc chắn muốn hủy đơn hàng này không? Sau khi hủy, đơn hàng sẽ không được chế biến và giao đi.",
+    "cancel_reason_placeholder": "Nhập lý do hủy đơn hàng (không bắt buộc)...",
+    "confirm_cancel": "Xác nhận hủy",
+    "close": "Đóng",
+    "cancelling": "Đang xử lý...",
+    "cancel_success": "Đã hủy đơn hàng thành công!",
+    "cancelled_status": "Đơn hàng đã được hủy",
+    "cancelled_at": "Thời gian hủy:",
+    "cancel_window_expired": "Đã hết thời gian hủy đơn tự động"
   },
   "orderLookup": {
     "title": "Tra cứu đơn hàng",

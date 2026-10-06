@@ -415,7 +415,22 @@
     "order_code_label": "Order Code:",
     "lookup_tip": "Use this code + Phone number to look up your order directly on the website.",
     "lookup_button": "Track Order",
-    "payment_card": "Card (Visa/Master/ATM)"
+    "payment_card": "Card (Visa/Master/ATM)",
+    "order_time": "Order Time",
+    "cancel_order": "Cancel Order",
+    "cancel_order_15m": "Cancel Order (15m)",
+    "cancel_banner_desc": "You can cancel your order within 15 minutes if you need to adjust items or delivery details.",
+    "cancel_deadline": "Deadline:",
+    "cancel_modal_title": "Confirm Order Cancellation",
+    "cancel_modal_desc": "Are you sure you want to cancel this order? Once cancelled, the order will not be prepared or delivered.",
+    "cancel_reason_placeholder": "Enter reason for cancellation (optional)...",
+    "confirm_cancel": "Confirm Cancel",
+    "close": "Close",
+    "cancelling": "Processing...",
+    "cancel_success": "Order cancelled successfully!",
+    "cancelled_status": "Order has been cancelled",
+    "cancelled_at": "Cancelled at:",
+    "cancel_window_expired": "Automatic cancellation window has expired"
   },
   "orderLookup": {
     "title": "Order Lookup",

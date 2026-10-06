@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/i18n-navigation";
 import { useTranslations } from "next-intl";
-import { getOrderByCode } from "@/services/orderService";
-import { formatPrice } from "@/lib/format";
+import { getOrderByCode, cancelOrderApi, OrderApiError } from "@/services/orderService";
+import { formatPrice, formatVietnamDateTime, isCodPayment } from "@/lib/format";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import OrderStatusStepper from "@/components/Order/OrderStatusStepper";
 import { cleanDuplicateAddressParts } from "@/data/wardMapping";
+import { usePrecisionCountdown } from "@/hooks/usePrecisionCountdown";
 
 interface OrderSuccessClientProps {
   orderCode: string;
@@ -26,6 +27,20 @@ export default function OrderSuccessClient({
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Cancellation Modal & Input
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [cancelSuccessMsg, setCancelSuccessMsg] = useState<string | null>(null);
+
+  // Precision countdown for 15-minute cancellation window
+  const { secondsLeft, formattedTime } = usePrecisionCountdown({
+    initialSeconds: order?.remaining_cancel_seconds,
+    expiresAt: order?.cancel_window_expires_at,
+    enabled: Boolean(order && isCodPayment(order) && order.can_cancel && order.status !== "cancelled"),
+  });
 
   const hotline = "024.9999.7122";
 
@@ -56,11 +71,13 @@ export default function OrderSuccessClient({
 
     const currentStatus = (order?.status || "").toLowerCase();
     const currentSyncStatus = (order?.sync_status || "").toLowerCase();
+    const isCancelled = currentStatus === "cancelled" || currentStatus === "cancel_requested";
     const shouldPoll =
-      currentStatus === "pending" ||
-      currentStatus === "pending_payment" ||
-      currentStatus === "pending_sync" ||
-      currentSyncStatus === "pending";
+      !isCancelled &&
+      (currentStatus === "pending" ||
+        currentStatus === "pending_payment" ||
+        currentStatus === "pending_sync" ||
+        currentSyncStatus === "pending");
 
     if (!shouldPoll) return;
 
@@ -77,6 +94,43 @@ export default function OrderSuccessClient({
 
     return () => clearInterval(interval);
   }, [orderCode, phone, order?.status, order?.sync_status]);
+
+  const handleConfirmCancel = async () => {
+    if (!order) return;
+    setActionLoading(true);
+    setModalError(null);
+
+    const cancelPhone = phone?.trim() || order.customer?.phone || order.delivery?.contact_number || "";
+
+    try {
+      const res = await cancelOrderApi(
+        order.order_code,
+        cancelPhone,
+        cancelReason.trim() || undefined
+      );
+      setCancelSuccessMsg(res.message || t("cancel_success"));
+      if (res.data) {
+        setOrder(res.data);
+      } else {
+        setOrder((prev: any) => ({
+          ...prev,
+          status: "cancelled",
+          cancelled_at: new Date().toISOString(),
+          can_cancel: false,
+        }));
+      }
+      setShowCancelModal(false);
+      setCancelReason("");
+    } catch (err: unknown) {
+      if (err instanceof OrderApiError) {
+        setModalError(err.message);
+      } else {
+        setModalError(t("error_load"));
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const formatExpectedTime = (orderData: any) => {
     let date = null;
@@ -222,6 +276,134 @@ export default function OrderSuccessClient({
         />
       </div>
 
+      {/* Cancellation Status Banner if Cancelled */}
+      {order?.status === "cancelled" && (
+        <div className="mt-8 p-5 md:p-6 rounded-2xl bg-yellow/20 border border-gray-200 space-y-2 font-sans">
+          <div className="flex items-center gap-2 text-primary font-bold text-sm">
+            <span className="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+            {t("cancelled_status")}
+          </div>
+          {order.cancelled_at && (
+            <p className="text-xs text-gray-600">
+              {t("cancelled_at")}{" "}
+              <strong className="text-gray-800 font-semibold">{formatVietnamDateTime(order.cancelled_at)}</strong>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 15-Minute Countdown Banner & Cancel Action for COD */}
+      {order &&
+        isCodPayment(order) &&
+        order.status !== "cancelled" &&
+        order.status !== "cancel_requested" &&
+        order.status !== "expired" && (
+          <div
+            className={`mt-8 p-5 md:p-6 rounded-2xl border transition-all ${
+              order.can_cancel && secondsLeft > 0
+                ? "bg-yellow/40 border-secondary/20 shadow-xs"
+                : !order.can_cancel
+                ? "bg-gray-50/80 border-gray-200"
+                : "bg-yellow/20 border-secondary/15"
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                {order.can_cancel && secondsLeft > 0 ? (
+                  <>
+                    <div className="flex items-center gap-2 text-brown font-bold text-sm">
+                      <svg className="w-5 h-5 text-secondary animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{t("cancel_order_15m")}</span>
+                    </div>
+                    <p className="text-xs text-brown/80 mt-1">
+                      {t("cancel_banner_desc")}
+                    </p>
+                    {order.cancel_window_expires_at && (
+                      <p className="text-xs text-brown/70 mt-1 flex items-center gap-1 font-medium">
+                        <span>{t("cancel_deadline")}</span>
+                        <strong className="text-brown">{formatVietnamDateTime(order.cancel_window_expires_at)}</strong>
+                      </p>
+                    )}
+                  </>
+                ) : !order.can_cancel ? (
+                  <>
+                    <div className="flex items-center gap-2 text-gray-800 font-bold text-sm">
+                      <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Đã xác nhận đơn hàng</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 font-medium">
+                      Đơn hàng đã được xác nhận. Vui lòng gọi hotline {hotline} để được hỗ trợ.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 text-brown font-bold text-sm">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{t("cancel_order_15m")}</span>
+                    </div>
+                    <p className="text-xs text-rose-700 mt-1 font-semibold flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5 shrink-0 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <span>{t("cancel_window_expired")}</span>
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4">
+                {order.can_cancel && secondsLeft > 0 ? (
+                  <>
+                    <div className="bg-white text-secondary font-mono font-bold text-lg px-4 py-2 rounded-xl border border-secondary/20 shadow-xs">
+                      {formattedTime}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalError(null);
+                        setShowCancelModal(true);
+                      }}
+                      className="bg-secondary hover:bg-secondary/90 text-white text-sm font-bold py-2.5 px-5 rounded-xl transition-all shadow-md shadow-secondary/20 whitespace-nowrap cursor-pointer"
+                    >
+                      {t("cancel_order")}
+                    </button>
+                  </>
+                ) : !order.can_cancel ? (
+                  <button
+                    disabled
+                    className="bg-gray-100 text-gray-400 border border-gray-200 text-sm font-medium py-2.5 px-5 rounded-xl cursor-not-allowed whitespace-nowrap"
+                  >
+                    Đã xác nhận
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="bg-gray-100 text-gray-400 border border-gray-200 text-sm font-medium py-2.5 px-5 rounded-xl cursor-not-allowed whitespace-nowrap"
+                  >
+                    {t("cancel_window_expired")}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* Success Notification Alert if just cancelled */}
+      {cancelSuccessMsg && (
+        <div className="mt-4 p-4 rounded-xl bg-yellow/60 border border-secondary/30 text-brown text-sm flex items-center gap-3 font-sans">
+          <svg className="w-5 h-5 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span>{cancelSuccessMsg}</span>
+        </div>
+      )}
+
       {/* Receipt Info Card */}
       <div className="mt-8 border border-gray-100 rounded-2xl p-5 md:p-6 space-y-6 font-sans">
         <h2 className="text-lg md:text-xl font-bold font-display text-primary border-b border-gray-100 pb-3">
@@ -231,6 +413,12 @@ export default function OrderSuccessClient({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-xs md:text-sm">
           {/* Left Column */}
           <div className="space-y-4">
+            <div>
+              <span className="text-gray-500 text-xs md:text-sm font-normal block mb-1">{t("order_time")}</span>
+              <strong className="text-primary text-sm md:text-base font-bold font-sans">
+                {order.created_at ? formatVietnamDateTime(order.created_at) : "—"}
+              </strong>
+            </div>
             <div>
               <span className="text-gray-500 text-xs md:text-sm font-normal block mb-1">{t("receiver")}</span>
               <strong className="text-primary text-sm md:text-base font-bold font-sans">
@@ -380,6 +568,67 @@ export default function OrderSuccessClient({
       >
         {t("continue_shopping")}
       </Link>
+
+      {/* Cancellation Confirmation Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 relative border border-gray-100 font-sans">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-secondary/15 flex items-center justify-center shrink-0">
+                <svg className="w-6 h-6 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold font-display text-primary">
+                {t("cancel_modal_title")}
+              </h3>
+            </div>
+
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {t("cancel_modal_desc")}
+            </p>
+
+            <div>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder={t("cancel_reason_placeholder")}
+                rows={3}
+                className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary shadow-xs"
+              />
+            </div>
+
+            {modalError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
+                {modalError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                disabled={actionLoading}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold transition-all cursor-pointer"
+              >
+                {t("close")}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancel}
+                disabled={actionLoading}
+                className="px-6 py-2.5 rounded-xl bg-secondary hover:bg-secondary/90 text-white text-sm font-bold transition-all shadow-md shadow-secondary/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {actionLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span>{t("confirm_cancel")}</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

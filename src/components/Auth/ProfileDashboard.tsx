@@ -23,6 +23,7 @@ import {
 } from "@/services/orderService";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 import { buildDeliveryAddress, cleanDuplicateAddressParts } from "@/data/wardMapping";
+import { formatVietnamDateTime } from "@/lib/format";
 
 type ProfileDashboardProps = {
   user: StorefrontUser;
@@ -848,13 +849,13 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                           <div className="hidden sm:block h-10 w-px bg-gray-200/90 self-center mx-2 md:mx-4" />
 
-                          <div className="px-2 md:px-4">
+                          <div className="px-0 sm:px-2 md:px-4">
                             <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1 uppercase">
                               {t("order_date") || "NGÀY GIAO DỊCH"}
                             </span>
                             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                               <span className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 whitespace-nowrap">
-                                {formatDate(order.created_at)}
+                                {formatVietnamDateTime(order.created_at)}
                               </span>
                               {renderOrderStatusBadge(order)}
                             </div>
