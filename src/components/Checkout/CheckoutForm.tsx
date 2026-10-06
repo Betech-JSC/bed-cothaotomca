@@ -105,6 +105,28 @@ const POPULAR_DISTRICTS = [
   { group: "TP. Hồ Chí Minh", value: "TP. Thủ Đức, TP. Hồ Chí Minh" },
 ];
 
+const TECHNICAL_ERROR_PATTERNS = [
+  /typeerror/i,
+  /sqlstate/i,
+  /syntax error/i,
+  /call to undefined/i,
+  /internal server error/i,
+  /argument #/i,
+  /must be of type/i,
+  /null given/i,
+  /uncaught exception/i,
+  /\.php on line/i,
+  /undefined array key/i,
+  /server error/i,
+  /stack trace/i,
+  /called in/i,
+  /exception/i,
+];
+
+const isTechnicalErrorMessage = (msg: string): boolean => {
+  return TECHNICAL_ERROR_PATTERNS.some((pattern) => pattern.test(msg));
+};
+
 export default function CheckoutForm({ order, config, mockTime: propMockTime }: CheckoutFormProps) {
   const searchParams = useSearchParams();
   const mockTime = propMockTime || searchParams?.get("mock_time");
@@ -2124,8 +2146,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         setPendingOrder(result.data);
       }
     } catch (err: unknown) {
+      const fallbackErrorMessage =
+        "Có lỗi xảy ra trong quá trình khởi tạo đơn hàng. Quý khách vui lòng thử lại hoặc liên hệ hotline để được hỗ trợ.";
+
       if (err instanceof OrderApiError) {
-        setError(err.message);
+        const displayMessage =
+          err.message && !isTechnicalErrorMessage(err.message)
+            ? err.message
+            : fallbackErrorMessage;
+        setError(displayMessage);
         if (err.errors) {
           const mapped: Record<string, string> = {};
           Object.entries(err.errors).forEach(([key, msgs]) => {
@@ -2134,7 +2163,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           setFieldErrors(mapped);
         }
       } else {
-        setError(err instanceof Error ? err.message : t("submit_error"));
+        const rawMessage = err instanceof Error ? err.message : t("submit_error");
+        const displayMessage =
+          rawMessage && !isTechnicalErrorMessage(rawMessage)
+            ? rawMessage
+            : fallbackErrorMessage;
+        setError(displayMessage);
       }
     } finally {
       setLoading(false);
