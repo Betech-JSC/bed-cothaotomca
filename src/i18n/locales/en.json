@@ -20,7 +20,17 @@
     "all": "All",
     "filter": "Filter",
     "view_more": "View more",
-    "collapse": "Show less"
+    "collapse": "Show less",
+    "account": "Account",
+    "open_menu": "Open menu",
+    "close_menu": "Close menu",
+    "previous": "Previous",
+    "next": "Next",
+    "previous_slide": "Previous slide",
+    "next_slide": "Next slide",
+    "previous_page": "Previous page",
+    "next_page": "Next page",
+    "page_number": "Page {number}"
   },
   "search": {
     "results_for": "Search results for",
@@ -70,7 +80,11 @@
     "order_now": "Order now",
     "order_now_with_price": "Order now • {price}",
     "buy_more_gift_prompt": "Spend <strong>{amount}</strong> more to receive <strong>1 free gift</strong> ({name})!",
-    "buy_more_combo_prompt": "Buy <strong>{count} more items</strong> to receive offer (<strong>{name}</strong>)!"
+    "buy_more_combo_prompt": "Buy <strong>{count} more items</strong> to receive offer (<strong>{name}</strong>)!",
+    "decrease_quantity": "Decrease quantity",
+    "increase_quantity": "Increase quantity",
+    "out_of_stock": "Sold out",
+    "temporarily_out_of_stock": "[Temporarily sold out]"
   },
   "breadcrumb": {
     "home": "Home",
@@ -189,6 +203,7 @@
       "waiting_payment": "Waiting for payment confirmation...",
       "payment_received": "Payment received — processing...",
       "cancel_back": "Cancel & Go back",
+      "cancelling": "Cancelling order...",
       "reorder": "Re-order",
       "bank_info_title": "Transfer Details",
       "bank_name": "Bank Name",

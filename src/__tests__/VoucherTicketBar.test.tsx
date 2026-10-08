@@ -71,7 +71,7 @@ describe('VoucherTicketBar Component Tests', () => {
     expect(capsule?.className).toContain('border-gray-300');
     expect(capsule?.className).toContain('py-2.5');
     expect(capsule?.className).toContain('px-3.5');
-    expect(capsule?.className).toContain('min-h-[46px]');
+    expect(capsule?.className).toMatch(/min-h-\[(46|48)px\]/);
 
     // 3. Văn bản placeholder khi chưa có mã
     expect(screen.getByText('Chọn hoặc nhập mã')).toBeInTheDocument();

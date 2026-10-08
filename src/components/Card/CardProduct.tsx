@@ -194,7 +194,7 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
     <div className="group rounded-xl relative overflow-hidden bg-white h-full flex flex-col w-full shadow-sm">
       {/* Campaign Discount Badge */}
       {hasDiscount && (
-        <div className="absolute top-2.5 left-2.5 bg-secondary text-white text-xs font-bold px-2 py-0.5 rounded-full z-10">
+        <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 bg-secondary text-white text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full z-10">
           <span>
             {discountPercent > 0
               ? `-${discountPercent}%`
@@ -216,32 +216,33 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
             alt={item.image?.alt || item.title}
             priority={false}
             fill
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 380px"
             className="h-full w-full object-cover duration-500 ease-in-out lg:group-hover:scale-110"
           />
         </div>
       </Link>
 
-      <div className="pt-2.5 pb-3 md:pt-3 md:pb-4 px-2 md:px-4 text-center flex flex-col flex-1 justify-between">
+      <div className="p-2 sm:p-3 md:p-4 text-center flex flex-col flex-1 justify-between">
         <div>
           <Link
             href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
-            className="flex items-center justify-center min-h-[58px] md:min-h-[64px]"
+            className="flex items-center justify-center min-h-[38px] sm:min-h-[40px] md:min-h-[64px]"
           >
-            <h3 className="title-1 max-md:text-[22px] text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 whitespace-pre-line">
+            <h3 className="text-sm sm:text-base md:title-1 font-bold text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2">
               {item.custom_name || item.title}
             </h3>
           </Link>
-          <div className="body-1 text-gray-900 line-clamp-3 min-h-[48px] md:min-h-[72px] mt-1 mb-2">
+          <div className="hidden md:block body-1 text-gray-900 line-clamp-3 min-h-[48px] md:min-h-[72px] mt-1 mb-2">
             {item.description}
           </div>
         </div>
-        <div className="mt-auto pt-2 flex flex-col items-center justify-center">
+        <div className="mt-auto pt-1 sm:pt-2 flex flex-col items-center justify-center">
           {hasDiscount && originalPrice ? (
-            <span className="text-xs sm:text-xs md:text-sm text-gray-400 line-through font-medium mb-0.5">
+            <span className="text-[11px] sm:text-xs md:text-sm text-gray-400 line-through font-medium mb-0.5">
               {formatPrice(originalPrice)}
             </span>
           ) : null}
-          <span className="title-2 text-secondary text-xl sm:text-2xl md:text-xl font-extrabold font-display tracking-tight leading-tight">
+          <span className="title-2 text-secondary text-base sm:text-lg md:text-xl font-extrabold font-display tracking-tight leading-tight">
             {formatPrice(price)}
           </span>
         </div>

@@ -253,7 +253,7 @@ const Header = () => {
               <button
                 onClick={toggleSearch}
                 className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer flex items-center justify-center"
-                aria-label="Search"
+                aria-label={t("common.search") || "Tìm kiếm"}
               >
                 <Search />
               </button>
@@ -262,7 +262,7 @@ const Header = () => {
               <Link
                 href="/profile"
                 className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer flex items-center justify-center"
-                aria-label="Tài khoản"
+                aria-label={t("common.account") || "Tài khoản"}
               >
                 <UserCircle size={24} />
               </Link>
@@ -274,6 +274,7 @@ const Header = () => {
               <button
                 id="cart-toggle-btn"
                 onClick={toggleCart}
+                aria-label={t("cart.title", { count: totalItems })}
                 className="text-yellow lg:hover:text-secondary flex items-center gap-2.5 duration-300 ease-in-out cursor-pointer relative py-2"
               >
                 <div className="relative">
@@ -315,6 +316,7 @@ const Header = () => {
                 ref={searchInputRef}
                 type="text"
                 placeholder={t("common.search_placeholder")}
+                aria-label={t("common.search_placeholder") || "Tìm kiếm"}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -495,7 +497,7 @@ const MobileMenu = ({
           <button
             onClick={onToggleSearch}
             className="text-yellow hover:text-secondary duration-300 ease-in-out shrink-0 cursor-pointer p-1"
-            aria-label="Search"
+            aria-label={t("common.search") || "Tìm kiếm"}
           >
             <Search />
           </button>
@@ -506,7 +508,7 @@ const MobileMenu = ({
               id="cart-toggle-btn-mobile"
               onClick={toggleCart}
               className="text-yellow hover:text-secondary duration-300 ease-in-out relative flex items-center justify-center w-6 h-6 cursor-pointer p-1"
-              aria-label="Cart"
+              aria-label={t("cart.title", { count: totalItems })}
             >
               <Cart />
               {totalItems > 0 && (
@@ -522,7 +524,7 @@ const MobileMenu = ({
           <Link
             href="/profile"
             className="text-yellow hover:text-secondary duration-300 ease-in-out shrink-0 flex items-center justify-center cursor-pointer p-1"
-            aria-label="Tài khoản"
+            aria-label={t("common.account") || "Tài khoản"}
           >
             <UserCircle size={24} />
           </Link>
@@ -539,12 +541,12 @@ const MobileMenu = ({
           <button
             type="button"
             onClick={onToggle}
-            aria-label={open ? "Close menu" : "Open menu"}
+            aria-label={open ? (t("common.close_menu") || "Đóng menu") : (t("common.open_menu") || "Mở menu")}
             aria-expanded={open}
             className="text-yellow duration-300 ease-in-out shrink-0 flex items-center justify-center cursor-pointer p-1"
           >
             <span className="sr-only">
-              {open ? "Close menu" : "Open menu"}
+              {open ? (t("common.close_menu") || "Đóng menu") : (t("common.open_menu") || "Mở menu")}
             </span>
             <div className="relative h-6 w-6">
               <span

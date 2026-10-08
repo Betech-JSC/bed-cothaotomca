@@ -30,6 +30,17 @@ export default function PasswordGate({ children }: PasswordGateProps) {
 
       if (hasCookie || hasLocalStorage) {
         setIsUnlocked(true);
+      } else {
+        if (typeof document !== "undefined") {
+          document.title = "Môi trường thử nghiệm nội bộ | Bếp Cô Thảo Tôm Cá";
+          let metaRobots = document.querySelector('meta[name="robots"]');
+          if (!metaRobots) {
+            metaRobots = document.createElement("meta");
+            metaRobots.setAttribute("name", "robots");
+            document.head.appendChild(metaRobots);
+          }
+          metaRobots.setAttribute("content", "noindex, nofollow");
+        }
       }
     } catch {
       // Storage access fallback
@@ -37,6 +48,26 @@ export default function PasswordGate({ children }: PasswordGateProps) {
       setIsMounted(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!isUnlocked && isMounted && typeof document !== "undefined") {
+      document.title = "Môi trường thử nghiệm nội bộ | Bếp Cô Thảo Tôm Cá";
+      let metaRobots = document.querySelector('meta[name="robots"]');
+      if (!metaRobots) {
+        metaRobots = document.createElement("meta");
+        metaRobots.setAttribute("name", "robots");
+        document.head.appendChild(metaRobots);
+      }
+      metaRobots.setAttribute("content", "noindex, nofollow");
+
+      const interval = setInterval(() => {
+        if (document.title !== "Môi trường thử nghiệm nội bộ | Bếp Cô Thảo Tôm Cá") {
+          document.title = "Môi trường thử nghiệm nội bộ | Bếp Cô Thảo Tôm Cá";
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [isUnlocked, isMounted]);
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +96,10 @@ export default function PasswordGate({ children }: PasswordGateProps) {
 
   // Otherwise, lock screen protects the entire site. Children are NEVER rendered.
   return (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center min-h-screen bg-[#0a1128] overflow-y-auto p-4 sm:p-6 select-none font-sans">
+    <>
+      <title>Môi trường thử nghiệm nội bộ | Bếp Cô Thảo Tôm Cá</title>
+      <meta name="robots" content="noindex, nofollow" />
+      <div className="fixed inset-0 z-[999999] flex items-center justify-center min-h-screen bg-[#0a1128] overflow-y-auto p-4 sm:p-6 select-none font-sans">
       {/* Background with luxury seafood brand style */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105"
@@ -235,5 +269,6 @@ export default function PasswordGate({ children }: PasswordGateProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }

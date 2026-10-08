@@ -30,7 +30,7 @@ export default function ScrollToTop() {
   }, []);
 
   return (
-    <div className="fixed right-4 bottom-8 z-80 space-y-4">
+    <div className="hidden lg:block fixed right-4 bottom-8 z-80 space-y-4">
       {isVisible && (
         <div
           onClick={scrollToTop}

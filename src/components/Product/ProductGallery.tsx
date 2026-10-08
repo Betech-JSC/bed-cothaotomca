@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import ZoomableImage from '@/components/Common/ZoomableImage';
+import SafeImage from '@/components/Common/SafeImage';
 import Chevron from '@/components/Icons/Chevron';
 
 export interface GalleryImage {
@@ -153,7 +154,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
                     : 'border-2 border-gray-200/80 hover:border-primary/50 opacity-60 hover:opacity-100 hover:scale-[1.01]'
                 }`}
               >
-                <Image
+                <SafeImage
                   src={img.url || '/cover.jpg'}
                   alt={img.alt || `${title} thumbnail ${idx + 1}`}
                   fill

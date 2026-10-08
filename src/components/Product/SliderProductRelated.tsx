@@ -63,12 +63,12 @@ const SliderProductRelated: React.FC<SliderProductRelatedProps> = ({ products })
             ))}
 
             {/* Custom Navigation Buttons */}
-            <button aria-label="Previous Product" className="swiper-btn-prev absolute left-0 xl:-left-12 top-[117px] -translate-x-1/2 z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
+            <button aria-label={t("common.previous") || "Trước"} className="swiper-btn-prev absolute left-2 xl:left-4 top-[117px] z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
               <div>
                 <Arrow />
               </div>
             </button>
-            <button aria-label="Next Product" className="swiper-btn-next absolute right-0 xl:-right-12 top-[117px] translate-x-1/2 z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
+            <button aria-label={t("common.next") || "Tiếp theo"} className="swiper-btn-next absolute right-2 xl:right-4 top-[117px] z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
               <div className="-rotate-180">
                 <Arrow />
               </div>

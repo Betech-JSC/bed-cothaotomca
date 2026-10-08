@@ -11,7 +11,7 @@ import { orderService, type OrderInitiated } from "@/services/orderService";
 interface PaymentQRScreenProps {
   orderData: OrderInitiated;
   phone: string;
-  onCancel?: () => void;
+  onCancel?: () => void | Promise<void>;
   onSuccess?: () => void;
 }
 
@@ -63,6 +63,7 @@ export default function PaymentQRScreen({
   const [simulateError, setSimulateError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const fallbackBankCode = orderData.qr_info?.bank_code || orderData.qr_info?.bank_name || "MB";
   const fallbackAccountNumber = (orderData.qr_info as any)?.account_number || orderData.qr_info?.bank_account || "";
@@ -289,10 +290,26 @@ export default function PaymentQRScreen({
         {onCancel && (
           <button
             type="button"
-            onClick={onCancel}
-            className="btn btn-secondary w-full"
+            onClick={async () => {
+              if (isCancelling) return;
+              try {
+                setIsCancelling(true);
+                await onCancel();
+              } finally {
+                setIsCancelling(false);
+              }
+            }}
+            disabled={isCancelling}
+            className="btn btn-secondary w-full disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
           >
-            {countdown.isExpired ? t("qr.reorder") : t("qr.cancel_back")}
+            {isCancelling ? (
+              <>
+                <span className="animate-spin inline-block">⟳</span>
+                <span>{t("qr.cancelling") || "Đang huỷ đơn..."}</span>
+              </>
+            ) : (
+              countdown.isExpired ? t("qr.reorder") : t("qr.cancel_back")
+            )}
           </button>
         )}
 

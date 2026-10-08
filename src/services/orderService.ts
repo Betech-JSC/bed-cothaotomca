@@ -14,6 +14,7 @@ export interface CreateOrderItem {
   discount?: number;
   note?: string;
   kiotviet_id?: number | null;
+  is_gift?: boolean;
 }
 
 export interface CreateOrderPayload {
@@ -279,6 +280,9 @@ export function calcOrderTotal(
   shippingFee: number,
   orderDiscount = 0,
 ): { subtotal: number; shipping: number; total: number } {
+  if (!items || items.length === 0) {
+    return { subtotal: 0, shipping: 0, total: 0 };
+  }
   const subtotal = items.reduce(
     (sum, line) =>
       sum + line.price * line.quantity - (line.discount ?? 0),

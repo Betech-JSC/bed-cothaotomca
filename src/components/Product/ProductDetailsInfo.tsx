@@ -24,8 +24,10 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
   const { addToCart, setIsCartOpen } = useCart();
 
   const selectedSize = productData.sizes[selectedSizeIndex];
+  const isSelectedOutOfStock = !selectedSize?.code || !selectedSize.code.trim();
 
   const handleAddToCart = () => {
+    if (isSelectedOutOfStock) return;
     addToCart({
       id: `${productData.checkout.slug}-${selectedSize.title}`,
       productId: selectedSize.id ?? productData.checkout.productId,
@@ -50,7 +52,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
     <div className="relative top-0 md:space-y-8 space-y-6 xl:space-y-12">
       <div className="space-y-4">
         <div className="space-y-3 flex flex-col items-start">
-          <h1 className="headline-1 max-md:text-[24px] text-primary whitespace-pre-line">
+          <h1 className="headline-1 max-md:text-[24px] text-primary">
             {productData.title}
           </h1>
         </div>
@@ -76,9 +78,11 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                   return (
                     <div
                       key={index}
-                      onClick={() => setSelectedSizeIndex(index)}
-                      className={`w-max px-3 min-w-[48px] min-h-[48px] flex items-center justify-center button-1 size-12 rounded-full duration-300 ease-in-out cursor-pointer ${
-                        isOutOfStockSize ? "opacity-50 line-through bg-gray-100 text-gray-400 " : ""
+                      onClick={() => !isOutOfStockSize && setSelectedSizeIndex(index)}
+                      className={`w-max px-3 min-w-[48px] min-h-[48px] flex items-center justify-center button-1 size-12 rounded-full duration-300 ease-in-out ${
+                        isOutOfStockSize
+                          ? "opacity-40 line-through bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none "
+                          : "cursor-pointer "
                       }${
                         selectedSizeIndex === index
                           ? isOutOfStockSize
@@ -118,15 +122,16 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
         ) : null}
 
         {/* Bộ chọn số lượng */}
-        <div className="flex items-center gap-4 py-1">
+        <div className={`flex items-center gap-4 py-1 ${isSelectedOutOfStock ? "opacity-50" : ""}`}>
           <span className="label-1 font-semibold text-gray-900 flex-shrink-0">
             {t("checkout.quantity")}:
           </span>
           <div className="flex items-center border border-gray-300 rounded-full overflow-hidden h-11 bg-white shadow-sm">
             <button
               type="button"
+              disabled={isSelectedOutOfStock}
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100 text-lg transition-colors border-r border-gray-300"
+              className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100 text-lg transition-colors border-r border-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               -
             </button>
@@ -135,58 +140,55 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
             </span>
             <button
               type="button"
+              disabled={isSelectedOutOfStock}
               onClick={() => setQuantity(quantity + 1)}
-              className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100 text-lg transition-colors border-l border-gray-300"
+              className="w-11 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 active:bg-gray-100 text-lg transition-colors border-l border-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               +
             </button>
           </div>
         </div>
 
-        {(() => {
-          const isSelectedOutOfStock = !selectedSize?.code || !selectedSize.code.trim();
-          return (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                disabled={isSelectedOutOfStock}
-                onClick={handleAddToCart}
-                className={`btn !min-w-0 w-full px-2 sm:px-3 text-[13px] sm:text-sm md:text-base font-semibold tracking-normal flex items-center justify-center gap-1.5 sm:gap-2 ${
-                  !isSelectedOutOfStock
-                    ? "btn-primary"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
-                }`}
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <span>{isSelectedOutOfStock ? (t("product.out_of_stock") || "Tạm hết hàng") : (t("button.add_to_cart_short") || "Thêm vào giỏ")}</span>
-              </button>
+        {/* Nút Mua hàng: Nút đơn full-width khi tạm hết hàng, cụm 2 nút khi còn hàng */}
+        {isSelectedOutOfStock ? (
+          <div className="w-full pt-1">
+            <button
+              type="button"
+              disabled
+              className="btn !min-w-0 w-full px-4 py-3.5 text-base font-bold bg-gray-200 text-gray-400 cursor-not-allowed border-none flex items-center justify-center gap-2 rounded-full shadow-none"
+            >
+              <span>{t("product.out_of_stock") || "Tạm hết hàng"}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              className="btn btn-primary !min-w-0 w-full px-2 sm:px-3 text-[13px] sm:text-sm md:text-base font-semibold tracking-normal flex items-center justify-center gap-1.5 sm:gap-2"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span>{t("button.add_to_cart_short") || "Thêm vào giỏ"}</span>
+            </button>
 
-              <button
-                type="button"
-                disabled={isSelectedOutOfStock}
-                onClick={() => {
-                  if (!isSelectedOutOfStock) {
-                    handleAddToCart();
-                    if (typeof window !== "undefined" && window.innerWidth < 1024) {
-                      setIsCartOpen(true);
-                    } else {
-                      window.location.href = "/checkout";
-                    }
-                  }
-                }}
-                className={`btn !min-w-0 w-full px-2 sm:px-3 text-[13px] sm:text-sm md:text-base font-bold tracking-normal flex items-center justify-center gap-1.5 sm:gap-2 ${
-                  !isSelectedOutOfStock
-                    ? "btn-secondary font-bold"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed border-none"
-                }`}
-              >
-                <span>{isSelectedOutOfStock ? (t("product.out_of_stock") || "Tạm hết hàng") : t("button.buy-now")}</span>
-              </button>
-            </div>
-          );
-        })()}
+            <button
+              type="button"
+              onClick={() => {
+                handleAddToCart();
+                if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                  setIsCartOpen(true);
+                } else {
+                  window.location.href = "/checkout";
+                }
+              }}
+              className="btn btn-secondary font-bold !min-w-0 w-full px-2 sm:px-3 text-[13px] sm:text-sm md:text-base tracking-normal flex items-center justify-center gap-1.5 sm:gap-2"
+            >
+              <span>{t("button.buy-now")}</span>
+            </button>
+          </div>
+        )}
 
         {isAdded && (
           <div className="text-secondary font-semibold text-sm flex items-center gap-1.5 animate-fade-in py-1">
@@ -199,9 +201,6 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
 
         <SocialShare />
       </div>
-      {productData.infos.length > 0 && (
-        <ProductInfoAccordion infos={productData.infos} />
-      )}
     </div>
   );
 };

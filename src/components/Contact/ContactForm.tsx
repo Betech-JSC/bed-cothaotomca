@@ -35,6 +35,16 @@ const ContactForm = () => {
     setLoading(true);
     setStatus({ type: null, message: null });
 
+    const phoneRegex = /^(0|84|\+84)(3[2-9]|5[689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/;
+    if (!phoneRegex.test(formData.phone.trim())) {
+      setStatus({
+        type: "error",
+        message: "Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam gồm 10 chữ số.",
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       await submitContact(formData);
       setIsModalOpen(true);
@@ -127,7 +137,7 @@ const ContactForm = () => {
         <button
           type="submit"
           disabled={loading}
-          className={`btn btn-secondary !w-full ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
+          className={`btn btn-secondary !w-full hover:bg-yellow hover:text-primary transition-colors duration-200 ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
         >
           {loading ? "..." : t("button.submit-form")}
         </button>

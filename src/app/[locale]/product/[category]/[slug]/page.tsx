@@ -1,16 +1,20 @@
 import Breadcrumb from "@/components/Common/Breadcrumb";
 import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
 import ProductGallery from "@/components/Product/ProductGallery";
+import ProductInfoAccordion from "@/components/Product/ProductInfoAccordion";
 import SliderProductRelated from "@/components/Product/SliderProductRelated";
 import { getTranslations } from "next-intl/server";
 import { Translation } from "@/services/productService";
 import { notFound } from "next/navigation";
+import { redirect } from "@/i18n/routing";
 import { Metadata, ResolvingMetadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
+import AlternateLinksUpdater from "@/components/SEO/AlternateLinksUpdater";
+import type { AlternateLinksMap } from "@/contexts/AlternateLinksContext";
 
 import { getTranslation, slugify } from "@/lib/format";
+import { getProductLocalizedSlugs } from "@/lib/productHelper";
 export const revalidate = 60; // ISR: revalidate mỗi 60 giây
-
 
 export async function generateMetadata(
   { params }: { params: Promise<{ locale: string; category: string; slug: string }> },
@@ -19,7 +23,6 @@ export async function generateMetadata(
   const { locale, category, slug } = await params;
   const { getProductBySlugWithFallback } = await import('@/services/productService');
   const product = await getProductBySlugWithFallback(slug, { revalidate: 60, lang: locale });
-
 
   if (!product) return {};
 
@@ -33,6 +36,8 @@ export async function generateMetadata(
   const seoDescription = translation?.seo_description || (isEn ? (productDescription || product.seo_description || product.meta_description) : (product.seo_description || product.meta_description || productDescription));
   const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
 
+  const { viCatSlug, viProductSlug, enCatSlug, enProductSlug } = getProductLocalizedSlugs(product);
+
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
   const customCanonical = translation?.canonical_url || product.canonical_url;
   const canonicalUrl = customCanonical || `${baseUrl}/${locale}/product/${category}/${slug}`;
@@ -40,7 +45,6 @@ export async function generateMetadata(
   const previousImages = (await parent).openGraph?.images || [];
   const productImage = customOgImage || product.image || (previousImages.length > 0 ? (typeof previousImages[0] === 'string' ? previousImages[0] : (previousImages[0] as any).url) : "/cover.jpg");
   const customRobots = translation?.meta_robots || product.meta_robots || undefined;
-
 
   const metadata = {
     title: seoTitle,
@@ -50,8 +54,8 @@ export async function generateMetadata(
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/product/${category}/${slug}`,
-        en: `${baseUrl}/en/product/${category}/${slug}`,
+        vi: `${baseUrl}/vi/product/${viCatSlug}/${viProductSlug}`,
+        en: `${baseUrl}/en/product/${enCatSlug}/${enProductSlug}`,
       },
     },
     openGraph: {
@@ -95,6 +99,34 @@ export default async function ProductDetailsPage({
   if (!product) {
     notFound();
   }
+
+  const { viCatSlug, viProductSlug, enCatSlug, enProductSlug } = getProductLocalizedSlugs(product);
+  const canonicalProductSlug = locale === 'en' ? enProductSlug : viProductSlug;
+  const canonicalCategorySlug = locale === 'en' ? enCatSlug : viCatSlug;
+
+  // Fallback canonical redirect: nếu truy cập bằng slug của ngôn ngữ khác hoặc slug chưa chuẩn, redirect về URL canonical
+  if (slug !== canonicalProductSlug || category !== canonicalCategorySlug) {
+    redirect({
+      pathname: '/product/[category]/[slug]',
+      params: {
+        category: canonicalCategorySlug,
+        slug: canonicalProductSlug,
+      },
+    } as any);
+  }
+
+  const alternateLinksMap: AlternateLinksMap = {
+    vi: {
+      category: viCatSlug,
+      slug: viProductSlug,
+      pathname: '/product/[category]/[slug]',
+    },
+    en: {
+      category: enCatSlug,
+      slug: enProductSlug,
+      pathname: '/product/[category]/[slug]',
+    },
+  };
 
   const t = await getTranslations({ locale });
 
@@ -294,6 +326,7 @@ export default async function ProductDetailsPage({
 
   return (
     <main>
+      <AlternateLinksUpdater links={alternateLinksMap} />
       <JsonLd
         type="Product"
         data={product}
@@ -323,6 +356,13 @@ export default async function ProductDetailsPage({
               <ProductDetailsInfo productData={productData} />
             </div>
           </div>
+
+          {/* Khối Thông tin chi tiết món ăn (Full-width bên dưới, triệt tiêu dead-space nửa trái desktop) */}
+          {productData.infos && productData.infos.length > 0 && (
+            <div className="mt-8 md:mt-12 xl:mt-16 w-full">
+              <ProductInfoAccordion infos={productData.infos} />
+            </div>
+          )}
         </div>
       </section>
       {relatedProducts.length > 0 && <SliderProductRelated products={relatedProducts} />}

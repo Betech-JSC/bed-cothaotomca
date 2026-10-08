@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "@/i18n/routing";
 import { useLocale, useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import Image from "next/image";
+import { useAlternateLinks, type AlternateLinksMap } from "@/contexts/AlternateLinksContext";
 
 export default function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +14,16 @@ export default function LanguageSwitcher() {
   const pathname = usePathname();
   const params = useParams();
   const t = useTranslations("language_modal");
+
+  let alternateLinks: AlternateLinksMap = {};
+  try {
+    const altCtx = useAlternateLinks();
+    if (altCtx?.alternateLinks) {
+      alternateLinks = altCtx.alternateLinks;
+    }
+  } catch {
+    // fallback if outside AlternateLinksProvider
+  }
 
   useEffect(() => {
     if (!isOpen) return;
@@ -44,6 +55,24 @@ export default function LanguageSwitcher() {
     // Loại bỏ locale ra khỏi params nếu có
     const { locale: _localeParam, ...cleanParams } = (params || {}) as Record<string, any>;
     const hasParams = Object.keys(cleanParams).length > 0;
+
+    // Nếu trang hiện tại có cấu hình alternate slug cho targetLocale (ví dụ trang chi tiết sản phẩm)
+    const targetAlternate = alternateLinks?.[targetLocale];
+    if (targetAlternate) {
+      const targetParams = {
+        ...cleanParams,
+        ...(targetAlternate.params || {}),
+        ...(targetAlternate.category ? { category: targetAlternate.category } : {}),
+        ...(targetAlternate.slug ? { slug: targetAlternate.slug } : {}),
+      };
+      const targetPathname = targetAlternate.pathname || pathname;
+      router.replace(
+        // @ts-expect-error -- dynamic route params and pathname match the target route
+        { pathname: targetPathname, params: targetParams, query },
+        { locale: targetLocale, scroll: false }
+      );
+      return;
+    }
 
     router.replace(
       // @ts-expect-error -- dynamic route params and pathname match the current route

@@ -9,12 +9,14 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import Image from 'next/image';
 import Arrow from '../Icons/Arrow';
+import { useTranslations } from 'next-intl';
 
 interface SectionHeroProps {
   items: any[];
 }
 
 const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
+  const t = useTranslations();
   const swiperRef = useRef<SwiperType | null>(null);
 
   return (
@@ -78,7 +80,7 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
             <button
               onClick={() => swiperRef.current?.slidePrev()}
               className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10 size-[3.25rem] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
-              aria-label="Previous slide"
+              aria-label={t("common.previous_slide") || "Slide trước"}
             >
               <div>
                 <Arrow />
@@ -89,7 +91,7 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
             <button
               onClick={() => swiperRef.current?.slideNext()}
               className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-10 size-[3.25rem] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
-              aria-label="Next slide"
+              aria-label={t("common.next_slide") || "Slide sau"}
             >
               <div className="-rotate-180">
                 <Arrow />

@@ -17,6 +17,30 @@ interface OrderSuccessClientProps {
   locale: string;
 }
 
+function OrderItemThumbnail({ image, alt }: { image?: string | null; alt: string }) {
+  const initialSrc = !image || typeof image !== "string" || !image.trim() ? "/cover.jpg" : image.trim();
+  const [src, setSrc] = useState<string>(initialSrc);
+
+  useEffect(() => {
+    setSrc(!image || typeof image !== "string" || !image.trim() ? "/cover.jpg" : image.trim());
+  }, [image]);
+
+  const isAbsoluteUrl = src.startsWith("http://") || src.startsWith("https://");
+
+  return (
+    <div className="w-12 h-12 relative rounded-lg bg-gray-100 overflow-hidden shrink-0">
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        className="object-cover"
+        unoptimized={isAbsoluteUrl}
+        onError={() => setSrc("/cover.jpg")}
+      />
+    </div>
+  );
+}
+
 export default function OrderSuccessClient({
   orderCode,
   phone,
@@ -491,23 +515,14 @@ export default function OrderSuccessClient({
           {t("ordered_items")}
         </h2>
         <div className="divide-y divide-gray-100">
-          {order.items.map((item: any, index: number) => {
+          {(order.items || order.order_items || []).map((item: any, index: number) => {
             const displayPrice = formatVND(parseFloat(item.price) || 0);
-            const displayImage = item.image || "/cover.jpg";
 
             return (
               <div key={index} className="py-3 flex items-center justify-between gap-4 font-sans">
                 <div className="flex items-center gap-3">
                   {/* Thumbnail */}
-                  <div className="w-12 h-12 relative rounded-lg bg-gray-100 overflow-hidden shrink-0">
-                    <Image
-                      src={displayImage}
-                      alt={item.product_name}
-                      fill
-                      className="object-cover"
-                      unoptimized={displayImage.startsWith("http")}
-                    />
-                  </div>
+                  <OrderItemThumbnail image={item.image} alt={item.product_name || "Sản phẩm"} />
                   {/* Item Details */}
                   <div>
                     <strong className="text-primary text-sm md:text-base font-bold font-sans block leading-tight">

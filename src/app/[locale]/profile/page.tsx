@@ -1,44 +1,53 @@
-"use client";
+import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import ProfileClient from "@/components/Auth/ProfileClient";
+import { Suspense } from "react";
 
-import React, { useEffect, useRef } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "@/i18n/routing";
-import ProfileDashboard from "@/components/Auth/ProfileDashboard";
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "profile" });
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
+  const isEn = locale === 'en';
+  const rawTitle = t("title") || (isEn ? "My Profile" : "Hồ sơ cá nhân");
+  const title = `${rawTitle} | ${isEn ? "Co Thao Tom Ca" : "Cô Thảo Tôm Cá"}`;
+  const description = isEn
+    ? "Manage your personal profile, delivery addresses, order history and membership loyalty points at Co Thao Tom Ca"
+    : "Quản lý thông tin tài khoản, sổ địa chỉ nhận hàng, lịch sử đơn hàng và điểm tích lũy thành viên tại Bếp Cô Thảo Tôm Cá";
 
-export default function ProfilePage() {
-  const { user, loading, logout, updateProfile, refreshUser } = useAuth();
-  const router = useRouter();
-  const hasRefreshedRef = useRef(false);
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `${baseUrl}/${locale}/profile`,
+      languages: {
+        vi: `${baseUrl}/vi/trang-ca-nhan`,
+        en: `${baseUrl}/en/profile`,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
+  };
+}
 
-  // Redirect to signin if not logged in
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/signin");
-    }
-  }, [user, loading, router]);
-
-  // Refresh user data (points, tier...) once on mount when user is present
-  useEffect(() => {
-    if (user && !hasRefreshedRef.current) {
-      hasRefreshedRef.current = true;
-      refreshUser();
-    }
-  }, [user, refreshUser]);
-
-  if (loading || !user) {
-    return (
-      <div className="w-full min-h-[90vh] bg-yellow flex items-center justify-center">
-        <div className="animate-pulse text-primary font-bold text-lg">Loading...</div>
-      </div>
-    );
-  }
-
+export default async function ProfilePage() {
   return (
-    <ProfileDashboard
-      user={user}
-      onLogout={logout}
-      updateProfile={updateProfile}
-      refreshUser={refreshUser}
-    />
+    <main>
+      <Suspense
+        fallback={
+          <div className="w-full min-h-[90vh] bg-yellow flex items-center justify-center">
+            <div className="animate-pulse text-primary font-bold text-lg font-serif">Đang tải...</div>
+          </div>
+        }
+      >
+        <ProfileClient />
+      </Suspense>
+    </main>
   );
 }

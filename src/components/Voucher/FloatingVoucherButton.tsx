@@ -47,7 +47,7 @@ export default function FloatingVoucherButton() {
 
   return (
     <>
-      <div className="fixed bottom-5 left-3.5 md:bottom-8 md:left-8 z-40 select-none pointer-events-auto">
+      <div className="hidden lg:block fixed bottom-5 left-3.5 md:bottom-8 md:left-8 z-40 select-none pointer-events-auto">
         <button
           type="button"
           onClick={() => setIsOpen(true)}

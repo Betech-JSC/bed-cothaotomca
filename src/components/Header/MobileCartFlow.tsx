@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, Link, usePathname } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
+import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
 import { useBranches } from "@/contexts/BranchContext";
 import {
   calcOrderTotal,
@@ -766,8 +766,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }, [appliedVoucher, cartCampaignG1]);
 
   useEffect(() => {
-    if (deliveryType !== "delivery") {
+    if (deliveryType !== "delivery" || !cartItems || cartItems.length === 0) {
       setCalculatedFee(0);
+      setOriginalFee(0);
       setShippingDiscount(0);
       setIsFreeship(false);
       setIsDeliverable(true);
@@ -838,7 +839,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, appliedShippingVoucher, config?.branches, cartCampaignG1]);
 
   const defaultShippingFee = parseFloat(config?.default_shipping_fee || "30000") || 30000;
-  const shippingFee = deliveryType === "delivery" ? (isFreeship ? 0 : (calculatedFee || defaultShippingFee)) : 0;
+  const shippingFee = (cartItems.length === 0 || deliveryType !== "delivery")
+    ? 0
+    : (isFreeship ? 0 : (calculatedFee || defaultShippingFee));
 
   const { subtotal, shipping } = calcOrderTotal(
     lineItems,
@@ -952,7 +955,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     return calculateVoucherDiscount(shipVoucher, subtotal, shipping);
   }, [appliedShippingVoucher, appliedVoucher, subtotal, shipping]);
 
-  const effectiveShippingFee = Math.max(0, shipping - shippingVoucherDiscount);
+  const effectiveShippingFee = cartItems.length === 0 ? 0 : Math.max(0, shipping - shippingVoucherDiscount);
   const voucherDiscount = foodVoucherDiscount + shippingVoucherDiscount;
 
   // Total cart items count (for buy_x_get_y check)
@@ -1178,7 +1181,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     );
   }, [user, memberTier, t]);
 
-  const total = Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
+  const total = cartItems.length === 0 ? 0 : Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
   const validateVoucherMutexLock = useCallback((voucherCandidate: {
     discount_type?: string;
@@ -2075,7 +2078,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
           {/* Step 1: Review items and voucher */}
           {step === 1 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-left duration-200">
+            <div className="space-y-6 animate-in fade-in slide-in-from-left duration-200 pb-32 sm:pb-36">
               <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-5">
                 <h3 className="title-2 font-display text-primary font-bold border-b border-gray-100 pb-2">
                   {t("order_summary")}
@@ -2378,7 +2381,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     <div className="flex justify-between items-center text-base">
                       <span className="text-gray-500 font-medium">{t("shipping_fee")}</span>
                       <div className="text-right">
-                        {deliveryType === "pickup" ? (
+                        {cartItems.length === 0 ? (
+                          <span className="text-secondary font-bold font-display">0đ</span>
+                        ) : deliveryType === "pickup" ? (
                           <span className="text-secondary font-bold font-display">0đ ({t("delivery_pickup")})</span>
                         ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                           <span className="text-gray-500 font-bold text-base">--</span>
@@ -2454,27 +2459,29 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                     {/* 6) Tổng thanh toán */}
                     <div className="flex justify-between items-center text-base pt-2 border-t border-gray-100">
                       <span className="text-gray-900 font-bold">{t("total")}</span>
-                      <span className="text-secondary font-bold font-display text-lg">{formatPrice(total)}</span>
+                      <span className="text-secondary font-bold font-display text-lg">{formatOrderPrice(total)}</span>
                     </div>
                   </div>
 
-                  {/* Submit button step 1 */}
-                  {isOutOfStockOverall && (
-                    <p className="text-red-500 text-xs text-center font-medium">
-                      {t("oos_warning")}
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setStep(2)}
-                    disabled={isOutOfStockOverall}
-                    className={`w-full font-bold rounded-full py-4 text-center transition-all font-display title-2 ${isOutOfStockOverall
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
-                      : "bg-secondary hover:bg-secondary/95 text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)]"
-                      }`}
-                  >
-                    {t("continue") || "Tiếp tục"}
-                  </button>
+                  {/* Submit button step 1 (Sticky Bottom) */}
+                  <div className="sticky bottom-0 z-20 bg-yellow/95 backdrop-blur-sm border-t border-gray-200/80 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-4 -mb-4">
+                    {isOutOfStockOverall && (
+                      <p className="text-red-500 text-xs text-center font-medium mb-2">
+                        {t("oos_warning")}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      disabled={isOutOfStockOverall}
+                      className={`w-full font-bold rounded-full py-4 text-center transition-all font-display title-2 ${isOutOfStockOverall
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
+                        : "bg-secondary hover:bg-secondary/95 text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)]"
+                        }`}
+                    >
+                      {t("continue") || "Tiếp tục"}
+                    </button>
+                  </div>
                 </>
               )}
             </div>
@@ -2482,7 +2489,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
 
           {/* Step 2: Checkout Form & Collapsible Summary */}
           {step === 2 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right duration-200">
+            <div className="space-y-6 animate-in fade-in slide-in-from-right duration-200 pb-32 sm:pb-36">
               {/* Banner Trạng thái hoạt động */}
               <div
                 className={`p-4 rounded-xl border transition-colors ${operatingStatus.canOrderNow
@@ -3323,26 +3330,28 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 </div>
               </div>
 
-              {/* Submit checkout button */}
-              {isOutOfStockOverall && (
-                <p className="text-red-500 text-xs text-center font-medium">
-                  {t("oos_warning")}
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || isOutOfStockOverall}
-                className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50 disabled:pointer-events-none"
-              >
-                {loading
-                  ? t("submitting")
-                  : deliveryType === "delivery" && !isDeliverable
-                    ? t("delivery_area_not_supported_btn")
-                    : !operatingStatus.canOrderNow || (deliveryType === "delivery" && deliverySchedule === "schedule")
-                      ? (t("preorder_cta") || "Đặt trước")
-                      : t("place_order")}
-              </button>
+              {/* Submit checkout button (Sticky Bottom) */}
+              <div className="sticky bottom-0 z-20 bg-yellow/95 backdrop-blur-sm border-t border-gray-200/80 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-4 -mb-4">
+                {isOutOfStockOverall && (
+                  <p className="text-red-500 text-xs text-center font-medium mb-2">
+                    {t("oos_warning")}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || isOutOfStockOverall}
+                  className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {loading
+                    ? t("submitting")
+                    : deliveryType === "delivery" && !isDeliverable
+                      ? t("delivery_area_not_supported_btn")
+                      : !operatingStatus.canOrderNow || (deliveryType === "delivery" && deliverySchedule === "schedule")
+                        ? (t("preorder_cta") || "Đặt trước")
+                        : t("place_order")}
+                </button>
+              </div>
             </div>
           )}
         </div>

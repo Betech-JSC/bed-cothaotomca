@@ -22,6 +22,12 @@ export function formatPrice(price: number) {
   return new Intl.NumberFormat('vi-VN').format(price).replace(/,/g, '.') + ' VNĐ';
 }
 
+export function formatOrderPrice(price: number | null | undefined): string {
+  const num = Number(price) || 0;
+  if (num <= 0) return '0 VNĐ';
+  return new Intl.NumberFormat('vi-VN').format(num).replace(/,/g, '.') + ' VNĐ';
+}
+
 export function slugify(str: string | undefined | null) {
   if (!str) return '';
   return str

@@ -52,7 +52,7 @@ const Footer = () => {
       )}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <Image
-          src="/images/footer/bg-footer.png"
+          src="/images/footer/bg-footer.jpg"
           alt="background footer"
           fill
           className="object-cover object-bottom w-full h-full lg:block hidden"
@@ -83,12 +83,12 @@ const Footer = () => {
             </div>
             <div className="col-span-full lg:col-span-7 xl:col-span-6 text-gray-200 space-y-6 md:space-y-6 xl:space-y-8">
               <div className="title-1 underline">{t('footer.showroom')}</div>
-              <div className="grid md:grid-cols-2 md:gap-4 gap-y-6 xl:gap-6">
+              <div className="grid md:grid-cols-2 md:gap-4 gap-y-4 sm:gap-y-5 xl:gap-6">
                 {sortedBranches.map((itemShowroom, indexShowroom) => (
                   <a
                     href={itemShowroom.address_link || "#"}
                     target={itemShowroom.address_link ? "_blank" : undefined}
-                    rel={itemShowroom.address_link ? "noopener noreferrer" : undefined} key={indexShowroom} className="relative rounded-[12px] overflow-hidden space-y-2 group">
+                    rel={itemShowroom.address_link ? "noopener noreferrer" : undefined} key={indexShowroom} className="relative rounded-[14px] overflow-hidden shadow-sm space-y-2 group">
                     <div className="aspect-w-3 aspect-h-2">
                       <Image
                         src={itemShowroom.image || '/cover.jpg'}
@@ -97,9 +97,9 @@ const Footer = () => {
                         className="object-cover w-full h-full lg:group-hover:scale-105 duration-300 ease-in-out"
                       />
                     </div>
-                    <div className="absolute bottom-0 left-0 bg-linear-branch text-gray-200 space-y-1 p-2 w-full">
-                      <div className="title-4">{t('footer.branch')} {indexShowroom + 1}</div>
-                      <div className="body-2 lg:group-hover:text-secondary transition-all duration-300 ease-in-out">
+                    <div className="absolute bottom-0 left-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent text-gray-200 space-y-1 p-3 sm:p-4 w-full">
+                      <div className="title-4 text-white font-bold">{t('footer.branch')} {indexShowroom + 1}</div>
+                      <div className="body-2 line-clamp-2 break-words text-xs sm:text-sm text-gray-200 lg:group-hover:text-secondary transition-all duration-300 ease-in-out">
                         {itemShowroom.address}
                       </div>
                     </div>

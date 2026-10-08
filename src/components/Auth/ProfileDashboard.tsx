@@ -660,9 +660,9 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
           </div>
 
           {/* User Name & Phone */}
-          <h2 className="text-secondary font-display font-bold text-[22px] leading-tight mb-1">
+          <h1 className="font-display font-bold text-primary text-[22px] leading-tight mb-1">
             {user.name}
-          </h2>
+          </h1>
           <p className="text-gray-500 text-sm mb-4">
             {user.phone ? user.phone.replace(/(\d{4})(\d{3})(\d{3})/, "$1 $2 $3") : ""}
           </p>

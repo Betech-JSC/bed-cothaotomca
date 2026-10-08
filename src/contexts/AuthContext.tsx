@@ -143,6 +143,11 @@ interface AuthContextType {
     dob?: string;
     gender?: string | boolean | null;
   }) => Promise<{ success: boolean; message?: string }>;
+  completeGoogleProfile: (data: {
+    phone: string;
+    password: string;
+    password_confirmation?: string;
+  }) => Promise<{ success: boolean; message?: string; errors?: Record<string, string[]> }>;
   refreshUser: () => Promise<void>;
 }
 
@@ -355,6 +360,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const completeGoogleProfile = async (data: {
+    phone: string;
+    password: string;
+    password_confirmation?: string;
+  }) => {
+    if (!token) return { success: false, message: "Bạn chưa đăng nhập." };
+
+    try {
+      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
+      const payload = {
+        phone: data.phone.trim(),
+        password: data.password,
+        password_confirmation: data.password_confirmation || data.password,
+      };
+
+      // Try POST /auth/complete-google-profile first, fallback to /auth/google/complete-profile
+      let res = await fetch(`${BASE_URL}/auth/complete-google-profile`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.status === 404) {
+        res = await fetch(`${BASE_URL}/auth/google/complete-profile`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const updatedUser = body.data?.user || body.data || body.user;
+        if (updatedUser) {
+          setUser(updatedUser);
+        } else {
+          await refreshUser();
+        }
+        return { success: true, message: body.message || "Cập nhật thông tin thành công!" };
+      }
+
+      let errorMsg = body.message || "Cập nhật thông tin thất bại.";
+      if (body.errors) {
+        errorMsg = Object.values(body.errors).flat().join("\n");
+      }
+      return { success: false, message: errorMsg, errors: body.errors };
+    } catch (e: any) {
+      console.error("Complete Google profile API error:", e);
+      return { success: false, message: e.message || "Lỗi mạng. Vui lòng thử lại sau." };
+    }
+  };
+
   const isRefreshingUserRef = useRef(false);
   const refreshUser = useCallback(async () => {
     if (!token || isRefreshingUserRef.current) return;
@@ -380,7 +445,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, loginWithToken, setAuthSession, register, logout, updateProfile, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, loginWithToken, setAuthSession, register, logout, updateProfile, completeGoogleProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

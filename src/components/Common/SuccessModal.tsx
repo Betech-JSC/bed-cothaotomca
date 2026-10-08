@@ -64,7 +64,7 @@ export default function SuccessModal({
 
         <button
           onClick={onClose}
-          className="btn btn-secondary w-full"
+          className="btn btn-secondary w-full hover:bg-yellow hover:text-primary transition-colors duration-200"
         >
           {buttonText}
         </button>

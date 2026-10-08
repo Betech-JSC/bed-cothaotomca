@@ -5,11 +5,12 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
-import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
+import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
 import {
   calcOrderTotal,
   calculateShippingFee,
   calculateVoucherDiscount,
+  cancelOrderApi,
   createOrder,
   getAdministrativeUnits,
   getAvailableVouchers,
@@ -446,6 +447,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   // Member card & loyalty settings state
   const [isMemberCardSelected, setIsMemberCardSelected] = useState<boolean>(true);
+  const prevUserRef = useRef(user);
+
+  useEffect(() => {
+    if (!prevUserRef.current && user) {
+      setIsMemberCardSelected(true);
+    }
+    prevUserRef.current = user;
+  }, [user]);
+
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
 
   useEffect(() => {
@@ -800,10 +810,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   }, [eligibleOrderGiftPromo]);
 
   const selectedOrderGiftItem = useMemo(() => {
-    if (!eligibleOrderGiftPromo || !selectedOrderGiftId) return null;
-    const found = eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId);
-    if (!found || found.is_available === false) return null;
-    return found;
+    if (!eligibleOrderGiftPromo || !eligibleOrderGiftPromo.items || eligibleOrderGiftPromo.items.length === 0) return null;
+    if (selectedOrderGiftId) {
+      const found = eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId);
+      if (found && found.is_available !== false) return found;
+    }
+    return eligibleOrderGiftPromo.items.find((i) => i.is_available !== false) || eligibleOrderGiftPromo.items[0] || null;
   }, [eligibleOrderGiftPromo, selectedOrderGiftId]);
 
   // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - chỉ kích hoạt khi nằm trong selectedCampaignIds)
@@ -924,12 +936,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   // Trigger real-time calculation when address, subtotal or voucher changes
   useEffect(() => {
-    if (deliveryType !== "delivery") {
+    if (deliveryType !== "delivery" || (isCartCheckout && cartItems.length === 0)) {
       setShippingFee(0);
+      setOriginalFee(0);
       setShippingDiscount(0);
       setIsFreeship(false);
       setIsDeliverable(true);
       setShippingMessage(null);
+      setCalculatingShipping(false);
       return;
     }
 
@@ -1004,7 +1018,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return () => {
       isSubscribed = false;
     };
-  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, subtotal, appliedVoucher, appliedShippingVoucher, config.branches, cartCampaignG1]);
+  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, subtotal, appliedVoucher, appliedShippingVoucher, config.branches, cartCampaignG1, isCartCheckout, cartItems]);
 
   // Store Pickup input & Auto-assigned delivery branch
   const [selectedBranchId, setSelectedBranchId] = useState<number>(() => {
@@ -1184,6 +1198,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   // Sau khi tạo đơn thành công → chuyển sang màn hình QR
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
+  const [cancelToastMessage, setCancelToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (cancelToastMessage) {
+      const timer = setTimeout(() => setCancelToastMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [cancelToastMessage]);
 
   // Auto-remove voucher if cart subtotal drops below the minimum required price (Applies to all vouchers including Freeship)
   useEffect(() => {
@@ -1250,10 +1272,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       if (isMemberCardSelected) {
         setIsMemberCardSelected(false);
       }
-    } else {
-      if (!isMemberCardSelected) {
-        setIsMemberCardSelected(true);
-      }
     }
   }, [user, appliedVoucher, appliedShippingVoucher, selectedCampaignIds, isMemberCardSelected]);
 
@@ -1267,7 +1285,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return calculateVoucherDiscount(shipVoucher, subtotal, shipping);
   }, [appliedShippingVoucher, appliedVoucher, subtotal, shipping]);
 
-  const effectiveShippingFee = Math.max(0, shipping - shippingVoucherDiscount);
+  const effectiveShippingFee = (isCartCheckout && cartItems.length === 0) ? 0 : Math.max(0, shipping - shippingVoucherDiscount);
   const voucherDiscount = foodVoucherDiscount + shippingVoucherDiscount;
 
   // Member Tier Discount - Tự động áp dụng chiết khấu hạng thành viên / Mừng lên hạng trên các món nguyên giá
@@ -1306,7 +1324,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     );
   }, [user, memberTier, t]);
 
-  const total = Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
+  const total = (isCartCheckout && cartItems.length === 0) ? 0 : Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
   const validateVoucherMutexLock = useCallback((voucherCandidate: {
     discount_type?: string;
@@ -1479,7 +1497,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           // 1. Điều kiện tối thiểu của voucher (prereqPrice) được xét dựa trên originalSubtotal
           const prereqPrice = Number(res.voucher.prereq_price || 0);
           if (prereqPrice > 0 && originalSubtotal < prereqPrice) {
-            const msg = `Mã giảm giá chỉ áp dụng cho đơn hàng từ ${prereqPrice.toLocaleString("vi-VN")}đ trở lên.`;
+            const msg = res.voucher.code.toUpperCase() === "WSBCT50K"
+              ? `Đơn hàng tối thiểu ${prereqPrice.toLocaleString("vi-VN")} VNĐ để áp dụng mã ${res.voucher.code}`
+              : `Chưa đạt giá trị đơn tối thiểu ${prereqPrice.toLocaleString("vi-VN")}đ`;
             setVoucherError(msg);
             setAppliedVoucher(null);
             throw new Error(msg);
@@ -1557,7 +1577,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           // can_combine_with_promotions === true
           const prereqPrice = Number(res.voucher.prereq_price || 0);
           if (prereqPrice > 0 && saleSubtotal < prereqPrice) {
-            const msg = `Mã giảm giá chỉ áp dụng cho đơn hàng từ ${prereqPrice.toLocaleString("vi-VN")}đ trở lên.`;
+            const msg = res.voucher.code.toUpperCase() === "WSBCT50K"
+              ? `Đơn hàng tối thiểu ${prereqPrice.toLocaleString("vi-VN")} VNĐ để áp dụng mã ${res.voucher.code}`
+              : `Chưa đạt giá trị đơn tối thiểu ${prereqPrice.toLocaleString("vi-VN")}đ`;
             setVoucherError(msg);
             setAppliedVoucher(null);
             throw new Error(msg);
@@ -1750,8 +1772,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               shipping
             ),
           };
-          if (isCandidateFreeship) nextShip = candidate;
-          else nextFood = candidate;
+          const prereqPrice = Number(res.voucher.prereq_price || 0);
+          if (prereqPrice > 0 && subtotalForCalc < prereqPrice) {
+            validationError = res.voucher.code.toUpperCase() === "WSBCT50K"
+              ? `Đơn hàng tối thiểu ${prereqPrice.toLocaleString("vi-VN")} VNĐ để áp dụng mã ${res.voucher.code}`
+              : `Chưa đạt giá trị đơn tối thiểu ${prereqPrice.toLocaleString("vi-VN")}đ`;
+          } else {
+            if (isCandidateFreeship) nextShip = candidate;
+            else nextFood = candidate;
+          }
         } else {
           validationError = res.message || "Mã không hợp lệ hoặc không đủ điều kiện.";
         }
@@ -2023,6 +2052,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   quantity: 1,
                   price: selectedOrderGiftItem.campaign_price > 0 ? selectedOrderGiftItem.campaign_price : 0,
                   discount: 0,
+                  is_gift: true,
                   note: `Quà tặng đơn hàng (${eligibleOrderGiftPromo?.name || "Chiến dịch"})`,
                 },
               ]
@@ -2062,6 +2092,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     quantity: 1,
                     price: selectedOrderGiftItem.campaign_price > 0 ? selectedOrderGiftItem.campaign_price : 0,
                     discount: 0,
+                    is_gift: true,
                     note: `Quà tặng đơn hàng (${eligibleOrderGiftPromo?.name || "Chiến dịch"})`,
                   },
                 ]
@@ -2182,6 +2213,30 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return config.branches?.find((b) => b.id === selectedBranchId);
   }, [config.branches, selectedBranchId]);
 
+  // Xử lý hủy đơn hàng đang chờ thanh toán VietQR
+  const handleCancelPendingOrder = async () => {
+    if (!pendingOrder) return;
+    const orderCode = pendingOrder.order_code;
+    const customerPhone = phone.trim() || "";
+    try {
+      await cancelOrderApi(
+        orderCode,
+        customerPhone,
+        "Khách hàng hủy từ màn hình thanh toán VietQR"
+      );
+      setCancelToastMessage("Đơn hàng đã được hủy theo yêu cầu");
+    } catch (err: unknown) {
+      console.error("Lỗi khi hủy đơn hàng chờ thanh toán:", err);
+      if (err instanceof OrderApiError) {
+        setCancelToastMessage(err.message || "Đơn hàng đã được hủy theo yêu cầu");
+      } else {
+        setCancelToastMessage("Đơn hàng đã được hủy theo yêu cầu");
+      }
+    } finally {
+      setPendingOrder(null);
+    }
+  };
+
   // ── Màn hình QR (Chỉ dành cho Chuyển khoản ngân hàng) ─────────────────────
   if (pendingOrder) {
     return (
@@ -2189,7 +2244,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         orderData={pendingOrder}
         phone={phone.trim()}
         onSuccess={() => setPendingOrder(null)}
-        onCancel={() => setPendingOrder(null)}
+        onCancel={handleCancelPendingOrder}
       />
     );
   }
@@ -2197,6 +2252,24 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   // ── Form checkout ─────────────────────────────────────────────────────────
   return (
     <>
+      {cancelToastMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-gray-900 text-white px-5 py-3.5 rounded-xl shadow-2xl transition-all"
+        >
+          <span className="text-secondary font-bold">✓</span>
+          <span className="text-sm font-medium">{cancelToastMessage}</span>
+          <button
+            type="button"
+            onClick={() => setCancelToastMessage(null)}
+            className="ml-2 text-gray-400 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Mobile step-by-step cart & checkout flow */}
       <div className="lg:hidden">
         <MobileCartFlow inline />
@@ -3173,6 +3246,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex justify-between items-start gap-2">
                       <p className="title-3 font-display text-gray-900 font-bold line-clamp-2">
+                        <span className="text-secondary font-bold mr-1">[Quà tặng đơn hàng]</span>
                         {selectedOrderGiftItem.product_name}
                       </p>
                       <div className="text-right shrink-0">
@@ -3189,7 +3263,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     <div className="flex items-center justify-between pt-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[11px] font-bold bg-secondary/15 text-secondary px-2 py-0.5 rounded-full">
-                          {t("order_gift_tag")}
+                          [Quà tặng]
                         </span>
                         <span className="text-xs text-gray-500 font-medium">x1</span>
                         {eligibleOrderGiftPromo.items.length > 1 && (
@@ -3263,7 +3337,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               <VoucherTicketBar
                 appliedVoucher={appliedVoucher}
                 appliedShippingVoucher={appliedShippingVoucher}
-                activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.name}
+                activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : (cartCampaignG1?.name || eligibleOrderGiftPromo?.name)}
                 memberTierName={memberTier.name}
                 memberDiscountAmount={memberDiscount}
                 memberDiscountPercent={memberTier.discountPercent}
@@ -3292,7 +3366,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             </div>
 
             {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}
-            {shippingSettings?.is_min_amount_enabled && (
+            {deliveryType !== "pickup" && (deliveryType as string) !== "takeaway" && shippingSettings?.is_min_amount_enabled && (
               <SmartCartProgressBar
                 subtotal={subtotal}
                 shippingSettings={shippingSettings}
@@ -3478,7 +3552,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               <div className="flex justify-between items-center border-t border-gray-200/80 pt-3 gap-2">
                 <span className="text-gray-900 font-bold text-sm 2xl:text-base flex-1 min-w-0">{t("total")}</span>
                 <span className="text-xl 2xl:text-2xl font-display text-secondary font-extrabold shrink-0 whitespace-nowrap text-right tracking-tight">
-                  {formatPrice(total)}
+                  {formatOrderPrice(total)}
                 </span>
               </div>
             </div>

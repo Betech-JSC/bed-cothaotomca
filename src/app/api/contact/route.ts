@@ -8,6 +8,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, phone, email, message } = body;
 
+    const phoneRegex = /^(0|84|\+84)(3[2-9]|5[689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/;
+    if (!phone || !phoneRegex.test(String(phone).trim())) {
+      return NextResponse.json(
+        { success: false, message: 'Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam gồm 10 chữ số.' },
+        { status: 422 }
+      );
+    }
+
     // 1. Lưu vào backend API trước (Quan trọng nhất)
     let savedToBackend = false;
     try {

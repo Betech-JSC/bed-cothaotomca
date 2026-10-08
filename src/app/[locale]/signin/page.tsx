@@ -10,10 +10,29 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "signin" });
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
+  const isEn = locale === 'en';
+  const rawTitle = t("title") || (isEn ? "Sign In" : "Đăng nhập");
+  const title = `${rawTitle} | ${isEn ? "Co Thao Tom Ca" : "Cô Thảo Tôm Cá"}`;
+  const description = t("description") || (isEn
+    ? "Sign in to your Co Thao Tom Ca account to view order history and earn points"
+    : "Đăng nhập tài khoản Bếp Cô Thảo Tôm Cá để theo dõi đơn hàng và tích lũy ưu đãi");
 
   return {
-    title: t("title"),
-    description: t("description"),
+    title,
+    description,
+    alternates: {
+      canonical: `${baseUrl}/${locale}/signin`,
+      languages: {
+        vi: `${baseUrl}/vi/dang-nhap`,
+        en: `${baseUrl}/en/signin`,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
   };
 }
 

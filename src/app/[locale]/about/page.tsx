@@ -223,7 +223,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                 <span className="block md:inline">{t('about.section-3.title.text2')}</span>
               </h2>
             </AnimateOnScroll>
-            <div className="grid grid-cols-2 xl:grid-cols-4 md:gap-6 gap-4 lg:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 md:gap-6 gap-4 lg:gap-8">
               {values.map((itemValue, indexValue) => (
                 <AnimateOnScroll key={indexValue} animate="slideup" delay={indexValue * 200} className="md:space-y-4 space-y-3 xl:space-y-6">
                   <div className="relative w-auto h-[160px] mx-auto">

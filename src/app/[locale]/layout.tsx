@@ -17,6 +17,8 @@ import ServerScriptLoader from '@/components/SEO/ServerScriptLoader'
 import ScrollToTop from '@/components/Common/ScrollToTop'
 import PageProgressBar from '@/components/Common/PageProgressBar'
 import FloatingVoucherButton from '@/components/Voucher/FloatingVoucherButton'
+import MobileSpeedDialFab from '@/components/Common/MobileSpeedDialFab'
+import GoogleProfileCompletionModal from '@/components/Auth/GoogleProfileCompletionModal'
 
 export async function generateMetadata({
   params
@@ -172,7 +174,9 @@ export default async function LocaleLayout({ children, params }: { children: Rea
 
               <Footer />
               <FloatingVoucherButton />
+              <MobileSpeedDialFab />
               <FixedSocial />
+              <GoogleProfileCompletionModal />
             </div>
           </Providers>
         </BranchProvider>

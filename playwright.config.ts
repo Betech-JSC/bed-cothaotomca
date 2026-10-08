@@ -13,25 +13,26 @@ export default defineConfig({
     ['html', { open: 'never' }]
   ],
   use: {
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL: 'http://localhost:3000',
     headless: true,
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,
     screenshot: 'on',
-    video: 'retain-on-failure',
+    video: 'off',
     trace: 'on',
   },
-  webServer: {
-    command: 'export PATH=$PATH:/Users/macbookpro2020/.nvm/versions/node/v22.22.3/bin && npx next dev -p 3000',
-    url: 'http://127.0.0.1:3000',
-    reuseExistingServer: true,
-    timeout: 120 * 1000,
-  },
+  // webServer: {
+  //   command: 'export PATH=/Users/macbookpro2020/.nvm/versions/node/v24.21.0/bin:$PATH && npx next dev --webpack -p 3000',
+  //   url: 'http://localhost:3000',
+  //   reuseExistingServer: true,
+  //   timeout: 120 * 1000,
+  // },
   projects: [
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        channel: 'chrome',
       },
     },
   ],

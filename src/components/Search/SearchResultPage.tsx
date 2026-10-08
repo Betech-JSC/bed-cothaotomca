@@ -286,7 +286,7 @@ export default function SearchResultPage({
                     {t('common.no_products_found')}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-8">
+                  <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-4 md:gap-6">
                     {productsDisplay.map(product => (
                       <CardProduct key={product.id} item={product} />
                     ))}
@@ -298,6 +298,7 @@ export default function SearchResultPage({
                     <button
                       onClick={() => handleProductPageChange(productPagination.currentPage - 1)}
                       disabled={productPagination.currentPage === 1}
+                      aria-label={t("common.previous_page") || "Trang trước"}
                       className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer group"
                     >
                       <div className="rotate-90">
@@ -310,6 +311,7 @@ export default function SearchResultPage({
                         <button
                           key={p}
                           onClick={() => handleProductPageChange(p)}
+                          aria-label={t("common.page_number", { number: p }) || `Trang ${p}`}
                           className={`
                             size-12 flex items-center justify-center rounded-full transition-all duration-300 title-2 cursor-pointer
                             ${productPagination.currentPage === p
@@ -326,6 +328,7 @@ export default function SearchResultPage({
                     <button
                       onClick={() => handleProductPageChange(productPagination.currentPage + 1)}
                       disabled={productPagination.currentPage === productPagination.lastPage}
+                      aria-label={t("common.next_page") || "Trang sau"}
                       className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer disabled:cursor-not-allowed group"
                     >
                       <div className="-rotate-90">
@@ -356,6 +359,7 @@ export default function SearchResultPage({
                     <button
                       onClick={() => handleBlogPageChange(blogPagination.currentPage - 1)}
                       disabled={blogPagination.currentPage === 1}
+                      aria-label={t("common.previous_page") || "Trang trước"}
                       className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer group"
                     >
                       <div className="rotate-90">
@@ -368,6 +372,7 @@ export default function SearchResultPage({
                         <button
                           key={p}
                           onClick={() => handleBlogPageChange(p)}
+                          aria-label={t("common.page_number", { number: p }) || `Trang ${p}`}
                           className={`
                             size-12 flex items-center justify-center rounded-full transition-all duration-300 title-2 cursor-pointer
                             ${blogPagination.currentPage === p
@@ -384,6 +389,7 @@ export default function SearchResultPage({
                     <button
                       onClick={() => handleBlogPageChange(blogPagination.currentPage + 1)}
                       disabled={blogPagination.currentPage === blogPagination.lastPage}
+                      aria-label={t("common.next_page") || "Trang sau"}
                       className="size-12 flex items-center justify-center rounded-full disabled:invisible disabled:opacity-0 bg-yellow text-primary lg:hover:bg-secondary lg:hover:text-yellow transition-colors duration-300 cursor-pointer disabled:cursor-not-allowed group"
                     >
                       <div className="-rotate-90">

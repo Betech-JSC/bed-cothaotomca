@@ -6,6 +6,7 @@ export interface Translation {
   id: number;
   locale: string;
   name: string;
+  slug?: string;
   custom_name?: string;
   description: string;
   product_id: number;
@@ -572,8 +573,14 @@ export const getProductBySlugWithFallback = async (
   options: { revalidate?: number; lang?: string } = {},
 ): Promise<Product | null> => {
   try {
-    const product = await getProductBySlug(slug, options);
+    let product = await getProductBySlug(slug, options);
     if (product) return product;
+
+    // Nếu không tìm thấy với lang cụ thể, thử gọi API không kèm lang (để BE tìm theo slug đa ngữ)
+    if (options.lang) {
+      product = await getProductBySlug(slug, { revalidate: options.revalidate });
+      if (product) return product;
+    }
 
     const { lang } = options;
     const products = await getProductCatalog(lang, {
@@ -590,11 +597,39 @@ export const getProductBySlugWithFallback = async (
         const translatedName = (translation as Translation | undefined)?.name || p.name;
         if (slugify(translatedName) === slug) return true;
       }
-      return slugify(p.name) === slug;
+      if (slugify(p.name) === slug || (p.custom_name && slugify(p.custom_name) === slug)) return true;
+      if (p.translations && p.translations.length > 0) {
+        return p.translations.some((t: any) => {
+          if (t.slug && regex.test(t.slug)) return true;
+          const tName = t.custom_name || t.name || "";
+          return slugify(tName) === slug;
+        });
+      }
+      return false;
     });
 
     if (match) {
       return match;
+    }
+
+    // Nếu vẫn chưa tìm thấy trong catalog của lang này, quét toàn bộ catalog không lọc lang
+    if (lang) {
+      const allProducts = await getProductCatalog(undefined, {
+        revalidate: options.revalidate,
+      });
+      const matchAll = allProducts.find((p) => {
+        if (p.slug && regex.test(p.slug)) return true;
+        if (slugify(p.name) === slug || (p.custom_name && slugify(p.custom_name) === slug)) return true;
+        if (p.translations && p.translations.length > 0) {
+          return p.translations.some((t: any) => {
+            if (t.slug && regex.test(t.slug)) return true;
+            const tName = t.custom_name || t.name || "";
+            return slugify(tName) === slug;
+          });
+        }
+        return false;
+      });
+      if (matchAll) return matchAll;
     }
 
     return null;

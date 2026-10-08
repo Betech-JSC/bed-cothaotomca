@@ -1,6 +1,5 @@
 import RegisterForm from "@/components/Auth/RegisterForm";
 import Image from "next/image";
-import AnimateOnScroll from "@/components/Animated/animated-appear";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
@@ -11,10 +10,29 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "signup" });
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
+  const isEn = locale === 'en';
+  const rawTitle = t("title") || (isEn ? "Sign Up" : "Đăng ký tài khoản");
+  const title = `${rawTitle} | ${isEn ? "Co Thao Tom Ca" : "Cô Thảo Tôm Cá"}`;
+  const description = t("description") || (isEn
+    ? "Create a Co Thao Tom Ca account to enjoy member discounts, track orders and earn points"
+    : "Đăng ký tài khoản Bếp Cô Thảo Tôm Cá để nhận ưu đãi thành viên, theo dõi đơn hàng và tích lũy điểm thưởng");
 
   return {
-    title: t("title"),
-    description: t("description"),
+    title,
+    description,
+    alternates: {
+      canonical: `${baseUrl}/${locale}/signup`,
+      languages: {
+        vi: `${baseUrl}/vi/dang-ky`,
+        en: `${baseUrl}/en/signup`,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
   };
 }
 

@@ -284,7 +284,7 @@ export default function ProductIndexPage({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-8 max-md:max-w-[22.375rem] max-md:mx-auto">
+              <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-4 md:gap-6">
                 {filteredProductsSorted.map(product => (
                   <CardProduct key={product.id} item={product} />
                 ))}

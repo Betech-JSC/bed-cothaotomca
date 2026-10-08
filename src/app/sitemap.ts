@@ -2,13 +2,14 @@ import { MetadataRoute } from 'next';
 import { getProducts } from '@/services/productService';
 import { getBlogs } from '@/services/blogService';
 import { getPolicies } from '@/services/policyService';
-import { slugify, getTranslation } from '@/lib/format';
+import { slugify } from '@/lib/format';
+import { getProductLocalizedSlugs } from '@/lib/productHelper';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
   const locales = ['vi', 'en'];
 
   // Helper: build prefixed URL based on locale
@@ -16,110 +17,153 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     locale === 'vi' ? `${baseUrl}${path}` : `${baseUrl}/${locale}${path}`;
 
   // 1. Static routes (Localized paths as per routing.ts)
-  const staticRoutes: MetadataRoute.Sitemap = [
-    { vi: '', en: '' },
-    { vi: '/ve-chung-toi', en: '/about' },
-    { vi: '/lien-he', en: '/contact' },
-    { vi: '/san-pham', en: '/product' },
-    { vi: '/tin-tuc', en: '/blog' },
-    { vi: '/chinh-sach', en: '/policy' },
-  ].flatMap((pathObj) =>
-    locales.map((locale) => ({
-      url: buildUrl(locale, pathObj[locale as 'vi' | 'en']),
+  const staticRouteDefs = [
+    { vi: '', en: '', priority: 1.0 },
+    { vi: '/ve-chung-toi', en: '/about', priority: 0.8 },
+    { vi: '/lien-he', en: '/contact', priority: 0.8 },
+    { vi: '/san-pham', en: '/product', priority: 0.8 },
+    { vi: '/tin-tuc', en: '/blog', priority: 0.8 },
+    { vi: '/chinh-sach', en: '/policy', priority: 0.8 },
+    { vi: '/dang-nhap', en: '/signin', priority: 0.5 },
+    { vi: '/dang-ky', en: '/signup', priority: 0.5 },
+    { vi: '/tra-cuu-don-hang', en: '/order-lookup', priority: 0.6 },
+  ];
+
+  const staticRoutes: MetadataRoute.Sitemap = staticRouteDefs.flatMap((item) => {
+    const viUrl = buildUrl('vi', item.vi);
+    const enUrl = buildUrl('en', item.en);
+
+    return locales.map((locale) => ({
+      url: locale === 'vi' ? viUrl : enUrl,
       lastModified: new Date(),
       changeFrequency: 'daily' as const,
-      priority: pathObj.vi === '' ? 1 : 0.8,
-    }))
-  );
+      priority: item.priority,
+      alternates: {
+        languages: {
+          vi: viUrl,
+          en: enUrl,
+        },
+      },
+    }));
+  });
 
   // 2. Dynamic products
   const productRoutes: MetadataRoute.Sitemap = [];
-  for (const locale of locales) {
-    try {
-      const productsRes = await getProducts({ per_page: 500, lang: locale });
-      if (productsRes?.data) {
-        const productBase = locale === 'vi' ? '/san-pham' : '/product';
-        const localeProductRoutes = productsRes.data.map((product: any) => {
-          const translation = getTranslation(product.translations, locale) as any;
-          const name = translation?.custom_name || product.custom_name || translation?.name || product.name || "";
+  try {
+    const productsRes = await getProducts({ per_page: 500 });
+    if (productsRes?.data) {
+      productsRes.data.forEach((product: any) => {
+        const { viCatSlug, viProductSlug, enCatSlug, enProductSlug } = getProductLocalizedSlugs(product);
+        const viUrl = buildUrl('vi', `/san-pham/${viCatSlug}/${viProductSlug}`);
+        const enUrl = buildUrl('en', `/product/${enCatSlug}/${enProductSlug}`);
 
-          const productCategory = product.categories && product.categories.length > 0
-            ? product.categories[0]
-            : product.category;
-          const catTranslation = getTranslation(productCategory?.translations, locale) as any;
-          const categoryName = catTranslation?.title || productCategory?.title || "san-pham";
+        const lastModified = product.updated_at
+          ? new Date(product.updated_at)
+          : (product.created_at ? new Date(product.created_at) : new Date());
 
-          const productSlug = product.slug || slugify(name);
-          const categorySlug = productCategory?.slug || slugify(categoryName);
-
-          return {
-            url: buildUrl(locale, `${productBase}/${categorySlug}/${productSlug}`),
-            lastModified: product.updated_at ? new Date(product.updated_at) : (product.created_at ? new Date(product.created_at) : new Date()),
+        locales.forEach((locale) => {
+          productRoutes.push({
+            url: locale === 'vi' ? viUrl : enUrl,
+            lastModified,
             changeFrequency: 'weekly' as const,
             priority: 0.7,
-          };
+            alternates: {
+              languages: {
+                vi: viUrl,
+                en: enUrl,
+              },
+            },
+          });
         });
-        productRoutes.push(...localeProductRoutes);
-      }
-    } catch (error) {
-      console.error(`Error fetching products for sitemap (${locale}):`, error);
+      });
     }
+  } catch (error) {
+    console.error('Error fetching products for sitemap:', error);
   }
 
   // 3. Dynamic blogs
   const blogRoutes: MetadataRoute.Sitemap = [];
-  for (const locale of locales) {
-    try {
-      const blogsRes = await getBlogs({ per_page: 500, lang: locale });
-      if (blogsRes?.data) {
-        const blogBase = locale === 'vi' ? '/tin-tuc' : '/blog';
-        const localeBlogRoutes = blogsRes.data.map((blog: any) => {
-          const translation = getTranslation(blog.translations, locale) as any;
-          const title = translation?.title || blog.title || "";
-          const catTranslation = getTranslation(blog.category?.translations, locale) as any;
-          const categoryName = catTranslation?.title || blog.category?.title || "tin-tuc";
+  try {
+    const blogsRes = await getBlogs({ per_page: 500 });
+    if (blogsRes?.data) {
+      blogsRes.data.forEach((blog: any) => {
+        const viTrans = (blog.translations || []).find((t: any) => t.locale === 'vi');
+        const enTrans = (blog.translations || []).find((t: any) => t.locale === 'en');
 
-          const blogSlug = blog.slug || slugify(title);
-          const categorySlug = blog.category?.slug || slugify(categoryName);
+        const viCategory = blog.category;
+        const viCatTrans = (viCategory?.translations || []).find((t: any) => t.locale === 'vi');
+        const enCatTrans = (viCategory?.translations || []).find((t: any) => t.locale === 'en');
 
-          return {
-            url: buildUrl(locale, `${blogBase}/${categorySlug}/${blogSlug}`),
-            lastModified: blog.updated_at ? new Date(blog.updated_at) : (blog.created_at ? new Date(blog.created_at) : new Date()),
+        const viCatSlug = viCategory?.slug || slugify(viCatTrans?.title || viCategory?.title || 'tin-tuc');
+        const enCatSlug = (enCatTrans as any)?.slug || slugify(enCatTrans?.title || '') || viCategory?.slug || 'blog';
+
+        const viBlogSlug = (viTrans as any)?.slug || blog.slug || slugify(viTrans?.title || blog.title || '');
+        const enBlogSlug = (enTrans as any)?.slug || slugify(enTrans?.title || '') || blog.slug || '';
+
+        const viUrl = buildUrl('vi', `/tin-tuc/${viCatSlug}/${viBlogSlug}`);
+        const enUrl = buildUrl('en', `/blog/${enCatSlug}/${enBlogSlug}`);
+
+        const lastModified = blog.updated_at
+          ? new Date(blog.updated_at)
+          : (blog.created_at ? new Date(blog.created_at) : new Date());
+
+        locales.forEach((locale) => {
+          blogRoutes.push({
+            url: locale === 'vi' ? viUrl : enUrl,
+            lastModified,
             changeFrequency: 'weekly' as const,
             priority: 0.6,
-          };
+            alternates: {
+              languages: {
+                vi: viUrl,
+                en: enUrl,
+              },
+            },
+          });
         });
-        blogRoutes.push(...localeBlogRoutes);
-      }
-    } catch (error) {
-      console.error(`Error fetching blogs for sitemap (${locale}):`, error);
+      });
     }
+  } catch (error) {
+    console.error('Error fetching blogs for sitemap:', error);
   }
 
   // 4. Dynamic policies
   const policyRoutes: MetadataRoute.Sitemap = [];
-  for (const locale of locales) {
-    try {
-      const policiesRes = await getPolicies({ lang: locale });
-      if (policiesRes?.data) {
-        const policyBase = locale === 'vi' ? '/chinh-sach' : '/policy';
-        const localePolicyRoutes = policiesRes.data.map((policy: any) => {
-          const translation = getTranslation(policy.translations, locale) as any;
-          const title = translation?.title || policy.title || "";
-          const slug = policy.slug || slugify(title);
+  try {
+    const policiesRes = await getPolicies();
+    if (policiesRes?.data) {
+      policiesRes.data.forEach((policy: any) => {
+        const viTrans = (policy.translations || []).find((t: any) => t.locale === 'vi');
+        const enTrans = (policy.translations || []).find((t: any) => t.locale === 'en');
 
-          return {
-            url: buildUrl(locale, `${policyBase}/${slug}`),
-            lastModified: new Date(),
+        const viSlug = (viTrans as any)?.slug || policy.slug || slugify(viTrans?.title || policy.title || '');
+        const enSlug = (enTrans as any)?.slug || slugify(enTrans?.title || '') || policy.slug || '';
+
+        const viUrl = buildUrl('vi', `/chinh-sach/${viSlug}`);
+        const enUrl = buildUrl('en', `/policy/${enSlug}`);
+
+        const lastModified = policy.updated_at
+          ? new Date(policy.updated_at)
+          : (policy.created_at ? new Date(policy.created_at) : new Date());
+
+        locales.forEach((locale) => {
+          policyRoutes.push({
+            url: locale === 'vi' ? viUrl : enUrl,
+            lastModified,
             changeFrequency: 'monthly' as const,
             priority: 0.5,
-          };
+            alternates: {
+              languages: {
+                vi: viUrl,
+                en: enUrl,
+              },
+            },
+          });
         });
-        policyRoutes.push(...localePolicyRoutes);
-      }
-    } catch (error) {
-      console.error(`Error fetching policies for sitemap (${locale}):`, error);
+      });
     }
+  } catch (error) {
+    console.error('Error fetching policies for sitemap:', error);
   }
 
   return [...staticRoutes, ...productRoutes, ...blogRoutes, ...policyRoutes];

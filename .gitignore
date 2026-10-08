@@ -69,3 +69,4 @@ config.bat
 
 # Local IDE settings
 .vscode/
+e2e/evidence/

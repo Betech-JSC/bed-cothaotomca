@@ -149,7 +149,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                       {isOut && (
                         <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                           <span className="text-[10px] font-bold text-white bg-red-600/90 px-1 py-0.5 rounded text-center leading-none">
-                            Hết hàng
+                            {t("out_of_stock") || "Hết hàng"}
                           </span>
                         </div>
                       )}
@@ -164,7 +164,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                           </h4>
                           {isOut && (
                             <span className="inline-block text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.2 rounded mt-0.5">
-                              [Tạm hết hàng]
+                              {t("temporarily_out_of_stock") || "[Tạm hết hàng]"}
                             </span>
                           )}
                         </div>
@@ -193,6 +193,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
                             className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs select-none disabled:opacity-30"
                             disabled={isOut || item.quantity <= 1}
+                            aria-label={t("decrease_quantity") || "Giảm số lượng"}
                           >
                             &minus;
                           </button>
@@ -204,6 +205,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
                             className="size-5 flex items-center justify-center text-gray-400 hover:text-primary font-bold text-xs select-none disabled:opacity-30"
                             disabled={isOut}
+                            aria-label={t("increase_quantity") || "Tăng số lượng"}
                           >
                             +
                           </button>
@@ -214,6 +216,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                           type="button"
                           onClick={() => removeFromCart(item.id)}
                           className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 font-semibold transition-colors cursor-pointer"
+                          aria-label={t("delete") || "Xóa món"}
                         >
                           <svg
                             className="w-3 h-3"

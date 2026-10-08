@@ -20,7 +20,17 @@
     "all": "Tất cả",
     "filter": "Bộ lọc",
     "view_more": "Xem thêm",
-    "collapse": "Thu gọn"
+    "collapse": "Thu gọn",
+    "account": "Tài khoản",
+    "open_menu": "Mở menu",
+    "close_menu": "Đóng menu",
+    "previous": "Trước",
+    "next": "Tiếp theo",
+    "previous_slide": "Slide trước",
+    "next_slide": "Slide sau",
+    "previous_page": "Trang trước",
+    "next_page": "Trang sau",
+    "page_number": "Trang {number}"
   },
   "search": {
     "results_for": "Kết quả tìm kiếm ",
@@ -70,7 +80,11 @@
     "order_now": "Đặt món",
     "order_now_with_price": "Đặt món • {price}",
     "buy_more_gift_prompt": "Mua thêm <strong>{amount}</strong> để được tặng <strong>1 món quà miễn phí</strong> ({name})!",
-    "buy_more_combo_prompt": "Mua thêm <strong>{count} món</strong> để nhận ưu đãi (<strong>{name}</strong>)!"
+    "buy_more_combo_prompt": "Mua thêm <strong>{count} món</strong> để nhận ưu đãi (<strong>{name}</strong>)!",
+    "decrease_quantity": "Giảm số lượng",
+    "increase_quantity": "Tăng số lượng",
+    "out_of_stock": "Hết hàng",
+    "temporarily_out_of_stock": "[Tạm hết hàng]"
   },
   "breadcrumb": {
     "home": "Trang chủ",
@@ -189,6 +203,7 @@
       "waiting_payment": "Đang chờ xác nhận thanh toán...",
       "payment_received": "Đã nhận thanh toán — đang xử lý...",
       "cancel_back": "Huỷ và quay lại",
+      "cancelling": "Đang huỷ đơn...",
       "reorder": "Đặt lại đơn hàng",
       "bank_info_title": "Thông tin chuyển khoản",
       "bank_name": "Ngân hàng",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/i18n-navigation";
@@ -18,6 +18,7 @@ type LoginFormProps = {
 
 const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
   const t = useTranslations("signin");
+  const locale = useLocale();
   const { login, loginWithGoogle, loginWithToken } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -111,10 +112,12 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
       }
     };
 
-    if (!document.getElementById("google-gsi-client")) {
+    const targetScriptSrc = `https://accounts.google.com/gsi/client?hl=${locale}`;
+    const existingScript = document.getElementById("google-gsi-client") as HTMLScriptElement | null;
+    if (!existingScript) {
       const script = document.createElement("script");
       script.id = "google-gsi-client";
-      script.src = "https://accounts.google.com/gsi/client";
+      script.src = targetScriptSrc;
       script.async = true;
       script.defer = true;
       script.onload = () => {
@@ -122,9 +125,22 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
       };
       document.body.appendChild(script);
     } else {
-      initializeGoogle();
+      if (existingScript.src !== targetScriptSrc) {
+        existingScript.remove();
+        const script = document.createElement("script");
+        script.id = "google-gsi-client";
+        script.src = targetScriptSrc;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          initializeGoogle();
+        };
+        document.body.appendChild(script);
+      } else {
+        initializeGoogle();
+      }
     }
-  }, [loading, loginWithGoogle, router, onLoginSuccess, redirectTarget]);
+  }, [loading, loginWithGoogle, router, onLoginSuccess, redirectTarget, locale]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

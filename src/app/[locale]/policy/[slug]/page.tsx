@@ -137,14 +137,14 @@ export default async function PolicyPage({
         <Breadcrumb breadcrumbs={breadcrumbs} />
 
         <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8 items-start">
-          <aside className="col-span-full lg:col-span-3">
+          <aside className="col-span-full lg:col-span-4">
             <PolicyNav
               policies={processedPolicies.map(p => ({ id: p.id, slug: p.slug, title: p.title || p.name }))}
               currentSlug={slug}
             />
           </aside>
 
-          <article className="col-span-full lg:col-span-9">
+          <article className="col-span-full lg:col-span-8">
             <div className="bg-white rounded-[24px] md:p-4 p-3 xl:p-6">
               <div className="space-y-3">
                 <h1 className="display-3 text-primary">{currentPolicy.title || currentPolicy.name}</h1>

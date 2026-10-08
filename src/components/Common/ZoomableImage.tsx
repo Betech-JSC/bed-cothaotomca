@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image, { ImageProps } from 'next/image';
+import SafeImage from '@/components/Common/SafeImage';
 import { createPortal } from 'react-dom';
 import Chevron from '@/components/Icons/Chevron';
 
@@ -136,6 +137,12 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
           src={activeItem.url || '/cover.jpg'}
           alt={activeItem.alt || alt || ''}
           className="max-w-full max-h-full object-contain rounded-xl shadow-2xl select-none animate-zoom-scale"
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (!target.src.includes('/cover.jpg')) {
+              target.src = '/cover.jpg';
+            }
+          }}
         />
       </div>
 
@@ -185,6 +192,12 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
                     src={gImg.url || '/cover.jpg'}
                     alt={gImg.alt || `Thumbnail ${gIdx + 1}`}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.src.includes('/cover.jpg')) {
+                        target.src = '/cover.jpg';
+                      }
+                    }}
                   />
                 </button>
               );
@@ -219,7 +232,7 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
         className={`cursor-zoom-in relative max-md:contents ${containerClassName}`}
         onClick={() => setIsOpen(true)}
       >
-        <Image
+        <SafeImage
           src={src}
           alt={alt}
           className={`${className}`}

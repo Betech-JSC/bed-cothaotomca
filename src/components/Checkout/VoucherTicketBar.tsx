@@ -252,8 +252,13 @@ export default function VoucherTicketBar({
     <div className={`w-full ${className}`}>
       {/* Khung chứa dạng Shopee 1 hàng ngang duy nhất */}
       <div
+        data-testid="voucher-ticket-bar"
         onClick={onClick}
-        className="rounded-full border border-gray-300 hover:border-secondary/40 py-2.5 px-3.5 min-h-[46px] bg-white flex items-center justify-between gap-2 flex-nowrap shadow-xs cursor-pointer transition-colors"
+        className={`rounded-full border border-gray-300 hover:border-secondary/40 ${
+          !hasAnyVoucher
+            ? "min-h-[48px] px-3.5 py-2.5 sm:px-4 sm:py-3"
+            : "min-h-[48px] py-2.5 px-3.5 sm:px-4"
+        } bg-white flex items-center justify-between gap-2 flex-nowrap shadow-xs cursor-pointer transition-colors`}
       >
         {/* Bên trái: Icon Vé Ưu đãi (Ticket SVG màu cam/đỏ) + Label "Mã giảm giá" */}
         <div className="flex items-center gap-1.5 shrink-0 min-w-max">
@@ -290,10 +295,10 @@ export default function VoucherTicketBar({
         )}
 
         {/* Bên phải:
-            - Nếu chưa có mã: [Chọn hoặc nhập mã] nằm sát cạnh icon mũi tên > (gap-1.5 hoặc gap-1)
+            - Nếu chưa có mã: [Chọn hoặc nhập mã] nằm sát cạnh icon mũi tên > (gap-1.5)
             - Nếu đã có mã: Nút gỡ mã nhanh ✕ (khi có onRemove) + Icon mũi tên >
         */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 min-w-0 justify-end">
+        <div className="flex items-center gap-1.5 shrink-0 min-w-0 justify-end">
           {!hasAnyVoucher && (
             <span className="text-gray-400 font-normal text-xs sm:text-sm truncate select-none">
               {placeholder}
