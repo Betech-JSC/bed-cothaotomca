@@ -2693,7 +2693,7 @@ export default function MobileCartFlow({
 
           {/* Step 2: Checkout Form & Collapsible Summary */}
           {step === 2 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right duration-200 pb-32 sm:pb-36">
+            <div className="space-y-6 animate-in fade-in slide-in-from-right duration-200 pb-6">
               {/* Banner Trạng thái hoạt động */}
               <div
                 className={`p-4 rounded-xl border transition-colors ${operatingStatus.canOrderNow
@@ -3534,8 +3534,8 @@ export default function MobileCartFlow({
                 </div>
               </div>
 
-              {/* Submit checkout button (Sticky Bottom) */}
-              <div className="sticky bottom-0 z-20 bg-yellow/95 backdrop-blur-sm border-t border-gray-200/80 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-4 -mb-4">
+              {/* Submit checkout button (Normal flow at the bottom) */}
+              <div className="pt-4 pb-2 w-full">
                 {isOutOfStockOverall && (
                   <p className="text-red-500 text-xs text-center font-medium mb-2">
                     {t("oos_warning")}
@@ -3545,7 +3545,7 @@ export default function MobileCartFlow({
                   type="button"
                   onClick={handleSubmit}
                   disabled={loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || isOutOfStockOverall}
-                  className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50 disabled:pointer-events-none"
+                  className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.99]"
                 >
                   {loading
                     ? t("submitting")
