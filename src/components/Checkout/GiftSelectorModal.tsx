@@ -1,6 +1,6 @@
 import React from "react";
 import Image from "next/image";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatImageUrl } from "@/lib/format";
 import { useTranslations } from "next-intl";
 
 export interface GiftItem {
@@ -126,11 +126,14 @@ export default function GiftSelectorModal({
                   <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0 flex items-center justify-center">
                     {item.image ? (
                       <Image
-                        src={item.image}
+                        src={formatImageUrl(item.image) || "/cover.jpg"}
                         alt={item.product_name}
                         fill
                         className="object-cover"
                         unoptimized
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = "/cover.jpg";
+                        }}
                       />
                     ) : (
                       <span className="title-4 font-display font-bold text-gray-400 uppercase">{t("gift_tag")}</span>

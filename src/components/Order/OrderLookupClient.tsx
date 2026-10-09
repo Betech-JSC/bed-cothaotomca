@@ -14,7 +14,7 @@ import {
 import { getGeneralSettings } from "@/services/generalSettingService";
 import OrderStatusStepper from "@/components/Order/OrderStatusStepper";
 import { cleanDuplicateAddressParts } from "@/data/wardMapping";
-import { formatVietnamDateTime, isCodPayment } from "@/lib/format";
+import { formatVietnamDateTime, isCodPayment, formatImageUrl } from "@/lib/format";
 import { usePrecisionCountdown } from "@/hooks/usePrecisionCountdown";
 
 interface OrderDetailData {
@@ -781,10 +781,13 @@ export default function OrderLookupClient() {
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 relative rounded-xl bg-gray-100 overflow-hidden shrink-0 border border-gray-200/80 shadow-xs">
                         <Image
-                          src={item.image || "/cover.jpg"}
+                          src={formatImageUrl(item.image) || "/cover.jpg"}
                           alt={item.product_name || item.product_title || "Sản phẩm"}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = "/cover.jpg";
+                          }}
                         />
                       </div>
                       <div>

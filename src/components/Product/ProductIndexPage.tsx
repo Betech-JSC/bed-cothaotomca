@@ -10,7 +10,7 @@ import ProductFilter from './ProductFilter'
 import { Product } from '@/services/productService'
 import { Category } from '@/services/categoryService'
 import { Ingredient } from '@/services/ingredientService'
-import { slugify } from '@/lib/format'
+import { slugify, formatImageUrl } from '@/lib/format'
 import AnimateOnScroll from '../Animated/animated-appear'
 
 interface ProductIndexPageProps {
@@ -148,7 +148,7 @@ export default function ProductIndexPage({
       ingredientIds: p?.ingredients?.map(ing => ing?.id?.toString()).filter(Boolean) as string[] || [],
       variants: p?.variants,
       image: {
-        url: p?.image || "/cover.jpg",
+        url: formatImageUrl(p?.image) || "/cover.jpg",
         alt: name
       },
       description: translation?.description || p?.description || "",

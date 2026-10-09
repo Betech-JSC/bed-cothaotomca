@@ -5,7 +5,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "@/i18n/routing";
 import React from "react";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatImageUrl } from "@/lib/format";
 import { useTranslations } from "next-intl";
 
 interface CardProductProps {
@@ -37,7 +37,12 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
   const { user } = useAuth();
   const cartGrossSubtotal = React.useMemo(() => cartItems.reduce((sum, i) => sum + (i.originalPrice || i.unitPrice) * i.quantity, 0), [cartItems]);
   const t = useTranslations();
-  const imageSrc = item.image?.url || '/cover.jpg';
+  const imageSrc = formatImageUrl(item.image?.url) || '/cover.jpg';
+  const [hasImageError, setHasImageError] = React.useState(false);
+
+  React.useEffect(() => {
+    setHasImageError(false);
+  }, [item.image?.url]);
 
   const userTier = React.useMemo(() => {
     if (!user) return "ALL";
@@ -212,11 +217,12 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
       >
         <div className="aspect-square w-full relative overflow-hidden">
           <Image
-            src={imageSrc}
+            src={hasImageError ? '/cover.jpg' : imageSrc}
             alt={item.image?.alt || item.title}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 380px"
             className="h-full w-full object-cover duration-500 ease-in-out lg:group-hover:scale-110"
+            onError={() => setHasImageError(true)}
           />
         </div>
       </Link>

@@ -23,7 +23,7 @@ import {
 } from "@/services/orderService";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 import { buildDeliveryAddress, cleanDuplicateAddressParts } from "@/data/wardMapping";
-import { formatVietnamDateTime } from "@/lib/format";
+import { formatVietnamDateTime, formatImageUrl } from "@/lib/format";
 
 type ProfileDashboardProps = {
   user: StorefrontUser;
@@ -585,7 +585,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
         slug: "",
         categorySlug: "",
         title: it.product_name,
-        imageUrl: it.image || "/images/placeholder.png",
+        imageUrl: formatImageUrl(it.image) || "/images/placeholder.png",
         variant: variantStr,
         unitPrice: parseFloat(String(it.price)) || 0,
         originalPrice: parseFloat(String(it.price)) || 0,
@@ -630,8 +630,11 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
             <div className="size-full rounded-full overflow-hidden border-2 border-primary/20 relative">
               {user.photo_url ? (
                 <img
-                  src={user.photo_url}
+                  src={formatImageUrl(user.photo_url) || "/images/default-avatar.svg"}
                   alt="Avatar"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/images/default-avatar.svg';
+                  }}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -918,8 +921,11 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                                       <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
                                         {item.image ? (
                                           <img
-                                            src={item.image}
+                                            src={formatImageUrl(item.image) || "/cover.jpg"}
                                             alt={item.product_name}
+                                            onError={(e) => {
+                                              (e.currentTarget as HTMLImageElement).src = '/cover.jpg';
+                                            }}
                                             className="w-full h-full object-cover"
                                           />
                                         ) : (

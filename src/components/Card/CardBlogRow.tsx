@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Link } from "@/i18n/i18n-navigation";
 import React from "react";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatImageUrl } from "@/lib/format";
 
 type BlogItem = {
   image: {
@@ -22,7 +22,12 @@ type CardBlogProps = {
 };
 
 const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
-  const imageSrc = item.image?.url || '/cover.jpg';
+  const imageSrc = formatImageUrl(item.image?.url) || '/cover.jpg';
+  const [hasError, setHasError] = React.useState(false);
+
+  React.useEffect(() => {
+    setHasError(false);
+  }, [item.image?.url]);
   
   return (
     <article className="group flex md:flex-row flex-col md:items-center gap-3 md:gap-3">
@@ -31,11 +36,12 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
         <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} aria-label={item.title}>
           <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[12px] md:rounded-[8px]">
             <Image
-              src={imageSrc}
+              src={hasError ? '/cover.jpg' : imageSrc}
               alt={item.image?.alt || item.title}
               priority={false}
               fill
               className="h-full w-full object-cover duration-300 ease-in-out lg:group-hover:scale-105"
+              onError={() => setHasError(true)}
             />
           </div>
         </Link>

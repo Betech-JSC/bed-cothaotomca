@@ -1,5 +1,5 @@
 import { getApi, getSingleApi } from "./apiService";
-import { slugify, getTranslation } from "@/lib/format";
+import { slugify, getTranslation, formatImageUrl } from "@/lib/format";
 import type { Ingredient } from "./ingredientService";
 
 export interface Translation {
@@ -210,19 +210,19 @@ export function mapProductToDetailView(
 
   const images: { url: string; alt: string }[] =
     sortedImages.length > 0
-      ? sortedImages.map((img, idx) => ({
-          url: img.image || "/cover.jpg",
+      ? sortedImages.map((img: any, idx) => ({
+          url: formatImageUrl(img.image || img.url) || "/cover.jpg",
           alt: `${name} ${idx + 1}`,
         }))
       : (product.gallery ?? [])
           .filter(Boolean)
           .map((url, idx) => ({
-            url,
+            url: formatImageUrl(url) || "/cover.jpg",
             alt: `${name} ${idx + 1}`,
           }));
 
   if (images.length === 0) {
-    images.push({ url: product.image || "/cover.jpg", alt: name });
+    images.push({ url: formatImageUrl(product.image) || "/cover.jpg", alt: name });
   }
 
   const variants = product.variants ?? [];
@@ -445,7 +445,7 @@ export function mapProductToCardItem(
     ingredientIds: (item.ingredients || []).map((ing) => String(ing.id)),
     variants: item.variants,
     image: {
-      url: item.image || "/cover.jpg",
+      url: formatImageUrl(item.image) || "/cover.jpg",
       alt: name,
     },
     description: translation?.description || item.description || "",

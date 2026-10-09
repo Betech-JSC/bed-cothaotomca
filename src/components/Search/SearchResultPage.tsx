@@ -13,7 +13,7 @@ import PolicyIcon from '../Icons/PolicyIcon'
 import { Product } from '@/services/productService'
 import { Blog } from '@/services/blogService'
 import { Policy } from '@/services/policyService'
-import { slugify } from '@/lib/format'
+import { slugify, formatImageUrl } from '@/lib/format'
 
 interface SearchResultPageProps {
   query: string
@@ -90,7 +90,7 @@ export default function SearchResultPage({
       ingredientIds: p.ingredients?.map(ing => ing.id.toString()) || [],
       variants: p.variants,
       image: {
-        url: p.image || "/cover.jpg",
+        url: formatImageUrl(p.image) || "/cover.jpg",
         alt: name
       },
       description: translation?.description || p.description || "",
@@ -110,7 +110,7 @@ export default function SearchResultPage({
       title,
       slug: b.slug,
       image: {
-        url: b.thumbnail || "/cover.jpg",
+        url: formatImageUrl(b.thumbnail) || "/cover.jpg",
         alt: title
       },
       category: {

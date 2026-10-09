@@ -6,8 +6,7 @@ import { SearchProductSuggestion, SearchBlogSuggestion, SearchPolicySuggestion }
 import Cart from "@/components/Icons/Cart";
 import BlogIcon from "@/components/Icons/BlogIcon";
 import PolicyIcon from "@/components/Icons/PolicyIcon";
-import { formatPrice } from "@/lib/format";
-import { slugify } from "@/lib/format";
+import { formatPrice, slugify, formatImageUrl } from "@/lib/format";
 
 interface SearchSuggestionsProps {
   productSuggestions: SearchProductSuggestion[];
@@ -107,8 +106,11 @@ export default function SearchSuggestions({
                           <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
                             {item.image ? (
                               <img
-                                src={item.image}
+                                src={formatImageUrl(item.image) || "/cover.jpg"}
                                 alt={item.name}
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = '/cover.jpg';
+                                }}
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                               />
                             ) : (
@@ -192,8 +194,11 @@ export default function SearchSuggestions({
                           <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
                             {item.thumbnail ? (
                               <img
-                                src={item.thumbnail}
+                                src={formatImageUrl(item.thumbnail) || "/cover.jpg"}
                                 alt={item.title}
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = '/cover.jpg';
+                                }}
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                               />
                             ) : (
