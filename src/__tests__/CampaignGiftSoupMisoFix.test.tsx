@@ -251,10 +251,9 @@ describe("Campaign Gift [TẶNG SÚP MISO] & Banner Image Fallback Fix", () => {
       expect(screen.getByText("[TẶNG SÚP MISO]")).toBeInTheDocument();
     });
 
-    // Cart items list shows the free gift item
+    // Cart items list shows the free gift item cleanly without redundant badges
     expect(screen.getByText("Banchan (Súp miso)")).toBeInTheDocument();
     expect(screen.getByText("0đ")).toBeInTheDocument();
-    expect(screen.getByText(/Quà tặng/i)).toBeInTheDocument();
 
     // Gift image rendered with formatImageUrl and unoptimized
     const giftImg = screen.getByAltText("Banchan (Súp miso)");
@@ -262,7 +261,7 @@ describe("Campaign Gift [TẶNG SÚP MISO] & Banner Image Fallback Fix", () => {
     expect(giftImg.getAttribute("src")).toContain("soup-miso.jpg");
   });
 
-  it("3. When applying [TẶNG SÚP MISO] in CheckoutForm, gift product renders in summary with 0đ and [Quà tặng] badge", async () => {
+  it("3. When applying [TẶNG SÚP MISO] in CheckoutForm, gift product renders in summary with 0đ and clean title without redundant badges", async () => {
     localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([301]));
 
     const mockConfig: any = {
@@ -275,12 +274,12 @@ describe("Campaign Gift [TẶNG SÚP MISO] & Banner Image Fallback Fix", () => {
 
     render(<CheckoutForm order={null} config={mockConfig} />);
 
-    // In CheckoutForm summary column, the gift item appears
+    // In CheckoutForm summary column, the gift item appears cleanly
     await waitFor(() => {
       expect(screen.getByText("Banchan (Súp miso)")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("[Quà tặng đơn hàng]")).toBeInTheDocument();
+    expect(screen.queryByText("[Quà tặng đơn hàng]")).not.toBeInTheDocument();
     expect(screen.getByText("0đ")).toBeInTheDocument();
 
     // Gift image rendered

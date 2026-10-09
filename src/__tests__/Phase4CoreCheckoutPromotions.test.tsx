@@ -453,10 +453,10 @@ describe('Phase 4 Core Checkout Promotions Test Suite', () => {
       localStorage.setItem('cothaotomca_selected_campaign_ids', JSON.stringify([201]));
       render(<CheckoutForm order={null} config={mockConfigData} />);
 
-      // Thấy tóm tắt đơn hàng có món quà tặng kèm nhãn [Quà tặng đơn hàng] và giá 0đ
-      const giftLabel = await screen.findByText(/\[Quà tặng đơn hàng\]/i);
+      // Thấy tóm tắt đơn hàng có món quà tặng Súp Miso Rong Biển và giá 0đ (không gắn tiền tố rối mắt)
+      const giftLabel = await screen.findByText('Súp Miso Rong Biển');
       expect(giftLabel).toBeInTheDocument();
-      expect(screen.getByText('Súp Miso Rong Biển')).toBeInTheDocument();
+      expect(screen.queryByText(/\[Quà tặng đơn hàng\]/i)).not.toBeInTheDocument();
 
       // Badge chiến dịch quà tặng xuất hiện trên VoucherTicketBar
       expect(screen.getByText('TẶNG SÚP MISO')).toBeInTheDocument();

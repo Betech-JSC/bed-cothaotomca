@@ -3315,7 +3315,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex justify-between items-start gap-2">
                       <p className="title-3 font-display text-gray-900 font-bold line-clamp-2">
-                        <span className="text-secondary font-bold mr-1">[Quà tặng đơn hàng]</span>
                         {selectedOrderGiftItem.product_name}
                       </p>
                       <div className="text-right shrink-0">
@@ -3331,9 +3330,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     </div>
                     <div className="flex items-center justify-between pt-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-bold bg-secondary/15 text-secondary px-2 py-0.5 rounded-full">
-                          [Quà tặng]
-                        </span>
                         <span className="text-xs text-gray-500 font-medium">x1</span>
                         {eligibleOrderGiftPromo.items.length > 1 && (
                           <button

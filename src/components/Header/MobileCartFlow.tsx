@@ -2347,9 +2347,7 @@ export default function MobileCartFlow({
                             </span>
                           </div>
                           <div className="flex items-center justify-between pt-0.5">
-                            <p className="text-[10px] text-secondary font-bold uppercase">
-                              {t("order_gift_tag") || "Quà tặng"} x1
-                            </p>
+                            <span className="text-xs text-gray-500 font-medium">x1</span>
                             {eligibleOrderGiftPromo && eligibleOrderGiftPromo.items.length > 1 && (
                               <button
                                 type="button"
