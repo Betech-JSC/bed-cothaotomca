@@ -5,8 +5,9 @@ import Image from "next/image";
 import { useRouter, Link, usePathname } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useCart } from "@/contexts/CartContext";
-import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
+import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName, formatImageUrl } from "@/lib/format";
 import { useBranches } from "@/contexts/BranchContext";
+import { getActiveCampaigns, type PublicCampaignItem } from "@/services/campaignService";
 import {
   calcOrderTotal,
   calculateShippingFee,
@@ -341,6 +342,7 @@ export default function MobileCartFlow({
 
   // Config
   const [config, setConfig] = useState<CheckoutConfig | null>(null);
+  const [publicCampaigns, setPublicCampaigns] = useState<PublicCampaignItem[]>([]);
   const branches = useBranches();
 
   // Accordion summary expanded (default expanded so items are visible like on PC)
@@ -547,8 +549,9 @@ export default function MobileCartFlow({
     }
   }, [user]);
 
-  // Load checkout config
+  // Load checkout config and active campaigns
   useEffect(() => {
+    getActiveCampaigns().then(setPublicCampaigns).catch(() => {});
     getCheckoutConfig()
       .then((cfg) => {
         setConfig(cfg);
@@ -709,12 +712,53 @@ export default function MobileCartFlow({
     setStoredCampaignIds(ids);
   }, []);
 
+  const allPromotionsList = useMemo(() => {
+    const list: ActivePromotion[] = [...(config?.active_promotions || [])];
+    const existingIds = new Set(list.map((p) => String(p.id)));
+
+    for (const c of publicCampaigns) {
+      if (!existingIds.has(String(c.id))) {
+        list.push({
+          id: typeof c.id === "number" ? c.id : (parseInt(String(c.id), 10) || 0),
+          name: c.name,
+          description: c.description || null,
+          banner: c.banner || null,
+          promotion_type: c.promotion_type,
+          min_order_value: c.min_order_value || 0,
+          discount_type: c.discount_type,
+          discount_value: c.discount_value,
+          max_discount: c.max_discount || null,
+          settings: c.settings || {},
+          can_combine_with_promotions: c.can_combine_with_promotions ?? true,
+          can_combine_with_freeship: c.can_combine_with_freeship ?? true,
+          items: (c.items || []).map((it) => ({
+            id: it.id,
+            product_id: it.product_id,
+            product_variant_id: it.product_variant_id,
+            product_name: it.product_name,
+            product_code: it.product_code,
+            kiotviet_id: it.kiotviet_id,
+            image: it.image || "",
+            original_price: it.original_price || 0,
+            campaign_price: it.campaign_price || 0,
+            is_free: it.is_free ?? (it.campaign_price === 0),
+            is_available: it.is_available ?? !it.disabled,
+            disabled: it.disabled ?? false,
+            disabled_reason: it.disabled_reason || null,
+          })),
+        });
+        existingIds.add(String(c.id));
+      }
+    }
+    return list;
+  }, [config?.active_promotions, publicCampaigns]);
+
   // Campaign G1 trong giỏ hàng (Mobile Flow)
   const cartCampaignG1 = useMemo(() => {
-    if (!config?.active_promotions || config.active_promotions.length === 0) return null;
+    if (!allPromotionsList || allPromotionsList.length === 0) return null;
     if (selectedCampaignIds.length === 0) return null;
     const checkAmount = originalSubtotal > 0 ? originalSubtotal : rawSubtotal;
-    const promos = config.active_promotions.filter((p) => {
+    const promos = allPromotionsList.filter((p) => {
       return selectedCampaignIds.some((id) => String(id) === String(p.id));
     });
     const orderDiscountPromo = promos.find(
@@ -722,7 +766,7 @@ export default function MobileCartFlow({
     );
     if (orderDiscountPromo) return orderDiscountPromo;
     return promos.find((p) => (p.min_order_value || 0) <= checkAmount) || null;
-  }, [config?.active_promotions, originalSubtotal, rawSubtotal, selectedCampaignIds]);
+  }, [allPromotionsList, originalSubtotal, rawSubtotal, selectedCampaignIds]);
 
   // Ma trận Khuyến mãi 6 Cases (Thông báo Voucher Mobile Flow)
   const promotionMatrixVoucherNotice = useMemo(() => {
@@ -939,10 +983,10 @@ export default function MobileCartFlow({
   // Auto-prune stale selected campaigns if cart changes and campaign is no longer eligible
   useEffect(() => {
     if (selectedCampaignIds.length === 0) return;
-    if (!config?.active_promotions || config.active_promotions.length === 0) return;
+    if (!allPromotionsList || allPromotionsList.length === 0) return;
 
     const validCampaignIds = selectedCampaignIds.filter((id) => {
-      const promo = config.active_promotions?.find((p) => String(p.id) === String(id));
+      const promo = allPromotionsList?.find((p) => String(p.id) === String(id));
       if (!promo) return true;
       const res = evaluateCampaignEligibility(promo, {
         subtotal,
@@ -957,7 +1001,7 @@ export default function MobileCartFlow({
       setSelectedCampaignIds(validCampaignIds);
       setStoredCampaignIds(validCampaignIds);
     }
-  }, [selectedCampaignIds, config?.active_promotions, subtotal, originalSubtotal, cartItems]);
+  }, [selectedCampaignIds, allPromotionsList, subtotal, originalSubtotal, cartItems]);
 
   const foodVoucherDiscount = useMemo(() => {
     if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") return 0;
@@ -982,14 +1026,19 @@ export default function MobileCartFlow({
     if (isBestDealVoucherApplied) return null;
     if (selectedCampaignIds.length === 0) return null;
     const promo =
-      config?.active_promotions?.find(
+      allPromotionsList?.find(
         (p) =>
           p.promotion_type === "order_discount" &&
-          subtotal >= (p.min_order_value || 0) &&
-          selectedCampaignIds.some((id) => String(id) === String(p.id))
+          selectedCampaignIds.some((id) => String(id) === String(p.id)) &&
+          evaluateCampaignEligibility(p, {
+            subtotal,
+            originalSubtotal,
+            cartItems,
+            isBrowseMode: false,
+          }).eligible
       ) || null;
     return promo;
-  }, [config?.active_promotions, subtotal, isBestDealVoucherApplied, selectedCampaignIds]);
+  }, [allPromotionsList, subtotal, originalSubtotal, cartItems, isBestDealVoucherApplied, selectedCampaignIds]);
 
   const autoOrderDiscountAmount = useMemo(() => {
     if (!eligibleOrderDiscountPromo) return 0;
@@ -1015,12 +1064,11 @@ export default function MobileCartFlow({
     if (isBestDealVoucherApplied) return null;
     if (selectedCampaignIds.length === 0) return null;
     const promo =
-      config?.active_promotions?.find(
+      allPromotionsList?.find(
         (p) =>
           p.promotion_type === "order_gift_discount" &&
           p.items &&
           p.items.length > 0 &&
-          subtotal >= (p.min_order_value || 0) &&
           selectedCampaignIds.some((id) => String(id) === String(p.id)) &&
           evaluateCampaignEligibility(p, {
             subtotal,
@@ -1030,7 +1078,7 @@ export default function MobileCartFlow({
           }).eligible
       ) || null;
     return promo;
-  }, [config?.active_promotions, subtotal, originalSubtotal, cartItems, isBestDealVoucherApplied, selectedCampaignIds]);
+  }, [allPromotionsList, subtotal, originalSubtotal, cartItems, isBestDealVoucherApplied, selectedCampaignIds]);
 
 
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
@@ -1044,7 +1092,7 @@ export default function MobileCartFlow({
         if (prev && eligibleOrderGiftPromo.items.some((i) => i.id === prev && i.is_available !== false)) {
           return prev;
         }
-        const firstAvailable = eligibleOrderGiftPromo.items.find((i) => i.is_available !== false);
+        const firstAvailable = eligibleOrderGiftPromo.items.find((i) => i.is_available !== false) || eligibleOrderGiftPromo.items[0];
         return firstAvailable ? firstAvailable.id : null;
       });
     } else {
@@ -1054,17 +1102,20 @@ export default function MobileCartFlow({
   }, [eligibleOrderGiftPromo]);
 
   const selectedOrderGiftItem = useMemo(() => {
-    if (!eligibleOrderGiftPromo || !selectedOrderGiftId) return null;
-    const found = eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId);
-    if (!found || found.is_available === false) return null;
-    return found;
+    if (!eligibleOrderGiftPromo || !eligibleOrderGiftPromo.items || eligibleOrderGiftPromo.items.length === 0) return null;
+    if (selectedOrderGiftId) {
+      const found = eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId);
+      if (found && found.is_available !== false) return found;
+      if (found) return found;
+    }
+    return eligibleOrderGiftPromo.items.find((i) => i.is_available !== false) || eligibleOrderGiftPromo.items[0] || null;
   }, [eligibleOrderGiftPromo, selectedOrderGiftId]);
 
   // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleBuyXGetYPromos = useMemo(() => {
-    if (isBestDealVoucherApplied || !config?.active_promotions) return [];
+    if (isBestDealVoucherApplied || !allPromotionsList) return [];
     if (selectedCampaignIds.length === 0) return [];
-    return config.active_promotions.filter((p) => {
+    return allPromotionsList.filter((p) => {
       if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
       if (!selectedCampaignIds.some((id) => String(id) === String(p.id))) return false;
       const res = evaluateCampaignEligibility(p, {
@@ -1075,7 +1126,7 @@ export default function MobileCartFlow({
       });
       return res.eligible;
     });
-  }, [config?.active_promotions, cartItems, subtotal, originalSubtotal, isBestDealVoucherApplied, selectedCampaignIds]);
+  }, [allPromotionsList, cartItems, subtotal, originalSubtotal, isBestDealVoucherApplied, selectedCampaignIds]);
 
 
   const [selectedBuyXGetYMap, setSelectedBuyXGetYMap] = useState<Record<number, number>>({});
@@ -1210,7 +1261,7 @@ export default function MobileCartFlow({
     can_combine_with_freeship?: boolean;
     code?: string;
   }): { allowed: boolean; message?: string } => {
-    const activeCampaigns = (config?.active_promotions || []).filter((c) =>
+    const activeCampaigns = (allPromotionsList || []).filter((c) =>
       selectedCampaignIds.some((id) => String(id) === String(c.id))
     );
 
@@ -1271,7 +1322,7 @@ export default function MobileCartFlow({
     }
 
     return { allowed: true };
-  }, [config?.active_promotions, selectedCampaignIds, appliedVoucher, appliedShippingVoucher]);
+  }, [allPromotionsList, selectedCampaignIds, appliedVoucher, appliedShippingVoucher]);
 
   // Apply Voucher
   const handleApplyVoucher = async (codeOverride?: string) => {
@@ -2276,10 +2327,11 @@ export default function MobileCartFlow({
                         {selectedOrderGiftItem.image ? (
                           <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-secondary/20 flex-shrink-0">
                             <Image
-                              src={selectedOrderGiftItem.image}
+                              src={formatImageUrl(selectedOrderGiftItem.image)}
                               alt={selectedOrderGiftItem.product_name}
                               fill
                               className="object-cover"
+                              unoptimized
                             />
                           </div>
                         ) : (
@@ -2321,10 +2373,11 @@ export default function MobileCartFlow({
                         {item.image ? (
                           <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-primary/20 flex-shrink-0">
                             <Image
-                              src={item.image}
+                              src={formatImageUrl(item.image)}
                               alt={item.product_name}
                               fill
                               className="object-cover"
+                              unoptimized
                             />
                           </div>
                         ) : (
@@ -2384,7 +2437,7 @@ export default function MobileCartFlow({
                     <VoucherTicketBar
                       appliedVoucher={appliedVoucher}
                       appliedShippingVoucher={appliedShippingVoucher}
-                      activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.name}
+                      activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : (cartCampaignG1?.name || eligibleOrderGiftPromo?.name || eligibleBuyXGetYPromos[0]?.name)}
                       memberTierName={memberTier.name}
                       memberDiscountAmount={memberDiscount}
                       memberDiscountPercent={memberTier.discountPercent}
@@ -2405,7 +2458,7 @@ export default function MobileCartFlow({
                       vouchers={availableVouchers}
                       appliedVoucher={appliedVoucher as any}
                       appliedShippingVoucher={appliedShippingVoucher as any}
-                      appliedCampaign={cartCampaignG1}
+                      appliedCampaign={cartCampaignG1 || eligibleOrderGiftPromo || eligibleBuyXGetYPromos[0] || null}
                       onOpenVouchers={() => setIsVoucherModalOpen(true)}
                     />
                   )}
@@ -3506,6 +3559,7 @@ export default function MobileCartFlow({
         isMemberCardSelected={isMemberCardSelected}
         onToggleMemberCard={setIsMemberCardSelected}
         loyaltySettings={loyaltySettings}
+        campaigns={publicCampaigns.length > 0 ? publicCampaigns : undefined}
       />
 
       {/* Order Gift Selector Modal */}

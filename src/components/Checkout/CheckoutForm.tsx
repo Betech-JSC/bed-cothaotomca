@@ -5,7 +5,8 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
-import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
+import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName, formatImageUrl } from "@/lib/format";
+import { getActiveCampaigns, type PublicCampaignItem } from "@/services/campaignService";
 import {
   calcOrderTotal,
   calculateShippingFee,
@@ -129,7 +130,14 @@ const isTechnicalErrorMessage = (msg: string): boolean => {
 };
 
 export default function CheckoutForm({ order, config, mockTime: propMockTime }: CheckoutFormProps) {
-  const searchParams = useSearchParams();
+  let searchParams: ReturnType<typeof useSearchParams> | null = null;
+  try {
+    if (typeof useSearchParams === "function") {
+      searchParams = useSearchParams();
+    }
+  } catch {
+    // Ignore when rendered outside next/navigation context or in tests
+  }
   const mockTime = propMockTime || searchParams?.get("mock_time");
 
   const mockDate = useMemo(() => {
@@ -152,9 +160,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   // Local config state: initialized from SSR props, updated client-side when cartItems change
   const [configState, setConfigState] = useState<CheckoutConfig>(config);
+  const [publicCampaigns, setPublicCampaigns] = useState<PublicCampaignItem[]>([]);
 
   // SSR fallback: fetch config once on mount (no cartItems — works without JS cart context)
   useEffect(() => {
+    getActiveCampaigns().then(setPublicCampaigns).catch(() => { });
     getCheckoutConfig().then(setConfigState).catch(() => { });
   }, []);
 
@@ -633,13 +643,54 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     setStoredCampaignIds(ids);
   }, []);
 
+  const allPromotionsList = useMemo(() => {
+    const list: ActivePromotion[] = [...(configState.active_promotions || [])];
+    const existingIds = new Set(list.map((p) => String(p.id)));
+
+    for (const c of publicCampaigns) {
+      if (!existingIds.has(String(c.id))) {
+        list.push({
+          id: typeof c.id === "number" ? c.id : (parseInt(String(c.id), 10) || 0),
+          name: c.name,
+          description: c.description || null,
+          banner: c.banner || null,
+          promotion_type: c.promotion_type,
+          min_order_value: c.min_order_value || 0,
+          discount_type: c.discount_type,
+          discount_value: c.discount_value,
+          max_discount: c.max_discount || null,
+          settings: c.settings || {},
+          can_combine_with_promotions: c.can_combine_with_promotions ?? true,
+          can_combine_with_freeship: c.can_combine_with_freeship ?? true,
+          items: (c.items || []).map((it) => ({
+            id: it.id,
+            product_id: it.product_id,
+            product_variant_id: it.product_variant_id,
+            product_name: it.product_name,
+            product_code: it.product_code,
+            kiotviet_id: it.kiotviet_id,
+            image: it.image || "",
+            original_price: it.original_price || 0,
+            campaign_price: it.campaign_price || 0,
+            is_free: it.is_free ?? (it.campaign_price === 0),
+            is_available: it.is_available ?? !it.disabled,
+            disabled: it.disabled ?? false,
+            disabled_reason: it.disabled_reason || null,
+          })),
+        });
+        existingIds.add(String(c.id));
+      }
+    }
+    return list;
+  }, [configState.active_promotions, publicCampaigns]);
+
   // Auto-prune stale selected campaigns if cart changes and campaign is no longer eligible
   useEffect(() => {
     if (selectedCampaignIds.length === 0) return;
-    if (!configState.active_promotions || configState.active_promotions.length === 0) return;
+    if (!allPromotionsList || allPromotionsList.length === 0) return;
 
     const validCampaignIds = selectedCampaignIds.filter((id) => {
-      const promo = configState.active_promotions?.find((p) => String(p.id) === String(id));
+      const promo = allPromotionsList?.find((p) => String(p.id) === String(id));
       if (!promo) return true;
       const res = evaluateCampaignEligibility(promo, {
         subtotal,
@@ -654,14 +705,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       setSelectedCampaignIds(validCampaignIds);
       setStoredCampaignIds(validCampaignIds);
     }
-  }, [selectedCampaignIds, configState.active_promotions, subtotal, originalSubtotal, checkoutCartItems]);
+  }, [selectedCampaignIds, allPromotionsList, subtotal, originalSubtotal, checkoutCartItems]);
 
   // Campaign G1 trong giỏ hàng (nhận diện theo configState.active_promotions và mức giá đơn hàng)
   const cartCampaignG1 = useMemo(() => {
-    if (!configState.active_promotions || configState.active_promotions.length === 0) return null;
+    if (!allPromotionsList || allPromotionsList.length === 0) return null;
     if (selectedCampaignIds.length === 0) return null;
     const checkAmount = originalSubtotal > 0 ? originalSubtotal : subtotal;
-    const promos = configState.active_promotions.filter((p) => {
+    const promos = allPromotionsList.filter((p) => {
       return selectedCampaignIds.some((id) => String(id) === String(p.id));
     });
     const orderDiscountPromo = promos.find(
@@ -674,7 +725,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         (p) => (p.min_order_value || 0) <= checkAmount
       ) || null
     );
-  }, [configState.active_promotions, originalSubtotal, subtotal, selectedCampaignIds]);
+  }, [allPromotionsList, originalSubtotal, subtotal, selectedCampaignIds]);
 
   // Ma trận Khuyến mãi & Giảm giá (Promotion Matrix 6 Cases)
   const promotionMatrixVoucherNotice = useMemo(() => {
@@ -739,14 +790,19 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const eligibleOrderDiscountPromo = useMemo(() => {
     if (isBestDealVoucherApplied) return null;
     if (selectedCampaignIds.length === 0) return null;
-    const promo = configState.active_promotions?.find(
+    const promo = allPromotionsList?.find(
       (p) =>
         p.promotion_type === "order_discount" &&
-        subtotal >= (p.min_order_value || 0) &&
-        selectedCampaignIds.some((id) => String(id) === String(p.id))
+        selectedCampaignIds.some((id) => String(id) === String(p.id)) &&
+        evaluateCampaignEligibility(p, {
+          subtotal,
+          originalSubtotal,
+          cartItems: checkoutCartItems,
+          isBrowseMode: false,
+        }).eligible
     ) || null;
     return promo;
-  }, [configState.active_promotions, subtotal, isBestDealVoucherApplied, selectedCampaignIds]);
+  }, [allPromotionsList, subtotal, originalSubtotal, checkoutCartItems, isBestDealVoucherApplied, selectedCampaignIds]);
 
   const autoOrderDiscountAmount = useMemo(() => {
     if (!eligibleOrderDiscountPromo) return 0;
@@ -771,12 +827,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const eligibleOrderGiftPromo = useMemo(() => {
     if (isBestDealVoucherApplied) return null;
     if (selectedCampaignIds.length === 0) return null;
-    const promo = configState.active_promotions?.find(
+    const promo = allPromotionsList?.find(
       (p) =>
         p.promotion_type === "order_gift_discount" &&
         p.items &&
         p.items.length > 0 &&
-        subtotal >= (p.min_order_value || 0) &&
         selectedCampaignIds.some((id) => String(id) === String(p.id)) &&
         evaluateCampaignEligibility(p, {
           subtotal,
@@ -786,7 +841,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         }).eligible
     ) || null;
     return promo;
-  }, [configState.active_promotions, subtotal, originalSubtotal, checkoutCartItems, isBestDealVoucherApplied, selectedCampaignIds]);
+  }, [allPromotionsList, subtotal, originalSubtotal, checkoutCartItems, isBestDealVoucherApplied, selectedCampaignIds]);
 
 
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
@@ -800,7 +855,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         if (prev && eligibleOrderGiftPromo.items.some((i) => i.id === prev && i.is_available !== false)) {
           return prev;
         }
-        const firstAvailable = eligibleOrderGiftPromo.items.find((i) => i.is_available !== false);
+        const firstAvailable = eligibleOrderGiftPromo.items.find((i) => i.is_available !== false) || eligibleOrderGiftPromo.items[0];
         return firstAvailable ? firstAvailable.id : null;
       });
     } else {
@@ -814,15 +869,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     if (selectedOrderGiftId) {
       const found = eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId);
       if (found && found.is_available !== false) return found;
+      if (found) return found;
     }
     return eligibleOrderGiftPromo.items.find((i) => i.is_available !== false) || eligibleOrderGiftPromo.items[0] || null;
   }, [eligibleOrderGiftPromo, selectedOrderGiftId]);
 
   // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleBuyXGetYPromos = useMemo(() => {
-    if (isBestDealVoucherApplied || !configState.active_promotions) return [];
+    if (isBestDealVoucherApplied || !allPromotionsList) return [];
     if (selectedCampaignIds.length === 0) return [];
-    return configState.active_promotions.filter((p) => {
+    return allPromotionsList.filter((p) => {
       if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
       if (!selectedCampaignIds.some((id) => String(id) === String(p.id))) return false;
       const res = evaluateCampaignEligibility(p, {
@@ -833,7 +889,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       });
       return res.eligible;
     });
-  }, [configState.active_promotions, checkoutCartItems, subtotal, originalSubtotal, isBestDealVoucherApplied, selectedCampaignIds]);
+  }, [allPromotionsList, checkoutCartItems, subtotal, originalSubtotal, isBestDealVoucherApplied, selectedCampaignIds]);
 
 
   const [selectedBuyXGetYMap, setSelectedBuyXGetYMap] = useState<Record<number, number>>({});
@@ -1340,7 +1396,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     can_combine_with_freeship?: boolean;
     code?: string;
   }): { allowed: boolean; message?: string } => {
-    const activeCampaigns = (configState.active_promotions || []).filter((c) =>
+    const activeCampaigns = (allPromotionsList || []).filter((c) =>
       selectedCampaignIds.some((id) => String(id) === String(c.id))
     );
 
@@ -1401,7 +1457,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
 
     return { allowed: true };
-  }, [configState.active_promotions, selectedCampaignIds, appliedVoucher, appliedShippingVoucher]);
+  }, [allPromotionsList, selectedCampaignIds, appliedVoucher, appliedShippingVoucher]);
 
   const handleApplyVoucher = async (codeOverride?: string, isAuto = false) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
@@ -3243,7 +3299,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 <div className="flex gap-3 2xl:gap-4 items-start py-3 bg-yellow/60 rounded-2xl p-3 border border-secondary/30 animate-fade-in shadow-xs">
                   {selectedOrderGiftItem.image ? (
                     <div className="relative size-14 2xl:size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-secondary/20">
-                      <Image src={selectedOrderGiftItem.image} alt={selectedOrderGiftItem.product_name} fill className="object-cover" />
+                      <Image
+                        src={formatImageUrl(selectedOrderGiftItem.image)}
+                        alt={selectedOrderGiftItem.product_name}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
                     </div>
                   ) : (
                     <div className="size-14 2xl:size-16 flex-shrink-0 rounded-[10px] bg-yellow/80 border border-secondary/20 flex items-center justify-center text-xs font-bold text-brown uppercase text-center p-1">
@@ -3293,7 +3355,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 <div key={`buyxy-${promo.id}-${item.id}`} className="flex gap-3 2xl:gap-4 items-start py-3 bg-yellow/40 rounded-2xl p-3 border border-primary/15 animate-fade-in shadow-xs">
                   {item.image ? (
                     <div className="relative size-14 2xl:size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-primary/20">
-                      <Image src={item.image} alt={item.product_name} fill className="object-cover" />
+                      <Image
+                        src={formatImageUrl(item.image)}
+                        alt={item.product_name}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
                     </div>
                   ) : (
                     <div className="size-14 2xl:size-16 flex-shrink-0 rounded-[10px] bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary uppercase text-center p-1">
@@ -3344,7 +3412,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               <VoucherTicketBar
                 appliedVoucher={appliedVoucher}
                 appliedShippingVoucher={appliedShippingVoucher}
-                activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : (cartCampaignG1?.name || eligibleOrderGiftPromo?.name)}
+                activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : (cartCampaignG1?.name || eligibleOrderGiftPromo?.name || eligibleBuyXGetYPromos[0]?.name)}
                 memberTierName={memberTier.name}
                 memberDiscountAmount={memberDiscount}
                 memberDiscountPercent={memberTier.discountPercent}
@@ -3672,6 +3740,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         isMemberCardSelected={isMemberCardSelected}
         onToggleMemberCard={setIsMemberCardSelected}
         loyaltySettings={loyaltySettings}
+        campaigns={publicCampaigns.length > 0 ? publicCampaigns : undefined}
       />
 
       {/* Order Gift Selector Modal */}

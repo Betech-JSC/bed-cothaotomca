@@ -55,6 +55,7 @@ export interface ActivePromotion {
   id: number;
   name: string;
   description?: string | null;
+  banner?: string | null;
   promotion_type: PromotionType;
   min_order_value: number;
   discount_type: DiscountType | string;

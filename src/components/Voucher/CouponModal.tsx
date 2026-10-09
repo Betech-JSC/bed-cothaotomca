@@ -107,6 +107,86 @@ export function resetCouponModalCache(): void {
   cachedVouchers = null;
 }
 
+function CampaignBannerImage({
+  camp,
+  className = "object-cover",
+  isLocked = false,
+  isSelected = false,
+  fallbackTag = "ƯU ĐÃI",
+}: {
+  camp: {
+    name: string;
+    banner?: string | null;
+    image?: string | null;
+    items?: Array<{ image?: string | null }>;
+  };
+  className?: string;
+  isLocked?: boolean;
+  isSelected?: boolean;
+  fallbackTag?: string;
+}) {
+  const [candidateIndex, setCandidateIndex] = useState(0);
+
+  const candidates = useMemo(() => {
+    const list: string[] = [];
+    if (camp.banner && typeof camp.banner === "string" && camp.banner.trim()) {
+      list.push(camp.banner.trim());
+    }
+    if (camp.image && typeof camp.image === "string" && camp.image.trim()) {
+      list.push(camp.image.trim());
+    }
+    if (camp.items && camp.items.length > 0) {
+      for (const item of camp.items) {
+        if (item?.image && typeof item.image === "string" && item.image.trim()) {
+          list.push(item.image.trim());
+          break;
+        }
+      }
+    }
+    return Array.from(new Set(list));
+  }, [camp.banner, camp.image, camp.items]);
+
+  const currentSrc = candidates[candidateIndex];
+
+  if (currentSrc) {
+    return (
+      <Image
+        src={formatImageUrl(currentSrc)}
+        alt={camp.name}
+        fill
+        className={className}
+        onError={() => setCandidateIndex((prev) => prev + 1)}
+        unoptimized
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`flex flex-col items-center justify-center text-center p-1 w-full h-full select-none ${
+        isLocked && !isSelected ? "text-gray-400" : "text-secondary"
+      }`}
+    >
+      <svg
+        className="w-7 h-7 mb-1 opacity-80"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.7"
+          d="M12 8v13m0-13V4.5a2.5 2.5 0 1 1 5 0v3.5h-5Zm0 0V4.5a2.5 2.5 0 1 0-5 0v3.5h5Zm-8 4h16a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"
+        />
+      </svg>
+      <span className="title-4 font-display font-bold uppercase text-[10px] tracking-wide leading-tight">
+        {fallbackTag}
+      </span>
+    </div>
+  );
+}
+
 function formatCampaignDuration(startAt?: string | null, endAt?: string | null): string {
   if (!startAt && !endAt) return "Đang diễn ra liên tục";
 
@@ -1557,19 +1637,11 @@ export default function CouponModal({
         >
           {/* Banner */}
           <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden bg-yellow/60 shrink-0 relative border border-secondary/20 flex items-center justify-center">
-            {camp.banner ? (
-              <Image
-                src={formatImageUrl(camp.banner)}
-                alt={camp.name}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                unoptimized
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center text-center p-1 text-secondary">
-                <span className="title-4 font-display font-bold uppercase">{t("promo_tag")}</span>
-              </div>
-            )}
+            <CampaignBannerImage
+              camp={camp}
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              fallbackTag={t("promo_tag")}
+            />
           </div>
           <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
             <h4 className="title-3 font-display text-primary font-bold leading-snug line-clamp-2 group-hover:text-secondary transition-colors">
@@ -1609,19 +1681,11 @@ export default function CouponModal({
         >
           {/* Banner */}
           <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 relative border flex items-center justify-center grayscale bg-gray-200 border-gray-300">
-            {camp.banner ? (
-              <Image
-                src={formatImageUrl(camp.banner)}
-                alt={camp.name}
-                fill
-                className="object-cover"
-                unoptimized
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center text-center p-1 text-gray-500">
-                <span className="title-4 font-display font-bold uppercase">{t("promo_tag")}</span>
-              </div>
-            )}
+            <CampaignBannerImage
+              camp={camp}
+              isLocked={true}
+              fallbackTag={t("promo_tag")}
+            />
           </div>
 
           {/* Content */}
@@ -1712,19 +1776,12 @@ export default function CouponModal({
         <div className={`w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 relative border flex items-center justify-center ${
           isLocked && !isSelected ? "bg-gray-200 border-gray-300 grayscale" : "bg-yellow/60 border-secondary/20"
         }`}>
-          {camp.banner ? (
-            <Image
-              src={formatImageUrl(camp.banner)}
-              alt={camp.name}
-              fill
-              className="object-cover"
-              unoptimized
-            />
-          ) : (
-            <div className={`flex flex-col items-center justify-center text-center p-1 ${isLocked && !isSelected ? "text-gray-400" : "text-secondary"}`}>
-              <span className="title-4 font-display font-bold uppercase">{t("promo_tag")}</span>
-            </div>
-          )}
+          <CampaignBannerImage
+            camp={camp}
+            isLocked={isLocked}
+            isSelected={isSelected}
+            fallbackTag={t("promo_tag")}
+          />
         </div>
 
         {/* Content */}
@@ -2257,19 +2314,7 @@ export default function CouponModal({
             {/* Detail Scrollable Body */}
             <div className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-4">
               {/* Square Banner Image */}
-              {selectedCampaign.banner ? (
-                <div className="w-full flex justify-center">
-                  <div className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-2xl overflow-hidden shadow-sm border border-secondary/20 bg-yellow/50">
-                    <Image
-                      src={formatImageUrl(selectedCampaign.banner)}
-                      alt={selectedCampaign.name}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  </div>
-                </div>
-              ) : selectedCampaign.id === "member-tier-benefit-card" ? (
+              {selectedCampaign.id === "member-tier-benefit-card" ? (
                 <div className="w-full flex justify-center">
                   <div
                     className={`w-36 h-36 sm:w-40 sm:h-40 rounded-2xl flex flex-col items-center justify-center p-4 border shadow-sm ${
@@ -2288,7 +2333,16 @@ export default function CouponModal({
                     </span>
                   </div>
                 </div>
-              ) : null}
+              ) : (
+                <div className="w-full flex justify-center">
+                  <div className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-2xl overflow-hidden shadow-sm border border-secondary/20 bg-yellow/50 flex items-center justify-center">
+                    <CampaignBannerImage
+                      camp={selectedCampaign}
+                      fallbackTag={t("promo_tag")}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Title */}
               <div className="text-center space-y-1">
