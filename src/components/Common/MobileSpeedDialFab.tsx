@@ -58,11 +58,11 @@ export default function MobileSpeedDialFab() {
   // Hide widget on cart/checkout pages to prevent UI interference
   const isExcluded = Boolean(
     pathname &&
-      (/(^|\/)(cart|checkout)(\/|$)/.test(pathname) ||
-        pathname.endsWith("/cart") ||
-        pathname.endsWith("/checkout") ||
-        pathname.includes("/cart") ||
-        pathname.includes("/checkout"))
+    (/(^|\/)(cart|checkout)(\/|$)/.test(pathname) ||
+      pathname.endsWith("/cart") ||
+      pathname.endsWith("/checkout") ||
+      pathname.includes("/cart") ||
+      pathname.includes("/checkout"))
   );
 
   if (isExcluded) return null;
@@ -96,7 +96,7 @@ export default function MobileSpeedDialFab() {
       )}
 
       {/* Floating Speed-Dial Container (Mobile only: lg:hidden) */}
-      <div className="fixed right-4 bottom-20 z-40 lg:hidden select-none pointer-events-auto flex flex-col items-end">
+      <div className="fixed right-4 bottom-2 z-40 lg:hidden select-none pointer-events-auto flex flex-col items-end">
         {/* Expanded Speed-Dial Action Items */}
         {isOpen && (
           <div className="flex flex-col items-end gap-2.5 mb-3 animate-in slide-in-from-bottom-5 duration-200">
@@ -205,9 +205,8 @@ export default function MobileSpeedDialFab() {
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className={`relative size-13 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.25)] border-2 border-white/30 active:scale-90 cursor-pointer ${
-            isOpen ? "bg-primary text-yellow rotate-90" : "bg-secondary text-white"
-          }`}
+          className={`relative size-13 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.25)] border-2 border-white/30 active:scale-90 cursor-pointer ${isOpen ? "bg-primary text-yellow rotate-90" : "bg-secondary text-white"
+            }`}
           aria-label={isOpen ? "Đóng menu liên hệ" : "Mở menu liên hệ và ưu đãi"}
           aria-expanded={isOpen}
         >
