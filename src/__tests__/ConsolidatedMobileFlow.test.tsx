@@ -442,7 +442,7 @@ describe('ConsolidatedMobileFlow Comprehensive Test Suite', () => {
 
       // Giỏ hàng mở ở step 1 (hiển thị danh sách món với tiêu đề "Đơn hàng" và nút "Tiếp tục")
       expect(screen.getByText('Đơn hàng')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Tiếp tục/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Tiếp tục$/i })).toBeInTheDocument();
 
       // Mô phỏng dọn dẹp localStorage khi hoàn tất submit:
       localStorage.removeItem('cothaotomca_applied_voucher_codes');

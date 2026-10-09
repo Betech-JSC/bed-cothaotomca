@@ -321,45 +321,36 @@ describe('Phase 4 - Gói 3: Tinh chỉnh UI/UX Popup Ưu Đãi, Sticky Checkout 
   });
 
   /* ========================================================================= */
-  /* NHIỆM VỤ 2 (STT 2 Sheet 5): Ghim Sticky Checkout Mobile Cart               */
+  /* NHIỆM VỤ 2: Nút Tiếp tục Mobile Cart ở normal flow (không sticky)          */
   /* ========================================================================= */
-  describe('Nhiệm vụ 2: Ghim cố định Nút thanh toán (Sticky Checkout) MobileCartFlow', () => {
-    it('2.1 & 2.4: Step 1 (Giỏ hàng) - Khối nút CTA Tiếp tục có sticky bottom-0, đệm cuộn pb-32 sm:pb-36', () => {
+  describe('Nhiệm vụ 2: Nút Tiếp tục Mobile Cart ở luồng cuộn tự nhiên (Normal Flow) & Sticky Checkout Step 2', () => {
+    it('2.1 & 2.4: Step 1 (Giỏ hàng) - Khối nút CTA Tiếp tục nằm ở luồng cuộn tự nhiên (không sticky), không còn đệm cuộn thừa pb-32', () => {
       render(<MobileCartFlow onClose={vi.fn()} />);
 
       // Nút Tiếp tục đặt hàng trong Step 1
-      const continueBtn = screen.getByRole('button', { name: /Tiếp tục/i });
+      const continueBtn = screen.getByRole('button', { name: /^Tiếp tục$/i });
       expect(continueBtn).toBeInTheDocument();
 
-      // Khối container cha trực tiếp của nút CTA có sticky bottom
+      // Khối container cha trực tiếp của nút CTA Tiếp tục không có class sticky hay fixed
       const stickyBar = continueBtn.closest('.sticky');
-      expect(stickyBar).toBeInTheDocument();
-      expect(stickyBar?.className).toContain('sticky');
-      expect(stickyBar?.className).toContain('bottom-0');
-      expect(stickyBar?.className).toContain('z-20');
-      expect(stickyBar?.className).toContain('bg-yellow/95');
-      expect(stickyBar?.className).toContain('backdrop-blur-sm');
-      expect(stickyBar?.className).toContain('border-t');
-      expect(stickyBar?.className).toContain('border-gray-200/80');
-      expect(stickyBar?.className).toContain('shadow-[0_-4px_16px_rgba(0,0,0,0.06)]');
-      expect(stickyBar?.className).toContain('pb-[max(1rem,env(safe-area-inset-bottom))]');
+      expect(stickyBar).toBeNull();
 
-      // Step 1 wrapper container có đệm an toàn pb-32 sm:pb-36
+      // Step 1 wrapper container không còn đệm an toàn pb-32 sm:pb-36 của thanh sticky cũ
       const step1Container = document.querySelector('.space-y-6.animate-in.fade-in.slide-in-from-left.duration-200');
       expect(step1Container).toBeInTheDocument();
-      expect(step1Container?.className).toContain('pb-32');
-      expect(step1Container?.className).toContain('sm:pb-36');
+      expect(step1Container?.className).not.toContain('pb-32');
+      expect(step1Container?.className).not.toContain('sm:pb-36');
     });
 
     it('2.2 & 2.4: Step 2 (Thông tin & Thanh toán) - Khối nút CTA Đặt hàng có sticky bottom-0, đệm cuộn pb-32 sm:pb-36', () => {
       render(<MobileCartFlow onClose={vi.fn()} />);
 
       // Bấm nút Tiếp tục để chuyển sang Step 2
-      const continueBtn = screen.getByRole('button', { name: /Tiếp tục/i });
+      const continueBtn = screen.getByRole('button', { name: /^Tiếp tục$/i });
       fireEvent.click(continueBtn);
 
       // Nút Đặt hàng trong Step 2
-      const submitBtn = screen.getByRole('button', { name: /Đặt hàng|Đặt trước/i });
+      const submitBtn = screen.getByRole('button', { name: /^(Đặt hàng|Đặt trước)$/i });
       expect(submitBtn).toBeInTheDocument();
 
       // Khối container cha trực tiếp của nút Đặt hàng có sticky bottom

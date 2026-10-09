@@ -2194,7 +2194,7 @@ export default function MobileCartFlow({
 
           {/* Step 1: Review items and voucher */}
           {step === 1 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-left duration-200 pb-32 sm:pb-36">
+            <div className="space-y-6 animate-in fade-in slide-in-from-left duration-200 pb-6">
               <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100 space-y-5">
                 <h3 className="title-2 font-display text-primary font-bold border-b border-gray-100 pb-2">
                   {t("order_summary")}
@@ -2645,8 +2645,8 @@ export default function MobileCartFlow({
                     </div>
                   </div>
 
-                  {/* Submit button step 1 (Sticky Bottom) */}
-                  <div className="sticky bottom-0 z-20 bg-yellow/95 backdrop-blur-sm border-t border-gray-200/80 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] -mx-4 -mb-4">
+                  {/* Submit button step 1 (Normal flow at the bottom) */}
+                  <div className="pt-2">
                     {isOutOfStockOverall && (
                       <p className="text-red-500 text-xs text-center font-medium mb-2">
                         {t("oos_warning")}
@@ -2658,7 +2658,7 @@ export default function MobileCartFlow({
                       disabled={isOutOfStockOverall}
                       className={`w-full font-bold rounded-full py-4 text-center transition-all font-display title-2 ${isOutOfStockOverall
                         ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
-                        : "bg-secondary hover:bg-secondary/95 text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)]"
+                        : "bg-secondary hover:bg-secondary/95 text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)] active:scale-[0.99]"
                         }`}
                     >
                       {t("continue") || "Tiếp tục"}
