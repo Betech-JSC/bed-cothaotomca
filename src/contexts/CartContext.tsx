@@ -16,6 +16,10 @@ export interface CartItem {
   quantity: number;
   note?: string;
   isOutOfStock?: boolean;
+  variantId?: number;
+  product_variant_id?: number;
+  parentProductId?: number;
+  parent_product_id?: number;
 }
 
 interface CartContextType {

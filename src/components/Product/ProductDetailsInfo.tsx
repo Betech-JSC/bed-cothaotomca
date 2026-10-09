@@ -39,6 +39,9 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
       variant: selectedSize.title,
       unitPrice: selectedSize.price,
       originalPrice: selectedSize.original_price,
+      variantId: selectedSize.id,
+      product_variant_id: selectedSize.id,
+      parentProductId: productData.checkout.productId,
     }, quantity);
 
     setIsAdded(true);

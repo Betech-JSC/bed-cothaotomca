@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import CouponModal from "@/components/Voucher/CouponModal";
+import CouponModal, { evaluateCampaignEligibility } from "@/components/Voucher/CouponModal";
 import MobileCartFlow from "@/components/Header/MobileCartFlow";
 import CheckoutForm from "@/components/Checkout/CheckoutForm";
 import { PublicCampaignItem } from "@/types/campaign";
@@ -286,5 +286,172 @@ describe("Campaign Gift [TẶNG SÚP MISO] & Banner Image Fallback Fix", () => {
     const giftImg = screen.getByAltText("Banchan (Súp miso)");
     expect(giftImg).toBeInTheDocument();
     expect(giftImg.getAttribute("src")).toContain("soup-miso.jpg");
+  });
+
+  it("4. evaluateCampaignEligibility: correctly matches variant trigger item when cart item has productId = 1146 and variant = 'Set 2 (Cơm gạo Nhật)'", () => {
+    const campaignWithVariantTrigger: PublicCampaignItem = {
+      id: 501,
+      name: "[TẶNG KÈM SET 2] Mua Set 2 tặng tráng miệng",
+      promotion_type: "order_gift_discount",
+      discount_type: "fixed",
+      discount_value: 0,
+      min_order_value: 0,
+      items: [
+        {
+          id: 99,
+          product_id: 99,
+          product_name: "Tráng miệng",
+          product_code: "DESSERT-01",
+          image: "/dessert.jpg",
+          original_price: 25000,
+          campaign_price: 0,
+          is_free: true,
+          is_available: true,
+        },
+      ],
+      settings: {
+        buy_quantity: 1,
+        trigger_items: [
+          {
+            product_id: 80,
+            product_variant_id: 1146,
+            variant_name: "Set 2 (Cơm gạo Nhật)",
+          },
+        ],
+      },
+    };
+
+    // Case 4.1: Cart item has productId = 1146 (the variant ID), variant = "Set 2 (Cơm gạo Nhật)"
+    const result1 = evaluateCampaignEligibility(campaignWithVariantTrigger, {
+      subtotal: 200000,
+      cartItems: [
+        {
+          productId: 1146,
+          variant: "Set 2 (Cơm gạo Nhật)",
+          quantity: 2,
+        },
+      ],
+    });
+    expect(result1.eligible).toBe(true);
+
+    // Case 4.2: Trigger item does not specify variant_name, only product_id: 80 and product_variant_id: 1146
+    const campaignNumericVariantTrigger: PublicCampaignItem = {
+      ...campaignWithVariantTrigger,
+      settings: {
+        buy_quantity: 1,
+        trigger_items: [{ product_id: 80, product_variant_id: 1146 }],
+      },
+    };
+    const result2 = evaluateCampaignEligibility(campaignNumericVariantTrigger, {
+      subtotal: 200000,
+      cartItems: [
+        {
+          productId: 1146,
+          variant: "Set 2 (Cơm gạo Nhật)",
+          quantity: 1,
+        },
+      ],
+    });
+    expect(result2.eligible).toBe(true);
+
+    // Case 4.3: Cart item has parent productId = 80 and variant = "Set 2 (Cơm gạo Nhật)"
+    const result3 = evaluateCampaignEligibility(campaignWithVariantTrigger, {
+      subtotal: 200000,
+      cartItems: [
+        {
+          productId: 80,
+          variant: "Set 2 (Cơm gạo Nhật)",
+          quantity: 1,
+        },
+      ],
+    });
+    expect(result3.eligible).toBe(true);
+
+    // Case 4.4: Cart item has full properties from updated handleAddToCart (variantId, product_variant_id, parentProductId)
+    const result4 = evaluateCampaignEligibility(campaignWithVariantTrigger, {
+      subtotal: 200000,
+      cartItems: [
+        {
+          productId: 1146,
+          variantId: 1146,
+          product_variant_id: 1146,
+          parentProductId: 80,
+          variant: "Set 2 (Cơm gạo Nhật)",
+          quantity: 1,
+        },
+      ],
+    });
+    expect(result4.eligible).toBe(true);
+
+    // Case 4.5: Unrelated product in cart does not trigger eligibility
+    const result5 = evaluateCampaignEligibility(campaignWithVariantTrigger, {
+      subtotal: 200000,
+      cartItems: [
+        {
+          productId: 999,
+          variant: "Món khác",
+          quantity: 2,
+        },
+      ],
+    });
+    expect(result5.eligible).toBe(false);
+    expect(result5.reason).toMatch(/Cần mua thêm \d+ sản phẩm áp dụng/);
+  });
+
+  it("5. CouponModal renders without 'Cần mua thêm 1 sản phẩm áp dụng để kích hoạt ưu đãi' when cart has Set 2 variant", async () => {
+    const buyXGetYSet2Campaign: PublicCampaignItem = {
+      id: 502,
+      name: "[ƯU ĐÃI SET 2] Mua 1 Set 2 tặng Coca",
+      promotion_type: "buy_x_get_y",
+      discount_type: "fixed",
+      discount_value: 0,
+      min_order_value: 0,
+      items: [
+        {
+          id: 77,
+          product_id: 77,
+          product_name: "Coca Cola",
+          product_code: "COCA-01",
+          image: "/coca.jpg",
+          original_price: 15000,
+          campaign_price: 0,
+          is_free: true,
+          is_available: true,
+        },
+      ],
+      settings: {
+        buy_quantity: 1,
+        trigger_items: [
+          {
+            product_id: 80,
+            product_variant_id: 1146,
+            variant_name: "Set 2 (Cơm gạo Nhật)",
+          },
+        ],
+      },
+    };
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={150000}
+        campaigns={[buyXGetYSet2Campaign]}
+        appliedCampaignIds={[]}
+        cartItems={[
+          {
+            productId: 1146,
+            variant: "Set 2 (Cơm gạo Nhật)",
+            quantity: 2,
+          },
+        ]}
+      />
+    );
+
+    const title = await screen.findByText("[ƯU ĐÃI SET 2] Mua 1 Set 2 tặng Coca");
+    expect(title).toBeInTheDocument();
+
+    // Verify it is eligible and NOT displaying warning "Cần mua thêm ... sản phẩm áp dụng để kích hoạt ưu đãi"
+    expect(screen.queryByText(/Cần mua thêm \d+ sản phẩm áp dụng để kích hoạt ưu đãi/i)).not.toBeInTheDocument();
   });
 });

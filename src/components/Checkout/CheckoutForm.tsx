@@ -75,6 +75,10 @@ export interface CheckoutOrderItem {
   variant: string;
   unitPrice: number;
   originalPrice?: number;
+  variantId?: number;
+  product_variant_id?: number;
+  parentProductId?: number;
+  parent_product_id?: number;
 }
 
 interface CheckoutFormProps {
@@ -205,6 +209,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           variant: order.variant,
           unitPrice: order.unitPrice,
           originalPrice: order.originalPrice,
+          variantId: order.variantId ?? order.product_variant_id,
+          product_variant_id: order.product_variant_id ?? order.variantId,
+          parentProductId: order.parentProductId ?? order.parent_product_id,
         }, 1);
       }
     }
@@ -628,6 +635,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         {
           id: `${order.productId}-${order.variant || "default"}`,
           productId: order.productId,
+          variant: order.variant,
+          title: order.title,
+          variantId: order.variantId ?? order.product_variant_id,
+          product_variant_id: order.product_variant_id ?? order.variantId,
+          parentProductId: order.parentProductId ?? order.parent_product_id,
           quantity,
         },
       ];

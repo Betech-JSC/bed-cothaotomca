@@ -62,6 +62,13 @@ export interface CartItemProductEligibilityCheck {
   productId?: number;
   product_variant_id?: number | null;
   variantId?: number | null;
+  parentProductId?: number | null;
+  parent_product_id?: number | null;
+  variant?: string | null;
+  variant_name?: string | null;
+  name?: string | null;
+  product_name?: string | null;
+  title?: string | null;
   quantity?: number;
 }
 
@@ -307,21 +314,75 @@ export function evaluateCampaignEligibility(
     }
   }
 
-  const triggerItems: any[] = (settingsObj.trigger_items ?? (c as any).trigger_items) || [];
+  const triggerItems: any[] =
+    (Array.isArray(settingsObj.trigger_items) && settingsObj.trigger_items.length > 0)
+      ? settingsObj.trigger_items
+      : (Array.isArray((c as any).trigger_items) ? (c as any).trigger_items : (settingsObj.trigger_items ?? (c as any).trigger_items ?? []));
   const hasTriggerItems = Array.isArray(triggerItems) && triggerItems.length > 0;
 
+  const normStr = (str?: string | null) =>
+    (str || "").toLowerCase().replace(/[()_\-–—]/g, " ").replace(/\s+/g, " ").trim();
+
+  const isNameMatch = (a?: string | null, b?: string | null) => {
+    const na = normStr(a);
+    const nb = normStr(b);
+    if (!na || !nb) return false;
+    return na === nb || na.includes(nb) || nb.includes(na);
+  };
+
   const isCartItemMatchingTrigger = (item: CartItemProductEligibilityCheck) => {
-    const pId = Number(item.product_id ?? item.productId ?? item.id);
+    const rawPId = item.product_id ?? item.productId ?? (typeof item.id === "number" ? item.id : (!isNaN(Number(item.id)) ? Number(item.id) : null));
+    const pId = rawPId !== null && rawPId !== undefined ? Number(rawPId) : null;
     const vId = item.product_variant_id ?? item.variantId ? Number(item.product_variant_id ?? item.variantId) : null;
+    const parentPId = item.parentProductId ?? (item as any).parent_product_id ? Number(item.parentProductId ?? (item as any).parent_product_id) : null;
+    const itemVariantName = item.variant ?? (item as any).variant_name;
+    const itemProductName = item.title ?? (item as any).name ?? (item as any).product_name;
+
     return triggerItems.some((ti: any) => {
-      const tiProductId = typeof ti === "number" ? ti : Number(ti.product_id ?? ti.id ?? ti.productId);
+      const tiProductId = typeof ti === "number" ? ti : (ti.product_id ?? ti.id ?? ti.productId ? Number(ti.product_id ?? ti.id ?? ti.productId) : null);
       const tiVariantId = (ti && typeof ti === "object" && (ti.product_variant_id ?? ti.variantId))
         ? Number(ti.product_variant_id ?? ti.variantId)
         : null;
+      const tiVariantName = ti && typeof ti === "object" ? (ti.variant_name ?? ti.variantName ?? ti.variant) : null;
+      const tiProductName = ti && typeof ti === "object" ? (ti.product_name ?? ti.productName ?? ti.name ?? ti.title) : null;
+
+      // 1. Nếu tiVariantId tồn tại:
       if (tiVariantId) {
-        return tiProductId === pId && tiVariantId === vId;
+        // a. Khớp khi pId === tiVariantId HOẶC vId === tiVariantId
+        if (pId === tiVariantId || vId === tiVariantId) {
+          return true;
+        }
+
+        // b. Khớp khi (pId === tiProductId HOẶC parentPId === tiProductId) VÀ (vId === tiVariantId HOẶC tên biến thể item.variant khớp với tiVariantName)
+        const isParentIdMatch = tiProductId !== null && (pId === tiProductId || parentPId === tiProductId);
+        if (isParentIdMatch) {
+          if (vId === tiVariantId) return true;
+          if (isNameMatch(itemVariantName, tiVariantName)) return true;
+        }
+
+        // c. Khớp theo tên biến thể: item.variant có chứa tiVariantName hoặc ngược lại
+        if (isNameMatch(itemVariantName, tiVariantName)) {
+          if (isParentIdMatch) return true;
+          if (tiProductName && isNameMatch(itemProductName, tiProductName)) return true;
+          if (normStr(itemVariantName) && normStr(itemVariantName) === normStr(tiVariantName)) return true;
+        }
+
+        return false;
       }
-      return tiProductId === pId;
+
+      // 2. Nếu tiVariantId không có (áp dụng cho toàn bộ sản phẩm):
+      // Khớp khi pId === tiProductId HOẶC parentPId === tiProductId HOẶC tên sản phẩm khớp
+      if (tiProductId !== null) {
+        if (pId === tiProductId || parentPId === tiProductId) {
+          return true;
+        }
+      }
+
+      if (tiProductName && isNameMatch(itemProductName, tiProductName)) {
+        return true;
+      }
+
+      return false;
     });
   };
 
@@ -423,10 +484,20 @@ export function evaluateCampaignEligibility(
   }
 
   const matchingItems = cartItems.filter((item) => {
-    const pId = item.product_id ?? item.productId;
-    const vId = item.product_variant_id ?? item.variantId;
-    const matchesVariant = Boolean(vId && targetVariantIds.length > 0 && targetVariantIds.includes(Number(vId)));
-    const matchesProduct = Boolean(pId && targetProductIds.length > 0 && targetProductIds.includes(Number(pId)));
+    const rawPId = item.product_id ?? item.productId;
+    const pId = rawPId !== null && rawPId !== undefined ? Number(rawPId) : null;
+    const rawVId = item.product_variant_id ?? item.variantId;
+    const vId = rawVId !== null && rawVId !== undefined ? Number(rawVId) : null;
+    const parentPId = item.parentProductId ?? (item as any).parent_product_id ? Number(item.parentProductId ?? (item as any).parent_product_id) : null;
+
+    const matchesVariant = Boolean(
+      (vId && targetVariantIds.length > 0 && targetVariantIds.includes(vId)) ||
+      (pId && targetVariantIds.length > 0 && targetVariantIds.includes(pId))
+    );
+    const matchesProduct = Boolean(
+      (pId && targetProductIds.length > 0 && targetProductIds.includes(pId)) ||
+      (parentPId && targetProductIds.length > 0 && targetProductIds.includes(parentPId))
+    );
     return matchesVariant || matchesProduct;
   });
 

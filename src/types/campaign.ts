@@ -9,6 +9,8 @@ export type DiscountType = "percent" | "fixed" | "custom";
 export interface CampaignTriggerItem {
   product_id: number;
   product_variant_id?: number | null;
+  variant_name?: string | null;
+  product_name?: string | null;
   min_quantity?: number;
 }
 
