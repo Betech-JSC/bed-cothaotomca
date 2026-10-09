@@ -29,6 +29,7 @@ import {
   type ShippingSettings,
   type ActivePromotion,
   type PromotionGiftItem,
+  getBuyXGetYGiftOnlyItems,
   getLoyaltySettings,
   type LoyaltySettings,
 } from "@/services/orderService";
@@ -861,15 +862,20 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [selectedBuyXGetYPromoForModal, setSelectedBuyXGetYPromoForModal] = useState<ActivePromotion | null>(null);
 
   useEffect(() => {
-    if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.items && eligibleOrderGiftPromo.items.length > 0) {
-      setSelectedOrderGiftId((prev) => {
-        // State retention: giữ nguyên lựa chọn quà nếu món vẫn còn hợp lệ trong danh sách quà của campaign và còn khả dụng
-        if (prev && eligibleOrderGiftPromo.items.some((i) => i.id === prev && i.is_available !== false)) {
-          return prev;
-        }
-        const firstAvailable = eligibleOrderGiftPromo.items.find((i) => i.is_available !== false) || eligibleOrderGiftPromo.items[0];
-        return firstAvailable ? firstAvailable.id : null;
-      });
+    if (eligibleOrderGiftPromo) {
+      const giftItems = getBuyXGetYGiftOnlyItems(eligibleOrderGiftPromo);
+      if (giftItems.length > 0) {
+        setSelectedOrderGiftId((prev) => {
+          // State retention: giữ nguyên lựa chọn quà nếu món vẫn còn hợp lệ trong danh sách quà của campaign và còn khả dụng
+          if (prev && giftItems.some((i) => i.id === prev && i.is_available !== false)) {
+            return prev;
+          }
+          const firstAvailable = giftItems.find((i) => i.is_available !== false) || giftItems[0];
+          return firstAvailable ? firstAvailable.id : null;
+        });
+      } else {
+        setSelectedOrderGiftId(null);
+      }
     } else {
       // Chỉ reset quà về null khi đơn hàng không còn thỏa mãn min_order_value hoặc không còn campaign quà khả dụng
       setSelectedOrderGiftId(null);
@@ -877,13 +883,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   }, [eligibleOrderGiftPromo]);
 
   const selectedOrderGiftItem = useMemo(() => {
-    if (!eligibleOrderGiftPromo || !eligibleOrderGiftPromo.items || eligibleOrderGiftPromo.items.length === 0) return null;
+    if (!eligibleOrderGiftPromo) return null;
+    const giftItems = getBuyXGetYGiftOnlyItems(eligibleOrderGiftPromo);
+    if (!giftItems || giftItems.length === 0) return null;
     if (selectedOrderGiftId) {
-      const found = eligibleOrderGiftPromo.items.find((i) => i.id === selectedOrderGiftId);
+      const found = giftItems.find((i) => i.id === selectedOrderGiftId);
       if (found && found.is_available !== false) return found;
       if (found) return found;
     }
-    return eligibleOrderGiftPromo.items.find((i) => i.is_available !== false) || eligibleOrderGiftPromo.items[0] || null;
+    return giftItems.find((i) => i.is_available !== false) || giftItems[0] || null;
   }, [eligibleOrderGiftPromo, selectedOrderGiftId]);
 
   // 3. BUY X GET Y PROMOTIONS (Mua X tặng/giảm Y - chỉ kích hoạt khi nằm trong selectedCampaignIds)
@@ -891,7 +899,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     if (isBestDealVoucherApplied || !allPromotionsList) return [];
     if (selectedCampaignIds.length === 0) return [];
     return allPromotionsList.filter((p) => {
-      if (p.promotion_type !== "buy_x_get_y" || !p.items || p.items.length === 0) return false;
+      if (p.promotion_type !== "buy_x_get_y" || getBuyXGetYGiftOnlyItems(p).length === 0) return false;
       if (!selectedCampaignIds.some((id) => String(id) === String(p.id))) return false;
       const res = evaluateCampaignEligibility(p, {
         subtotal,
@@ -912,10 +920,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         let updated = false;
         const next = { ...prev };
         eligibleBuyXGetYPromos.forEach((promo) => {
+          const giftItems = getBuyXGetYGiftOnlyItems(promo);
           const currentId = next[promo.id];
-          const isCurrentValid = currentId && promo.items.some((i) => i.id === currentId && i.is_available !== false);
-          if (!isCurrentValid && promo.items.length > 0) {
-            const firstAvailable = promo.items.find((i) => i.is_available !== false);
+          const isCurrentValid = currentId && giftItems.some((i) => i.id === currentId && i.is_available !== false);
+          if (!isCurrentValid && giftItems.length > 0) {
+            const firstAvailable = giftItems.find((i) => i.is_available !== false);
             if (firstAvailable) {
               next[promo.id] = firstAvailable.id;
               updated = true;
@@ -933,9 +942,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const activeBuyXGetYItems = useMemo(() => {
     return eligibleBuyXGetYPromos
       .map((promo) => {
-        const firstAvailable = promo.items.find((i) => i.is_available !== false);
+        const giftItems = getBuyXGetYGiftOnlyItems(promo);
+        const firstAvailable = giftItems.find((i) => i.is_available !== false);
         const selectedId = selectedBuyXGetYMap[promo.id] || firstAvailable?.id;
-        const item = promo.items.find((i) => i.id === selectedId && i.is_available !== false) || firstAvailable;
+        const item = giftItems.find((i) => i.id === selectedId && i.is_available !== false) || firstAvailable;
         if (!item) return null;
         const buyQty = promo.settings?.buy_quantity || 2;
         const giftQty = promo.settings?.gift_quantity || promo.settings?.get_quantity || 1;
@@ -947,9 +957,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           promo,
           item,
           tag,
+          giftItems,
         };
       })
-      .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string } => Boolean(x && x.item));
+      .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string; giftItems: PromotionGiftItem[] } => Boolean(x && x.item));
   }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap]);
 
   const appliedCartPromotions = useMemo(() => {
@@ -3343,15 +3354,18 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     <div className="flex items-center justify-between pt-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-gray-500 font-medium">x1</span>
-                        {eligibleOrderGiftPromo.items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setIsOrderGiftModalOpen(true)}
-                            className="text-[11px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
-                          >
-                            {t("change_gift", { count: eligibleOrderGiftPromo.items.length })}
-                          </button>
-                        )}
+                        {(() => {
+                          const giftCount = getBuyXGetYGiftOnlyItems(eligibleOrderGiftPromo).length;
+                          return giftCount > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => setIsOrderGiftModalOpen(true)}
+                              className="text-[11px] font-bold text-secondary bg-secondary/10 hover:bg-secondary/20 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
+                            >
+                              {t("change_gift", { count: giftCount })}
+                            </button>
+                          ) : null;
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -3359,7 +3373,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               )}
 
               {/* Món ưu đãi combo Mua X tặng/giảm Y (buy_x_get_y) - Hỗ trợ nhiều chiến dịch */}
-              {activeBuyXGetYItems.map(({ promo, item, tag }) => (
+              {activeBuyXGetYItems.map(({ promo, item, tag, giftItems }) => (
                 <div key={`buyxy-${promo.id}-${item.id}`} className="flex gap-3 2xl:gap-4 items-start py-3 bg-yellow/40 rounded-2xl p-3 border border-primary/15 animate-fade-in shadow-xs">
                   {item.image ? (
                     <div className="relative size-14 2xl:size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-primary/20">
@@ -3398,13 +3412,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           {tag}
                         </span>
                         <span className="text-xs text-gray-500 font-medium">x1</span>
-                        {promo.items && promo.items.length > 1 && (
+                        {giftItems && giftItems.length > 1 && (
                           <button
                             type="button"
                             onClick={() => setSelectedBuyXGetYPromoForModal(promo)}
                             className="text-[11px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
                           >
-                            {t("change_gift", { count: promo.items.length })}
+                            {t("change_gift", { count: giftItems.length })}
                           </button>
                         )}
                       </div>
@@ -3758,7 +3772,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           onClose={() => setIsOrderGiftModalOpen(false)}
           title={t("order_gift_tag")}
           subtitle={`Chương trình: ${eligibleOrderGiftPromo.name}`}
-          items={eligibleOrderGiftPromo.items || []}
+          items={getBuyXGetYGiftOnlyItems(eligibleOrderGiftPromo)}
           selectedId={selectedOrderGiftId}
           onSelect={(item) => {
             setSelectedOrderGiftId(item.id);
@@ -3767,22 +3781,25 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       )}
 
       {/* Buy X Get Y Gift Selector Modal */}
-      {selectedBuyXGetYPromoForModal && (
-        <GiftSelectorModal
-          isOpen={!!selectedBuyXGetYPromoForModal}
-          onClose={() => setSelectedBuyXGetYPromoForModal(null)}
-          title={t("combo_tag")}
-          subtitle={`Chương trình: ${selectedBuyXGetYPromoForModal.name}`}
-          items={selectedBuyXGetYPromoForModal.items || []}
-          selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || selectedBuyXGetYPromoForModal.items?.find((i) => i.is_available !== false)?.id || null}
-          onSelect={(item) => {
-            setSelectedBuyXGetYMap((prev) => ({
-              ...prev,
-              [selectedBuyXGetYPromoForModal.id]: item.id,
-            }));
-          }}
-        />
-      )}
+      {selectedBuyXGetYPromoForModal && (() => {
+        const giftOnlyItems = getBuyXGetYGiftOnlyItems(selectedBuyXGetYPromoForModal);
+        return (
+          <GiftSelectorModal
+            isOpen={!!selectedBuyXGetYPromoForModal}
+            onClose={() => setSelectedBuyXGetYPromoForModal(null)}
+            title={t("combo_tag")}
+            subtitle={`Chương trình: ${selectedBuyXGetYPromoForModal.name}`}
+            items={giftOnlyItems}
+            selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || giftOnlyItems.find((i) => i.is_available !== false)?.id || null}
+            onSelect={(item) => {
+              setSelectedBuyXGetYMap((prev) => ({
+                ...prev,
+                [selectedBuyXGetYPromoForModal.id]: item.id,
+              }));
+            }}
+          />
+        );
+      })()}
     </>
   );
 }

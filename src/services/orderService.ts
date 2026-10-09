@@ -114,22 +114,24 @@ export interface OperatingHoursConfig {
   message?: string | null;
 }
 
-import type {
-  PromotionType,
-  DiscountType,
-  PromotionGiftItem,
-  CampaignSettings,
-  ActivePromotion,
-  CheckoutConfigData,
+import {
+  type PromotionType,
+  type DiscountType,
+  type PromotionGiftItem,
+  type CampaignSettings,
+  type ActivePromotion,
+  type CheckoutConfigData,
+  getBuyXGetYGiftOnlyItems,
 } from "@/types/campaign";
 
-export type {
-  PromotionType,
-  DiscountType,
-  PromotionGiftItem,
-  CampaignSettings,
-  ActivePromotion,
-  CheckoutConfigData,
+export {
+  type PromotionType,
+  type DiscountType,
+  type PromotionGiftItem,
+  type CampaignSettings,
+  type ActivePromotion,
+  type CheckoutConfigData,
+  getBuyXGetYGiftOnlyItems,
 };
 
 export interface CheckoutConfig extends CheckoutConfigData {

@@ -5,7 +5,7 @@ import "@testing-library/jest-dom";
 import CouponModal, { evaluateCampaignEligibility } from "@/components/Voucher/CouponModal";
 import MobileCartFlow from "@/components/Header/MobileCartFlow";
 import CheckoutForm from "@/components/Checkout/CheckoutForm";
-import { PublicCampaignItem } from "@/types/campaign";
+import { PublicCampaignItem, getBuyXGetYGiftOnlyItems } from "@/types/campaign";
 import viMessages from "@/i18n/locales/vi.json";
 
 // Mock next-intl
@@ -546,5 +546,105 @@ describe("Campaign Gift [TẶNG SÚP MISO] & Banner Image Fallback Fix", () => {
     });
 
     expect(result.eligible).toBe(true);
+  });
+
+  it("7. getBuyXGetYGiftOnlyItems: strictly excludes trigger items and returns only gift items (preventing trigger item in gift selector)", () => {
+    const mixedCampaign: PublicCampaignItem = {
+      id: 4,
+      name: "Ưu đãi - Chương trình: Súp Miso",
+      promotion_type: "buy_x_get_y",
+      settings: {
+        buy_quantity: 1,
+        gift_quantity: 1,
+        trigger_items: [
+          {
+            product_id: 80,
+            product_variant_id: 1146,
+            product_name: "[TẶNG SÚP] Set Cơm Cá Hồi, Trứng Lòng Đào Ngâm Tương",
+          },
+        ],
+        gift_items: [
+          {
+            product_id: 99,
+            product_variant_id: null,
+            quantity: 1,
+          },
+        ],
+      },
+      items: [
+        {
+          id: 80,
+          product_id: 80,
+          product_variant_id: 1146,
+          product_code: "S2",
+          product_name: "[TẶNG SÚP] Set Cơm Cá Hồi, Trứng Lòng Đào Ngâm Tương",
+          image: "/images/set2.jpg",
+          original_price: 135000,
+          campaign_price: 135000,
+          is_free: false,
+        },
+        {
+          id: 99,
+          product_id: 99,
+          product_variant_id: null,
+          product_code: "MISO-01",
+          product_name: "Banchan (Súp miso)",
+          image: "/images/miso.jpg",
+          original_price: 20000,
+          campaign_price: 0,
+          is_free: true,
+          is_available: true,
+        },
+      ],
+    };
+
+    const gifts = getBuyXGetYGiftOnlyItems(mixedCampaign);
+    expect(gifts).toHaveLength(1);
+    expect(gifts[0].id).toBe(99);
+    expect(gifts[0].product_name).toBe("Banchan (Súp miso)");
+    expect(gifts[0].is_free).toBe(true);
+    expect(gifts[0].campaign_price).toBe(0);
+
+    // Verify Set Cơm Cá Hồi (trigger product) is completely absent from gifts
+    expect(gifts.some((g) => g.product_name.includes("Set Cơm Cá Hồi"))).toBe(false);
+  });
+
+  it("8. getBuyXGetYGiftOnlyItems: fallback excludes trigger items even without settings.gift_items", () => {
+    const campaignWithoutGiftItemsSetting: PublicCampaignItem = {
+      id: 401,
+      name: "Tặng Coca khi mua Combo",
+      promotion_type: "buy_x_get_y",
+      settings: {
+        buy_quantity: 1,
+        trigger_items: [{ product_id: 10, product_variant_id: null }],
+      },
+      items: [
+        {
+          id: 10,
+          product_id: 10,
+          product_code: "TRIGGER-01",
+          product_name: "Trigger Combo",
+          image: "",
+          original_price: 200000,
+          campaign_price: 200000,
+          is_free: false,
+        },
+        {
+          id: 20,
+          product_id: 20,
+          product_code: "COCA-01",
+          product_name: "Coca Cola Free",
+          image: "",
+          original_price: 15000,
+          campaign_price: 0,
+          is_free: true,
+        },
+      ],
+    };
+
+    const gifts = getBuyXGetYGiftOnlyItems(campaignWithoutGiftItemsSetting);
+    expect(gifts).toHaveLength(1);
+    expect(gifts[0].id).toBe(20);
+    expect(gifts[0].product_name).toBe("Coca Cola Free");
   });
 });

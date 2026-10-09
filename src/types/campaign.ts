@@ -144,3 +144,68 @@ export interface CheckoutConfigData {
   shipping_settings?: unknown;
   maintenance?: unknown;
 }
+
+/**
+ * Filter items for gift-giving promotions (especially buy_x_get_y) so that trigger products
+ * (items that user has to buy) are NEVER presented to the user as selectable gifts.
+ */
+export function getBuyXGetYGiftOnlyItems(
+  promo?: ActivePromotion | PublicCampaignItem | null
+): PromotionGiftItem[] {
+  if (!promo || !promo.items || !Array.isArray(promo.items) || promo.items.length === 0) {
+    return [];
+  }
+
+  const isBuyXGetY = promo.promotion_type === "buy_x_get_y";
+  const triggerItems = promo.settings?.trigger_items || [];
+  const giftItems = promo.settings?.gift_items || [];
+
+  if (!isBuyXGetY && triggerItems.length === 0) {
+    return promo.items;
+  }
+
+  const matchesSpec = (
+    item: PromotionGiftItem,
+    specList: Array<{ product_id: number | string; product_variant_id?: number | string | null }>
+  ) => {
+    return specList.some((spec) => {
+      const pidMatch = Number(spec.product_id) === Number(item.product_id);
+      if (!pidMatch) return false;
+      if (spec.product_variant_id != null && item.product_variant_id != null) {
+        return Number(spec.product_variant_id) === Number(item.product_variant_id);
+      }
+      return true;
+    });
+  };
+
+  // 1. If gift_items are configured in settings, exclusively return items matching gift_items
+  if (giftItems.length > 0) {
+    const matchedGifts = promo.items.filter((item) => {
+      const isTrigger = triggerItems.length > 0 && matchesSpec(item, triggerItems);
+      if (isTrigger) return false;
+      return matchesSpec(item, giftItems);
+    });
+    if (matchedGifts.length > 0) {
+      return matchedGifts;
+    }
+  }
+
+  // 2. If trigger_items are configured, exclude any items matching trigger_items
+  if (triggerItems.length > 0) {
+    const nonTriggers = promo.items.filter((item) => !matchesSpec(item, triggerItems));
+    if (nonTriggers.length > 0) {
+      return nonTriggers;
+    }
+  }
+
+  // 3. Fallback: exclude items where campaign_price >= original_price if there are free/discounted items
+  const freeOrDiscounted = promo.items.filter(
+    (item) => item.is_free || (item.original_price > 0 && item.campaign_price < item.original_price) || item.campaign_price === 0
+  );
+  if (freeOrDiscounted.length > 0) {
+    return freeOrDiscounted;
+  }
+
+  return promo.items;
+}
+
