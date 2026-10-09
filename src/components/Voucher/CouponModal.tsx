@@ -64,6 +64,9 @@ export interface CartItemProductEligibilityCheck {
   variantId?: number | null;
   parentProductId?: number | null;
   parent_product_id?: number | null;
+  productCode?: string | null;
+  product_code?: string | null;
+  kiotviet_id?: number | string | null;
   variant?: string | null;
   variant_name?: string | null;
   name?: string | null;
@@ -314,10 +317,21 @@ export function evaluateCampaignEligibility(
     }
   }
 
-  const triggerItems: any[] =
+  const rawTriggerItems: any[] =
     (Array.isArray(settingsObj.trigger_items) && settingsObj.trigger_items.length > 0)
       ? settingsObj.trigger_items
       : (Array.isArray((c as any).trigger_items) ? (c as any).trigger_items : (settingsObj.trigger_items ?? (c as any).trigger_items ?? []));
+
+  // Nếu settings không có trigger_items nhưng c.items có các item không phải quà tặng miễn phí (!is_free),
+  // đó chính là các sản phẩm kích hoạt của campaign
+  let triggerItems = [...rawTriggerItems];
+  if (triggerItems.length === 0 && Array.isArray(c.items)) {
+    const nonFreeItems = c.items.filter((ci: any) => ci && !ci.is_free);
+    if (nonFreeItems.length > 0) {
+      triggerItems = nonFreeItems;
+    }
+  }
+
   const hasTriggerItems = Array.isArray(triggerItems) && triggerItems.length > 0;
 
   const normStr = (str?: string | null) =>
@@ -330,56 +344,201 @@ export function evaluateCampaignEligibility(
     return na === nb || na.includes(nb) || nb.includes(na);
   };
 
+  // Thu thập danh sách triggerMeta từ cả triggerItems VÀ c.items
+  const campaignItems: any[] = Array.isArray(c.items) ? c.items : [];
+
+  const triggerMetaList = triggerItems.map((ti: any) => {
+    const tiProductId = typeof ti === "number" ? ti : (ti.product_id ?? ti.id ?? ti.productId ? Number(ti.product_id ?? ti.id ?? ti.productId) : null);
+    const tiVariantId = (ti && typeof ti === "object" && (ti.product_variant_id ?? ti.variantId))
+      ? Number(ti.product_variant_id ?? ti.variantId)
+      : null;
+    const tiVariantName = ti && typeof ti === "object" ? (ti.variant_name ?? ti.variantName ?? ti.variant) : null;
+    const tiProductName = ti && typeof ti === "object" ? (ti.product_name ?? ti.productName ?? ti.name ?? ti.title) : null;
+    const tiProductCode = ti && typeof ti === "object" ? (ti.product_code ?? ti.productCode ?? ti.code) : null;
+    const tiKiotvietId = ti && typeof ti === "object" ? (ti.kiotviet_id ?? ti.kiotvietId) : null;
+
+    // Tìm trong c.items các item có cùng product_id hoặc product_variant_id (hoặc các item trong c.items có !is_free)
+    const matchingCampaignItems = campaignItems.filter((ci: any) => {
+      if (!ci) return false;
+      const ciPId = ci.product_id ?? ci.productId ?? ci.id;
+      const ciVId = ci.product_variant_id ?? ci.variantId;
+
+      // 1. Khớp theo variant_id
+      if (tiVariantId && ciVId && Number(tiVariantId) === Number(ciVId)) {
+        return true;
+      }
+
+      // 2. Khớp theo product_id
+      if (tiProductId && ciPId && Number(tiProductId) === Number(ciPId)) {
+        if (tiVariantId && ciVId) {
+          return Number(tiVariantId) === Number(ciVId);
+        }
+        if (tiVariantName && ci.product_name && !isNameMatch(tiVariantName, ci.product_name)) {
+          return false;
+        }
+        return true;
+      }
+
+      // 3. Khớp theo tên biến thể / tên sản phẩm nếu ci không phải quà tặng miễn phí (!is_free)
+      if (ci.is_free === false) {
+        if (tiVariantName && ci.product_name && isNameMatch(tiVariantName, ci.product_name)) {
+          return true;
+        }
+        if (tiProductName && ci.product_name && isNameMatch(tiProductName, ci.product_name)) {
+          return true;
+        }
+        const nonFreeCount = campaignItems.filter((x: any) => x && !x.is_free).length;
+        if (triggerItems.length === 1 && nonFreeCount === 1) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+
+    const productIds: number[] = Array.from(
+      new Set(
+        [
+          tiProductId,
+          ...matchingCampaignItems.map((ci: any) => ci.product_id ?? ci.productId ?? ci.id),
+        ]
+          .filter((id): id is number => typeof id === "number" && !isNaN(id))
+          .map(Number)
+      )
+    );
+
+    const variantIds: number[] = Array.from(
+      new Set(
+        [
+          tiVariantId,
+          ...matchingCampaignItems.map((ci: any) => ci.product_variant_id ?? ci.variantId),
+        ]
+          .filter((id): id is number => typeof id === "number" && !isNaN(id))
+          .map(Number)
+      )
+    );
+
+    const kiotvietIds: number[] = Array.from(
+      new Set(
+        [
+          tiKiotvietId,
+          ...matchingCampaignItems.map((ci: any) => ci.kiotviet_id ?? ci.kiotvietId),
+        ]
+          .filter((id): id is number | string => id !== null && id !== undefined && id !== "" && !isNaN(Number(id)))
+          .map(Number)
+      )
+    );
+
+    const productCodes: string[] = Array.from(
+      new Set(
+        [
+          tiProductCode,
+          ...matchingCampaignItems.flatMap((ci: any) => [ci.product_code, ci.productCode, ci.code]),
+        ]
+          .filter(Boolean)
+          .map((s) => String(s).toLowerCase().trim())
+      )
+    );
+
+    const names: string[] = Array.from(
+      new Set(
+        [
+          tiVariantName,
+          tiProductName,
+          ...matchingCampaignItems.flatMap((ci: any) => [
+            ci.product_name,
+            ci.name,
+            ci.title,
+            ci.variant_name,
+            ci.variant,
+          ]),
+        ]
+          .filter(Boolean)
+          .map((s) => String(s).trim())
+      )
+    );
+
+    return {
+      ti,
+      tiProductId,
+      tiVariantId,
+      tiVariantName,
+      tiProductName,
+      productIds,
+      variantIds,
+      kiotvietIds,
+      productCodes,
+      names,
+    };
+  });
+
   const isCartItemMatchingTrigger = (item: CartItemProductEligibilityCheck) => {
     const rawPId = item.product_id ?? item.productId ?? (typeof item.id === "number" ? item.id : (!isNaN(Number(item.id)) ? Number(item.id) : null));
     const pId = rawPId !== null && rawPId !== undefined ? Number(rawPId) : null;
     const vId = item.product_variant_id ?? item.variantId ? Number(item.product_variant_id ?? item.variantId) : null;
     const parentPId = item.parentProductId ?? (item as any).parent_product_id ? Number(item.parentProductId ?? (item as any).parent_product_id) : null;
+    const itemCode = (item.productCode ?? item.product_code ?? (item as any).code ?? "").toString().toLowerCase().trim();
     const itemVariantName = item.variant ?? (item as any).variant_name;
     const itemProductName = item.title ?? (item as any).name ?? (item as any).product_name;
 
-    return triggerItems.some((ti: any) => {
-      const tiProductId = typeof ti === "number" ? ti : (ti.product_id ?? ti.id ?? ti.productId ? Number(ti.product_id ?? ti.id ?? ti.productId) : null);
-      const tiVariantId = (ti && typeof ti === "object" && (ti.product_variant_id ?? ti.variantId))
-        ? Number(ti.product_variant_id ?? ti.variantId)
-        : null;
-      const tiVariantName = ti && typeof ti === "object" ? (ti.variant_name ?? ti.variantName ?? ti.variant) : null;
-      const tiProductName = ti && typeof ti === "object" ? (ti.product_name ?? ti.productName ?? ti.name ?? ti.title) : null;
+    return triggerMetaList.some((meta) => {
+      // 1. Khớp KiotViet ID: Number(item.productId) nằm trong kiotvietIds hoặc Number(item.id) nằm trong kiotvietIds
+      if (meta.kiotvietIds.length > 0) {
+        if (pId !== null && meta.kiotvietIds.includes(pId)) return true;
+        if (item.id !== undefined && item.id !== null && !isNaN(Number(item.id)) && meta.kiotvietIds.includes(Number(item.id))) return true;
+        if (vId !== null && meta.kiotvietIds.includes(vId)) return true;
+      }
 
-      // 1. Nếu tiVariantId tồn tại:
-      if (tiVariantId) {
-        // a. Khớp khi pId === tiVariantId HOẶC vId === tiVariantId
-        if (pId === tiVariantId || vId === tiVariantId) {
+      // 2. Khớp Product Code: item.productCode (ví dụ "S2") nằm trong productCodes
+      if (itemCode && meta.productCodes.length > 0) {
+        if (meta.productCodes.includes(itemCode)) return true;
+      }
+
+      // 3. Khớp Database ID: item.productId hoặc item.parentProductId hoặc item.variantId khớp với productIds hoặc variantIds
+      if (meta.variantIds.length > 0) {
+        // a. pId khớp variantId HOẶC vId khớp variantId
+        if ((pId !== null && meta.variantIds.includes(pId)) || (vId !== null && meta.variantIds.includes(vId))) {
           return true;
         }
 
-        // b. Khớp khi (pId === tiProductId HOẶC parentPId === tiProductId) VÀ (vId === tiVariantId HOẶC tên biến thể item.variant khớp với tiVariantName)
-        const isParentIdMatch = tiProductId !== null && (pId === tiProductId || parentPId === tiProductId);
+        // b. (pId khớp productId HOẶC parentPId khớp productId) VÀ (vId khớp variantId HOẶC tên biến thể item.variant khớp với names)
+        const isParentIdMatch = (pId !== null && meta.productIds.includes(pId)) || (parentPId !== null && meta.productIds.includes(parentPId));
         if (isParentIdMatch) {
-          if (vId === tiVariantId) return true;
-          if (isNameMatch(itemVariantName, tiVariantName)) return true;
+          if (vId !== null && meta.variantIds.includes(vId)) return true;
+          if (itemVariantName && meta.names.some((name) => isNameMatch(itemVariantName, name))) return true;
+          if (!itemVariantName && vId === null) return true;
         }
 
-        // c. Khớp theo tên biến thể: item.variant có chứa tiVariantName hoặc ngược lại
-        if (isNameMatch(itemVariantName, tiVariantName)) {
+        // c. Khớp theo tên biến thể khi có variantId
+        if (itemVariantName && meta.names.some((name) => isNameMatch(itemVariantName, name))) {
           if (isParentIdMatch) return true;
-          if (tiProductName && isNameMatch(itemProductName, tiProductName)) return true;
-          if (normStr(itemVariantName) && normStr(itemVariantName) === normStr(tiVariantName)) return true;
+          if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) return true;
+          if (meta.names.some((name) => normStr(itemVariantName) === normStr(name))) return true;
         }
-
-        return false;
-      }
-
-      // 2. Nếu tiVariantId không có (áp dụng cho toàn bộ sản phẩm):
-      // Khớp khi pId === tiProductId HOẶC parentPId === tiProductId HOẶC tên sản phẩm khớp
-      if (tiProductId !== null) {
-        if (pId === tiProductId || parentPId === tiProductId) {
+      } else {
+        // Nếu không có variantId cụ thể (áp dụng cho toàn bộ sản phẩm):
+        const isProductIdMatch = (pId !== null && meta.productIds.includes(pId)) || (parentPId !== null && meta.productIds.includes(parentPId));
+        if (isProductIdMatch) {
           return true;
         }
       }
 
-      if (tiProductName && isNameMatch(itemProductName, tiProductName)) {
-        return true;
+      // 4. Khớp Tên / Biến thể: Tên biến thể item.variant (ví dụ "Set 2 (Cơm gạo Nhật)") khớp mềm với names hoặc tên sản phẩm item.title chứa tên của trigger item
+      if (itemVariantName && meta.names.some((name) => isNameMatch(itemVariantName, name))) {
+        if (meta.variantIds.length > 0) {
+          const isParentIdMatch = (pId !== null && meta.productIds.includes(pId)) || (parentPId !== null && meta.productIds.includes(parentPId));
+          if (isParentIdMatch) return true;
+          if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) return true;
+          if (meta.names.some((name) => normStr(itemVariantName) === normStr(name))) return true;
+        } else {
+          return true;
+        }
+      }
+
+      if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) {
+        if (meta.variantIds.length === 0 || !itemVariantName) {
+          return true;
+        }
       }
 
       return false;

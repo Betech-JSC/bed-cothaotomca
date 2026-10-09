@@ -396,6 +396,44 @@ describe("Campaign Gift [TẶNG SÚP MISO] & Banner Image Fallback Fix", () => {
     });
     expect(result5.eligible).toBe(false);
     expect(result5.reason).toMatch(/Cần mua thêm \d+ sản phẩm áp dụng/);
+
+    // Case 4.6: Cart item with KiotViet ID (3516704) and productCode ('S2') matches trigger
+    const campaignWithKiotvietItem: PublicCampaignItem = {
+      ...campaignWithVariantTrigger,
+      settings: {
+        buy_quantity: 1,
+        trigger_items: [{ product_id: 80, product_variant_id: 1146 }],
+      },
+      items: [
+        {
+          id: 7,
+          product_id: 80,
+          product_variant_id: 1146,
+          product_code: "S2",
+          kiotviet_id: 3516704,
+          product_name: "[TẶNG SÚP] Set Cơm Cá Hồi, Trứng Lòng Đào Ngâm Tương (Set 2 (Cơm gạo Nhật))",
+          image: "/set2.jpg",
+          original_price: 159000,
+          campaign_price: 159000,
+          is_free: false,
+        },
+        ...(campaignWithVariantTrigger.items || []),
+      ],
+    };
+
+    const result6 = evaluateCampaignEligibility(campaignWithKiotvietItem, {
+      subtotal: 318000,
+      cartItems: [
+        {
+          productId: 3516704,
+          productCode: "S2",
+          title: "[TẶNG SÚP] Set Cơm Cá Hồi, Trứng Lòng Đào Ngâm Tương",
+          variant: "Set 2 (Cơm gạo Nhật)",
+          quantity: 2,
+        },
+      ],
+    });
+    expect(result6.eligible).toBe(true);
   });
 
   it("5. CouponModal renders without 'Cần mua thêm 1 sản phẩm áp dụng để kích hoạt ưu đãi' when cart has Set 2 variant", async () => {
@@ -453,5 +491,60 @@ describe("Campaign Gift [TẶNG SÚP MISO] & Banner Image Fallback Fix", () => {
 
     // Verify it is eligible and NOT displaying warning "Cần mua thêm ... sản phẩm áp dụng để kích hoạt ưu đãi"
     expect(screen.queryByText(/Cần mua thêm \d+ sản phẩm áp dụng để kích hoạt ưu đãi/i)).not.toBeInTheDocument();
+  });
+
+  it("6. evaluateCampaignEligibility: correctly matches trigger item using kiotviet_id and product_code from campaign items (live cart simulation)", () => {
+    const liveCampaign4: PublicCampaignItem = {
+      id: 4,
+      name: "[TẶNG SÚP MISO] Khi mua Set Cơm Bất Kỳ",
+      promotion_type: "order_gift_discount",
+      discount_type: "fixed",
+      discount_value: 0,
+      min_order_value: 0,
+      settings: {
+        buy_quantity: 1,
+        trigger_items: [{ product_id: 80, product_variant_id: 1146 }],
+      },
+      items: [
+        {
+          id: 7,
+          product_id: 80,
+          product_variant_id: 1146,
+          product_code: "S2",
+          kiotviet_id: 3516704,
+          product_name: "[TẶNG SÚP] Set Cơm Cá Hồi, Trứng Lòng Đào Ngâm Tương (Set 2 (Cơm gạo Nhật))",
+          image: "/images/set2.jpg",
+          original_price: 159000,
+          campaign_price: 159000,
+          is_free: false,
+        },
+        {
+          id: 99,
+          product_id: 99,
+          product_name: "Súp Miso Rong Biển",
+          product_code: "MISO-01",
+          image: "/images/miso.jpg",
+          original_price: 35000,
+          campaign_price: 0,
+          is_free: true,
+          is_available: true,
+        },
+      ],
+    };
+
+    const liveCartItem = {
+      productId: 3516704,
+      productCode: "S2",
+      title: "[TẶNG SÚP] Set Cơm Cá Hồi, Trứng Lòng Đào Ngâm Tương",
+      variant: "Set 2 (Cơm gạo Nhật)",
+      quantity: 2,
+    };
+
+    const result = evaluateCampaignEligibility(liveCampaign4, {
+      subtotal: 318000,
+      cartItems: [liveCartItem],
+    });
+
+    expect(result.eligible).toBe(true);
   });
 });
