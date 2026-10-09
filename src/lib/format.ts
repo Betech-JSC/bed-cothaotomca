@@ -96,10 +96,24 @@ export function getBackendBaseUrl(): string {
 export function formatImageUrl(url?: string | null): string {
   if (!url) return '';
   const backendOrigin = getBackendBaseUrl();
-  if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
+
+  // Chuyển đổi nếu ảnh trỏ tới domain frontend cothaotomca.vn chứa /storage/ hoặc /uploads/
+  if (/^https?:\/\/(www\.)?cothaotomca\.vn\/(storage|uploads)\//i.test(url)) {
+    const cleanPath = url.replace(/^https?:\/\/(www\.)?cothaotomca\.vn/i, '');
+    return `${backendOrigin}${cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`}`;
+  }
+
+  // Chuyển đổi localhost / 127.0.0.1
+  if (
+    url.startsWith('http://localhost') ||
+    url.startsWith('http://127.0.0.1') ||
+    url.startsWith('https://localhost') ||
+    url.startsWith('https://127.0.0.1')
+  ) {
     const cleanPath = url.replace(/^https?:\/\/[^/]+/, '');
     return `${backendOrigin}${cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`}`;
   }
+
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
@@ -118,6 +132,15 @@ export function formatRichTextContent(content: string | undefined | null): strin
     const fullSrc = `${backendOrigin}${srcPath}`;
     return `<img${p1}src="${fullSrc}"${p3}>`;
   });
+
+  // Chuyển đổi URL frontend cothaotomca.vn về backendOrigin
+  processed = processed.replace(
+    /<img([^>]*?)src="https?:\/\/(?:www\.)?cothaotomca\.vn(\/(?:storage|uploads)\/[^"]*)"([^>]*?)>/gi,
+    (match, p1, srcPath, p3) => {
+      const fullSrc = `${backendOrigin}${srcPath}`;
+      return `<img${p1}src="${fullSrc}"${p3}>`;
+    }
+  );
 
   // Format iframe/Google Maps embeds to default 800x400 responsive dimensions FIRST
   const formatIframeTag = (str: string) => {

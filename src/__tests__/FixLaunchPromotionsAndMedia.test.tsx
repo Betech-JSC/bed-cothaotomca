@@ -71,6 +71,18 @@ describe('Fix Launch Promotions and Media Suite', () => {
       );
     });
 
+    it('chuyển đổi domain frontend cothaotomca.vn/storage sang domain CMS chính thức', () => {
+      expect(
+        formatImageUrl('https://cothaotomca.vn/storage/uploads/2026/10/test.webp')
+      ).toBe('https://cms.cothaotomca.vn/storage/uploads/2026/10/test.webp');
+      expect(
+        formatImageUrl('http://cothaotomca.vn/storage/branches/showroom.jpg')
+      ).toBe('https://cms.cothaotomca.vn/storage/branches/showroom.jpg');
+      expect(
+        formatImageUrl('https://www.cothaotomca.vn/storage/uploads/banners/hero.webp')
+      ).toBe('https://cms.cothaotomca.vn/storage/uploads/banners/hero.webp');
+    });
+
     it('giữ nguyên absolute URL ngoài và data URL', () => {
       expect(formatImageUrl('https://external-cdn.com/image.jpg')).toBe(
         'https://external-cdn.com/image.jpg'
