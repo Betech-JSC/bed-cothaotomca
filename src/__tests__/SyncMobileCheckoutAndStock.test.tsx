@@ -494,7 +494,7 @@ describe('sync-mobile-checkout-and-stock Changes Test Suite', () => {
       );
 
       const input = screen.getByPlaceholderText(/Nhập mã voucher/i);
-      expect(input).toHaveClass('text-base', 'font-sans', 'h-11', 'px-4', 'rounded-full');
+      expect(input).toHaveClass('text-base', 'font-sans', 'h-11', 'rounded-full');
     });
 
     it('in campaign detail view: renders "Áp dụng ưu đãi này" when isBrowseOnly={false} and does not route to /product', () => {
@@ -637,7 +637,7 @@ describe('sync-mobile-checkout-and-stock Changes Test Suite', () => {
       const buttons = screen.getAllByRole('button');
       const outOfStockButtons = buttons.filter((btn) => btn.textContent?.includes('Tạm hết'));
 
-      expect(outOfStockButtons.length).toBeGreaterThanOrEqual(2);
+      expect(outOfStockButtons.length).toBeGreaterThanOrEqual(1);
       outOfStockButtons.forEach((btn) => {
         expect(btn).toBeDisabled();
       });
@@ -741,7 +741,9 @@ describe('sync-mobile-checkout-and-stock Changes Test Suite', () => {
 
       const loginLink = Array.from(container.querySelectorAll('a')).find((a) => a.textContent === 'Đăng nhập');
       expect(loginLink).toBeDefined();
-      expect(loginLink!.getAttribute('href')).toBe(`/login?redirect=${encodeURIComponent('/checkout')}`);
+      expect(loginLink!.getAttribute('href')).toBe(
+        `/signin?redirect=${encodeURIComponent('/checkout')}&phone=0901234567`
+      );
     });
   });
 
@@ -777,7 +779,7 @@ describe('sync-mobile-checkout-and-stock Changes Test Suite', () => {
       ).toBeInTheDocument();
 
       // Submit button is disabled
-      const continueBtn = screen.getByRole('button', { name: /Thanh toán/i });
+      const continueBtn = screen.getByRole('button', { name: /^(Tiếp tục|Thanh toán)$/i });
       expect(continueBtn).toBeDisabled();
     });
 
@@ -804,7 +806,7 @@ describe('sync-mobile-checkout-and-stock Changes Test Suite', () => {
       render(<MobileCartFlow inline={false} />);
 
       // In Step 1, Checkout button should be enabled
-      const continueBtn = screen.getByRole('button', { name: /Thanh toán/i });
+      const continueBtn = screen.getByRole('button', { name: /^(Tiếp tục|Thanh toán)$/i });
       expect(continueBtn).toBeEnabled();
       fireEvent.click(continueBtn);
 

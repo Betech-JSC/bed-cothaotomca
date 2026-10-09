@@ -30,7 +30,8 @@
     "next_slide": "Next slide",
     "previous_page": "Previous page",
     "next_page": "Next page",
-    "page_number": "Page {number}"
+    "page_number": "Page {number}",
+    "back": "Back"
   },
   "search": {
     "results_for": "Search results for",
@@ -663,7 +664,9 @@
   "footer": {
     "showroom": "Showroom",
     "branch": "Branch",
-    "bct_verification": "Notified to the Ministry of Industry and Trade"
+    "bct_verification": "Notified to the Ministry of Industry and Trade",
+    "directions": "Directions on Google Maps",
+    "view_map": "View directions"
   },
   "modal": {
     "success": {

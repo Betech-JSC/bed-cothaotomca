@@ -1,4 +1,5 @@
 import Breadcrumb from "@/components/Common/Breadcrumb";
+import MobileBackButton from "@/components/Common/MobileBackButton";
 import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
 import ProductGallery from "@/components/Product/ProductGallery";
 import ProductInfoAccordion from "@/components/Product/ProductInfoAccordion";
@@ -335,8 +336,9 @@ export default async function ProductDetailsPage({
       />
       <section className="md:py-[56px] pt-4 pb-12 xl:py-[60px]">
         <div className="container">
-          {/* Breadcrumb trên Mobile */}
+          {/* Breadcrumb & Nút quay lại trên Mobile */}
           <div className="space-y-3 flex flex-col items-start mb-4 md:mb-6 lg:hidden">
+            <MobileBackButton fallbackUrl={`/product/${productData.category.slug}`} />
             <Breadcrumb breadcrumbs={breadcrumbs} />
           </div>
 

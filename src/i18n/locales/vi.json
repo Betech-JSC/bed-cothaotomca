@@ -30,7 +30,8 @@
     "next_slide": "Slide sau",
     "previous_page": "Trang trước",
     "next_page": "Trang sau",
-    "page_number": "Trang {number}"
+    "page_number": "Trang {number}",
+    "back": "Quay lại"
   },
   "search": {
     "results_for": "Kết quả tìm kiếm ",
@@ -663,7 +664,9 @@
   "footer": {
     "showroom": "Hệ thống cửa hàng",
     "branch": "Chi nhánh",
-    "bct_verification": "Đã thông báo Bộ Công Thương"
+    "bct_verification": "Đã thông báo Bộ Công Thương",
+    "directions": "Chỉ đường trên Google Maps",
+    "view_map": "Xem chỉ đường"
   },
   "modal": {
     "success": {

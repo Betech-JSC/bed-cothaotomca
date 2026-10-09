@@ -232,9 +232,10 @@ export function evaluateCampaignEligibility(
   }
 
   // b) Nếu c.promotion_type === 'buy_x_get_y':
-  // Món ưu đãi kèm Y chưa có trong giỏ hàng, chỉ cần tổng số lượng sản phẩm trong giỏ hàng đạt buy_quantity (c.settings?.buy_quantity || 2).
+  // Món ưu đãi kèm Y chưa có trong giỏ hàng, chỉ cần tổng số lượng sản phẩm trong giỏ hàng đạt buy_quantity (mặc định 1 nếu không cấu hình).
   if (c.promotion_type === "buy_x_get_y") {
-    const buyQty = Number(c.settings?.buy_quantity || 2);
+    const rawBuyQty = c.settings?.buy_quantity ?? (c as any).buy_quantity ?? (c.settings as any)?.buy_qty;
+    const buyQty = rawBuyQty !== undefined && rawBuyQty !== null && Number(rawBuyQty) > 0 ? Number(rawBuyQty) : 1;
     const totalCartQty = (cartItems || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
     if (totalCartQty < buyQty) {
       const missing = buyQty - totalCartQty;
@@ -326,15 +327,16 @@ export default function CouponModal({
 }: CouponModalProps) {
   const t = useTranslations("voucher");
   const router = useRouter();
-  const pathname = usePathname() || "";
+  const rawPathname = usePathname();
+  const currentPath = (rawPathname || "") as string;
   const isCheckoutRoute = Boolean(
-    pathname && (
-      pathname === "/checkout" ||
-      pathname.endsWith("/checkout") ||
-      pathname.includes("/checkout") ||
-      pathname === "/thanh-toan" ||
-      pathname.endsWith("/thanh-toan") ||
-      pathname.includes("/thanh-toan")
+    currentPath && (
+      currentPath === "/checkout" ||
+      currentPath.endsWith("/checkout") ||
+      currentPath.includes("/checkout") ||
+      currentPath === "/thanh-toan" ||
+      currentPath.endsWith("/thanh-toan") ||
+      currentPath.includes("/thanh-toan")
     )
   );
   const isBrowseMode = isBrowseOnly !== undefined ? isBrowseOnly : !isCheckoutRoute;

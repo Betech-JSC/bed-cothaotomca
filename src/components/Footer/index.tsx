@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, usePathname } from "@/i18n/i18n-navigation";
 import Image from "next/image";
 import Logo from "../Logo";
@@ -13,6 +13,7 @@ import Chat from "../Icons/Chat";
 const Footer = () => {
   const t = useTranslations();
   const branches = useBranches();
+  const [openBranchIndex, setOpenBranchIndex] = useState<number | null>(0);
   const sortedBranches = useMemo(() => {
     return [...branches].sort(
       (a, b) => (a.sort_order ?? a.id ?? 0) - (b.sort_order ?? b.id ?? 0)
@@ -83,12 +84,86 @@ const Footer = () => {
             </div>
             <div className="col-span-full lg:col-span-7 xl:col-span-6 text-gray-200 space-y-6 md:space-y-6 xl:space-y-8">
               <div className="title-1 underline">{t('footer.showroom')}</div>
-              <div className="grid md:grid-cols-2 md:gap-4 gap-y-4 sm:gap-y-5 xl:gap-6">
+              {/* Mobile Showroom Accordion (md:hidden) */}
+              <div className="block md:hidden space-y-2.5">
+                {sortedBranches.map((itemShowroom, indexShowroom) => {
+                  const isOpen = openBranchIndex === indexShowroom;
+                  return (
+                    <div
+                      key={itemShowroom.id ?? indexShowroom}
+                      className="rounded-xl border border-white/20 bg-white/5 overflow-hidden transition-all duration-200"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setOpenBranchIndex(isOpen ? null : indexShowroom)}
+                        className="w-full flex items-center justify-between p-3.5 text-left font-display font-bold text-sm text-white hover:text-secondary transition-colors cursor-pointer"
+                        aria-expanded={isOpen}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="inline-flex size-6 items-center justify-center rounded-full bg-secondary text-white text-xs font-bold shrink-0">
+                            {indexShowroom + 1}
+                          </span>
+                          <span>{t('footer.branch')} {indexShowroom + 1}</span>
+                        </span>
+                        <svg
+                          className={`size-4 text-white transition-transform duration-300 ${isOpen ? "rotate-180 text-secondary" : ""}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {isOpen && (
+                        <div className="px-3.5 pb-3.5 pt-1 space-y-2 border-t border-white/10 text-xs sm:text-sm text-gray-200 animate-in fade-in duration-200">
+                          <p className="body-2 text-gray-300 leading-relaxed">
+                            {itemShowroom.address}
+                          </p>
+                          {itemShowroom.phone && (
+                            <div>
+                              <a
+                                href={`tel:${itemShowroom.phone.replace(/[^0-9+]/g, "")}`}
+                                className="inline-flex items-center gap-1.5 text-xs text-secondary font-medium hover:underline"
+                              >
+                                <span>Hotline: {itemShowroom.phone}</span>
+                              </a>
+                            </div>
+                          )}
+                          {itemShowroom.address_link && (
+                            <div>
+                              <a
+                                href={itemShowroom.address_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs text-yellow hover:text-secondary font-semibold hover:underline mt-1"
+                              >
+                                <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span>{t('footer.directions') || "Chỉ đường trên Google Maps"}</span>
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Showroom Grid (hidden md:grid) */}
+              <div className="hidden md:grid md:grid-cols-2 md:gap-4 gap-y-4 sm:gap-y-5 xl:gap-6">
                 {sortedBranches.map((itemShowroom, indexShowroom) => (
                   <a
                     href={itemShowroom.address_link || "#"}
                     target={itemShowroom.address_link ? "_blank" : undefined}
-                    rel={itemShowroom.address_link ? "noopener noreferrer" : undefined} key={indexShowroom} className="relative rounded-[14px] overflow-hidden shadow-sm space-y-2 group">
+                    rel={itemShowroom.address_link ? "noopener noreferrer" : undefined}
+                    key={indexShowroom}
+                    className="relative rounded-[14px] overflow-hidden shadow-sm space-y-2 group"
+                  >
                     <div className="aspect-w-3 aspect-h-2">
                       <Image
                         src={itemShowroom.image || '/cover.jpg'}

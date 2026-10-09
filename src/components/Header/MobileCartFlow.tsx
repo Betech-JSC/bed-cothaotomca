@@ -17,6 +17,7 @@ import {
   getCheckoutConfig,
   getShippingSettings,
   validateVoucher,
+  cancelOrderApi,
   FALLBACK_ADMINISTRATIVE_UNITS,
   type AdministrativeProvince,
   type AdministrativeWard,
@@ -85,7 +86,15 @@ const POPULAR_DISTRICTS = [
   { group: "TP. Hồ Chí Minh", value: "TP. Thủ Đức, TP. Hồ Chí Minh" },
 ];
 
-export default function MobileCartFlow({ onClose, inline = false }: { onClose?: () => void; inline?: boolean }) {
+export default function MobileCartFlow({
+  onClose,
+  inline = false,
+  initialDeliveryType,
+}: {
+  onClose?: () => void;
+  inline?: boolean;
+  initialDeliveryType?: DeliveryType;
+}) {
   const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen, hasOutOfStockItems } = useCart();
   const isOutOfStockOverall = Boolean(hasOutOfStockItems || cartItems.some((i) => i.isOutOfStock));
   const { user, token, refreshUser } = useAuth();
@@ -118,7 +127,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>("delivery");
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>(initialDeliveryType || "delivery");
   const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>(FALLBACK_ADMINISTRATIVE_UNITS);
   const [selectedProvince, setSelectedProvince] = useState("TP. Hồ Chí Minh");
   const [selectedDistrict, setSelectedDistrict] = useState("");
@@ -400,6 +409,14 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
   // Member card & loyalty settings state
   const [isMemberCardSelected, setIsMemberCardSelected] = useState<boolean>(true);
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
+  const prevUserRef = useRef(user);
+
+  useEffect(() => {
+    if (!prevUserRef.current && user) {
+      setIsMemberCardSelected(true);
+    }
+    prevUserRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     getLoyaltySettings().then((s) => {
@@ -915,10 +932,6 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
       if (isMemberCardSelected) {
         setIsMemberCardSelected(false);
       }
-    } else {
-      if (!isMemberCardSelected) {
-        setIsMemberCardSelected(true);
-      }
     }
   }, [user, appliedVoucher, appliedShippingVoucher, selectedCampaignIds, isMemberCardSelected]);
 
@@ -1091,7 +1104,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
         const selectedId = selectedBuyXGetYMap[promo.id] || firstAvailable?.id;
         const item = promo.items.find((i) => i.id === selectedId && i.is_available !== false) || firstAvailable;
         if (!item) return null;
-        const buyQty = promo.settings?.buy_quantity || 2;
+        const buyQty = Number(promo.settings?.buy_quantity ?? (promo as any).buy_quantity ?? 1);
         const giftQty = promo.settings?.gift_quantity || promo.settings?.get_quantity || 1;
         const isFree = item?.campaign_price === 0 || Boolean(item?.is_free);
         const tag = isFree
@@ -1903,20 +1916,25 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                 quantity: 1,
                 price: selectedOrderGiftItem.campaign_price > 0 ? selectedOrderGiftItem.campaign_price : 0,
                 discount: 0,
+                is_gift: true,
                 note: `Quà tặng đơn hàng (${eligibleOrderGiftPromo?.name || "Chiến dịch"})`,
               },
             ]
             : []),
-          ...(activeBuyXGetYItems.map(({ promo, item, tag }) => ({
-            product_id: item.product_id,
-            product_code: item.product_code,
-            kiotviet_id: item.kiotviet_id || undefined,
-            product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
-            quantity: 1,
-            price: item.is_free || item.campaign_price === 0 ? 0 : item.campaign_price,
-            discount: 0,
-            note: `${tag} (${promo.name})`,
-          }))),
+          ...(activeBuyXGetYItems.map(({ promo, item, tag }) => {
+            const isGift = Boolean(item.is_free || item.campaign_price === 0);
+            return {
+              product_id: item.product_id,
+              product_code: item.product_code,
+              kiotviet_id: item.kiotviet_id || undefined,
+              product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
+              quantity: 1,
+              price: isGift ? 0 : item.campaign_price,
+              discount: 0,
+              is_gift: isGift,
+              note: `${tag} (${promo.name})`,
+            };
+          })),
         ],
         discount: voucherDiscount + autoOrderDiscountAmount + memberDiscount,
         member_discount: memberDiscount,
@@ -1986,6 +2004,23 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
     }
   };
 
+  const handleCancelPendingOrder = async () => {
+    if (!pendingOrder) return;
+    const orderCode = pendingOrder.order_code || (pendingOrder as any).code || "";
+    const customerPhone = phone.trim() || "";
+    try {
+      await cancelOrderApi(
+        orderCode,
+        customerPhone,
+        "Khách hàng hủy từ màn hình thanh toán VietQR"
+      );
+    } catch (err: unknown) {
+      console.error("Lỗi khi hủy đơn hàng chờ thanh toán:", err);
+    } finally {
+      setPendingOrder(null);
+    }
+  };
+
   if (!inline && !isCartOpen) return null;
 
   // Render VietQR screen if order is pending bank transfer
@@ -2006,9 +2041,9 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
             <h2 className="title-1 font-display text-primary font-bold">{t("checkout")}</h2>
             {!inline && (
               <button
-                onClick={() => {
+                onClick={async () => {
                   setStep(1);
-                  setPendingOrder(null);
+                  await handleCancelPendingOrder();
                   onClose?.();
                 }}
                 className="text-gray-400 hover:text-primary transition-colors text-2xl font-bold cursor-pointer"
@@ -2025,9 +2060,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
               setStep(1);
               onClose?.();
             }}
-            onCancel={() => {
-              setPendingOrder(null);
-            }}
+            onCancel={handleCancelPendingOrder}
           />
         </div>
       </div>
@@ -2271,6 +2304,68 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                         </div>
                       </div>
                     )}
+
+                    {/* Món ưu đãi combo Mua X tặng/giảm Y (buy_x_get_y) - Hỗ trợ nhiều chiến dịch */}
+                    {activeBuyXGetYItems.map(({ promo, item, tag }) => (
+                      <div
+                        key={`buyxy-${promo.id}-${item.id}`}
+                        className="flex gap-3 py-2.5 px-3 bg-yellow/40 rounded-xl border border-primary/15 items-start animate-fade-in shadow-xs"
+                      >
+                        {item.image ? (
+                          <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-primary/20 flex-shrink-0">
+                            <Image
+                              src={item.image}
+                              alt={item.product_name}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="size-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary uppercase flex-shrink-0 text-center p-1">
+                            {t("combo_tag") || "Combo"}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex justify-between items-start gap-2">
+                            <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">
+                              {item.product_name}
+                            </p>
+                            <div className="text-right shrink-0">
+                              {item.original_price > 0 && (
+                                <span className="text-[10px] text-gray-400 line-through block">
+                                  {formatPrice(item.original_price)}
+                                </span>
+                              )}
+                              <span className="body-2 text-primary font-bold whitespace-nowrap">
+                                {item.campaign_price === 0 ? "0đ" : formatPrice(item.campaign_price)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                {tag}
+                              </span>
+                              <span className="text-[10px] text-gray-500 font-medium">x1</span>
+                              {item.campaign_price === 0 && (
+                                <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded">
+                                  Quà tặng 0đ
+                                </span>
+                              )}
+                              {promo.items && promo.items.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedBuyXGetYPromoForModal(promo)}
+                                  className="text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+                                >
+                                  {t("change_gift", { count: promo.items.length })}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -2294,7 +2389,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                   </div>
 
                   {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}
-                  {shippingSettings?.is_min_amount_enabled && (
+                  {deliveryType !== "pickup" && (deliveryType as string) !== "takeaway" && shippingSettings?.is_min_amount_enabled && (
                     <SmartCartProgressBar
                       subtotal={subtotal}
                       shippingSettings={shippingSettings}
@@ -2303,6 +2398,7 @@ export default function MobileCartFlow({ onClose, inline = false }: { onClose?: 
                       vouchers={availableVouchers}
                       appliedVoucher={appliedVoucher as any}
                       appliedShippingVoucher={appliedShippingVoucher as any}
+                      appliedCampaign={cartCampaignG1}
                       onOpenVouchers={() => setIsVoucherModalOpen(true)}
                     />
                   )}

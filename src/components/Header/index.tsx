@@ -174,11 +174,30 @@ const Header = () => {
     };
   }, [isMobileOpen]);
 
-  const toggleMobile = () => setIsMobileOpen((prev) => !prev);
+  const toggleMobile = () => {
+    setIsMobileOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsSearchOpen(false);
+        setShowSuggestions(false);
+      }
+      return next;
+    });
+  };
+
   const toggleDropdown = (index: number) => {
     setOpenDropdownIndex((prev) => (prev === index ? null : index));
   };
-  const toggleSearch = () => setIsSearchOpen((prev) => !prev);
+
+  const toggleSearch = () => {
+    setIsSearchOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsMobileOpen(false);
+      }
+      return next;
+    });
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

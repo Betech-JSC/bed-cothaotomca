@@ -1,4 +1,5 @@
 import Breadcrumb from "@/components/Common/Breadcrumb"
+import MobileBackButton from "@/components/Common/MobileBackButton";
 import SocialShare from "@/components/SocialShare";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
@@ -187,6 +188,7 @@ export default async function BlogDetailsPage({
         <div className="container md:space-y-8 space-y-6 xl:space-y-8">
           <div className="flex flex-col items-center md:gap-4 gap-4 xl:gap-6 w-full max-w-[880px] mx-auto">
             <div className="flex flex-col gap-3 w-full">
+              <MobileBackButton fallbackUrl="/blog" className="mb-1" />
               <Breadcrumb breadcrumbs={breadcrumbs} classNameNav="md:mx-auto" />
               <h1 className="display-3 max-md:text-[28px] text-primary text-center">
                 {blogTitle}
