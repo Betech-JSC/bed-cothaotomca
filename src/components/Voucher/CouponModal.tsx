@@ -336,7 +336,7 @@ export function evaluateCampaignEligibility(
   // đó chính là các sản phẩm kích hoạt của campaign
   let triggerItems = [...rawTriggerItems];
   if (triggerItems.length === 0 && Array.isArray(c.items)) {
-    const nonFreeItems = c.items.filter((ci: any) => ci && !ci.is_free);
+    const nonFreeItems = c.items.filter((ci: any) => ci && !ci.is_free && ci.campaign_price !== 0 && ci.price !== 0);
     if (nonFreeItems.length > 0) {
       triggerItems = nonFreeItems;
     }
@@ -1698,6 +1698,13 @@ export default function CouponModal({
     onClose();
   }, [appliedVoucherCode, appliedVoucherCodes, onRemoveVoucher, onApplyVouchers, onApplyCampaigns, onToggleMemberCard, onClose]);
 
+  const handleCloseModal = useCallback(() => {
+    const initialSelected = isMemberCardSelectedProp !== undefined ? isMemberCardSelectedProp : true;
+    setIsMemberCardSelected(initialSelected);
+    onToggleMemberCard?.(initialSelected);
+    onClose();
+  }, [isMemberCardSelectedProp, onToggleMemberCard, onClose]);
+
   const isMemberCardEffectiveApplied = hasMemberTierCard && isMemberCardSelected && !isMemberCardLocked;
   const totalAppliedCount = selectedCodes.length + selectedCampaignIds.length + (isMemberCardEffectiveApplied ? 1 : 0);
 
@@ -2549,7 +2556,7 @@ export default function CouponModal({
           if (selectedCampaign) {
             setSelectedCampaign(null);
           } else {
-            onClose();
+            handleCloseModal();
           }
         }}
       />
@@ -2583,7 +2590,7 @@ export default function CouponModal({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onClose();
+                  handleCloseModal();
                 }}
                 type="button"
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-gray-400 hover:text-primary hover:bg-gray-100 border border-gray-200 text-lg transition-colors cursor-pointer"
@@ -2715,7 +2722,7 @@ export default function CouponModal({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onClose();
+                  handleCloseModal();
                 }}
                 type="button"
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-gray-400 hover:text-primary hover:bg-gray-100 border border-gray-200 text-lg transition-colors cursor-pointer"

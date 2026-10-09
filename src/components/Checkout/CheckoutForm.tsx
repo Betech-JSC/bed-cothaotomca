@@ -1399,17 +1399,39 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   const canCombineLoyaltyWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
 
-  const isExcludedByVoucher = useMemo(() => {
+  const isMemberExcludedByPromotions = useMemo(() => {
     if (canCombineLoyaltyWithPromotions) return false;
     if (appliedVoucher && appliedVoucher.canCombineWithPromotions === false) return true;
     if (appliedShippingVoucher && appliedShippingVoucher.canCombineWithPromotions === false) return true;
+
+    const activePromos = (allPromotionsList || []).filter((c) =>
+      selectedCampaignIds.some((id) => String(id) === String(c.id))
+    );
+    if (activePromos.some((c) => c.can_combine_with_promotions === false)) return true;
+    if (cartCampaignG1 && cartCampaignG1.can_combine_with_promotions === false) return true;
+    if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.can_combine_with_promotions === false) return true;
+    if (eligibleOrderDiscountPromo && eligibleOrderDiscountPromo.can_combine_with_promotions === false) return true;
+    if (eligibleBuyXGetYPromos.some((p) => p.can_combine_with_promotions === false)) return true;
+
     return false;
-  }, [canCombineLoyaltyWithPromotions, appliedVoucher, appliedShippingVoucher]);
+  }, [
+    canCombineLoyaltyWithPromotions,
+    appliedVoucher,
+    appliedShippingVoucher,
+    allPromotionsList,
+    selectedCampaignIds,
+    cartCampaignG1,
+    eligibleOrderGiftPromo,
+    eligibleOrderDiscountPromo,
+    eligibleBuyXGetYPromos,
+  ]);
+
+  const isExcludedByVoucher = isMemberExcludedByPromotions;
 
   const memberDiscount = useMemo(() => {
-    if (!user || !isMemberCardSelected || isExcludedByVoucher) return 0;
+    if (!user || !isMemberCardSelected || isMemberExcludedByPromotions) return 0;
     return calculateMemberDiscount(user, regularPriceSubtotal);
-  }, [user, isMemberCardSelected, isExcludedByVoucher, regularPriceSubtotal]);
+  }, [user, isMemberCardSelected, isMemberExcludedByPromotions, regularPriceSubtotal]);
 
   const memberDiscountLabel = useMemo(() => {
     if (!user || memberTier.discountPercent <= 0) return "";
@@ -2820,7 +2842,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                               });
                             }
                           }}
-                          className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] pr-9 bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif"
+                          className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] pr-9 bg-white text-gray-900 focus:outline-none focus:border-primary text-base md:text-sm font-serif"
                           placeholder={t("address_placeholder")}
                         />
                         {streetAddress && (
@@ -3464,11 +3486,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               <VoucherTicketBar
                 appliedVoucher={appliedVoucher}
                 appliedShippingVoucher={appliedShippingVoucher}
-                activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : (cartCampaignG1?.name || eligibleOrderGiftPromo?.name || eligibleBuyXGetYPromos[0]?.name)}
+                activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : (cartCampaignG1?.name || eligibleOrderGiftPromo?.name || eligibleBuyXGetYPromos[0]?.name || eligibleOrderDiscountPromo?.name)}
                 memberTierName={memberTier.name}
                 memberDiscountAmount={memberDiscount}
                 memberDiscountPercent={memberTier.discountPercent}
-                isMemberApplied={memberDiscount > 0 && !isExcludedByVoucher}
+                isMemberApplied={memberDiscount > 0 && !isMemberExcludedByPromotions}
                 onClick={() => setIsVoucherModalOpen(true)}
                 onRemove={handleRemovePromotionFromBar}
               />
@@ -3549,10 +3571,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       0đ
                     </span>
                   </div>
-                ) : isExcludedByVoucher ? (
+                ) : isMemberExcludedByPromotions ? (
                   <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                     <span className="flex-1 min-w-0 leading-snug">
-                      {t("cost_summary.member_discount_mutex") || "Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)"}
+                      {t("cost_summary.member_discount_mutex") || "Ưu đãi thành viên (Không áp dụng đồng thời với ưu đãi đã chọn)"}
                     </span>
                     <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                       0đ

@@ -469,4 +469,34 @@ describe('VoucherTicketBar Component Tests', () => {
     fireEvent.click(removeBtn);
     expect(handleRemove).toHaveBeenCalledTimes(1);
   });
+
+  it('15. Khi có Campaign độc quyền (Súp Miso) và thẻ hội viên bị loại trừ (isMemberApplied=false, memberDiscountAmount=0) -> Chỉ hiển thị badge Campaign, KHÔNG hiển thị badge Hội viên, và appliedCount = 1', () => {
+    const handleClick = vi.fn();
+    const handleRemove = vi.fn();
+
+    render(
+      <VoucherTicketBar
+        appliedVoucher={null}
+        appliedShippingVoucher={null}
+        activeCampaignName="Tặng Súp Miso"
+        memberTierName="Vàng"
+        memberDiscountAmount={0}
+        memberDiscountPercent={5}
+        isMemberApplied={false}
+        onClick={handleClick}
+        onRemove={handleRemove}
+      />
+    );
+
+    // 1. Badge Campaign hiển thị
+    const campaignBadge = screen.getByTestId('campaign-ticket-badge');
+    expect(campaignBadge).toBeInTheDocument();
+    expect(campaignBadge).toHaveTextContent('Tặng Súp Miso');
+
+    // 2. Badge Hội viên KHÔNG hiển thị
+    expect(screen.queryByTestId('member-ticket-badge')).not.toBeInTheDocument();
+
+    // 3. Dòng thông báo hiển thị đúng 1 ưu đãi
+    expect(screen.getByText(/Đã áp dụng thành công 1 ưu đãi!/i)).toBeInTheDocument();
+  });
 });

@@ -257,7 +257,7 @@
     },
     "cost_summary": {
       "member_discount_unselected": "Member discount (Unselected)",
-      "member_discount_mutex": "Member discount (Cannot combine with selected coupon)",
+      "member_discount_mutex": "Member discount (Cannot combine with selected promotion)",
       "member_discount_label": "{tier} Member Benefit (-{percent}%)",
       "member_upgrade_label": "{tier} Tier Upgrade Celebration (-{percent}%)",
       "member_discount_default": "Member benefit",

@@ -1243,19 +1243,41 @@ export default function MobileCartFlow({
 
   const canCombineLoyaltyWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
 
-  const isExcludedByVoucher = useMemo(() => {
+  const isMemberExcludedByPromotions = useMemo(() => {
     if (canCombineLoyaltyWithPromotions) return false;
     if (appliedVoucher && appliedVoucher.canCombineWithPromotions === false) return true;
     if (appliedShippingVoucher && appliedShippingVoucher.canCombineWithPromotions === false) return true;
+
+    const activePromos = (allPromotionsList || []).filter((c) =>
+      selectedCampaignIds.some((id) => String(id) === String(c.id))
+    );
+    if (activePromos.some((c) => c.can_combine_with_promotions === false)) return true;
+    if (cartCampaignG1 && cartCampaignG1.can_combine_with_promotions === false) return true;
+    if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.can_combine_with_promotions === false) return true;
+    if (eligibleOrderDiscountPromo && eligibleOrderDiscountPromo.can_combine_with_promotions === false) return true;
+    if (eligibleBuyXGetYPromos.some((p) => p.can_combine_with_promotions === false)) return true;
+
     return false;
-  }, [canCombineLoyaltyWithPromotions, appliedVoucher, appliedShippingVoucher]);
+  }, [
+    canCombineLoyaltyWithPromotions,
+    appliedVoucher,
+    appliedShippingVoucher,
+    allPromotionsList,
+    selectedCampaignIds,
+    cartCampaignG1,
+    eligibleOrderGiftPromo,
+    eligibleOrderDiscountPromo,
+    eligibleBuyXGetYPromos,
+  ]);
+
+  const isExcludedByVoucher = isMemberExcludedByPromotions;
 
   const baseMemberDiscount = useMemo(() => {
     if (!user) return 0;
     return calculateMemberDiscount(user, regularPriceSubtotal);
   }, [user, regularPriceSubtotal]);
 
-  const memberDiscount = (!isMemberCardSelected || isExcludedByVoucher) ? 0 : baseMemberDiscount;
+  const memberDiscount = (!isMemberCardSelected || isMemberExcludedByPromotions) ? 0 : baseMemberDiscount;
 
   const memberDiscountLabel = useMemo(() => {
     if (!user || memberTier.discountPercent <= 0) return "";
@@ -1736,7 +1758,7 @@ export default function MobileCartFlow({
         user &&
         (memberTier.tier === "gold" || memberTier.tier === "diamond") &&
         isMemberCardSelected &&
-        !isExcludedByVoucher &&
+        !isMemberExcludedByPromotions &&
         memberDiscount > 0
       );
       const effectiveCampaignCount = (nextFood?.canCombineWithPromotions === false ? 0 : selectedCampaignIds.length);
@@ -1773,7 +1795,7 @@ export default function MobileCartFlow({
     user,
     memberTier,
     isMemberCardSelected,
-    isExcludedByVoucher,
+    isMemberExcludedByPromotions,
     memberDiscount,
     selectedCampaignIds,
     token,
@@ -2463,11 +2485,11 @@ export default function MobileCartFlow({
                     <VoucherTicketBar
                       appliedVoucher={appliedVoucher}
                       appliedShippingVoucher={appliedShippingVoucher}
-                      activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : (cartCampaignG1?.name || eligibleOrderGiftPromo?.name || eligibleBuyXGetYPromos[0]?.name)}
+                      activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : (cartCampaignG1?.name || eligibleOrderGiftPromo?.name || eligibleBuyXGetYPromos[0]?.name || eligibleOrderDiscountPromo?.name)}
                       memberTierName={memberTier.name}
                       memberDiscountAmount={memberDiscount}
                       memberDiscountPercent={memberTier.discountPercent}
-                      isMemberApplied={memberDiscount > 0 && !isExcludedByVoucher}
+                      isMemberApplied={memberDiscount > 0 && !isMemberExcludedByPromotions}
                       onClick={() => setIsVoucherModalOpen(true)}
                       onRemove={handleRemovePromotionFromBar}
                     />
@@ -2528,7 +2550,7 @@ export default function MobileCartFlow({
                             0đ
                           </span>
                         </div>
-                      ) : isExcludedByVoucher ? (
+                      ) : isMemberExcludedByPromotions ? (
                         <div className="flex justify-between items-center text-sm font-medium text-gray-500 animate-fade-in gap-2">
                           <span className="flex-1 min-w-0">
                             {t("cost_summary.member_discount_mutex")}
@@ -2727,7 +2749,7 @@ export default function MobileCartFlow({
                         0đ
                       </span>
                     </div>
-                  ) : isExcludedByVoucher ? (
+                  ) : isMemberExcludedByPromotions ? (
                     <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                       <span className="flex-1 min-w-0 leading-snug">
                         {t("cost_summary.member_discount_mutex")}

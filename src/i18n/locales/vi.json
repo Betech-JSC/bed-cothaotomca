@@ -257,7 +257,7 @@
     },
     "cost_summary": {
       "member_discount_unselected": "Ưu đãi thành viên (Đã bỏ chọn)",
-      "member_discount_mutex": "Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)",
+      "member_discount_mutex": "Ưu đãi thành viên (Không áp dụng đồng thời với ưu đãi đã chọn)",
       "member_discount_label": "Ưu đãi thành viên {tier} (-{percent}%)",
       "member_upgrade_label": "Mừng lên hạng {tier} (-{percent}%)",
       "member_discount_default": "Ưu đãi thành viên",
