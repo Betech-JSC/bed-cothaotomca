@@ -95,10 +95,14 @@ export function getBackendBaseUrl(): string {
 
 export function formatImageUrl(url?: string | null): string {
   if (!url) return '';
+  const backendOrigin = getBackendBaseUrl();
+  if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
+    const cleanPath = url.replace(/^https?:\/\/[^/]+/, '');
+    return `${backendOrigin}${cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`}`;
+  }
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
-  const backendOrigin = getBackendBaseUrl();
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
   return `${backendOrigin}${cleanPath}`;
 }

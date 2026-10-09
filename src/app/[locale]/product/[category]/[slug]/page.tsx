@@ -13,7 +13,7 @@ import JsonLd from "@/components/SEO/JsonLd";
 import AlternateLinksUpdater from "@/components/SEO/AlternateLinksUpdater";
 import type { AlternateLinksMap } from "@/contexts/AlternateLinksContext";
 
-import { getTranslation, slugify } from "@/lib/format";
+import { getTranslation, slugify, formatImageUrl } from "@/lib/format";
 import { getProductLocalizedSlugs } from "@/lib/productHelper";
 export const revalidate = 60; // ISR: revalidate mỗi 60 giây
 
@@ -137,11 +137,15 @@ export default async function ProductDetailsPage({
   // Thu thập danh sách ảnh (bao gồm ảnh đại diện và ảnh gallery con)
   const galleryImages: { url: string; alt: string }[] = [];
   if (product.image) {
-    galleryImages.push({ url: product.image, alt: productName });
+    const formattedMainUrl = formatImageUrl(product.image);
+    if (formattedMainUrl) {
+      galleryImages.push({ url: formattedMainUrl, alt: productName });
+    }
   }
   if (product.images && product.images.length > 0) {
     product.images.forEach((img: any, idx: number) => {
-      const imgUrl = img.image || img.url;
+      const rawUrl = img.image || img.url;
+      const imgUrl = formatImageUrl(rawUrl);
       if (imgUrl && !galleryImages.some((i) => i.url === imgUrl)) {
         galleryImages.push({
           url: imgUrl,
@@ -150,7 +154,8 @@ export default async function ProductDetailsPage({
       }
     });
   } else if (product.gallery && product.gallery.length > 0) {
-    product.gallery.forEach((imgUrl: string, idx: number) => {
+    product.gallery.forEach((rawUrl: string, idx: number) => {
+      const imgUrl = formatImageUrl(rawUrl);
       if (imgUrl && !galleryImages.some((i) => i.url === imgUrl)) {
         galleryImages.push({
           url: imgUrl,
@@ -161,7 +166,7 @@ export default async function ProductDetailsPage({
   }
 
   if (galleryImages.length === 0) {
-    galleryImages.push({ url: product.image || "/cover.jpg", alt: productName });
+    galleryImages.push({ url: formatImageUrl(product.image) || "/cover.jpg", alt: productName });
   }
 
   const productData = {
@@ -169,7 +174,7 @@ export default async function ProductDetailsPage({
     description: product.description,
     variant_type: product.variant_type,
     image: {
-      url: product.image || galleryImages[0]?.url || "/cover.jpg",
+      url: formatImageUrl(product.image) || galleryImages[0]?.url || "/cover.jpg",
       alt: product.name,
     },
     images: galleryImages,
@@ -319,7 +324,7 @@ export default async function ProductDetailsPage({
       variants: p.variants,
 
       category: { title: categoryName, slug: categorySlug },
-      image: { url: p.image },
+      image: { url: formatImageUrl(p.image) || "/cover.jpg" },
       description: translation?.description || p.description,
       created_at: p.created_at
     };

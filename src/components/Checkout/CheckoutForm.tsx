@@ -449,12 +449,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [isMemberCardSelected, setIsMemberCardSelected] = useState<boolean>(true);
   const prevUserRef = useRef(user);
 
-  useEffect(() => {
-    if (!prevUserRef.current && user) {
-      setIsMemberCardSelected(true);
-    }
-    prevUserRef.current = user;
-  }, [user]);
 
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
 
@@ -783,10 +777,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         p.items &&
         p.items.length > 0 &&
         subtotal >= (p.min_order_value || 0) &&
-        selectedCampaignIds.some((id) => String(id) === String(p.id))
+        selectedCampaignIds.some((id) => String(id) === String(p.id)) &&
+        evaluateCampaignEligibility(p, {
+          subtotal,
+          originalSubtotal,
+          cartItems: checkoutCartItems,
+          isBrowseMode: false,
+        }).eligible
     ) || null;
     return promo;
-  }, [configState.active_promotions, subtotal, isBestDealVoucherApplied, selectedCampaignIds]);
+  }, [configState.active_promotions, subtotal, originalSubtotal, checkoutCartItems, isBestDealVoucherApplied, selectedCampaignIds]);
 
 
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
@@ -1255,9 +1255,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
   }, [appliedVoucher, originalSubtotal, saleSubtotal, totalItemDiscount, shipping]);
 
-  // Tự động dọn dẹp voucher/khuyến mãi và thẻ thành viên khi người dùng chưa đăng nhập hoặc vừa đăng xuất
+  // Tự động dọn dẹp voucher/khuyến mãi và thẻ thành viên CHỈ khi người dùng đăng xuất thực sự (prevUserRef.current && !user)
   useEffect(() => {
-    if (!user) {
+    const isLoggingIn = Boolean(!prevUserRef.current && user);
+    const isLoggingOut = Boolean(prevUserRef.current && !user);
+
+    if (isLoggingIn) {
+      setIsMemberCardSelected(true);
+    }
+
+    if (isLoggingOut) {
       const hasActivePromos = Boolean(appliedVoucher || appliedShippingVoucher || selectedCampaignIds.length > 0);
       if (hasActivePromos) {
         setAppliedVoucher(null);
@@ -1269,11 +1276,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         setBestDealNotice(null);
         clearAllPromotionStorage();
       }
-      if (isMemberCardSelected) {
-        setIsMemberCardSelected(false);
-      }
+      setIsMemberCardSelected(false);
     }
-  }, [user, appliedVoucher, appliedShippingVoucher, selectedCampaignIds, isMemberCardSelected]);
+
+    prevUserRef.current = user;
+  }, [user, appliedVoucher, appliedShippingVoucher, selectedCampaignIds]);
 
   const foodVoucherDiscount = useMemo(() => {
     if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") return 0;

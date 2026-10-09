@@ -6,8 +6,21 @@ export type PromotionType =
 
 export type DiscountType = "percent" | "fixed" | "custom";
 
+export interface CampaignTriggerItem {
+  product_id: number;
+  product_variant_id?: number | null;
+  min_quantity?: number;
+}
+
+export interface CampaignGiftSettingItem {
+  product_id: number;
+  product_variant_id?: number | null;
+  quantity?: number;
+}
+
 export interface PromotionGiftItem {
   id: number;
+  campaign_id?: number;
   product_id: number;
   product_variant_id?: number | null;
   product_code: string;
@@ -20,6 +33,13 @@ export interface PromotionGiftItem {
   disabled?: boolean;
   disabled_reason?: string;
   kiotviet_id?: number | null;
+  product?: {
+    id: number;
+    name: string;
+    price: number;
+    image?: string;
+    slug?: string;
+  };
 }
 
 export interface CampaignSettings {
@@ -27,6 +47,8 @@ export interface CampaignSettings {
   gift_quantity?: number;
   get_quantity?: number;
   min_order_value?: number;
+  trigger_items?: CampaignTriggerItem[];
+  gift_items?: CampaignGiftSettingItem[];
 }
 
 export interface ActivePromotion {
@@ -50,6 +72,7 @@ export interface PublicCampaignItem {
   id: number | string;
   name: string;
   code?: string;
+  status?: boolean;
   special_note?: string;
   description?: string;
   banner?: string;

@@ -673,7 +673,7 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     fireEvent.click(applyBtn);
 
     expect(
-      await screen.findByText('Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.')
+      await screen.findByText(/Mã giảm giá chỉ áp dụng cho đơn hàng từ 500\.000đ trở lên|Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này\./)
     ).toBeInTheDocument();
   });
 

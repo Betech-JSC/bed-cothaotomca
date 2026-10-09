@@ -33,6 +33,9 @@ export function formatPrivateVoucherError(errMsg: string): string {
   ) {
     return errMsg;
   }
+  if (msgLower.includes("hết hạn") || msgLower.includes("expired")) {
+    return errMsg || "Mã giảm giá đã hết hạn sử dụng.";
+  }
   if (
     msgLower.includes("chỉ dành cho khách hàng thành viên") ||
     msgLower.includes("chỉ dành riêng cho thành viên") ||
@@ -212,6 +215,39 @@ export function evaluateCampaignEligibility(
     };
   }
 
+  // Helper kiểm tra trigger items nếu campaign có cấu hình
+  let settingsObj: Record<string, any> = {};
+  if (typeof c.settings === "object" && c.settings !== null) {
+    settingsObj = c.settings as Record<string, any>;
+  } else if (typeof c.settings === "string") {
+    try {
+      settingsObj = JSON.parse(c.settings);
+    } catch {
+      settingsObj = {};
+    }
+  }
+
+  const triggerItems: any[] = (settingsObj.trigger_items ?? (c as any).trigger_items) || [];
+  const hasTriggerItems = Array.isArray(triggerItems) && triggerItems.length > 0;
+
+  const isCartItemMatchingTrigger = (item: CartItemProductEligibilityCheck) => {
+    const pId = Number(item.product_id ?? item.productId ?? item.id);
+    const vId = item.product_variant_id ?? item.variantId ? Number(item.product_variant_id ?? item.variantId) : null;
+    return triggerItems.some((ti: any) => {
+      const tiProductId = typeof ti === "number" ? ti : Number(ti.product_id ?? ti.id ?? ti.productId);
+      const tiVariantId = (ti && typeof ti === "object" && (ti.product_variant_id ?? ti.variantId))
+        ? Number(ti.product_variant_id ?? ti.variantId)
+        : null;
+      if (tiVariantId) {
+        return tiProductId === pId && tiVariantId === vId;
+      }
+      return tiProductId === pId;
+    });
+  };
+
+  const rawBuyQty = settingsObj.buy_quantity ?? settingsObj.min_quantity ?? (c as any).buy_quantity ?? settingsObj.buy_qty;
+  const buyQty = rawBuyQty !== undefined && rawBuyQty !== null && Number(rawBuyQty) > 0 ? Number(rawBuyQty) : 1;
+
   // 2. Xử lý các loại campaign:
   // a) Nếu c.promotion_type === 'order_gift_discount':
   // Món quà tặng chưa có trong giỏ hàng, cần đủ min_order_value và có danh sách quà khả dụng.
@@ -228,14 +264,45 @@ export function evaluateCampaignEligibility(
         reason: fallbackReason,
       };
     }
+
+    // Nếu campaign quà tặng có cấu hình món kích hoạt (trigger_items)
+    if (hasTriggerItems) {
+      const matchingItems = (cartItems || []).filter(isCartItemMatchingTrigger);
+      const totalMatchingQty = matchingItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+      if (totalMatchingQty < buyQty) {
+        const missing = buyQty - totalMatchingQty;
+        return {
+          eligible: false,
+          reason: t
+            ? (t("buy_more_trigger_items_gift", { count: missing }) || `Cần mua thêm ${missing} sản phẩm áp dụng để nhận quà`)
+            : `Cần mua thêm ${missing} sản phẩm áp dụng để nhận quà`,
+        };
+      }
+    }
+
     return { eligible: true };
   }
 
   // b) Nếu c.promotion_type === 'buy_x_get_y':
-  // Món ưu đãi kèm Y chưa có trong giỏ hàng, chỉ cần tổng số lượng sản phẩm trong giỏ hàng đạt buy_quantity (mặc định 1 nếu không cấu hình).
+  // Món ưu đãi kèm Y chưa có trong giỏ hàng, kiểm tra trigger_items hoặc tổng số lượng sản phẩm trong giỏ hàng.
   if (c.promotion_type === "buy_x_get_y") {
-    const rawBuyQty = c.settings?.buy_quantity ?? (c as any).buy_quantity ?? (c.settings as any)?.buy_qty;
-    const buyQty = rawBuyQty !== undefined && rawBuyQty !== null && Number(rawBuyQty) > 0 ? Number(rawBuyQty) : 1;
+    if (hasTriggerItems) {
+      const matchingItems = (cartItems || []).filter(isCartItemMatchingTrigger);
+      const totalMatchingQty = matchingItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+      if (totalMatchingQty < buyQty) {
+        const missing = buyQty - totalMatchingQty;
+        return {
+          eligible: false,
+          reason: t
+            ? (t("buy_more_to_activate_buy_x_get_y", { count: missing }) || `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`)
+            : `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`,
+        };
+      }
+      return { eligible: true };
+    }
+
     const totalCartQty = (cartItems || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
     if (totalCartQty < buyQty) {
       const missing = buyQty - totalCartQty;
@@ -722,6 +789,17 @@ export default function CouponModal({
         v.code.toUpperCase().includes("FREESHIP") ||
         v.code.toUpperCase().includes("SHIP")
       );
+
+      // -1. Voucher expiration check: Mã voucher đã hết hạn sử dụng
+      if (v.end_date) {
+        const expiryDate = new Date(v.end_date);
+        if (!isNaN(expiryDate.getTime()) && expiryDate < new Date()) {
+          return {
+            eligible: false,
+            reason: t("voucher_expired") || "Mã giảm giá đã hết hạn sử dụng.",
+          };
+        }
+      }
 
       // 0. Auto Freeship check: Đơn hàng đã được hưởng Freeship tự động 100%
       if (orderIsAutoFreeship && isFreeship) {

@@ -8,6 +8,7 @@ import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useBranches } from "@/contexts/BranchContext";
 import { useTranslations } from "next-intl";
 import Chat from "../Icons/Chat";
+import { formatImageUrl } from "@/lib/format";
 
 
 const Footer = () => {
@@ -118,6 +119,14 @@ const Footer = () => {
 
                       {isOpen && (
                         <div className="px-3.5 pb-3.5 pt-1 space-y-2 border-t border-white/10 text-xs sm:text-sm text-gray-200 animate-in fade-in duration-200">
+                          <div className="relative aspect-w-3 aspect-h-2 rounded-lg overflow-hidden my-2">
+                            <Image
+                              src={formatImageUrl(itemShowroom.image) || '/cover.jpg'}
+                              alt={itemShowroom.address || `Showroom ${indexShowroom + 1}`}
+                              fill
+                              className="object-cover w-full h-full"
+                            />
+                          </div>
                           <p className="body-2 text-gray-300 leading-relaxed">
                             {itemShowroom.address}
                           </p>
@@ -166,7 +175,7 @@ const Footer = () => {
                   >
                     <div className="aspect-w-3 aspect-h-2">
                       <Image
-                        src={itemShowroom.image || '/cover.jpg'}
+                        src={formatImageUrl(itemShowroom.image) || '/cover.jpg'}
                         alt="background cover"
                         fill
                         className="object-cover w-full h-full lg:group-hover:scale-105 duration-300 ease-in-out"

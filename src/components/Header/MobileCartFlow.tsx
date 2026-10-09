@@ -411,12 +411,6 @@ export default function MobileCartFlow({
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
   const prevUserRef = useRef(user);
 
-  useEffect(() => {
-    if (!prevUserRef.current && user) {
-      setIsMemberCardSelected(true);
-    }
-    prevUserRef.current = user;
-  }, [user]);
 
   useEffect(() => {
     getLoyaltySettings().then((s) => {
@@ -915,9 +909,16 @@ export default function MobileCartFlow({
     }
   }, [appliedVoucher, originalSubtotal, saleSubtotal, totalItemDiscount, shipping]);
 
-  // Tự động dọn dẹp voucher/khuyến mãi và thẻ thành viên khi người dùng chưa đăng nhập hoặc vừa đăng xuất
+  // Tự động dọn dẹp voucher/khuyến mãi và thẻ thành viên CHỈ khi người dùng đăng xuất thực sự (prevUserRef.current && !user)
   useEffect(() => {
-    if (!user) {
+    const isLoggingIn = Boolean(!prevUserRef.current && user);
+    const isLoggingOut = Boolean(prevUserRef.current && !user);
+
+    if (isLoggingIn) {
+      setIsMemberCardSelected(true);
+    }
+
+    if (isLoggingOut) {
       const hasActivePromos = Boolean(appliedVoucher || appliedShippingVoucher || selectedCampaignIds.length > 0);
       if (hasActivePromos) {
         setAppliedVoucher(null);
@@ -929,11 +930,11 @@ export default function MobileCartFlow({
         setBestDealNotice(null);
         clearAllPromotionStorage();
       }
-      if (isMemberCardSelected) {
-        setIsMemberCardSelected(false);
-      }
+      setIsMemberCardSelected(false);
     }
-  }, [user, appliedVoucher, appliedShippingVoucher, selectedCampaignIds, isMemberCardSelected]);
+
+    prevUserRef.current = user;
+  }, [user, appliedVoucher, appliedShippingVoucher, selectedCampaignIds]);
 
   // Auto-prune stale selected campaigns if cart changes and campaign is no longer eligible
   useEffect(() => {
@@ -1020,10 +1021,16 @@ export default function MobileCartFlow({
           p.items &&
           p.items.length > 0 &&
           subtotal >= (p.min_order_value || 0) &&
-          selectedCampaignIds.some((id) => String(id) === String(p.id))
+          selectedCampaignIds.some((id) => String(id) === String(p.id)) &&
+          evaluateCampaignEligibility(p, {
+            subtotal,
+            originalSubtotal,
+            cartItems,
+            isBrowseMode: false,
+          }).eligible
       ) || null;
     return promo;
-  }, [config?.active_promotions, subtotal, isBestDealVoucherApplied, selectedCampaignIds]);
+  }, [config?.active_promotions, subtotal, originalSubtotal, cartItems, isBestDealVoucherApplied, selectedCampaignIds]);
 
 
   const [selectedOrderGiftId, setSelectedOrderGiftId] = useState<number | null>(null);
