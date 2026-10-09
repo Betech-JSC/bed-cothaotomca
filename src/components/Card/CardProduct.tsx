@@ -214,7 +214,6 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
           <Image
             src={imageSrc}
             alt={item.image?.alt || item.title}
-            priority={false}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 380px"
             className="h-full w-full object-cover duration-500 ease-in-out lg:group-hover:scale-110"
@@ -222,27 +221,29 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
         </div>
       </Link>
 
-      <div className="p-2 sm:p-3 md:p-4 text-center flex flex-col flex-1 justify-between">
-        <div>
+      <div className="w-full flex-1 min-h-[200px] pt-6 pr-4 pb-6 pl-4 flex flex-col justify-between gap-3 text-center overflow-hidden opacity-100">
+        <div className="flex flex-col gap-3">
           <Link
             href={{ pathname: '/product/[category]/[slug]', params: { category: item.category?.slug || item.category?.id || 'san-pham', slug: item.slug } }}
-            className="flex items-center justify-center min-h-[38px] sm:min-h-[40px] md:min-h-[64px]"
+            className="flex items-center justify-center min-h-[32px] md:min-h-[64px]"
           >
-            <h3 className="text-sm sm:text-base md:title-1 font-bold text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2">
+            <h3 className="title-1 font-display font-bold text-[22px] leading-[145%] tracking-[0.02em] text-center text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2">
               {item.custom_name || item.title}
             </h3>
           </Link>
-          <div className="hidden md:block body-1 text-gray-900 line-clamp-3 min-h-[48px] md:min-h-[72px] mt-1 mb-2">
-            {item.description}
-          </div>
+          {item.description ? (
+            <p className="body-1 font-sans font-normal text-[16px] text-base leading-[150%] tracking-normal text-center text-gray-900 line-clamp-3 overflow-hidden">
+              {item.description}
+            </p>
+          ) : null}
         </div>
-        <div className="mt-auto pt-1 sm:pt-2 flex flex-col items-center justify-center">
+        <div className="mt-auto pt-1 flex flex-col items-center justify-center">
           {hasDiscount && originalPrice ? (
-            <span className="text-[11px] sm:text-xs md:text-sm text-gray-400 line-through font-medium mb-0.5">
+            <span className="text-xs sm:text-xs md:text-sm text-gray-400 line-through font-medium mb-0.5">
               {formatPrice(originalPrice)}
             </span>
           ) : null}
-          <span className="title-2 text-secondary text-base sm:text-lg md:text-xl font-extrabold font-display tracking-tight leading-tight">
+          <span className="title-2 text-secondary text-xl sm:text-2xl md:text-xl font-extrabold font-display tracking-tight leading-tight">
             {formatPrice(price)}
           </span>
         </div>
