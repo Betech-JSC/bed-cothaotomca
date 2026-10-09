@@ -19,6 +19,7 @@ import LoginForm from "../components/Auth/LoginForm";
 
 // Mock next-intl
 vi.mock("next-intl", () => ({
+  useLocale: () => "vi",
   useTranslations: () => (key: string) => {
     const map: Record<string, string> = {
       title: "Đăng ký tài khoản",

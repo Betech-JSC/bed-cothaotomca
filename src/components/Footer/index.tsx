@@ -117,54 +117,60 @@ const Footer = () => {
                         </svg>
                       </button>
 
-                      {isOpen && (
-                        <div className="animate-slide-down-branch px-3.5 pb-3.5 pt-1 space-y-2 border-t border-white/10 text-xs sm:text-sm text-gray-200">
-                          <div className="relative aspect-w-3 aspect-h-2 rounded-lg overflow-hidden my-2">
-                            <Image
-                              src={formatImageUrl(itemShowroom.image) || '/cover.jpg'}
-                              alt={itemShowroom.address || `Showroom ${indexShowroom + 1}`}
-                              fill
-                              className="object-cover w-full h-full"
-                            />
+                      <div
+                        className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+                          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                        }`}
+                      >
+                        <div className="overflow-hidden min-h-0">
+                          <div className="px-3.5 pb-3.5 pt-1 space-y-2 border-t border-white/10 text-xs sm:text-sm text-gray-200">
+                            <div className="relative aspect-w-3 aspect-h-2 rounded-lg overflow-hidden my-2">
+                              <Image
+                                src={formatImageUrl(itemShowroom.image) || '/cover.jpg'}
+                                alt={itemShowroom.address || `Showroom ${indexShowroom + 1}`}
+                                fill
+                                className="object-cover w-full h-full"
+                              />
+                            </div>
+                            <p className="body-2 text-gray-300 leading-relaxed">
+                              {itemShowroom.address}
+                            </p>
+                            {itemShowroom.phone && (
+                              <div>
+                                <a
+                                  href={`tel:${itemShowroom.phone.replace(/[^0-9+]/g, "")}`}
+                                  className="inline-flex items-center gap-1.5 text-xs text-secondary font-medium hover:underline"
+                                >
+                                  <span>Hotline: {itemShowroom.phone}</span>
+                                </a>
+                              </div>
+                            )}
+                            {itemShowroom.address_link && (
+                              <div>
+                                <a
+                                  href={itemShowroom.address_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-xs text-yellow hover:text-secondary font-semibold hover:underline mt-1"
+                                >
+                                  <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                  <span>{t('footer.directions') || "Chỉ đường trên Google Maps"}</span>
+                                </a>
+                              </div>
+                            )}
                           </div>
-                          <p className="body-2 text-gray-300 leading-relaxed">
-                            {itemShowroom.address}
-                          </p>
-                          {itemShowroom.phone && (
-                            <div>
-                              <a
-                                href={`tel:${itemShowroom.phone.replace(/[^0-9+]/g, "")}`}
-                                className="inline-flex items-center gap-1.5 text-xs text-secondary font-medium hover:underline"
-                              >
-                                <span>Hotline: {itemShowroom.phone}</span>
-                              </a>
-                            </div>
-                          )}
-                          {itemShowroom.address_link && (
-                            <div>
-                              <a
-                                href={itemShowroom.address_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 text-xs text-yellow hover:text-secondary font-semibold hover:underline mt-1"
-                              >
-                                <svg className="size-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <span>{t('footer.directions') || "Chỉ đường trên Google Maps"}</span>
-                              </a>
-                            </div>
-                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
 
               {/* Desktop Showroom Grid (hidden md:grid) */}
-              <div className="hidden md:grid md:grid-cols-2 md:gap-4 gap-y-4 sm:gap-y-5 xl:gap-6">
+              <div className="grid hidden md:grid md:grid-cols-2 md:gap-4 gap-y-4 sm:gap-y-5 xl:gap-6">
                 {sortedBranches.map((itemShowroom, indexShowroom) => (
                   <a
                     href={itemShowroom.address_link || "#"}

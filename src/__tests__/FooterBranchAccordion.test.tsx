@@ -79,34 +79,53 @@ describe("Footer Branch Mobile Accordion Suite (STT 3)", () => {
     const mobileAccordion = container.querySelector(".block.md\\:hidden.space-y-2\\.5") as HTMLElement;
     expect(mobileAccordion).toBeInTheDocument();
 
-    // First branch address should be displayed in mobile accordion
-    const branch1Address = mobileAccordion.querySelector(".body-2.text-gray-300");
+    const branchCards = mobileAccordion.querySelectorAll(".rounded-xl.border");
+    const branch1Card = branchCards[0];
+    const branch2Card = branchCards[1];
+
+    // Branch 1 grid should be expanded (1fr), Branch 2 collapsed (0fr)
+    const branch1Grid = branch1Card.querySelector(".grid");
+    const branch2Grid = branch2Card.querySelector(".grid");
+    expect(branch1Grid).toHaveClass("grid-rows-[1fr]");
+    expect(branch2Grid).toHaveClass("grid-rows-[0fr]");
+
+    // First branch address should be displayed
+    const branch1Address = branch1Card.querySelector(".body-2.text-gray-300");
     expect(branch1Address).toHaveTextContent("Số 1 Tràng Tiền, Hoàn Kiếm, Hà Nội");
 
     // Directions link should be present with correct href
-    const directionsLink = mobileAccordion.querySelector("a[href='https://maps.google.com/?q=branch1']");
+    const directionsLink = branch1Card.querySelector("a[href='https://maps.google.com/?q=branch1']");
     expect(directionsLink).toBeInTheDocument();
   });
 
-  it("toggles branch accordion items on user click", () => {
+  it("toggles branch accordion items on user click with CSS grid transitions", () => {
     const { container } = render(<Footer />);
     const mobileAccordion = container.querySelector(".block.md\\:hidden.space-y-2\\.5") as HTMLElement;
     expect(mobileAccordion).toBeInTheDocument();
 
-    // Find header for branch 2 within mobile accordion
+    const branchCards = mobileAccordion.querySelectorAll(".rounded-xl.border");
+    const branch1Card = branchCards[0];
+    const branch2Card = branchCards[1];
+
     const buttons = mobileAccordion.querySelectorAll("button");
     const branch2Btn = buttons[1];
     expect(branch2Btn).toHaveAttribute("aria-expanded", "false");
 
+    const branch1Grid = branch1Card.querySelector(".grid");
+    const branch2Grid = branch2Card.querySelector(".grid");
+
     // Click to expand branch 2
     fireEvent.click(branch2Btn);
     expect(branch2Btn).toHaveAttribute("aria-expanded", "true");
+    expect(branch2Grid).toHaveClass("grid-rows-[1fr]");
+    expect(branch1Grid).toHaveClass("grid-rows-[0fr]");
     
-    const branch2Content = mobileAccordion.querySelector(".body-2.text-gray-300");
+    const branch2Content = branch2Card.querySelector(".body-2.text-gray-300");
     expect(branch2Content).toHaveTextContent("Số 10 Nguyễn Huệ, Quận 1, TP. HCM");
 
     // Click again to collapse branch 2
     fireEvent.click(branch2Btn);
     expect(branch2Btn).toHaveAttribute("aria-expanded", "false");
+    expect(branch2Grid).toHaveClass("grid-rows-[0fr]");
   });
 });

@@ -1,7 +1,15 @@
 import { defaultLocale } from '@/i18n/config'
 import '@/styles/globals.scss'
 import Script from 'next/script'
-import { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  interactiveWidget: 'resizes-visual',
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn'),

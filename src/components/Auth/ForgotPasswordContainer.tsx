@@ -219,7 +219,7 @@ export default function ForgotPasswordContainer() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder={t("email_placeholder")}
-                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
+                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
 
@@ -323,7 +323,7 @@ export default function ForgotPasswordContainer() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="Tối thiểu 6 ký tự"
-                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
+                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
 
@@ -337,7 +337,7 @@ export default function ForgotPasswordContainer() {
                   onChange={(e) => setPasswordConfirmation(e.target.value)}
                   required
                   placeholder="Nhập lại mật khẩu mới"
-                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
+                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
 

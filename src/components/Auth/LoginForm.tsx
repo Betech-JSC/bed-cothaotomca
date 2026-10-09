@@ -112,6 +112,11 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
       }
     };
 
+    if ((window as any).google) {
+      initializeGoogle();
+      return;
+    }
+
     const targetScriptSrc = `https://accounts.google.com/gsi/client?hl=${locale}`;
     const existingScript = document.getElementById("google-gsi-client") as HTMLScriptElement | null;
     if (!existingScript) {
@@ -259,7 +264,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
               onChange={handleChange}
               required
               placeholder={t("email_phone_placeholder")}
-              className="w-full rounded-[10px] border border-gray-300 bg-white px-3.5 py-2.5 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[42px] text-gray-900 placeholder:text-gray-400 shadow-sm transition-all"
+              className="w-full rounded-[10px] border border-gray-300 bg-white px-3.5 py-2 text-base md:text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[44px] md:h-[42px] text-gray-900 placeholder:text-gray-400 shadow-sm transition-all"
             />
           </div>
 
@@ -284,7 +289,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
                 onChange={handleChange}
                 required
                 placeholder={t("password_placeholder")}
-                className="w-full rounded-[10px] border border-gray-300 bg-white px-3.5 py-2.5 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[42px] text-gray-900 placeholder:text-gray-400 shadow-sm transition-all pr-12"
+                className="w-full rounded-[10px] border border-gray-300 bg-white px-3.5 py-2 text-base md:text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[44px] md:h-[42px] text-gray-900 placeholder:text-gray-400 shadow-sm transition-all pr-12"
               />
               <button
                 type="button"
@@ -417,7 +422,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
                   onChange={(e) => setPendingEmail(e.target.value)}
                   placeholder="name@example.com"
                   required
-                  className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[40px] text-gray-900 shadow-xs"
+                  className="w-full rounded-xl border border-gray-300 px-3 py-2 text-base md:text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[44px] md:h-[40px] text-gray-900 shadow-xs"
                 />
               </div>
 

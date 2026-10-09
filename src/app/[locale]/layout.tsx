@@ -7,7 +7,7 @@ import { getGeneralSettings } from '@/services/generalSettingService'
 import { GeneralSettingsProvider } from '@/contexts/GeneralSettingsContext'
 import { getBranches } from '@/services/branchService'
 import { BranchProvider } from '@/contexts/BranchContext'
-import { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import JsonLd from '@/components/SEO/JsonLd'
 import FixedSocial from '@/components/FixedSocial'
 import { getSeoSettings } from '@/services/seoService'
@@ -19,6 +19,14 @@ import PageProgressBar from '@/components/Common/PageProgressBar'
 import FloatingVoucherButton from '@/components/Voucher/FloatingVoucherButton'
 import MobileSpeedDialFab from '@/components/Common/MobileSpeedDialFab'
 import GoogleProfileCompletionModal from '@/components/Auth/GoogleProfileCompletionModal'
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  interactiveWidget: 'resizes-visual',
+}
 
 export async function generateMetadata({
   params

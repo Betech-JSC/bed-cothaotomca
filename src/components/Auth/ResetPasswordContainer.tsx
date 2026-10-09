@@ -198,7 +198,7 @@ export default function ResetPasswordContainer() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="name@example.com"
-                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[42px] text-gray-900"
+                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-2.5 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] md:h-[42px] text-gray-900"
                 />
               </div>
 
@@ -256,7 +256,7 @@ export default function ResetPasswordContainer() {
                   required
                   disabled={Boolean(success)}
                   placeholder={t("password_placeholder")}
-                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
+                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
 
@@ -272,7 +272,7 @@ export default function ResetPasswordContainer() {
                   required
                   disabled={Boolean(success)}
                   placeholder={t("confirm_password_placeholder")}
-                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
+                  className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
 

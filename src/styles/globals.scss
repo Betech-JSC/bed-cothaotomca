@@ -112,21 +112,23 @@ footer {
     max-width: 76rem !important;
   }
 }
-
-@keyframes slideDownBranch {
-  0% {
-    max-height: 0;
-    opacity: 0;
-    transform: translateY(-8px);
+/* ==========================================================================
+   CHỐNG TỰ ĐỘNG PHÓNG TO (AUTO-ZOOM) KHI FOCUS VÀO Ô NHẬP LIỆU TRÊN MOBILE
+   iOS Safari / Android tự động zoom khi ô nhập liệu có font-size < 16px.
+   Thiết lập tối thiểu 16px trên màn hình mobile (<= 768px) để triệt tiêu zoom.
+   ========================================================================== */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="search"],
+  input[type="url"],
+  input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+    touch-action: manipulation;
   }
-  100% {
-    max-height: 600px;
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-down-branch {
-  overflow: hidden;
-  animation: slideDownBranch 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
+}

@@ -134,7 +134,7 @@ export default function GoogleProfileCompletionModal() {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Ví dụ: 0912345678"
                 required
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none transition-all placeholder:text-gray-400 font-medium"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base md:text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none transition-all placeholder:text-gray-400 font-medium"
               />
             </div>
           </div>
@@ -152,7 +152,7 @@ export default function GoogleProfileCompletionModal() {
                 placeholder="Nhập mật khẩu..."
                 minLength={6}
                 required
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none transition-all placeholder:text-gray-400 font-medium pr-10"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base md:text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none transition-all placeholder:text-gray-400 font-medium pr-10"
               />
               <button
                 type="button"
@@ -186,7 +186,7 @@ export default function GoogleProfileCompletionModal() {
               placeholder="Nhập lại mật khẩu..."
               minLength={6}
               required
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none transition-all placeholder:text-gray-400 font-medium"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base md:text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none transition-all placeholder:text-gray-400 font-medium"
             />
           </div>
 

@@ -135,6 +135,11 @@ const RegisterForm = () => {
       }
     };
 
+    if ((window as any).google) {
+      initializeGoogle();
+      return;
+    }
+
     const targetScriptSrc = `https://accounts.google.com/gsi/client?hl=${locale}`;
     const existingScript = document.getElementById("google-gsi-client") as HTMLScriptElement | null;
     if (!existingScript) {
@@ -523,7 +528,7 @@ const RegisterForm = () => {
             onChange={handleChange}
             required
             placeholder={t("name_placeholder")}
-            className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[40px] text-gray-900"
+            className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-2 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] md:h-[40px] text-gray-900"
           />
         </div>
 
@@ -539,7 +544,7 @@ const RegisterForm = () => {
             onChange={handleChange}
             required
             placeholder={t("email_placeholder")}
-            className={`input-form w-full rounded-[12px] border bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-1 h-[40px] text-gray-900 ${
+            className={`input-form w-full rounded-[12px] border bg-white px-4 py-2 text-base md:text-sm focus:outline-none focus:ring-1 h-[44px] md:h-[40px] text-gray-900 ${
               emailAvailability?.exists
                 ? "border-amber-400 focus:border-amber-500 focus:ring-amber-400"
                 : "border-gray-300 focus:border-primary focus:ring-primary"
@@ -585,7 +590,7 @@ const RegisterForm = () => {
             onChange={handleChange}
             required
             placeholder={t("phone_placeholder")}
-            className={`input-form w-full rounded-[12px] border bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-1 h-[40px] text-gray-900 ${
+            className={`input-form w-full rounded-[12px] border bg-white px-4 py-2 text-base md:text-sm focus:outline-none focus:ring-1 h-[44px] md:h-[40px] text-gray-900 ${
               phoneAvailability?.exists
                 ? "border-amber-400 focus:border-amber-500 focus:ring-amber-400"
                 : "border-gray-300 focus:border-primary focus:ring-primary"
@@ -632,7 +637,7 @@ const RegisterForm = () => {
               onChange={handleChange}
               required
               placeholder={t("password_placeholder")}
-              className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[40px] text-gray-900 pr-10"
+              className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-2 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] md:h-[40px] text-gray-900 pr-10"
             />
             <button
               type="button"

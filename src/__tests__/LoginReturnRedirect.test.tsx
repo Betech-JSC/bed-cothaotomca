@@ -9,6 +9,7 @@ import LoginForm from '@/components/Auth/LoginForm';
 // Mocks
 // ---------------------------------------------------------------------------
 vi.mock('next-intl', () => ({
+  useLocale: () => 'vi',
   useTranslations: () => (key: string) => {
     const map: Record<string, string> = {
       email_phone: 'Email hoặc Số điện thoại',
