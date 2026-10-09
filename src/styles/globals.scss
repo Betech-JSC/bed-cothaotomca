@@ -112,3 +112,21 @@ footer {
     max-width: 76rem !important;
   }
 }
+
+@keyframes slideDownBranch {
+  0% {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  100% {
+    max-height: 600px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down-branch {
+  overflow: hidden;
+  animation: slideDownBranch 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

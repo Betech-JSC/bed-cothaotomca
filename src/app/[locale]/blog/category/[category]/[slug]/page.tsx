@@ -156,7 +156,7 @@ export default async function BlogDetailsPage({
     }
   }
 
-  const relatedPostsDisplay = relatedBlogsData.slice(0, 4).map((item: Blog) => {
+  const relatedPostsDisplay = relatedBlogsData.slice(0, 6).map((item: Blog) => {
     const itemTranslation = getTranslation<BlogTranslation>(item.translations, locale);
     const itemCatTranslation = getTranslation<BlogCategoryTranslation>(item.category?.translations, locale);
     const title = itemTranslation?.title || item.title;

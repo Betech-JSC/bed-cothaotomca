@@ -118,7 +118,7 @@ const Footer = () => {
                       </button>
 
                       {isOpen && (
-                        <div className="px-3.5 pb-3.5 pt-1 space-y-2 border-t border-white/10 text-xs sm:text-sm text-gray-200 animate-in fade-in duration-200">
+                        <div className="animate-slide-down-branch px-3.5 pb-3.5 pt-1 space-y-2 border-t border-white/10 text-xs sm:text-sm text-gray-200">
                           <div className="relative aspect-w-3 aspect-h-2 rounded-lg overflow-hidden my-2">
                             <Image
                               src={formatImageUrl(itemShowroom.image) || '/cover.jpg'}

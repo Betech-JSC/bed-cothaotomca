@@ -69,3 +69,15 @@
     @apply scale-90 md:scale-100;
   }
 }
+
+.swiper-related-posts {
+  .swiper-wrapper {
+    align-items: stretch;
+  }
+
+  .swiper-slide {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+}
