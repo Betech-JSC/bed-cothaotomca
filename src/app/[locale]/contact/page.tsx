@@ -1,4 +1,5 @@
 import Banner from '@/components/Banner';
+import { formatImageUrl } from '@/lib/format';
 import ShareFacebook from '@/components/Icons/ShareFacebook';
 import ShareInstagram from '@/components/Icons/ShareInstagram';
 import ShareThreads from '@/components/Icons/ShareThreads';
@@ -67,11 +68,11 @@ export default async function ContactPage({
   const t = await getTranslations()
   const banner = {
     image: {
-      url: "/images/demo/banner-contact.jpg",
+      url: formatImageUrl("/images/demo/banner-contact.jpg") || "/images/demo/banner-contact.jpg",
       alt: "banner contact",
     },
     image_mobile: {
-      url: "/images/demo/banner-contact.jpg",
+      url: formatImageUrl("/images/demo/banner-contact.jpg") || "/images/demo/banner-contact.jpg",
       alt: "banner contact",
     },
   };

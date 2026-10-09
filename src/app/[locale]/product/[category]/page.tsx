@@ -5,7 +5,7 @@ import { Category } from '@/services/categoryService'
 import { Ingredient } from '@/services/ingredientService'
 import { HeroBanner } from '@/services/heroBannerService'
 import Banner from '@/components/Banner'
-import { slugify, getTranslation } from '@/lib/format'
+import { slugify, getTranslation, formatImageUrl } from '@/lib/format'
 import { Metadata } from 'next'
 
 export const revalidate = 60
@@ -123,8 +123,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     return (
       <main>
         <Banner banner={{
-          image: { url: bannerResp.data[0]?.image || '/images/demo/banner-product.jpg', alt: 'banner product' },
-          image_mobile: { url: bannerResp.data[0]?.image_mobile || bannerResp.data[0]?.image || '/images/demo/banner-product.jpg', alt: 'banner product' }
+          image: { url: formatImageUrl(bannerResp.data[0]?.image) || '/images/demo/banner-product.jpg', alt: 'banner product' },
+          image_mobile: { url: formatImageUrl(bannerResp.data[0]?.image_mobile) || formatImageUrl(bannerResp.data[0]?.image) || '/images/demo/banner-product.jpg', alt: 'banner product' }
         }} />
         <ProductIndexPage
           category={categorySlug}
@@ -222,11 +222,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const bannerItem = bannerResp.data[0];
   const banner = {
     image: {
-      url: bannerItem?.image || '/images/demo/banner-product.jpg',
+      url: formatImageUrl(bannerItem?.image) || '/images/demo/banner-product.jpg',
       alt: bannerItem?.title || 'banner product'
     },
     image_mobile: {
-      url: bannerItem?.image_mobile || bannerItem?.image || '/images/demo/banner-product.jpg',
+      url: formatImageUrl(bannerItem?.image_mobile) || formatImageUrl(bannerItem?.image) || '/images/demo/banner-product.jpg',
       alt: bannerItem?.title || 'banner product'
     }
   }

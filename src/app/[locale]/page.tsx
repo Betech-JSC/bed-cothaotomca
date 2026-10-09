@@ -13,7 +13,7 @@ import { getApi } from '@/services/apiService';
 import { HeroBanner } from '@/services/heroBannerService';
 import { Product } from '@/services/productService';
 import { Category } from '@/services/categoryService';
-import { slugify } from '@/lib/format';
+import { slugify, formatImageUrl } from '@/lib/format';
 import { getBlogs, Blog } from '@/services/blogService';
 import AnimateOnScroll from "@/components/Animated/animated-appear";
 import { Metadata } from 'next';
@@ -92,11 +92,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     const title = translation?.title || item.title || "Cô Thảo Tôm Cá";
     return {
       image: {
-        url: item.image || "/cover.jpg",
+        url: formatImageUrl(item.image) || "/cover.jpg",
         alt: translation?.title || item.image?.alt || title
       },
       image_mobile: {
-        url: item.image_mobile || item.image || "/cover.jpg",
+        url: formatImageUrl(item.image_mobile) || formatImageUrl(item.image) || "/cover.jpg",
         alt: translation?.title || item.image_mobile?.alt || title
       },
       title: title,
@@ -130,7 +130,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       category: { title: categoryName, slug: categorySlug },
       ingredients: item.ingredients?.map(ing => slugify(ing.name)) || [],
       image: {
-        url: item.image || "/cover.jpg",
+        url: formatImageUrl(item.image) || "/cover.jpg",
         alt: name
       },
       description: translation?.description || item.description,
@@ -148,7 +148,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       title: title,
       slug: slug,
       image: {
-        url: item.image || 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop',
+        url: formatImageUrl(item.image) || 'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&h=600&fit=crop',
         alt: title
       },
     };
@@ -158,11 +158,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     const translation = getTranslation(item.translations, locale) as any;
     return {
       image: {
-        url: item.image || "/cover.jpg",
+        url: formatImageUrl(item.image) || "/cover.jpg",
         alt: translation?.title || item.title || ""
       },
       image_mobile: {
-        url: item.image_mobile || item.image || "/cover.jpg",
+        url: formatImageUrl(item.image_mobile) || formatImageUrl(item.image) || "/cover.jpg",
         alt: translation?.title || item.image_mobile?.alt || translation?.title || item.title || ""
       },
       title: translation?.title || item.title || "",
@@ -178,7 +178,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
     return {
       image: {
-        url: item.thumbnail || "/cover.jpg",
+        url: formatImageUrl(item.thumbnail) || "/cover.jpg",
         alt: title,
       },
       title: title,

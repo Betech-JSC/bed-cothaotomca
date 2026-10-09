@@ -8,7 +8,7 @@ import SectionSliderPost from '@/components/Common/SectionSliderPost';
 import Cart from '@/components/Icons/Cart';
 import { Link } from '@/i18n/i18n-navigation';
 import { getBlogs } from '@/services/blogService';
-import { slugify } from '@/lib/format';
+import { slugify, formatImageUrl } from '@/lib/format';
 import AnimateOnScroll from '@/components/Animated/animated-appear';
 import { Metadata } from 'next';
 import { getMetaPage } from '@/services/seoService';
@@ -90,11 +90,11 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   const introBanner = bannerData.data[0];
   const banner = {
     image: {
-      url: introBanner?.image || "/images/demo/banner-about.jpg",
+      url: formatImageUrl(introBanner?.image) || "/images/demo/banner-about.jpg",
       alt: introBanner?.title || "banner about",
     },
     image_mobile: {
-      url: introBanner?.image_mobile || introBanner?.image || "/images/demo/banner-about.jpg",
+      url: formatImageUrl(introBanner?.image_mobile) || formatImageUrl(introBanner?.image) || "/images/demo/banner-about.jpg",
       alt: introBanner?.title || "banner about",
     },
   };
@@ -139,11 +139,11 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
     const translation = getTranslation(item.translations, locale) as any;
     return {
       image: {
-        url: item.image || "/cover.jpg",
+        url: formatImageUrl(item.image) || "/cover.jpg",
         alt: translation?.title || item.title || ""
       },
       image_mobile: {
-        url: item.image_mobile || item.image || "/cover.jpg",
+        url: formatImageUrl(item.image_mobile) || formatImageUrl(item.image) || "/cover.jpg",
         alt: translation?.title || item.image_mobile?.alt || item.title || ""
       },
       title: translation?.title || item.title || "",
@@ -159,7 +159,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
     return {
       image: {
-        url: item.thumbnail || "/cover.jpg",
+        url: formatImageUrl(item.thumbnail) || "/cover.jpg",
         alt: title,
       },
       title: title,

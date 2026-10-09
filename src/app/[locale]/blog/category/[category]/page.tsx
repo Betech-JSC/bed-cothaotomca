@@ -3,7 +3,7 @@ import { getApi } from "@/services/apiService";
 import { HeroBanner } from "@/services/heroBannerService";
 import BlogListPage from "@/components/Blog/BlogListPage";
 import { notFound } from "next/navigation";
-import { slugify, getTranslation } from "@/lib/format";
+import { slugify, getTranslation, formatImageUrl } from "@/lib/format";
 import { redirect } from "@/i18n/routing";
 import { Metadata } from "next";
 
@@ -142,7 +142,11 @@ export default async function BlogCategoryPage({
   const bannerItem = bannerData?.data?.[0];
   const banner = {
     image: {
-      url: bannerItem?.image || "/images/demo/banner-blog.jpg",
+      url: formatImageUrl(bannerItem?.image) || "/images/demo/banner-blog.jpg",
+      alt: bannerItem?.title || "banner blog",
+    },
+    image_mobile: {
+      url: formatImageUrl(bannerItem?.image_mobile) || formatImageUrl(bannerItem?.image) || "/images/demo/banner-blog.jpg",
       alt: bannerItem?.title || "banner blog",
     },
   };

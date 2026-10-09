@@ -117,6 +117,17 @@ export function formatImageUrl(url?: string | null): string {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
+
+  // Giữ nguyên các static asset của frontend trong thư mục /public
+  if (
+    url.startsWith('/images/') ||
+    url.startsWith('/cover') ||
+    url.startsWith('/icons/') ||
+    url.startsWith('/favicon')
+  ) {
+    return url;
+  }
+
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
   return `${backendOrigin}${cleanPath}`;
 }

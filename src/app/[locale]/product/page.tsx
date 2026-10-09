@@ -5,7 +5,7 @@ import { getApi } from '@/services/apiService'
 import { Product } from '@/services/productService'
 import { Category } from '@/services/categoryService'
 import { Ingredient } from '@/services/ingredientService'
-import { slugify } from '@/lib/format'
+import { slugify, formatImageUrl } from '@/lib/format'
 import { Metadata } from 'next'
 import { getMetaPage } from '@/services/seoService'
 
@@ -158,11 +158,11 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const bannerItem = bannerData?.data?.[0];
   const banner = {
     image: {
-      url: bannerItem?.image || '/images/demo/banner-product.jpg',
+      url: formatImageUrl(bannerItem?.image) || '/images/demo/banner-product.jpg',
       alt: bannerItem?.title || 'banner product'
     },
     image_mobile: {
-      url: bannerItem?.image_mobile || bannerItem?.image || '/images/demo/banner-product.jpg',
+      url: formatImageUrl(bannerItem?.image_mobile) || formatImageUrl(bannerItem?.image) || '/images/demo/banner-product.jpg',
       alt: bannerItem?.title || 'banner product'
     }
   }

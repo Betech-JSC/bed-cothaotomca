@@ -7,6 +7,7 @@ import { Autoplay, EffectFade } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
 import 'swiper/css/effect-fade';
+import { formatImageUrl } from '@/lib/format';
 
 interface SectionChooseUsProps {
   items: any[];
@@ -105,18 +106,21 @@ const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
           }}
           loop={items.length > 1}
         >
-          {items.map((item, index) => (
-            <SwiperSlide key={index} className="h-full w-full relative">
-              <img
-                src={item.image_mobile?.url || item.image?.url || "/cover.jpg"}
-                alt={item.image_mobile?.alt || item.title || ""}
-                className="object-cover w-full h-full lg:hidden"
-              />
-              <img
-                src={item.image?.url || "/cover.jpg"}
-                alt={item.image?.alt || item.title || ""}
-                className="object-cover w-full h-full hidden lg:block"
-              />
+          {items.map((item, index) => {
+            const mobileImgSrc = formatImageUrl(item.image_mobile?.url) || formatImageUrl(item.image?.url) || "/cover.jpg";
+            const desktopImgSrc = formatImageUrl(item.image?.url) || "/cover.jpg";
+            return (
+              <SwiperSlide key={index} className="h-full w-full relative">
+                <img
+                  src={mobileImgSrc}
+                  alt={item.image_mobile?.alt || item.title || ""}
+                  className="object-cover w-full h-full lg:hidden"
+                />
+                <img
+                  src={desktopImgSrc}
+                  alt={item.image?.alt || item.title || ""}
+                  className="object-cover w-full h-full hidden lg:block"
+                />
               <div className="absolute inset-0 w-full h-full bg-linear-chooseus"></div>
               <div className="max-w-[840px] w-full md:h-full absolute top-20 md:top-0 left-0 flex items-center">
                 <div className="md:p-6 p-5 lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] md:max-w-[532px] lg:max-w-[600px] xl:max-w-[620px] w-[calc(100%-3rem)] md:w-full mx-auto md:mx-6 max-md:bg-yellow/90 max-md:backdrop-blur-[3px] max-md:rounded-3xl">
@@ -125,7 +129,8 @@ const SectionChooseUs: React.FC<SectionChooseUsProps> = ({ items }) => {
                 </div>
               </div>
             </SwiperSlide>
-          ))}
+            );
+          })}
         </Swiper>
       </div>
     </section>

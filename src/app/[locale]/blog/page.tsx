@@ -2,6 +2,7 @@ import { getBlogCategories, getBlogs, Blog } from "@/services/blogService";
 import { getApi } from "@/services/apiService";
 import { HeroBanner } from "@/services/heroBannerService";
 import BlogListPage from "@/components/Blog/BlogListPage";
+import { formatImageUrl } from "@/lib/format";
 import { Metadata } from 'next';
 import { getMetaPage } from '@/services/seoService';
 
@@ -100,7 +101,11 @@ export default async function BlogIndexPage({
   const bannerItem = bannerData?.data?.[0];
   const banner = {
     image: {
-      url: bannerItem?.image || "/images/demo/banner-blog.jpg",
+      url: formatImageUrl(bannerItem?.image) || "/images/demo/banner-blog.jpg",
+      alt: bannerItem?.title || "banner blog",
+    },
+    image_mobile: {
+      url: formatImageUrl(bannerItem?.image_mobile) || formatImageUrl(bannerItem?.image) || "/images/demo/banner-blog.jpg",
       alt: bannerItem?.title || "banner blog",
     },
   };

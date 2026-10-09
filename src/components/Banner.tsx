@@ -1,5 +1,6 @@
 import Image from "next/image";
 import React from "react";
+import { formatImageUrl } from "@/lib/format";
 
 type BannerProps = {
   banner: {
@@ -19,8 +20,8 @@ const Banner: React.FC<BannerProps> = ({
   banner,
   classHeight = "w-full min-h-[162px] aspect-[16/9] max-h-[360px] md:max-h-[440px] xl:max-h-[480px]",
 }) => {
-  const imageSrc = banner.image?.url || '/cover.jpg';
-  const imageMobileSrc = banner.image_mobile?.url || '/cover.jpg';
+  const imageSrc = formatImageUrl(banner.image?.url) || '/cover.jpg';
+  const imageMobileSrc = formatImageUrl(banner.image_mobile?.url) || imageSrc;
 
   return (
     <div

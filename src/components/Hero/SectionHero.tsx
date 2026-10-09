@@ -10,6 +10,7 @@ import 'swiper/css/pagination';
 import Image from 'next/image';
 import Arrow from '../Icons/Arrow';
 import { useTranslations } from 'next-intl';
+import { formatImageUrl } from '@/lib/format';
 
 interface SectionHeroProps {
   items: any[];
@@ -36,8 +37,8 @@ const SectionHero: React.FC<SectionHeroProps> = ({ items }) => {
           className="!static h-full"
         >
           {items.map((item, index) => {
-            const imageSrc = item.image?.url || '/cover.jpg';
-            const imageMobileSrc = item.image_mobile?.url;
+            const imageSrc = formatImageUrl(item.image?.url) || '/cover.jpg';
+            const imageMobileSrc = item.image_mobile?.url ? formatImageUrl(item.image_mobile?.url) : undefined;
             return (
               <SwiperSlide key={index} className="h-full">
                 <div className="relative h-full">
