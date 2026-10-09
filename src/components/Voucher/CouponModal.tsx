@@ -320,7 +320,17 @@ export function evaluateCampaignEligibility(
   const rawTriggerItems: any[] =
     (Array.isArray(settingsObj.trigger_items) && settingsObj.trigger_items.length > 0)
       ? settingsObj.trigger_items
-      : (Array.isArray((c as any).trigger_items) ? (c as any).trigger_items : (settingsObj.trigger_items ?? (c as any).trigger_items ?? []));
+      : (Array.isArray((c as any).trigger_items) && (c as any).trigger_items.length > 0)
+        ? (c as any).trigger_items
+        : (Array.isArray(settingsObj.conditions?.trigger_items) && settingsObj.conditions.trigger_items.length > 0)
+          ? settingsObj.conditions.trigger_items
+          : (Array.isArray((c as any).conditions?.trigger_items) && (c as any).conditions.trigger_items.length > 0)
+            ? (c as any).conditions.trigger_items
+            : (Array.isArray((c as any).conditions) && (c as any).conditions.length > 0)
+              ? (c as any).conditions
+              : (Array.isArray(settingsObj.trigger_product_ids) && settingsObj.trigger_product_ids.length > 0)
+                ? settingsObj.trigger_product_ids
+                : (settingsObj.trigger_items ?? (c as any).trigger_items ?? []);
 
   // Nếu settings không có trigger_items nhưng c.items có các item không phải quà tặng miễn phí (!is_free),
   // đó chính là các sản phẩm kích hoạt của campaign
@@ -334,8 +344,20 @@ export function evaluateCampaignEligibility(
 
   const hasTriggerItems = Array.isArray(triggerItems) && triggerItems.length > 0;
 
+  const toPositiveNumber = (val: any): number | null => {
+    if (val === null || val === undefined || val === "") return null;
+    const num = Number(val);
+    return !isNaN(num) && num > 0 ? num : null;
+  };
+
   const normStr = (str?: string | null) =>
-    (str || "").toLowerCase().replace(/[()_\-–—]/g, " ").replace(/\s+/g, " ").trim();
+    (str || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[()_\-–—[\],.]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
   const isNameMatch = (a?: string | null, b?: string | null) => {
     const na = normStr(a);
@@ -348,30 +370,48 @@ export function evaluateCampaignEligibility(
   const campaignItems: any[] = Array.isArray(c.items) ? c.items : [];
 
   const triggerMetaList = triggerItems.map((ti: any) => {
-    const tiProductId = typeof ti === "number" ? ti : (ti.product_id ?? ti.id ?? ti.productId ? Number(ti.product_id ?? ti.id ?? ti.productId) : null);
-    const tiVariantId = (ti && typeof ti === "object" && (ti.product_variant_id ?? ti.variantId))
-      ? Number(ti.product_variant_id ?? ti.variantId)
+    const rawTiPId = (typeof ti === "number" || typeof ti === "string")
+      ? ti
+      : (ti?.product_id ?? ti?.id ?? ti?.productId ?? ti?.product?.id);
+    const tiProductId = toPositiveNumber(rawTiPId);
+
+    const rawTiVId = (ti && typeof ti === "object")
+      ? (ti.product_variant_id ?? ti.variant_id ?? ti.variantId ?? ti.productVariantId)
       : null;
-    const tiVariantName = ti && typeof ti === "object" ? (ti.variant_name ?? ti.variantName ?? ti.variant) : null;
-    const tiProductName = ti && typeof ti === "object" ? (ti.product_name ?? ti.productName ?? ti.name ?? ti.title) : null;
-    const tiProductCode = ti && typeof ti === "object" ? (ti.product_code ?? ti.productCode ?? ti.code) : null;
-    const tiKiotvietId = ti && typeof ti === "object" ? (ti.kiotviet_id ?? ti.kiotvietId) : null;
+    const tiVariantId = toPositiveNumber(rawTiVId);
+
+    const rawTiKId = (ti && typeof ti === "object")
+      ? (ti.kiotviet_id ?? ti.kiotvietId ?? ti.kiot_viet_id)
+      : null;
+    const tiKiotvietId = toPositiveNumber(rawTiKId);
+
+    const tiProductCode = (ti && typeof ti === "object")
+      ? (ti.product_code ?? ti.productCode ?? ti.code ?? ti.sku ?? null)
+      : null;
+
+    const tiVariantName = (ti && typeof ti === "object")
+      ? (ti.variant_name ?? ti.variantName ?? ti.variant ?? ti.size ?? null)
+      : null;
+
+    const tiProductName = (ti && typeof ti === "object")
+      ? (ti.product_name ?? ti.productName ?? ti.name ?? ti.title ?? null)
+      : null;
 
     // Tìm trong c.items các item có cùng product_id hoặc product_variant_id (hoặc các item trong c.items có !is_free)
     const matchingCampaignItems = campaignItems.filter((ci: any) => {
       if (!ci) return false;
-      const ciPId = ci.product_id ?? ci.productId ?? ci.id;
-      const ciVId = ci.product_variant_id ?? ci.variantId;
+      const ciPId = toPositiveNumber(ci.product_id ?? ci.productId ?? ci.id);
+      const ciVId = toPositiveNumber(ci.product_variant_id ?? ci.variantId ?? ci.variant_id);
 
       // 1. Khớp theo variant_id
-      if (tiVariantId && ciVId && Number(tiVariantId) === Number(ciVId)) {
+      if (tiVariantId && ciVId && tiVariantId === ciVId) {
         return true;
       }
 
       // 2. Khớp theo product_id
-      if (tiProductId && ciPId && Number(tiProductId) === Number(ciPId)) {
+      if (tiProductId && ciPId && tiProductId === ciPId) {
         if (tiVariantId && ciVId) {
-          return Number(tiVariantId) === Number(ciVId);
+          return tiVariantId === ciVId;
         }
         if (tiVariantName && ci.product_name && !isNameMatch(tiVariantName, ci.product_name)) {
           return false;
@@ -400,10 +440,8 @@ export function evaluateCampaignEligibility(
       new Set(
         [
           tiProductId,
-          ...matchingCampaignItems.map((ci: any) => ci.product_id ?? ci.productId ?? ci.id),
-        ]
-          .filter((id): id is number => typeof id === "number" && !isNaN(id))
-          .map(Number)
+          ...matchingCampaignItems.map((ci: any) => toPositiveNumber(ci.product_id ?? ci.productId ?? ci.id)),
+        ].filter((id): id is number => id !== null)
       )
     );
 
@@ -411,10 +449,8 @@ export function evaluateCampaignEligibility(
       new Set(
         [
           tiVariantId,
-          ...matchingCampaignItems.map((ci: any) => ci.product_variant_id ?? ci.variantId),
-        ]
-          .filter((id): id is number => typeof id === "number" && !isNaN(id))
-          .map(Number)
+          ...matchingCampaignItems.map((ci: any) => toPositiveNumber(ci.product_variant_id ?? ci.variantId ?? ci.variant_id)),
+        ].filter((id): id is number => id !== null)
       )
     );
 
@@ -422,10 +458,8 @@ export function evaluateCampaignEligibility(
       new Set(
         [
           tiKiotvietId,
-          ...matchingCampaignItems.map((ci: any) => ci.kiotviet_id ?? ci.kiotvietId),
-        ]
-          .filter((id): id is number | string => id !== null && id !== undefined && id !== "" && !isNaN(Number(id)))
-          .map(Number)
+          ...matchingCampaignItems.map((ci: any) => toPositiveNumber(ci.kiotviet_id ?? ci.kiotvietId)),
+        ].filter((id): id is number => id !== null)
       )
     );
 
@@ -433,7 +467,7 @@ export function evaluateCampaignEligibility(
       new Set(
         [
           tiProductCode,
-          ...matchingCampaignItems.flatMap((ci: any) => [ci.product_code, ci.productCode, ci.code]),
+          ...matchingCampaignItems.flatMap((ci: any) => [ci.product_code, ci.productCode, ci.code, ci.sku]),
         ]
           .filter(Boolean)
           .map((s) => String(s).toLowerCase().trim())
@@ -473,39 +507,61 @@ export function evaluateCampaignEligibility(
   });
 
   const isCartItemMatchingTrigger = (item: CartItemProductEligibilityCheck) => {
-    const rawPId = item.product_id ?? item.productId ?? (typeof item.id === "number" ? item.id : (!isNaN(Number(item.id)) ? Number(item.id) : null));
-    const pId = rawPId !== null && rawPId !== undefined ? Number(rawPId) : null;
-    const vId = item.product_variant_id ?? item.variantId ? Number(item.product_variant_id ?? item.variantId) : null;
-    const parentPId = item.parentProductId ?? (item as any).parent_product_id ? Number(item.parentProductId ?? (item as any).parent_product_id) : null;
-    const itemCode = (item.productCode ?? item.product_code ?? (item as any).code ?? "").toString().toLowerCase().trim();
+    const rawPId = item.product_id ?? item.productId ?? item.id;
+    const pId = toPositiveNumber(rawPId);
+    const rawVId = item.product_variant_id ?? item.variantId ?? (item as any).variant_id;
+    const vId = toPositiveNumber(rawVId);
+    const rawParentPId = item.parentProductId ?? (item as any).parent_product_id;
+    const parentPId = toPositiveNumber(rawParentPId);
+    const rawKvId = (item as any).kiotviet_id ?? (item as any).kiotvietId;
+    const kvId = toPositiveNumber(rawKvId);
+
+    // Xử lý id dạng chuỗi kép ghép "80-1146" hoặc "80-Set 2"
+    let compoundFirstId: number | null = null;
+    if (typeof item.id === "string" && item.id.includes("-")) {
+      const parts = item.id.split("-");
+      compoundFirstId = toPositiveNumber(parts[0]);
+    }
+
+    const itemCode = (item.productCode ?? item.product_code ?? (item as any).code ?? (item as any).sku ?? "")
+      .toString()
+      .toLowerCase()
+      .trim();
     const itemVariantName = item.variant ?? (item as any).variant_name;
     const itemProductName = item.title ?? (item as any).name ?? (item as any).product_name;
 
     return triggerMetaList.some((meta) => {
-      // 1. Khớp KiotViet ID: Number(item.productId) nằm trong kiotvietIds hoặc Number(item.id) nằm trong kiotvietIds
+      // 1. Khớp KiotViet ID
       if (meta.kiotvietIds.length > 0) {
+        if (kvId !== null && meta.kiotvietIds.includes(kvId)) return true;
         if (pId !== null && meta.kiotvietIds.includes(pId)) return true;
-        if (item.id !== undefined && item.id !== null && !isNaN(Number(item.id)) && meta.kiotvietIds.includes(Number(item.id))) return true;
         if (vId !== null && meta.kiotvietIds.includes(vId)) return true;
+        if (parentPId !== null && meta.kiotvietIds.includes(parentPId)) return true;
+        if (compoundFirstId !== null && meta.kiotvietIds.includes(compoundFirstId)) return true;
       }
 
-      // 2. Khớp Product Code: item.productCode (ví dụ "S2") nằm trong productCodes
+      // 2. Khớp Product Code / SKU
       if (itemCode && meta.productCodes.length > 0) {
         if (meta.productCodes.includes(itemCode)) return true;
       }
 
-      // 3. Khớp Database ID: item.productId hoặc item.parentProductId hoặc item.variantId khớp với productIds hoặc variantIds
+      // 3. Khớp Database ID: item.productId hoặc item.parentProductId hoặc item.variantId
+      const isParentIdMatch =
+        (pId !== null && meta.productIds.includes(pId)) ||
+        (parentPId !== null && meta.productIds.includes(parentPId)) ||
+        (compoundFirstId !== null && meta.productIds.includes(compoundFirstId));
+
       if (meta.variantIds.length > 0) {
         // a. pId khớp variantId HOẶC vId khớp variantId
         if ((pId !== null && meta.variantIds.includes(pId)) || (vId !== null && meta.variantIds.includes(vId))) {
           return true;
         }
 
-        // b. (pId khớp productId HOẶC parentPId khớp productId) VÀ (vId khớp variantId HOẶC tên biến thể item.variant khớp với names)
-        const isParentIdMatch = (pId !== null && meta.productIds.includes(pId)) || (parentPId !== null && meta.productIds.includes(parentPId));
+        // b. Product ID khớp VÀ (vId khớp HOẶC tên biến thể khớp HOẶC cart item không phân biệt biến thể)
         if (isParentIdMatch) {
           if (vId !== null && meta.variantIds.includes(vId)) return true;
           if (itemVariantName && meta.names.some((name) => isNameMatch(itemVariantName, name))) return true;
+          if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) return true;
           if (!itemVariantName && vId === null) return true;
         }
 
@@ -517,26 +573,23 @@ export function evaluateCampaignEligibility(
         }
       } else {
         // Nếu không có variantId cụ thể (áp dụng cho toàn bộ sản phẩm):
-        const isProductIdMatch = (pId !== null && meta.productIds.includes(pId)) || (parentPId !== null && meta.productIds.includes(parentPId));
-        if (isProductIdMatch) {
+        if (isParentIdMatch) {
           return true;
         }
       }
 
-      // 4. Khớp Tên / Biến thể: Tên biến thể item.variant (ví dụ "Set 2 (Cơm gạo Nhật)") khớp mềm với names hoặc tên sản phẩm item.title chứa tên của trigger item
+      // 4. Khớp Tên / Biến thể
       if (itemVariantName && meta.names.some((name) => isNameMatch(itemVariantName, name))) {
-        if (meta.variantIds.length > 0) {
-          const isParentIdMatch = (pId !== null && meta.productIds.includes(pId)) || (parentPId !== null && meta.productIds.includes(parentPId));
-          if (isParentIdMatch) return true;
-          if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) return true;
-          if (meta.names.some((name) => normStr(itemVariantName) === normStr(name))) return true;
-        } else {
-          return true;
-        }
+        if (isParentIdMatch) return true;
+        if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) return true;
+        if (meta.names.some((name) => normStr(itemVariantName) === normStr(name))) return true;
       }
 
       if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) {
         if (meta.variantIds.length === 0 || !itemVariantName) {
+          return true;
+        }
+        if (meta.names.some((name) => normStr(itemProductName) === normStr(name))) {
           return true;
         }
       }
@@ -545,7 +598,7 @@ export function evaluateCampaignEligibility(
     });
   };
 
-  const rawBuyQty = settingsObj.buy_quantity ?? settingsObj.min_quantity ?? (c as any).buy_quantity ?? settingsObj.buy_qty;
+  const rawBuyQty = settingsObj.buy_quantity ?? settingsObj.min_quantity ?? (c as any).buy_quantity ?? (c as any).min_quantity ?? settingsObj.buy_qty;
   const buyQty = rawBuyQty !== undefined && rawBuyQty !== null && Number(rawBuyQty) > 0 ? Number(rawBuyQty) : 1;
 
   // 2. Xử lý các loại campaign:
@@ -973,14 +1026,13 @@ export default function CouponModal({
             : [];
           if (
             initialCampaigns.length === 0 &&
-            appliedCampaignIds === undefined &&
             typeof window !== "undefined"
           ) {
             try {
               const stored = localStorage.getItem("cothaotomca_selected_campaign_ids");
               if (stored) {
                 const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed)) initialCampaigns = parsed;
+                if (Array.isArray(parsed) && parsed.length > 0) initialCampaigns = parsed;
               }
             } catch (e) {
               console.error("Error reading stored campaign ids", e);

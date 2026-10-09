@@ -651,6 +651,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   // Pure Checkbox Selection for campaigns (default empty array [])
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>([]);
 
+  useEffect(() => {
+    const stored = getStoredCampaignIds();
+    if (stored.length > 0) {
+      setSelectedCampaignIds(stored);
+    }
+  }, []);
+
   const handleApplyCampaigns = useCallback((ids: (number | string)[]) => {
     setSelectedCampaignIds(ids);
     setStoredCampaignIds(ids);
@@ -662,6 +669,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
     for (const c of publicCampaigns) {
       if (!existingIds.has(String(c.id))) {
+        let settingsObj: any = c.settings || {};
+        if (typeof settingsObj === "string") {
+          try {
+            settingsObj = JSON.parse(settingsObj);
+          } catch {
+            settingsObj = {};
+          }
+        }
+        const rawItems = (c.items && c.items.length > 0) ? c.items : ((c as any).gift_items || []);
         list.push({
           id: typeof c.id === "number" ? c.id : (parseInt(String(c.id), 10) || 0),
           name: c.name,
@@ -672,10 +688,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           discount_type: c.discount_type,
           discount_value: c.discount_value,
           max_discount: c.max_discount || null,
-          settings: c.settings || {},
+          settings: settingsObj,
           can_combine_with_promotions: c.can_combine_with_promotions ?? true,
           can_combine_with_freeship: c.can_combine_with_freeship ?? true,
-          items: (c.items || []).map((it) => ({
+          applicable_product_ids: c.applicable_product_ids,
+          applicable_variant_ids: c.applicable_variant_ids,
+          trigger_items: (c as any).trigger_items || settingsObj?.trigger_items,
+          items: rawItems.map((it: any) => ({
             id: it.id,
             product_id: it.product_id,
             product_variant_id: it.product_variant_id,
@@ -690,7 +709,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             disabled: it.disabled ?? false,
             disabled_reason: it.disabled_reason || null,
           })),
-        });
+        } as any);
         existingIds.add(String(c.id));
       }
     }
@@ -701,6 +720,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   useEffect(() => {
     if (selectedCampaignIds.length === 0) return;
     if (!allPromotionsList || allPromotionsList.length === 0) return;
+    if (!checkoutCartItems || checkoutCartItems.length === 0) return;
 
     const validCampaignIds = selectedCampaignIds.filter((id) => {
       const promo = allPromotionsList?.find((p) => String(p.id) === String(id));
@@ -947,8 +967,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         const selectedId = selectedBuyXGetYMap[promo.id] || firstAvailable?.id;
         const item = giftItems.find((i) => i.id === selectedId && i.is_available !== false) || firstAvailable;
         if (!item) return null;
-        const buyQty = promo.settings?.buy_quantity || 2;
-        const giftQty = promo.settings?.gift_quantity || promo.settings?.get_quantity || 1;
+        const buyQty = Number(promo.settings?.buy_quantity ?? (promo as any).buy_quantity ?? promo.settings?.min_quantity ?? 1);
+        const giftQty = Number(promo.settings?.gift_quantity ?? promo.settings?.get_quantity ?? (promo as any).gift_quantity ?? 1);
         const isFree = item?.campaign_price === 0 || Boolean(item?.is_free);
         const tag = isFree
           ? `Mua ${buyQty} tặng ${giftQty}`
@@ -2143,16 +2163,21 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 },
               ]
               : []),
-            ...(activeBuyXGetYItems.map(({ promo, item, tag }) => ({
-              product_id: item.product_id,
-              product_code: item.product_code,
-              kiotviet_id: item.kiotviet_id || undefined,
-              product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
-              quantity: 1,
-              price: item.is_free || item.campaign_price === 0 ? 0 : item.campaign_price,
-              discount: 0,
-              note: `${tag} (${promo.name})`,
-            }))),
+            ...(activeBuyXGetYItems.map(({ promo, item, tag }) => {
+              const isGift = Boolean(item.is_free || item.campaign_price === 0);
+              return {
+                product_id: item.product_id,
+                product_variant_id: item.product_variant_id || undefined,
+                product_code: item.product_code,
+                kiotviet_id: item.kiotviet_id || undefined,
+                product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
+                quantity: 1,
+                price: isGift ? 0 : item.campaign_price,
+                discount: 0,
+                is_gift: isGift,
+                note: `${tag} (${promo.name})`,
+              };
+            })),
           ]
           : order
             ? [
@@ -2183,16 +2208,21 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   },
                 ]
                 : []),
-              ...activeBuyXGetYItems.map(({ promo, item, tag }) => ({
-                product_id: item.product_id,
-                product_code: item.product_code,
-                kiotviet_id: item.kiotviet_id || undefined,
-                product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
-                quantity: 1,
-                price: item.is_free || item.campaign_price === 0 ? 0 : item.campaign_price,
-                discount: 0,
-                note: `${tag} (${promo?.name || "Chiến dịch"})`,
-              })),
+              ...activeBuyXGetYItems.map(({ promo, item, tag }) => {
+                const isGift = Boolean(item.is_free || item.campaign_price === 0);
+                return {
+                  product_id: item.product_id,
+                  product_variant_id: item.product_variant_id || undefined,
+                  product_code: item.product_code,
+                  kiotviet_id: item.kiotviet_id || undefined,
+                  product_name: `[ƯU ĐÃI COMBO] ${item.product_name}`,
+                  quantity: 1,
+                  price: isGift ? 0 : item.campaign_price,
+                  discount: 0,
+                  is_gift: isGift,
+                  note: `${tag} (${promo?.name || "Chiến dịch"})`,
+                };
+              }),
             ]
             : [],
         discount: voucherDiscount + autoOrderDiscountAmount + memberDiscount,

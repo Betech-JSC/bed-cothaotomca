@@ -11,6 +11,8 @@ export interface CampaignTriggerItem {
   product_variant_id?: number | null;
   variant_name?: string | null;
   product_name?: string | null;
+  product_code?: string | null;
+  kiotviet_id?: number | null;
   min_quantity?: number;
 }
 
@@ -46,6 +48,7 @@ export interface PromotionGiftItem {
 
 export interface CampaignSettings {
   buy_quantity?: number;
+  min_quantity?: number;
   gift_quantity?: number;
   get_quantity?: number;
   min_order_value?: number;
@@ -152,27 +155,40 @@ export interface CheckoutConfigData {
 export function getBuyXGetYGiftOnlyItems(
   promo?: ActivePromotion | PublicCampaignItem | null
 ): PromotionGiftItem[] {
-  if (!promo || !promo.items || !Array.isArray(promo.items) || promo.items.length === 0) {
+  if (!promo) return [];
+
+  const rawItems = (promo.items && Array.isArray(promo.items) && promo.items.length > 0)
+    ? promo.items
+    : ((promo as any).gift_items && Array.isArray((promo as any).gift_items) ? (promo as any).gift_items : []);
+
+  if (rawItems.length === 0) {
     return [];
   }
 
   const isBuyXGetY = promo.promotion_type === "buy_x_get_y";
-  const triggerItems = promo.settings?.trigger_items || [];
-  const giftItems = promo.settings?.gift_items || [];
+  const triggerItems: any[] = promo.settings?.trigger_items || (promo as any).trigger_items || [];
+  const giftItems: any[] = promo.settings?.gift_items || (promo as any).gift_items_config || [];
 
   if (!isBuyXGetY && triggerItems.length === 0) {
-    return promo.items;
+    return rawItems;
   }
 
   const matchesSpec = (
     item: PromotionGiftItem,
-    specList: Array<{ product_id: number | string; product_variant_id?: number | string | null }>
+    specList: Array<any>
   ) => {
     return specList.some((spec) => {
-      const pidMatch = Number(spec.product_id) === Number(item.product_id);
+      const specPid = typeof spec === "object" && spec !== null
+        ? Number(spec.product_id ?? spec.id ?? spec.productId)
+        : Number(spec);
+      if (isNaN(specPid) || specPid <= 0) return false;
+      const pidMatch = specPid === Number(item.product_id);
       if (!pidMatch) return false;
-      if (spec.product_variant_id != null && item.product_variant_id != null) {
-        return Number(spec.product_variant_id) === Number(item.product_variant_id);
+      const specVid = typeof spec === "object" && spec !== null
+        ? (spec.product_variant_id ?? spec.variantId ?? spec.variant_id)
+        : null;
+      if (specVid != null && Number(specVid) > 0 && item.product_variant_id != null) {
+        return Number(specVid) === Number(item.product_variant_id);
       }
       return true;
     });
@@ -180,7 +196,7 @@ export function getBuyXGetYGiftOnlyItems(
 
   // 1. If gift_items are configured in settings, exclusively return items matching gift_items
   if (giftItems.length > 0) {
-    const matchedGifts = promo.items.filter((item) => {
+    const matchedGifts = rawItems.filter((item) => {
       const isTrigger = triggerItems.length > 0 && matchesSpec(item, triggerItems);
       if (isTrigger) return false;
       return matchesSpec(item, giftItems);
@@ -192,20 +208,20 @@ export function getBuyXGetYGiftOnlyItems(
 
   // 2. If trigger_items are configured, exclude any items matching trigger_items
   if (triggerItems.length > 0) {
-    const nonTriggers = promo.items.filter((item) => !matchesSpec(item, triggerItems));
+    const nonTriggers = rawItems.filter((item) => !matchesSpec(item, triggerItems));
     if (nonTriggers.length > 0) {
       return nonTriggers;
     }
   }
 
   // 3. Fallback: exclude items where campaign_price >= original_price if there are free/discounted items
-  const freeOrDiscounted = promo.items.filter(
+  const freeOrDiscounted = rawItems.filter(
     (item) => item.is_free || (item.original_price > 0 && item.campaign_price < item.original_price) || item.campaign_price === 0
   );
   if (freeOrDiscounted.length > 0) {
     return freeOrDiscounted;
   }
 
-  return promo.items;
+  return rawItems;
 }
 
