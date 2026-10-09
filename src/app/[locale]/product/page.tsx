@@ -90,7 +90,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
       getApi<Product>('products', {
         params: {
           lang: locale,
-          per_page: 9,
+          per_page: 12,
           page: page,
           ingredients: ''
         }
@@ -140,7 +140,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
       );
     }
 
-    const perPage = 9;
+    const perPage = 12;
     const currPage = parseInt(page, 10) || 1;
     const total = filteredList.length;
     const lastPage = Math.max(1, Math.ceil(total / perPage));

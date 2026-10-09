@@ -144,7 +144,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     const productsData = await getApi<Product>('products', {
       params: {
         lang: locale,
-        per_page: 9,
+        per_page: 12,
         page: page,
         ...(categoryId ? { category_id: categoryId } : { category_slug: canonicalCategorySlug }),
         ingredients: ''
@@ -204,7 +204,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       );
     }
 
-    const perPage = 9;
+    const perPage = 12;
     const currPage = parseInt(page, 10) || 1;
     const total = filteredList.length;
     const lastPage = Math.max(1, Math.ceil(total / perPage));

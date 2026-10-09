@@ -58,12 +58,37 @@ export default function LanguageSwitcher() {
 
     // Nếu trang hiện tại có cấu hình alternate slug cho targetLocale (ví dụ trang chi tiết sản phẩm)
     const targetAlternate = alternateLinks?.[targetLocale];
-    if (targetAlternate) {
+
+    // Kiểm tra tính hợp lệ của alternateLinks với route hiện tại:
+    // 1. Phải khớp pathname (tránh việc trang khác dùng nhầm alternateLinks của trang sản phẩm đã xem trước đó)
+    const isPathnameMatch = !targetAlternate?.pathname || targetAlternate.pathname === pathname;
+
+    // 2. Nếu đang ở trang có slug param, kiểm tra slug có liên quan đến sản phẩm hiện tại hay là sản phẩm cũ
+    const currentSlug = cleanParams.slug ? String(cleanParams.slug) : undefined;
+    const isSlugMatch = !currentSlug ||
+      !alternateLinks?.vi?.slug ||
+      currentSlug === alternateLinks.vi?.slug ||
+      currentSlug === alternateLinks.en?.slug ||
+      (alternateLinks.vi?.slug && alternateLinks.vi.slug.includes(currentSlug)) ||
+      (currentSlug && alternateLinks.vi?.slug && currentSlug.includes(alternateLinks.vi.slug));
+
+    if (targetAlternate && isPathnameMatch && isSlugMatch) {
+      // Đảm bảo khi sản phẩm chưa có slug EN riêng thì dùng slug VI an toàn, không bị rỗng hoặc mất slug
+      const fallbackSlug = targetLocale === "en"
+        ? (alternateLinks?.vi?.slug || currentSlug)
+        : (alternateLinks?.en?.slug || currentSlug);
+      const safeSlug = targetAlternate.slug?.trim() || fallbackSlug || currentSlug;
+
+      const fallbackCategory = targetLocale === "en"
+        ? (alternateLinks?.vi?.category || cleanParams.category)
+        : (alternateLinks?.en?.category || cleanParams.category);
+      const safeCategory = targetAlternate.category?.trim() || fallbackCategory || cleanParams.category;
+
       const targetParams = {
         ...cleanParams,
         ...(targetAlternate.params || {}),
-        ...(targetAlternate.category ? { category: targetAlternate.category } : {}),
-        ...(targetAlternate.slug ? { slug: targetAlternate.slug } : {}),
+        ...(safeCategory ? { category: safeCategory } : {}),
+        ...(safeSlug ? { slug: safeSlug } : {}),
       };
       const targetPathname = targetAlternate.pathname || pathname;
       router.replace(

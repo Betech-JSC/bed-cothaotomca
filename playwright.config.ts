@@ -21,12 +21,12 @@ export default defineConfig({
     video: 'off',
     trace: 'on',
   },
-  // webServer: {
-  //   command: 'export PATH=/Users/macbookpro2020/.nvm/versions/node/v24.21.0/bin:$PATH && npx next dev --webpack -p 3000',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: true,
-  //   timeout: 120 * 1000,
-  // },
+  webServer: {
+    command: 'npx next dev --webpack -p 3000',
+    url: 'http://localhost:3000',
+    reuseExistingServer: true,
+    timeout: 120 * 1000,
+  },
   projects: [
     {
       name: 'chromium',

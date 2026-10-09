@@ -15,7 +15,7 @@ export function getProductLocalizedSlugs(product: any) {
   const enCatSlug = (enCatTrans as any)?.slug || slugify(enCatTrans?.title || "") || cat?.slug || "product";
 
   const enProdTrans = product.translations?.find((t: any) => t.locale === 'en');
-  const enProductSlug = (enProdTrans as any)?.slug || slugify(enProdTrans?.custom_name || enProdTrans?.name || "") || product.slug || "";
+  const enProductSlug = (enProdTrans as any)?.slug || product.slug || "";
 
   return {
     viCatSlug,

@@ -495,7 +495,7 @@ export const getProducts = async (
   params: GetProductsParams = {},
 ): Promise<ProductListResponse> => {
   const { revalidate, search, catalog, ...query } = params;
-  const perPage = query.per_page ?? 9;
+  const perPage = query.per_page ?? 12;
   const page = query.page ?? 1;
 
   if (catalog || search) {
@@ -553,6 +553,9 @@ export const getProductBySlug = async (
   slug: string,
   options: { revalidate?: number; lang?: string } = {},
 ): Promise<Product | null> => {
+  if (!slug || !slug.trim()) {
+    return null;
+  }
   try {
     const { lang, ...restOptions } = options;
     const params = lang ? { lang } : undefined;
@@ -572,6 +575,9 @@ export const getProductBySlugWithFallback = async (
   slug: string,
   options: { revalidate?: number; lang?: string } = {},
 ): Promise<Product | null> => {
+  if (!slug || !slug.trim()) {
+    return null;
+  }
   try {
     let product = await getProductBySlug(slug, options);
     if (product) return product;

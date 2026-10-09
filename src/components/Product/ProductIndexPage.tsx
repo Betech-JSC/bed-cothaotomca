@@ -103,7 +103,17 @@ export default function ProductIndexPage({
     }
   }), [ingredients, locale]);
 
-  const productsDisplay = useMemo(() => (products || []).map(p => {
+  const uniqueProducts = useMemo(() => {
+    const seen = new Set<string>();
+    return (products || []).filter(p => {
+      const key = p?.slug || `${p?.id}-${p?.name}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [products]);
+
+  const productsDisplay = useMemo(() => (uniqueProducts || []).map(p => {
     const translation = getTranslation(p?.translations, locale) as any;
     const name = translation?.custom_name || p?.custom_name || translation?.name || p?.name || "";
 
@@ -154,7 +164,7 @@ export default function ProductIndexPage({
       description: translation?.description || p?.description || "",
       created_at: p?.created_at || '2024-03-15T00:00:00Z',
     };
-  }), [products, locale]);
+  }), [uniqueProducts, locale]);
 
   const pushWithFilters = (newCategorySlug: string | null, newIngredientSlugs: string[], newPage: number = 1) => {
     setIsFilterOpen(false)
@@ -286,7 +296,7 @@ export default function ProductIndexPage({
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-4 md:gap-6">
                 {filteredProductsSorted.map(product => (
-                  <CardProduct key={product.id} item={product} />
+                  <CardProduct key={`${product.id}-${product.slug}`} item={product} />
                 ))}
               </div>
             )}

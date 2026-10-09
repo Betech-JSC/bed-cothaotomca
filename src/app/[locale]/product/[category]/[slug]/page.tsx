@@ -105,8 +105,15 @@ export default async function ProductDetailsPage({
   const canonicalProductSlug = locale === 'en' ? enProductSlug : viProductSlug;
   const canonicalCategorySlug = locale === 'en' ? enCatSlug : viCatSlug;
 
-  // Fallback canonical redirect: nếu truy cập bằng slug của ngôn ngữ khác hoặc slug chưa chuẩn, redirect về URL canonical
-  if (slug !== canonicalProductSlug || category !== canonicalCategorySlug) {
+  // Fallback canonical redirect: nếu truy cập bằng slug của ngôn ngữ khác hoặc slug chưa chuẩn, redirect về URL canonical khi slug hợp lệ
+  const isCanonicalValid = Boolean(
+    canonicalProductSlug &&
+    canonicalProductSlug.trim() &&
+    canonicalCategorySlug &&
+    canonicalCategorySlug.trim()
+  );
+
+  if (isCanonicalValid && (slug !== canonicalProductSlug || category !== canonicalCategorySlug)) {
     redirect({
       pathname: '/product/[category]/[slug]',
       params: {
