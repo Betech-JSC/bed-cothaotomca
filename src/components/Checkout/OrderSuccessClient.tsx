@@ -85,6 +85,9 @@ export default function OrderSuccessClient({
   useEffect(() => {
     if (orderCode) {
       fetchOrder();
+    } else {
+      setLoading(false);
+      setError("Không tìm thấy thông tin mã đơn hàng. Quý khách vui lòng kiểm tra lại đường dẫn hoặc tra cứu đơn hàng theo số điện thoại.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderCode, phone]);

@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName, formatImageUrl } from "@/lib/format";
@@ -158,6 +159,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   const { user, token, refreshUser } = useAuth();
   const t = useTranslations("checkout");
+  let locale = "vi";
+  try {
+    if (typeof (NextIntl as any).useLocale === "function") {
+      locale = (NextIntl as any).useLocale() || "vi";
+    } else if (typeof window !== "undefined" && window.location.pathname.startsWith("/en")) {
+      locale = "en";
+    }
+  } catch {
+    locale = "vi";
+  }
   const router = useRouter();
   const { cartItems, updateQuantity, removeFromCart, clearCart, addToCart, hasOutOfStockItems } = useCart();
   const isOutOfStockOverall = hasOutOfStockItems ?? cartItems.some((i) => i.isOutOfStock);
@@ -2305,11 +2316,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       }
 
       if (paymentMethod === "COD") {
-        // COD order is immediately synced. Go directly to success screen!
-        router.push({
-          pathname: "/order-success",
-          query: { code: result.data.order_code, phone: phone.trim() },
-        });
+        // COD order is immediately synced. Go directly to success screen via safe hard redirect!
+        const orderCode = result.data.order_code;
+        const customerPhone = phone.trim();
+        const successPath = locale === "en" ? "/en/order-success" : "/dat-hang-thanh-cong";
+        const targetUrl = `${successPath}?code=${encodeURIComponent(orderCode)}&phone=${encodeURIComponent(customerPhone)}`;
+        window.location.href = targetUrl;
       } else {
         // Bank transfer: Show SePay QR Code Screen
         setPendingOrder(result.data);

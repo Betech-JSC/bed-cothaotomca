@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from "react"
 import Image from "next/image";
 import { useRouter, Link, usePathname } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName, formatImageUrl } from "@/lib/format";
 import { useBranches } from "@/contexts/BranchContext";
@@ -126,6 +127,16 @@ export default function MobileCartFlow({
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations("checkout");
+  let locale = "vi";
+  try {
+    if (typeof (NextIntl as any).useLocale === "function") {
+      locale = (NextIntl as any).useLocale() || "vi";
+    } else if (typeof window !== "undefined" && window.location.pathname.startsWith("/en")) {
+      locale = "en";
+    }
+  } catch {
+    locale = "vi";
+  }
 
   const hasRefreshedUserRef = useRef(false);
   useEffect(() => {
@@ -2112,10 +2123,11 @@ export default function MobileCartFlow({
       clearAllPromotionStorage();
 
       if (paymentMethod === "COD") {
-        router.push({
-          pathname: "/order-success",
-          query: { code: result.data.order_code, phone: phone.trim() },
-        });
+        const orderCode = result.data.order_code;
+        const customerPhone = phone.trim();
+        const successPath = locale === "en" ? "/en/order-success" : "/dat-hang-thanh-cong";
+        const targetUrl = `${successPath}?code=${encodeURIComponent(orderCode)}&phone=${encodeURIComponent(customerPhone)}`;
+        window.location.href = targetUrl;
         onClose?.();
       } else {
         setPendingOrder(result.data);
