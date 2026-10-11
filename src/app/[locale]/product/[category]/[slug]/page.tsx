@@ -115,12 +115,15 @@ export default async function ProductDetailsPage({
 
   if (isCanonicalValid && (slug !== canonicalProductSlug || category !== canonicalCategorySlug)) {
     redirect({
-      pathname: '/product/[category]/[slug]',
-      params: {
-        category: canonicalCategorySlug,
-        slug: canonicalProductSlug,
+      href: {
+        pathname: '/product/[category]/[slug]',
+        params: {
+          category: canonicalCategorySlug,
+          slug: canonicalProductSlug,
+        },
       },
-    } as any);
+      locale: locale as any,
+    });
   }
 
   const alternateLinksMap: AlternateLinksMap = {

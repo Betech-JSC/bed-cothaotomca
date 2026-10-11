@@ -17,6 +17,7 @@ vi.mock('next-intl', () => ({
       password: 'Mật khẩu',
       password_placeholder: 'Nhập mật khẩu',
       button: 'Đăng nhập',
+      confirm_activation: 'Xác nhận kích hoạt',
     };
     return map[key] || key;
   },

@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/AuthContext";
 
 const VIETNAM_PHONE_REGEX = /^(0|\+84)(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-9])[0-9]{7}$/;
 
 export default function GoogleProfileCompletionModal() {
+  const tAuth = useTranslations("auth");
   const { user, token, completeGoogleProfile } = useAuth();
 
   const [phone, setPhone] = useState("");
@@ -42,27 +44,27 @@ export default function GoogleProfileCompletionModal() {
     const cleanPhone = phone.trim().replace(/\s+/g, "");
 
     if (!cleanPhone) {
-      setError("Vui lòng nhập số điện thoại.");
+      setError(tAuth("phone_required"));
       return;
     }
 
     if (!VIETNAM_PHONE_REGEX.test(cleanPhone)) {
-      setError("Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng số điện thoại Việt Nam (ví dụ: 0912345678).");
+      setError(tAuth("phone_invalid"));
       return;
     }
 
     if (!password) {
-      setError("Vui lòng nhập mật khẩu.");
+      setError(tAuth("password_required"));
       return;
     }
 
     if (password.length < 6) {
-      setError("Mật khẩu phải có tối thiểu 6 ký tự.");
+      setError(tAuth("password_min"));
       return;
     }
 
     if (passwordConfirmation && password !== passwordConfirmation) {
-      setError("Mật khẩu xác nhận không khớp.");
+      setError(tAuth("password_mismatch"));
       return;
     }
 
@@ -75,12 +77,12 @@ export default function GoogleProfileCompletionModal() {
       });
 
       if (res.success) {
-        setSuccessMsg(res.message || "Hoàn thiện hồ sơ thành công!");
+        setSuccessMsg(res.message || tAuth("google_profile_success"));
       } else {
-        setError(res.message || "Cập nhật thông tin thất bại. Vui lòng kiểm tra lại.");
+        setError(res.message || tAuth("google_profile_failed"));
       }
     } catch (err: any) {
-      setError(err?.message || "Có lỗi xảy ra trong quá trình cập nhật.");
+      setError(err?.message || tAuth("google_profile_failed"));
     } finally {
       setLoading(false);
     }
@@ -102,10 +104,12 @@ export default function GoogleProfileCompletionModal() {
 
         <div className="text-center space-y-2 mb-6">
           <h2 className="text-xl sm:text-2xl font-bold font-display text-primary">
-            Hoàn Thiện Hồ Sơ Tài Khoản
+            {tAuth("google_profile_title")}
           </h2>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Chào mừng bạn đến với <strong>Cô Thảo Tôm Cá</strong>! Vui lòng cung cấp số điện thoại để đồng bộ tích điểm thành viên và thiết lập mật khẩu bảo mật.
+            {tAuth.rich("google_profile_desc", {
+              strong: (chunks) => <strong>{chunks}</strong>,
+            })}
           </p>
         </div>
 
@@ -125,14 +129,14 @@ export default function GoogleProfileCompletionModal() {
           {/* Phone Field */}
           <div className="space-y-1.5">
             <label className="text-xs sm:text-sm font-bold text-gray-800 block">
-              Số điện thoại <span className="text-red-500">*</span>
+              {tAuth("phone_label")} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Ví dụ: 0912345678"
+                placeholder={tAuth("phone_placeholder_example")}
                 required
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base md:text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none transition-all placeholder:text-gray-400 font-medium"
               />
@@ -142,14 +146,14 @@ export default function GoogleProfileCompletionModal() {
           {/* Password Field */}
           <div className="space-y-1.5">
             <label className="text-xs sm:text-sm font-bold text-gray-800 block">
-              Mật khẩu mới (tối thiểu 6 ký tự) <span className="text-red-500">*</span>
+              {tAuth("new_password_min_label")} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Nhập mật khẩu..."
+                placeholder={tAuth("password_placeholder")}
                 minLength={6}
                 required
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base md:text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none transition-all placeholder:text-gray-400 font-medium pr-10"
@@ -158,7 +162,7 @@ export default function GoogleProfileCompletionModal() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                aria-label={showPassword ? tAuth("hide_password_aria") : tAuth("show_password_aria")}
               >
                 {showPassword ? (
                   <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -177,13 +181,13 @@ export default function GoogleProfileCompletionModal() {
           {/* Confirm Password Field */}
           <div className="space-y-1.5">
             <label className="text-xs sm:text-sm font-bold text-gray-800 block">
-              Xác nhận mật khẩu mới <span className="text-red-500">*</span>
+              {tAuth("confirm_new_password_label")} <span className="text-red-500">*</span>
             </label>
             <input
               type={showPassword ? "text" : "password"}
               value={passwordConfirmation}
               onChange={(e) => setPasswordConfirmation(e.target.value)}
-              placeholder="Nhập lại mật khẩu..."
+              placeholder={tAuth("confirm_password_placeholder")}
               minLength={6}
               required
               className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base md:text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none transition-all placeholder:text-gray-400 font-medium"
@@ -198,7 +202,7 @@ export default function GoogleProfileCompletionModal() {
               loading ? "opacity-70 cursor-not-allowed" : ""
             }`}
           >
-            {loading ? "Đang xử lý..." : "Hoàn Tất Hồ Sơ"}
+            {loading ? tAuth("processing") : tAuth("google_profile_submit")}
           </button>
         </form>
       </div>

@@ -79,7 +79,7 @@ export default function SearchSuggestions({
                 <div className="px-4 py-2 bg-yellow/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Cart className="w-3.5 h-3.5 text-primary" />
-                    <span>{searchQuery.trim().length < 2 ? "Sản phẩm nổi bật" : t("common.product")} ({productSuggestions.length})</span>
+                    <span>{searchQuery.trim().length < 2 ? t("search.featured_products") : t("common.product")} ({productSuggestions.length})</span>
                   </span>
                 </div>
                 <ul className="divide-y divide-gray-50">
@@ -168,7 +168,7 @@ export default function SearchSuggestions({
                 <div className="px-4 py-2 bg-yellow/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <BlogIcon className="w-3.5 h-3.5 text-primary" />
-                    <span>{searchQuery.trim().length < 2 ? "Bài viết mới nhất" : t("common.blog")} ({blogSuggestions.length})</span>
+                    <span>{searchQuery.trim().length < 2 ? t("search.latest_posts") : t("common.blog")} ({blogSuggestions.length})</span>
                   </span>
                 </div>
                 <ul className="divide-y divide-gray-50">
@@ -242,7 +242,7 @@ export default function SearchSuggestions({
                 <div className="px-4 py-2 bg-yellow/50 text-xs font-bold text-primary uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <PolicyIcon className="w-3.5 h-3.5 text-primary" />
-                    <span>{searchQuery.trim().length < 2 ? "Chính sách quy định" : t("common.policy")} ({policySuggestions.length})</span>
+                    <span>{searchQuery.trim().length < 2 ? t("search.policies") : t("common.policy")} ({policySuggestions.length})</span>
                   </span>
                 </div>
                 <ul className="divide-y divide-gray-50">

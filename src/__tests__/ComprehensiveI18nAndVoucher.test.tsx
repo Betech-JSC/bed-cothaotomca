@@ -129,6 +129,9 @@ describe('Comprehensive i18n & Voucher Standardization Tests', () => {
         'member_tier_card_title_diamond',
         'member_tier_terms_title',
         'loading',
+        'duration_ongoing',
+        'duration_from',
+        'duration_until',
       ];
       for (const key of requiredVoucherKeys) {
         expect((viMessages.voucher as any)[key], `vi.voucher.${key} must exist`).toBeDefined();

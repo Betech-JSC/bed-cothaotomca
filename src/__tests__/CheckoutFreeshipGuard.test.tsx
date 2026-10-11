@@ -107,7 +107,7 @@ describe('Checkout Freeship Guard & Anti-waste Tests (Tasks 3.1, 3.2, 3.3)', () 
       expect(await screen.findByText('FREESHIP30K')).toBeInTheDocument();
       expect(screen.getByText('Đơn hàng đã được Freeship tự động')).toBeInTheDocument();
 
-      const disabledCard = container.querySelector('.opacity-50.bg-gray-50\\/70.cursor-not-allowed.select-none');
+      const disabledCard = document.body.querySelector('.opacity-50.bg-gray-50\\/70.cursor-not-allowed.select-none');
       expect(disabledCard).toBeInTheDocument();
     });
 
@@ -122,7 +122,7 @@ describe('Checkout Freeship Guard & Anti-waste Tests (Tasks 3.1, 3.2, 3.3)', () 
       };
       mockVouchersList = [freeshipVoucher];
 
-      const { container } = render(
+      render(
         <CouponModal
           isOpen={true}
           onClose={vi.fn()}
@@ -136,7 +136,7 @@ describe('Checkout Freeship Guard & Anti-waste Tests (Tasks 3.1, 3.2, 3.3)', () 
       expect(await screen.findByText('SHIPFREE')).toBeInTheDocument();
       expect(screen.getByText('Đơn hàng đã được Freeship tự động')).toBeInTheDocument();
 
-      const disabledCard = container.querySelector('.opacity-50.bg-gray-50\\/70.cursor-not-allowed.select-none');
+      const disabledCard = document.body.querySelector('.opacity-50.bg-gray-50\\/70.cursor-not-allowed.select-none');
       expect(disabledCard).toBeInTheDocument();
     });
 
@@ -222,7 +222,7 @@ describe('Checkout Freeship Guard & Anti-waste Tests (Tasks 3.1, 3.2, 3.3)', () 
       expect(await screen.findByText('SHIP30K')).toBeInTheDocument();
       expect(screen.getByText('Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship')).toBeInTheDocument();
 
-      const disabledCard = container.querySelector('.opacity-50.bg-gray-50\\/70.cursor-not-allowed.select-none');
+      const disabledCard = document.body.querySelector('.opacity-50.bg-gray-50\\/70.cursor-not-allowed.select-none');
       expect(disabledCard).toBeInTheDocument();
     });
   });

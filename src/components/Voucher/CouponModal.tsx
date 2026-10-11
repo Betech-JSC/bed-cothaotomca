@@ -197,8 +197,12 @@ function CampaignBannerImage({
   );
 }
 
-function formatCampaignDuration(startAt?: string | null, endAt?: string | null): string {
-  if (!startAt && !endAt) return "Đang diễn ra liên tục";
+function formatCampaignDuration(
+  startAt?: string | null,
+  endAt?: string | null,
+  t?: (key: string, values?: any) => string
+): string {
+  if (!startAt && !endAt) return t ? t("duration_ongoing") : "Đang diễn ra liên tục";
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
@@ -214,9 +218,11 @@ function formatCampaignDuration(startAt?: string | null, endAt?: string | null):
     return `${s.dayMonth} - ${e.full}`;
   }
   if (startAt) {
-    return `Bắt đầu từ ${formatDate(startAt).full}`;
+    const fullDate = formatDate(startAt).full;
+    return t ? t("duration_from", { date: fullDate }) : `Bắt đầu từ ${fullDate}`;
   }
-  return `Đến hết ngày ${formatDate(endAt!).full}`;
+  const fullDate = formatDate(endAt!).full;
+  return t ? t("duration_until", { date: fullDate }) : `Đến hết ngày ${fullDate}`;
 }
 
 export function isShipVoucher(v: { code: string; discount_type?: string; is_freeship?: boolean }): boolean {
@@ -251,16 +257,20 @@ export function getCampaignEstimatedValue(camp: PublicCampaignItem, subtotal: nu
   return 0;
 }
 
-export function getVoucherBadgeLabel(v: PublicVoucherItem, isFreeship: boolean): string {
+export function getVoucherBadgeLabel(
+  v: PublicVoucherItem,
+  isFreeship: boolean,
+  t?: (key: string) => string
+): string {
   if (v.short_name && v.short_name.trim()) {
     return v.short_name.trim();
   }
   if (isFreeship) {
     const maxDiscount = v.max_discount ?? (v as any).maxDiscount;
     if (maxDiscount && Number(maxDiscount) > 0) {
-      return "GIẢM SHIP";
+      return t ? t("badge_ship_discount") : "GIẢM SHIP";
     }
-    return "FREESHIP";
+    return t ? t("badge_freeship") : "FREESHIP";
   }
   if (v.discount_type === "percent") {
     return `-${v.value}%`;
@@ -335,7 +345,12 @@ export function evaluateCampaignEligibility(
   // Nếu settings không có trigger_items nhưng c.items có các item không phải quà tặng miễn phí (!is_free),
   // đó chính là các sản phẩm kích hoạt của campaign
   let triggerItems = [...rawTriggerItems];
-  if (triggerItems.length === 0 && Array.isArray(c.items)) {
+  if (
+    triggerItems.length === 0 &&
+    Array.isArray(c.items) &&
+    (c.promotion_type as string) !== "order_gift_discount" &&
+    (c.promotion_type as string) !== "order_gift"
+  ) {
     const nonFreeItems = c.items.filter((ci: any) => ci && !ci.is_free && ci.campaign_price !== 0 && ci.price !== 0);
     if (nonFreeItems.length > 0) {
       triggerItems = nonFreeItems;
@@ -628,7 +643,7 @@ export function evaluateCampaignEligibility(
         return {
           eligible: false,
           reason: t
-            ? (t("buy_more_trigger_items_gift", { count: missing }) || `Cần mua thêm ${missing} sản phẩm áp dụng để nhận quà`)
+            ? t("buy_more_trigger_items_gift", { count: missing })
             : `Cần mua thêm ${missing} sản phẩm áp dụng để nhận quà`,
         };
       }
@@ -649,7 +664,7 @@ export function evaluateCampaignEligibility(
         return {
           eligible: false,
           reason: t
-            ? (t("buy_more_to_activate_buy_x_get_y", { count: missing }) || `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`)
+            ? t("buy_more_to_activate_buy_x_get_y", { count: missing })
             : `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`,
         };
       }
@@ -662,7 +677,7 @@ export function evaluateCampaignEligibility(
       return {
         eligible: false,
         reason: t
-          ? (t("buy_more_to_activate_buy_x_get_y", { count: missing }) || `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`)
+          ? t("buy_more_to_activate_buy_x_get_y", { count: missing })
           : `Cần mua thêm ${missing} sản phẩm áp dụng để kích hoạt ưu đãi`,
       };
     }
@@ -691,7 +706,7 @@ export function evaluateCampaignEligibility(
   if (!cartItems || cartItems.length === 0) {
     return {
       eligible: false,
-      reason: t ? (t("no_matching_products_in_cart") || "Chưa có sản phẩm áp dụng trong giỏ hàng") : "Chưa có sản phẩm áp dụng trong giỏ hàng",
+      reason: t ? t("no_matching_products_in_cart") : "Chưa có sản phẩm áp dụng trong giỏ hàng",
     };
   }
 
@@ -716,7 +731,7 @@ export function evaluateCampaignEligibility(
   if (matchingItems.length === 0) {
     return {
       eligible: false,
-      reason: t ? (t("no_matching_products_in_cart") || "Chưa có sản phẩm áp dụng trong giỏ hàng") : "Chưa có sản phẩm áp dụng trong giỏ hàng",
+      reason: t ? t("no_matching_products_in_cart") : "Chưa có sản phẩm áp dụng trong giỏ hàng",
     };
   }
 
@@ -866,12 +881,12 @@ export default function CouponModal({
 
   const memberTierCampaignItem: PublicCampaignItem = useMemo(() => {
     const tierName = isDiamond ? "Diamond" : "Gold";
-    const bullet1 = t("member_terms_bullet_tier", { tier: tierName }) || `• Áp dụng tự động cho tài khoản ${isDiamond ? "hạng Diamond (Kim Cương)" : "hạng Gold (Vàng)"}.`;
-    const bullet2 = t("member_terms_bullet_discount", { percent: discountPercent }) || `• Chiết khấu ${discountPercent}% trực tiếp trên giá trị đơn hàng.`;
+    const bullet1 = t("member_terms_bullet_tier", { tier: tierName });
+    const bullet2 = t("member_terms_bullet_discount", { percent: discountPercent });
     const bullet3 = canCombineWithPromotions
-      ? (t("member_terms_bullet_combinable") || "• Có thể áp dụng đồng thời với các voucher và chương trình ưu đãi khác.")
-      : (t("member_terms_bullet_non_combinable") || "• Không áp dụng đồng thời với các chương trình khuyến mãi hoặc mã giảm giá khác.");
-    const bullet4 = t("member_terms_bullet_activation") || "• Quyền lợi tự động kích hoạt khi tài khoản đạt thứ hạng tương ứng.";
+      ? t("member_terms_bullet_combinable")
+      : t("member_terms_bullet_non_combinable");
+    const bullet4 = t("member_terms_bullet_activation");
 
     return {
       id: "member-tier-benefit-card",
@@ -1145,12 +1160,7 @@ export default function CouponModal({
   // Check eligibility for each voucher
   const checkVoucherEligibility = useCallback(
     (v: PublicVoucherItem): { eligible: boolean; reason?: string; missingAmount?: number } => {
-      const isFreeship = Boolean(
-        v.is_freeship ||
-        v.discount_type === "freeship" ||
-        v.code.toUpperCase().includes("FREESHIP") ||
-        v.code.toUpperCase().includes("SHIP")
-      );
+      const isFreeship = isShipVoucher(v);
 
       // -1. Voucher expiration check: Mã voucher đã hết hạn sử dụng
       if (v.end_date) {
@@ -1158,7 +1168,7 @@ export default function CouponModal({
         if (!isNaN(expiryDate.getTime()) && expiryDate < new Date()) {
           return {
             eligible: false,
-            reason: t("voucher_expired") || "Mã giảm giá đã hết hạn sử dụng.",
+            reason: t("voucher_expired"),
           };
         }
       }
@@ -1167,7 +1177,7 @@ export default function CouponModal({
       if (orderIsAutoFreeship && isFreeship) {
         return {
           eligible: false,
-          reason: t("order_already_freeship") || "Đơn hàng đã được Freeship tự động",
+          reason: t("order_already_freeship"),
         };
       }
 
@@ -1184,7 +1194,7 @@ export default function CouponModal({
       if (isAutoShippingDiscount && isFreeship) {
         return {
           eligible: false,
-          reason: t("system_shipping_discount_active") || "Đang áp dụng chương trình giảm phí vận chuyển của hệ thống",
+          reason: t("system_shipping_discount_active"),
         };
       }
 
@@ -1192,9 +1202,7 @@ export default function CouponModal({
       if (canCombineWithFreeship === false && isFreeship) {
         return {
           eligible: false,
-          reason:
-            t("order_voucher_no_freeship") ||
-            "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship",
+          reason: t("order_voucher_no_freeship"),
         };
       }
 
@@ -1203,14 +1211,14 @@ export default function CouponModal({
         if (!currentUser) {
           return {
             eligible: false,
-            reason: t("member_only_login") || "Chỉ dành cho khách hàng thành viên. Vui lòng đăng nhập.",
+            reason: t("member_only_login"),
           };
         }
       } else if (v.customer_scope === "tier_only") {
         if (!currentUser) {
           return {
             eligible: false,
-            reason: t("member_tier_login") || "Chỉ dành riêng cho thành viên đăng nhập",
+            reason: t("member_tier_login"),
           };
         }
         const reqTier = (v.min_member_tier || "member").toLowerCase();
@@ -1226,9 +1234,7 @@ export default function CouponModal({
             const tierName = reqTier === "diamond" ? "DIAMOND" : reqTier === "gold" ? "GOLD" : "MEMBER";
             return {
               eligible: false,
-              reason:
-                t("tier_only_required", { tier: tierName }) ||
-                `Chỉ dành riêng cho thành viên đạt hạng ${tierName} trở lên`,
+              reason: t("tier_only_required", { tier: tierName }),
             };
           }
         }
@@ -1238,9 +1244,7 @@ export default function CouponModal({
       if (isFreeship && hasCampaignWithNoFreeship) {
         return {
           eligible: false,
-          reason:
-            t("campaign_no_freeship") ||
-            "Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship",
+          reason: t("campaign_no_freeship"),
         };
       }
 
@@ -1259,7 +1263,7 @@ export default function CouponModal({
         const codeUpper = (v.code || "").toUpperCase();
         const reason = codeUpper === "WSBCT50K"
           ? `Đơn hàng tối thiểu ${formatPrice(minSpend)} để áp dụng mã ${v.code}`
-          : `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}`;
+          : t("min_spend_not_met", { amount: formatPrice(minSpend) });
         return {
           eligible: false,
           reason,
@@ -1331,10 +1335,10 @@ export default function CouponModal({
   const memberCardLockReason = useMemo(() => {
     if (!isMemberCardLocked) return "";
     if (hasSelectedExclusiveVoucher) {
-      return "Không thể sử dụng cùng mã giảm giá đã chọn";
+      return t("campaign_voucher_locked");
     }
     if (hasSelectedExclusiveCampaign) {
-      return t("campaign_mutex_locked") || "Không thể sử dụng cùng ưu đãi đã chọn.";
+      return t("campaign_mutex_locked");
     }
     return "";
   }, [isMemberCardLocked, hasSelectedExclusiveVoucher, hasSelectedExclusiveCampaign, t]);
@@ -1360,7 +1364,7 @@ export default function CouponModal({
       ) {
         return {
           locked: true,
-          reason: (t("mutex_member_tier") && t("mutex_member_tier") !== "mutex_member_tier") ? t("mutex_member_tier") : "Không áp dụng đồng thời với ưu đãi thành viên",
+          reason: t("mutex_member_tier"),
           reasonCode: "MUTEX_MEMBER_TIER",
         };
       }
@@ -1373,7 +1377,7 @@ export default function CouponModal({
         if (hasNonCombinableCampaign || camp.can_combine_with_promotions === false) {
           return {
             locked: true,
-            reason: (t("campaign_mutex_locked") && t("campaign_mutex_locked") !== "campaign_mutex_locked") ? t("campaign_mutex_locked") : "Không thể sử dụng cùng ưu đãi đã chọn.",
+            reason: t("campaign_mutex_locked"),
           };
         }
       }
@@ -1384,7 +1388,7 @@ export default function CouponModal({
         if (selectedFoodVoucher.can_combine_with_promotions === false || camp.can_combine_with_promotions === false) {
           return {
             locked: true,
-            reason: t("campaign_voucher_locked") || "Không thể sử dụng cùng mã giảm giá đã chọn.",
+            reason: t("campaign_voucher_locked"),
           };
         }
       }
@@ -1395,13 +1399,13 @@ export default function CouponModal({
         if (selectedShipVoucher.can_combine_with_promotions === false) {
           return {
             locked: true,
-            reason: t("campaign_mutex_locked") || "Không thể sử dụng cùng ưu đãi đã chọn.",
+            reason: t("campaign_mutex_locked"),
           };
         }
         if (camp.can_combine_with_freeship === false) {
           return {
             locked: true,
-            reason: t("campaign_freeship_locked") || "CTKM không áp dụng cùng giảm phí vận chuyển.",
+            reason: t("campaign_freeship_locked"),
           };
         }
       }
@@ -1429,7 +1433,7 @@ export default function CouponModal({
       ) {
         return {
           locked: true,
-          reason: (t("mutex_member_tier") && t("mutex_member_tier") !== "mutex_member_tier") ? t("mutex_member_tier") : "Không áp dụng đồng thời với ưu đãi thành viên",
+          reason: t("mutex_member_tier"),
           reasonCode: "MUTEX_MEMBER_TIER",
         };
       }
@@ -1443,28 +1447,25 @@ export default function CouponModal({
 
       if (isFood) {
         if (selectedFood && selectedFood.code.toUpperCase() !== v.code.toUpperCase()) {
-          return { locked: true, reason: "Không thể sử dụng với những ưu đãi đã chọn khác." };
+          return { locked: true, reason: t("mutex_selected_promotions") };
         }
         if (selectedShip && (selectedShip.can_combine_with_promotions === false || v.can_combine_with_freeship === false)) {
-          return { locked: true, reason: "Không thể sử dụng với những ưu đãi đã chọn khác." };
+          return { locked: true, reason: t("mutex_selected_promotions") };
         }
-        if (hasNonCombinableCampaign || (v.can_combine_with_promotions === false && selectedCampaignItems.length > 0)) {
-          return { locked: true, reason: (t("campaign_mutex_locked") && t("campaign_mutex_locked") !== "campaign_mutex_locked") ? t("campaign_mutex_locked") : "Không thể sử dụng cùng ưu đãi đã chọn." };
+        if (hasNonCombinableCampaign) {
+          return { locked: true, reason: t("campaign_mutex_locked") };
         }
       }
 
       if (isShip) {
         if (selectedShip && selectedShip.code.toUpperCase() !== v.code.toUpperCase()) {
-          return { locked: true, reason: "Không thể sử dụng với những ưu đãi đã chọn khác." };
+          return { locked: true, reason: t("mutex_selected_promotions") };
         }
         if (selectedFood && (selectedFood.can_combine_with_freeship === false || v.can_combine_with_promotions === false)) {
-          return { locked: true, reason: "Không thể sử dụng với những ưu đãi đã chọn khác." };
+          return { locked: true, reason: t("mutex_selected_promotions") };
         }
         if (hasCampaignWithNoFreeship) {
-          return { locked: true, reason: (t("campaign_no_freeship") && t("campaign_no_freeship") !== "campaign_no_freeship") ? t("campaign_no_freeship") : "Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship" };
-        }
-        if (v.can_combine_with_promotions === false && selectedCampaignItems.length > 0) {
-          return { locked: true, reason: (t("campaign_mutex_locked") && t("campaign_mutex_locked") !== "campaign_mutex_locked") ? t("campaign_mutex_locked") : "Không thể sử dụng cùng ưu đãi đã chọn." };
+          return { locked: true, reason: t("campaign_no_freeship") };
         }
       }
 
@@ -1491,18 +1492,15 @@ export default function CouponModal({
     try {
       const applyRes = await onApplyVoucher(code);
       if (applyRes === false) {
-        setFeedbackNotice(
-          t("best_deal_item_better") ||
-            "Giá ưu đãi của món đang tốt hơn voucher, hệ thống đã giữ lại mức giảm tối ưu nhất."
-        );
+        setFeedbackNotice(t("best_deal_item_better"));
         return;
       }
-      setFeedbackSuccess(`Đã áp dụng mã "${code}" thành công!`);
+      setFeedbackSuccess(t("apply_success", { code }));
       setTimeout(() => {
         onClose();
       }, 600);
     } catch (err: any) {
-      const msg = err?.message || "Không thể áp dụng mã này.";
+      const msg = err?.message || t("apply_failed");
       if (
         msg.includes("Freeship tự động") ||
         msg.includes("freeship tự động") ||
@@ -1560,7 +1558,12 @@ export default function CouponModal({
       if (!eligibility.eligible) return;
 
       const lockState = checkRealtimeLock(targetVoucher);
-      if (lockState.locked) return;
+      const isLockedOnlyByMember =
+        lockState.locked &&
+        (lockState.reason === t("mutex_member_tier") ||
+          lockState.reason === "Không áp dụng đồng thời với ưu đãi thành viên");
+
+      if (lockState.locked && !isLockedOnlyByMember) return;
 
       // Khi khách BẤM CHỌN một voucher không cộng dồn:
       // Hệ thống sẽ TỰ ĐỘNG BỎ CHỌN (uncheck) thẻ Hội viên Vàng và khóa thẻ này!
@@ -1578,11 +1581,6 @@ export default function CouponModal({
         });
         return [...filtered, targetVoucher.code];
       });
-
-      // If voucher cannot combine with promotions, auto-clear conflicting campaigns
-      if (targetVoucher.can_combine_with_promotions === false) {
-        setSelectedCampaignIds([]);
-      }
     },
     [
       allVouchers,
@@ -1628,7 +1626,13 @@ export default function CouponModal({
       if (!eligibility.eligible) return;
 
       const lockState = checkCampaignRealtimeLock(targetCamp);
-      if (lockState.locked) return;
+      const isLockedOnlyByMember =
+        lockState.locked &&
+        (lockState.reasonCode === "MUTEX_MEMBER_TIER" ||
+          lockState.reason === t("mutex_member_tier") ||
+          lockState.reason === "Không áp dụng đồng thời với ưu đãi thành viên");
+
+      if (lockState.locked && !isLockedOnlyByMember) return;
 
       if (!canCombineWithPromotions && targetCamp.can_combine_with_promotions === false) {
         setIsMemberCardSelected(false);
@@ -1760,7 +1764,7 @@ export default function CouponModal({
       onToggleMemberCard?.(isMemberCardSelected && !isMemberCardLocked);
       onClose();
     } catch (err: any) {
-      setFeedbackError(err.message || "Áp dụng ưu đãi thất bại");
+      setFeedbackError(err.message || t("apply_promotions_failed"));
     } finally {
       setLoading(false);
     }
@@ -1780,13 +1784,14 @@ export default function CouponModal({
     isMemberCardLocked,
     onClose,
     handleSkipAndContinue,
+    t,
   ]);
 
   const handleManualApply = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = manualCode.trim().toUpperCase();
     if (!trimmed) {
-      setFeedbackError("Vui lòng nhập mã giảm giá.");
+      setFeedbackError(t("validation_code_required"));
       setFeedbackNotice(null);
       setFeedbackSuccess(null);
       return;
@@ -1798,9 +1803,9 @@ export default function CouponModal({
     setFeedbackSuccess(null);
 
     try {
-      const isCodeFreeship = trimmed.includes("FREESHIP") || trimmed.includes("SHIP");
+      const isCodeFreeship = isShipVoucher({ code: trimmed });
       if (orderIsAutoFreeship && isCodeFreeship) {
-        setFeedbackError("Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.");
+        setFeedbackError(t("order_voucher_no_freeship"));
         return;
       }
       const isAutoShippingDiscount = Boolean(
@@ -1812,11 +1817,11 @@ export default function CouponModal({
           subtotal >= Number(shippingSettingsState.min_order_amount)))
       );
       if (isAutoShippingDiscount && isCodeFreeship) {
-        setFeedbackNotice(t("system_shipping_discount_active") || "Đang áp dụng chương trình giảm phí vận chuyển của hệ thống");
+        setFeedbackNotice(t("system_shipping_discount_active"));
         return;
       }
       if (canCombineWithFreeship === false && isCodeFreeship) {
-        setFeedbackError("Đơn hàng của bạn chưa đủ điều kiện áp dụng mã này.");
+        setFeedbackError(t("order_voucher_no_freeship"));
         return;
       }
 
@@ -1833,12 +1838,7 @@ export default function CouponModal({
       );
 
       if (res.valid && res.voucher) {
-        const isShip = Boolean(
-          res.voucher.discount_type === "freeship" ||
-          res.voucher.is_freeship ||
-          trimmed.includes("FREESHIP") ||
-          trimmed.includes("SHIP")
-        );
+        const isShip = isShipVoucher(res.voucher);
         const newVoucher: PublicVoucherItem = {
           id: res.voucher.id,
           code: res.voucher.code,
@@ -1858,10 +1858,7 @@ export default function CouponModal({
 
         const eligibility = checkVoucherEligibility(newVoucher);
         if (!eligibility.eligible) {
-          if (
-            eligibility.reason ===
-            (t("system_shipping_discount_active") || "Đang áp dụng chương trình giảm phí vận chuyển của hệ thống")
-          ) {
+          if (eligibility.reason === t("system_shipping_discount_active")) {
             setFeedbackNotice(eligibility.reason);
           } else {
             setFeedbackError(formatPrivateVoucherError(eligibility.reason || ""));
@@ -1871,7 +1868,7 @@ export default function CouponModal({
 
         const lockCheck = checkRealtimeLock(newVoucher);
         if (lockCheck.locked) {
-          setFeedbackError(lockCheck.reason || "Mã giảm giá không thể sử dụng cùng các ưu đãi hiện tại.");
+          setFeedbackError(lockCheck.reason || t("voucher_conflict_current"));
           return;
         }
 
@@ -1896,14 +1893,14 @@ export default function CouponModal({
 
         setManualCode("");
         setFeedbackError(null);
-        setFeedbackSuccess(`Đã thêm mã "${newVoucher.code}" vào ví của bạn!`);
+        setFeedbackSuccess(t("added_to_wallet", { code: newVoucher.code }));
         setTimeout(() => setFeedbackSuccess(null), 3000);
       } else {
-        const rawMsg = res.message || "Mã giảm giá không hợp lệ.";
+        const rawMsg = res.message || t("invalid_code");
         setFeedbackError(formatPrivateVoucherError(rawMsg));
       }
     } catch (err: any) {
-      const rawMsg = err?.message || "Mã giảm giá không hợp lệ.";
+      const rawMsg = err?.message || t("invalid_code");
       setFeedbackError(formatPrivateVoucherError(rawMsg));
     } finally {
       setApplyingCode(null);
@@ -1943,7 +1940,7 @@ export default function CouponModal({
             )}
             <div>
               <span className="body-3 font-sans text-secondary font-medium">
-                {t("view_terms_detail") || "Chi tiết điều kiện áp dụng ›"}
+                {t("view_terms_detail")}
               </span>
             </div>
           </div>
@@ -1987,7 +1984,7 @@ export default function CouponModal({
               <span className="line-clamp-1">
                 {t("duration")}{" "}
                 <span className="text-secondary font-bold font-sans">
-                  {formatCampaignDuration(camp.start_at, camp.end_at)}
+                  {formatCampaignDuration(camp.start_at, camp.end_at, t)}
                 </span>
               </span>
             </div>
@@ -2002,7 +1999,7 @@ export default function CouponModal({
             <p className="text-secondary text-xs font-semibold leading-normal">
               {eligibility.reason ||
                 (minSpend > 0 && missing > 0
-                  ? `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missing)} để áp dụng`
+                  ? t("buy_more_campaign_hint", { minSpend: formatPrice(minSpend), missingAmount: formatPrice(missing) })
                   : "")}
             </p>
 
@@ -2016,7 +2013,7 @@ export default function CouponModal({
                 }}
                 className="body-3 font-sans text-secondary hover:underline cursor-pointer inline-flex items-center gap-1 font-medium"
               >
-                <span>{t("view_terms_detail") || "Chi tiết điều kiện áp dụng ›"}</span>
+                <span>{t("view_terms_detail")}</span>
               </button>
             </div>
           </div>
@@ -2092,7 +2089,7 @@ export default function CouponModal({
             <span className="line-clamp-1">
               {t("duration")}{" "}
               <span className="text-secondary font-bold font-sans">
-                {formatCampaignDuration(camp.start_at, camp.end_at)}
+                {formatCampaignDuration(camp.start_at, camp.end_at, t)}
               </span>
             </span>
           </div>
@@ -2106,7 +2103,7 @@ export default function CouponModal({
           {/* Locked warning */}
           {isLocked && !isSelected && (
             <p className="text-secondary text-xs font-semibold mt-1 animate-fade-in">
-              {lockState.reason || "Không thể sử dụng cùng ưu đãi đã chọn."}
+              {lockState.reason || t("campaign_mutex_locked")}
             </p>
           )}
 
@@ -2120,7 +2117,7 @@ export default function CouponModal({
               }}
               className="body-3 font-sans text-secondary hover:underline cursor-pointer inline-flex items-center gap-1 font-medium"
             >
-              <span>{t("view_terms_detail") || "Chi tiết điều kiện áp dụng ›"}</span>
+              <span>{t("view_terms_detail")}</span>
             </button>
           </div>
         </div>
@@ -2187,7 +2184,7 @@ export default function CouponModal({
           {/* Left Badge */}
           <div className="w-22 sm:w-28 py-2.5 sm:py-3 px-1.5 sm:px-3 flex flex-col items-center justify-center gap-1 text-center shrink-0 bg-gray-400 text-white border-r border-dashed border-white/30">
             <span className="text-xs sm:title-3 font-display font-bold uppercase tracking-tight sm:tracking-wider leading-tight text-white text-center break-words">
-              {getVoucherBadgeLabel(v, isFreeship)}
+              {getVoucherBadgeLabel(v, isFreeship, t)}
             </span>
           </div>
 
@@ -2200,12 +2197,12 @@ export default function CouponModal({
                 </span>
                 {v.customer_scope === "member_only" && (
                   <span className="body-3 font-sans font-medium text-primary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
-                    Thành viên
+                    {t("badge_member_only")}
                   </span>
                 )}
                 {v.customer_scope === "tier_only" && (
                   <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
-                    Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "DIAMOND" : "GOLD") : "VIP"}
+                    {t("badge_tier", { tier: v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "DIAMOND" : "GOLD") : "VIP" })}
                   </span>
                 )}
               </div>
@@ -2233,7 +2230,7 @@ export default function CouponModal({
 
               {(eligibility as any).missingAmount !== undefined && (eligibility as any).missingAmount > 0 && (
                 <p className="text-secondary text-xs font-semibold mt-0.5">
-                  Mua thêm <strong className="font-bold">{formatPrice((eligibility as any).missingAmount)}</strong> để áp dụng
+                  {t("buy_more")} <strong className="font-bold">{formatPrice((eligibility as any).missingAmount)}</strong> {t("to_apply_suffix")}
                 </p>
               )}
             </div>
@@ -2269,6 +2266,12 @@ export default function CouponModal({
       );
     }
 
+    const isLockedOnlyByMember =
+      isLocked &&
+      (lockState.reasonCode === "MUTEX_MEMBER_TIER" ||
+        lockState.reason === t("mutex_member_tier") ||
+        lockState.reason === "Không áp dụng đồng thời với ưu đãi thành viên");
+
     // 2. Voucher ĐỦ ĐIỀU KIỆN
     return (
       <div
@@ -2278,7 +2281,7 @@ export default function CouponModal({
             handleCopyCode(v.code);
             return;
           }
-          if (isSelected || !isLocked) {
+          if (isSelected || !isLocked || isLockedOnlyByMember) {
             handleToggleVoucher(v.code);
           }
         }}
@@ -2298,7 +2301,7 @@ export default function CouponModal({
           isLocked && !isSelected ? "bg-gray-400" : "bg-secondary"
         }`}>
           <span className="text-xs sm:title-3 font-display font-bold uppercase tracking-tight sm:tracking-wider leading-tight text-white text-center break-words">
-            {getVoucherBadgeLabel(v, isFreeship)}
+            {getVoucherBadgeLabel(v, isFreeship, t)}
           </span>
         </div>
 
@@ -2311,12 +2314,12 @@ export default function CouponModal({
               </span>
               {v.customer_scope === "member_only" && (
                 <span className="body-3 font-sans font-medium text-primary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
-                  Thành viên
+                  {t("badge_member_only")}
                 </span>
               )}
               {v.customer_scope === "tier_only" && (
                 <span className="body-3 font-sans font-medium text-secondary bg-yellow/60 px-1.5 py-0.5 rounded border border-secondary/20">
-                  Hạng {v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "DIAMOND" : "GOLD") : "VIP"}
+                  {t("badge_tier", { tier: v.min_member_tier ? (v.min_member_tier.toLowerCase() === "diamond" ? "DIAMOND" : "GOLD") : "VIP" })}
                 </span>
               )}
               {isApplied && !isBrowseMode && (
@@ -2342,7 +2345,7 @@ export default function CouponModal({
 
             {isLocked && !isSelected && (
               <p className="text-secondary text-xs font-semibold mt-1 animate-fade-in">
-                {lockState.reason || "Không thể sử dụng với những ưu đãi đã chọn khác."}
+                {lockState.reason || t("mutex_selected_promotions")}
               </p>
             )}
           </div>
@@ -2372,7 +2375,7 @@ export default function CouponModal({
               aria-disabled={isSelected ? "false" : (isLocked ? "true" : "false")}
               onClick={(e) => {
                 e.stopPropagation();
-                if (isSelected || !isLocked) {
+                if (isSelected || !isLocked || isLockedOnlyByMember) {
                   handleToggleVoucher(v.code);
                 }
               }}
@@ -2474,7 +2477,7 @@ export default function CouponModal({
             </h4>
             {isChecked && !isBrowseMode && (
               <span className="body-3 font-sans font-bold text-secondary bg-secondary/15 px-2 py-0.5 rounded-full shrink-0">
-                {t("in_use") || "Đang dùng"}
+                {t("in_use")}
               </span>
             )}
           </div>
@@ -2500,7 +2503,7 @@ export default function CouponModal({
               }}
               className="body-3 font-sans text-secondary hover:underline cursor-pointer inline-flex items-center gap-1 font-medium"
             >
-              <span>{t("view_terms_detail") || "Chi tiết điều kiện áp dụng ›"}</span>
+              <span>{t("view_terms_detail")}</span>
             </button>
           </div>
         </div>
@@ -2645,7 +2648,7 @@ export default function CouponModal({
                 <div className="flex items-center justify-between gap-2 font-semibold">
                   <span>{t("duration")}</span>
                   <span className="text-secondary font-bold font-sans">
-                    {formatCampaignDuration(selectedCampaign.start_at, selectedCampaign.end_at)}
+                    {formatCampaignDuration(selectedCampaign.start_at, selectedCampaign.end_at, t)}
                   </span>
                 </div>
 
@@ -2695,7 +2698,7 @@ export default function CouponModal({
               >
                 <span>
                   {!isBrowseMode
-                    ? (t("apply_this_promotion") || "Áp dụng ưu đãi này")
+                    ? t("apply_this_promotion")
                     : t("start_order")}
                 </span>
               </button>
@@ -2713,8 +2716,8 @@ export default function CouponModal({
                   {t("modal_title")}
                 </h3>
                 <p className="body-3 font-sans text-gray-500 font-medium">
-                  {allCampaigns.length + allVouchers.length > 0
-                    ? t("active_promos", { count: allCampaigns.length + allVouchers.length })
+                  {allCampaigns.length + allVouchers.length + (hasMemberTierCard ? 1 : 0) > 0
+                    ? t("active_promos", { count: allCampaigns.length + allVouchers.length + (hasMemberTierCard ? 1 : 0) })
                     : t("explore_promos")}
                 </p>
               </div>
@@ -2745,7 +2748,7 @@ export default function CouponModal({
                         setFeedbackError(null);
                         setFeedbackNotice(null);
                       }}
-                      placeholder={t("input_placeholder") || "Nhập mã voucher..."}
+                      placeholder={t("input_placeholder")}
                       className="w-full h-11 pl-4 pr-10 text-base font-sans font-semibold uppercase rounded-full border border-gray-300 focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/20 placeholder:text-gray-400 placeholder:normal-case transition-all"
                     />
                     {manualCode && (
@@ -2800,7 +2803,7 @@ export default function CouponModal({
               {loading && allCampaigns.length === 0 && allVouchers.length === 0 ? (
                 <div className="py-12 text-center space-y-3">
                   <div className="inline-block size-8 border-3 border-secondary border-t-transparent rounded-full animate-spin" />
-                  <p className="body-3 font-sans text-gray-500 font-medium">{t("loading") || "Đang tải..."}</p>
+                  <p className="body-3 font-sans text-gray-500 font-medium">{t("loading")}</p>
                 </div>
               ) : allCampaigns.length === 0 && allVouchers.length === 0 && !hasMemberTierCard ? (
                 <div className="py-12 text-center space-y-2">
@@ -2814,8 +2817,7 @@ export default function CouponModal({
                     <div className="space-y-3">
                       <div className="title-4 font-display text-primary uppercase tracking-wider font-bold flex items-center justify-between">
                         <span>
-                          {t("eligible_campaigns", { count: allCampaigns.length + (hasMemberTierCard ? 1 : 0) }) ||
-                            `Chương trình ưu đãi (${allCampaigns.length + (hasMemberTierCard ? 1 : 0)})`}
+                          {t("eligible_campaigns", { count: allCampaigns.length + (hasMemberTierCard ? 1 : 0) })}
                         </span>
                       </div>
 
@@ -2833,8 +2835,7 @@ export default function CouponModal({
                     <div className="space-y-3">
                       <div className="title-4 font-display text-primary uppercase tracking-wider font-bold flex items-center justify-between">
                         <span>
-                          {t("eligible_vouchers", { count: allVouchers.length }) ||
-                            `Mã giảm giá (${allVouchers.length})`}
+                          {t("eligible_vouchers", { count: allVouchers.length })}
                         </span>
                       </div>
                       <div className="space-y-3">
@@ -2855,7 +2856,7 @@ export default function CouponModal({
                   onClick={handleGoShopping}
                   className="w-full py-3.5 px-4 rounded-2xl text-base font-bold text-white bg-secondary hover:bg-secondary/95 shadow-md hover:shadow-lg transition-all text-center cursor-pointer active:scale-[0.99] flex items-center justify-center font-display"
                 >
-                  <span>{t("order_now_cta") || "Đặt món ngay"}</span>
+                  <span>{t("order_now_cta")}</span>
                 </button>
               </div>
             ) : (
@@ -2866,7 +2867,7 @@ export default function CouponModal({
                     onClick={handleSkipAndContinue}
                     className="w-full py-3.5 px-4 rounded-2xl text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-center cursor-pointer active:scale-[0.99]"
                   >
-                    {t("skip_promotion_and_continue") || "Bỏ qua ưu đãi và tiếp tục"}
+                    {t("skip_promotion_and_continue")}
                   </button>
                 ) : (
                   <button
@@ -2875,7 +2876,7 @@ export default function CouponModal({
                     disabled={loading}
                     className="w-full py-3.5 px-4 rounded-2xl text-sm font-bold text-white bg-secondary hover:bg-secondary/95 shadow-sm transition-all text-center cursor-pointer active:scale-[0.99] flex items-center justify-center gap-2 font-display"
                   >
-                    <span>{t("campaign_applied_count", { count: totalAppliedCount }) || `Áp dụng • ${totalAppliedCount} ưu đãi`}</span>
+                    <span>{t("campaign_applied_count", { count: totalAppliedCount })}</span>
                   </button>
                 )}
               </div>

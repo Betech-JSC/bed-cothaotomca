@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/i18n-navigation";
+import { useTranslations } from "next-intl";
 
 export default function ErrorBoundary({
   error,
@@ -11,6 +12,9 @@ export default function ErrorBoundary({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("common.error_boundary");
+  const tCommon = useTranslations("common");
+
   useEffect(() => {
     const msg = error?.message || "";
     const isChunkError =
@@ -45,7 +49,7 @@ export default function ErrorBoundary({
             <div className="relative w-28 h-20">
               <Image
                 src="/images/logo.png"
-                alt="Cô Thảo Tôm Cá"
+                alt={tCommon("brand_name")}
                 fill
                 className="object-contain"
                 priority
@@ -55,12 +59,10 @@ export default function ErrorBoundary({
 
           <div className="space-y-3">
             <h1 className="text-2xl md:text-3xl font-bold font-display text-primary">
-              Đã có gián đoạn kết nối
+              {t("title")}
             </h1>
             <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-md mx-auto">
-              Hệ thống vừa cập nhật phiên bản mới hoặc kết nối mạng bị gián đoạn.
-              Quý khách vui lòng thử tải lại trang hoặc liên hệ hotline để được
-              hỗ trợ nhanh nhất.
+              {t("description")}
             </p>
           </div>
 
@@ -76,18 +78,18 @@ export default function ErrorBoundary({
               }}
               className="btn btn-secondary px-6 py-3 rounded-full font-bold shadow-sm hover:shadow-md transition-all cursor-pointer"
             >
-              Tải lại trang
+              {t("retry_btn")}
             </button>
             <Link
               href="/"
               className="btn btn-primary px-6 py-3 rounded-full font-bold shadow-sm hover:shadow-md transition-all cursor-pointer"
             >
-              Về trang chủ
+              {t("home_btn")}
             </Link>
           </div>
 
           <div className="pt-4 border-t border-gray-100 text-sm text-gray-600">
-            <span>Hotline hỗ trợ: </span>
+            <span>{t("hotline_label")}</span>
             <a
               href="tel:02499997122"
               className="font-bold text-secondary hover:underline ml-1"

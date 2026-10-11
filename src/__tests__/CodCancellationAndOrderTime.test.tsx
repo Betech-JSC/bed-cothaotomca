@@ -70,6 +70,7 @@ vi.mock("next-intl", () => ({
     };
     return t;
   },
+  useLocale: () => "vi",
 }));
 
 vi.mock("@/i18n/i18n-navigation", () => ({

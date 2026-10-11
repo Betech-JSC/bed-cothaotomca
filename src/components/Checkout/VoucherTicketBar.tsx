@@ -213,10 +213,10 @@ export default function VoucherTicketBar({
 }: VoucherTicketBarProps) {
   const t = useTranslations("voucher");
 
-  const title = t("voucher_ticket_title") || "Mã giảm giá";
-  const placeholder = t("no_voucher_applied") || "Chọn hoặc nhập mã";
-  const freeshipBadgeText = t("freeship_badge_text") || "FREESHIP";
-  const shippingDiscountBadgeText = t("shipping_discount_badge_text") || "GIẢM SHIP";
+  const title = t("voucher_ticket_title");
+  const placeholder = t("no_voucher_applied");
+  const freeshipBadgeText = t("freeship_badge_text");
+  const shippingDiscountBadgeText = t("shipping_discount_badge_text");
 
   // Determine food and shipping badges
   let foodVoucher = appliedVoucher && !isShippingVoucher(appliedVoucher) ? appliedVoucher : null;
@@ -237,7 +237,7 @@ export default function VoucherTicketBar({
     (activeCampaignName ? 1 : 0) +
     (isMemberActive ? 1 : 0);
 
-  const memberBadgePrefix = t("member_badge_prefix") || "Hội viên";
+  const memberBadgePrefix = t("member_badge_prefix");
 
   const maxDiscountVal = shipVoucher ? (shipVoucher.maxDiscount ?? shipVoucher.max_discount) : null;
   const shipBadgeText = shipVoucher
@@ -314,8 +314,8 @@ export default function VoucherTicketBar({
                 onRemove();
               }}
               className="size-6 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 active:scale-90 transition-all cursor-pointer shrink-0"
-              aria-label={t("btn_remove_voucher") || "Xóa"}
-              title={t("btn_remove_voucher") || "Xóa"}
+              aria-label={t("btn_remove_voucher")}
+              title={t("btn_remove_voucher")}
             >
               <CloseIcon className="size-3.5" />
             </button>
@@ -326,7 +326,7 @@ export default function VoucherTicketBar({
               e.stopPropagation();
               onClick();
             }}
-            aria-label={t("btn_select_voucher") || "Chọn mã"}
+            aria-label={t("btn_select_voucher")}
             className="size-6 flex items-center justify-center text-gray-400 hover:text-primary transition-colors cursor-pointer shrink-0"
           >
             <ChevronRightIcon className="size-4" />
@@ -339,8 +339,7 @@ export default function VoucherTicketBar({
         <p className="text-xs text-emerald-700 font-semibold px-2 flex items-center gap-1.5 mt-1.5 animate-fade-in">
           <span>✓</span>
           <span>
-            {t("applied_vouchers_success_count", { count: appliedCount }) ||
-              `Đã áp dụng thành công ${appliedCount} ưu đãi!`}
+            {t("applied_vouchers_success_count", { count: appliedCount })}
           </span>
         </p>
       )}

@@ -224,12 +224,12 @@ const Header = () => {
     <header
       className={`bg-primary ${isMobileOpen ? "fixed top-0 inset-x-0" : "sticky top-0"} z-[100] w-full xl:h-[6.5rem] flex items-center transition-[padding] duration-300 ease-in-out ${isSticky ? "lg:py-1" : "lg:py-3"
         }`}
-      aria-label="Site header"
+      aria-label={t("common.aria_site_header")}
     >
       <div className="container w-full">
         <nav
           className="relative hidden items-center justify-between xl:flex w-full"
-          aria-label="Main"
+          aria-label={t("common.aria_main_nav")}
         >
 
           <ul className="flex gap-4 min-w-[380px]">
@@ -272,7 +272,7 @@ const Header = () => {
               <button
                 onClick={toggleSearch}
                 className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer flex items-center justify-center"
-                aria-label={t("common.search") || "Tìm kiếm"}
+                aria-label={t("common.search")}
               >
                 <Search />
               </button>
@@ -281,7 +281,7 @@ const Header = () => {
               <Link
                 href="/profile"
                 className="text-yellow lg:hover:text-secondary duration-300 ease-in-out cursor-pointer flex items-center justify-center"
-                aria-label={t("common.account") || "Tài khoản"}
+                aria-label={t("common.account")}
               >
                 <UserCircle size={24} />
               </Link>
@@ -335,7 +335,7 @@ const Header = () => {
                 ref={searchInputRef}
                 type="text"
                 placeholder={t("common.search_placeholder")}
-                aria-label={t("common.search_placeholder") || "Tìm kiếm"}
+                aria-label={t("common.search_placeholder")}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -508,7 +508,7 @@ const MobileMenu = ({
   }, [open]);
 
   return (
-    <nav aria-label="Mobile main navigation" className="w-full xl:hidden relative">
+    <nav aria-label={t("common.aria_mobile_nav")} className="w-full xl:hidden relative">
       <div className="flex w-full items-center justify-between py-1.5 relative">
         <Logo width={62} height={40} className="h-10" />
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
@@ -516,7 +516,7 @@ const MobileMenu = ({
           <button
             onClick={onToggleSearch}
             className="text-yellow hover:text-secondary duration-300 ease-in-out shrink-0 cursor-pointer p-1"
-            aria-label={t("common.search") || "Tìm kiếm"}
+            aria-label={t("common.search")}
           >
             <Search />
           </button>
@@ -543,7 +543,7 @@ const MobileMenu = ({
           <Link
             href="/profile"
             className="text-yellow hover:text-secondary duration-300 ease-in-out shrink-0 flex items-center justify-center cursor-pointer p-1"
-            aria-label={t("common.account") || "Tài khoản"}
+            aria-label={t("common.account")}
           >
             <UserCircle size={24} />
           </Link>
@@ -560,12 +560,12 @@ const MobileMenu = ({
           <button
             type="button"
             onClick={onToggle}
-            aria-label={open ? (t("common.close_menu") || "Đóng menu") : (t("common.open_menu") || "Mở menu")}
+            aria-label={open ? t("common.close_menu") : t("common.open_menu")}
             aria-expanded={open}
             className="text-yellow duration-300 ease-in-out shrink-0 flex items-center justify-center cursor-pointer p-1"
           >
             <span className="sr-only">
-              {open ? (t("common.close_menu") || "Đóng menu") : (t("common.open_menu") || "Mở menu")}
+              {open ? t("common.close_menu") : t("common.open_menu")}
             </span>
             <div className="relative h-6 w-6">
               <span

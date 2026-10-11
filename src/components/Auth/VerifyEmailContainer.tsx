@@ -4,10 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Link, useRouter } from "@/i18n/i18n-navigation";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/AuthContext";
 import { verifyEmailApi, resendActivationApi } from "@/services/authService";
 
 export default function VerifyEmailContainer() {
+  const tAuth = useTranslations("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loginWithToken } = useAuth();
@@ -53,31 +55,31 @@ export default function VerifyEmailContainer() {
 
         if (res.token && res.user) {
           loginWithToken(res.token, res.user);
-          setSuccess("🎉 Kích hoạt tài khoản thành công! Đang chuyển hướng vào trang cá nhân...");
+          setSuccess(tAuth("activation_success_profile"));
           setTimeout(() => {
             router.push("/profile");
           }, 1500);
         } else {
-          setError(res.message || "Xác thực tài khoản thất bại.");
+          setError(res.message || tAuth("verify_failed"));
         }
       } catch (err: any) {
-        setError(err.message || "Liên kết kích hoạt không hợp lệ hoặc đã hết hạn.");
+        setError(err.message || tAuth("activation_link_invalid"));
       } finally {
         setLoading(false);
       }
     };
 
     runTokenVerification();
-  }, [tokenParam, emailParam, loginWithToken, router]);
+  }, [tokenParam, emailParam, loginWithToken, router, tAuth]);
 
   const handleManualVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
-      setError("Vui lòng nhập địa chỉ email.");
+      setError(tAuth("email_required"));
       return;
     }
     if (otpCode.trim().length !== 6) {
-      setError("Vui lòng nhập đầy đủ mã OTP 6 chữ số.");
+      setError(tAuth("otp_invalid_length"));
       return;
     }
 
@@ -93,15 +95,15 @@ export default function VerifyEmailContainer() {
 
       if (res.token && res.user) {
         loginWithToken(res.token, res.user);
-        setSuccess("🎉 Kích hoạt tài khoản thành công! Đang chuyển hướng vào trang cá nhân...");
+        setSuccess(tAuth("activation_success_profile"));
         setTimeout(() => {
           router.push("/profile");
         }, 1500);
       } else {
-        setError(res.message || "Xác thực tài khoản thất bại.");
+        setError(res.message || tAuth("verify_failed"));
       }
     } catch (err: any) {
-      setError(err.message || "Mã xác thực không chính xác hoặc đã hết hạn.");
+      setError(err.message || tAuth("otp_invalid_or_expired"));
     } finally {
       setLoading(false);
     }
@@ -116,9 +118,9 @@ export default function VerifyEmailContainer() {
     try {
       const res = await resendActivationApi(email.trim());
       setCountdown(60);
-      setSuccess(res.message || "Mã kích hoạt mới đã được gửi tới email của bạn!");
+      setSuccess(res.message || tAuth("activation_resent"));
     } catch (err: any) {
-      setError(err.message || "Không thể gửi lại mã kích hoạt.");
+      setError(err.message || tAuth("activation_resend_failed"));
     } finally {
       setResending(false);
     }
@@ -130,7 +132,7 @@ export default function VerifyEmailContainer() {
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/bg-login.jpg"
-          alt="Bếp Cô Thảo"
+          alt={tAuth("bg_image_alt")}
           fill
           className="object-cover object-center"
           priority
@@ -149,10 +151,10 @@ export default function VerifyEmailContainer() {
               </svg>
             </div>
             <h1 className="text-[24px] sm:text-[28px] font-bold text-primary font-display leading-tight tracking-[0.01em]">
-              Xác thực Tài khoản
+              {tAuth("verify_title")}
             </h1>
             <p className="text-gray-600 max-w-[380px] mx-auto text-xs sm:text-sm leading-relaxed">
-              Kích hoạt tài khoản thành viên để bắt đầu tích điểm và nhận các đặc quyền ưu đãi.
+              {tAuth("verify_desc")}
             </p>
           </div>
 
@@ -161,7 +163,7 @@ export default function VerifyEmailContainer() {
             <div className="py-8 text-center space-y-3">
               <div className="inline-block size-8 border-3 border-secondary border-t-transparent rounded-full animate-spin"></div>
               <p className="text-sm text-gray-700">
-                Đang xác thực tài khoản của bạn qua liên kết email...
+                {tAuth("verifying_link")}
               </p>
             </div>
           )}
@@ -188,21 +190,21 @@ export default function VerifyEmailContainer() {
             <form onSubmit={handleManualVerify} className="flex flex-col gap-4 w-full">
               <div className="space-y-1 text-left">
                 <label className="text-xs font-semibold text-primary block">
-                  Địa chỉ Email
+                  {tAuth("account_email")}
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="name@example.com"
+                  placeholder={tAuth("email_placeholder")}
                   className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-2.5 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] md:h-[42px] text-gray-900"
                 />
               </div>
 
               <div className="space-y-1 text-center">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-600 block">
-                  Mã OTP 6 chữ số
+                  {tAuth("otp_label")}
                 </label>
                 <input
                   type="text"
@@ -223,11 +225,11 @@ export default function VerifyEmailContainer() {
                     : "btn-secondary text-white shadow-md shadow-secondary/20 hover:shadow-lg cursor-pointer"
                 } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
-                {loading ? "Đang xử lý..." : "Xác nhận kích hoạt"}
+                {loading ? tAuth("processing") : tAuth("confirm_activation")}
               </button>
 
               <div className="flex items-center justify-between text-xs text-gray-600 pt-1">
-                <span>Chưa nhận được mã?</span>
+                <span>{tAuth("no_code_received")}</span>
                 <button
                   type="button"
                   onClick={handleResend}
@@ -238,7 +240,7 @@ export default function VerifyEmailContainer() {
                       : "text-secondary hover:underline cursor-pointer"
                   }`}
                 >
-                  {countdown > 0 ? `Gửi lại (${countdown}s)` : "Gửi lại mã kích hoạt"}
+                  {countdown > 0 ? tAuth("resend_countdown", { seconds: countdown }) : tAuth("resend_activation")}
                 </button>
               </div>
 
@@ -248,7 +250,7 @@ export default function VerifyEmailContainer() {
                   className="text-gray-500 hover:text-primary transition-colors font-medium inline-flex items-center gap-1 cursor-pointer"
                 >
                   <span>←</span>
-                  <span>Quay lại Đăng nhập</span>
+                  <span>{tAuth("back_to_login")}</span>
                 </Link>
               </div>
             </form>

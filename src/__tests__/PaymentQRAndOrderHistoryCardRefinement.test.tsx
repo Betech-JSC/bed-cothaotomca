@@ -59,6 +59,7 @@ vi.mock("next-intl", () => ({
     t.rich = (key: string) => key;
     return t;
   },
+  useLocale: () => "vi",
 }));
 
 vi.mock("@/hooks/useOrderStatus", () => ({

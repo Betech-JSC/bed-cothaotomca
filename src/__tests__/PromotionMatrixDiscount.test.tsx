@@ -186,6 +186,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetCouponModalCache();
+    localStorage.clear();
     currentMockPathname = '/';
     mockCurrentUser = null;
     mockVouchersList = [];
@@ -393,6 +394,8 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
       };
       mockVouchersList = [g2Voucher];
 
+      localStorage.setItem('cothaotomca_selected_campaign_ids', JSON.stringify([11]));
+
       render(
         <CheckoutForm
           order={null}
@@ -405,18 +408,24 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         />
       );
 
-      // Input G2 voucher
-      const input = screen.getByPlaceholderText(/Mã Voucher/i);
-      fireEvent.change(input, { target: { value: 'G2_ALL_TRUE' } });
+      // Open Voucher Ticket Bar
+      const ticketBar = screen.getByTestId('voucher-ticket-bar');
+      fireEvent.click(ticketBar);
 
-      const applyBtn = screen.getByRole('button', { name: /Áp dụng/i });
+      // Apply G2 voucher in modal
+      const voucherItem = await screen.findByText('G2_ALL_TRUE');
+      const cb = voucherItem.closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+      fireEvent.click(cb);
+
+      const applyBtn = screen.getByRole('button', { name: /Áp dụng •/i });
       fireEvent.click(applyBtn);
 
-      // Check success text
-      expect(await screen.findByText('Áp dụng mã giảm giá thành công!')).toBeInTheDocument();
+      // Check success text or badge
+      expect(await screen.findByText(/Áp dụng thành công|Áp dụng mã giảm giá thành công/i)).toBeInTheDocument();
+      expect(screen.getByTestId('food-ticket-badge')).toBeInTheDocument();
 
       // G1 is still applied
-      expect(screen.getByText('CTKM Giảm 20k đơn 300k')).toBeInTheDocument();
+      expect(screen.getAllByText('CTKM Giảm 20k đơn 300k')[0]).toBeInTheDocument();
 
       // No shipping restriction notice
       expect(screen.queryByText(/không áp dụng cùng chương trình giảm phí vận chuyển/i)).toBeNull();
@@ -459,6 +468,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         can_combine_with_freeship: true,
       };
       mockVouchersList = [g2Voucher];
+      localStorage.setItem('cothaotomca_selected_campaign_ids', JSON.stringify([12]));
 
       const { container } = render(
         <CheckoutForm
@@ -473,12 +483,19 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
       );
 
       // Before voucher: G1 is applied
-      expect(screen.getByText('CTKM Giảm 20k')).toBeInTheDocument();
+      expect(screen.getAllByText('CTKM Giảm 20k')[0]).toBeInTheDocument();
 
-      // Apply G2
-      const input = screen.getByPlaceholderText(/Mã Voucher/i);
-      fireEvent.change(input, { target: { value: 'G2_NO_PROMO' } });
-      fireEvent.click(screen.getByRole('button', { name: /Áp dụng/i }));
+      // Open Voucher Ticket Bar
+      const ticketBar = screen.getByTestId('voucher-ticket-bar');
+      fireEvent.click(ticketBar);
+
+      // Apply G2 voucher in modal
+      const voucherItem = await screen.findByText('G2_NO_PROMO');
+      const cb = voucherItem.closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+      fireEvent.click(cb);
+
+      const applyBtn = screen.getByRole('button', { name: /Áp dụng •/i });
+      fireEvent.click(applyBtn);
 
       // Inline banner under voucher input
       expect(
@@ -492,11 +509,11 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
       expect(screen.queryByText(/không áp dụng cùng chương trình giảm phí vận chuyển/i)).toBeNull();
 
       // Remove voucher [X]
-      const removeBtn = container.querySelector('button.bg-red-50')!;
+      const removeBtn = screen.getByTestId('remove-voucher-button');
       fireEvent.click(removeBtn);
 
       // G1 is restored
-      expect(await screen.findByText('CTKM Giảm 20k')).toBeInTheDocument();
+      expect((await screen.findAllByText('CTKM Giảm 20k'))[0]).toBeInTheDocument();
     });
 
     it('Case 3: G1 + G2 [promo: true, ship: false] + G3 -> G1 + G2, mất G3 (phí gốc), inline đỏ dưới phí ship, gỡ [X] phục hồi G3', async () => {
@@ -536,6 +553,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         can_combine_with_freeship: false,
       };
       mockVouchersList = [g2Voucher];
+      localStorage.setItem('cothaotomca_selected_campaign_ids', JSON.stringify([13]));
 
       const { container } = render(
         <CheckoutForm
@@ -549,13 +567,20 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         />
       );
 
-      // Apply G2
-      const input = screen.getByPlaceholderText(/Mã Voucher/i);
-      fireEvent.change(input, { target: { value: 'G2_NO_SHIP' } });
-      fireEvent.click(screen.getByRole('button', { name: /Áp dụng/i }));
+      // Open Voucher Ticket Bar
+      const ticketBar = screen.getByTestId('voucher-ticket-bar');
+      fireEvent.click(ticketBar);
+
+      // Apply G2 voucher in modal
+      const voucherItem = await screen.findByText('G2_NO_SHIP');
+      const cb = voucherItem.closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+      fireEvent.click(cb);
+
+      const applyBtn = screen.getByRole('button', { name: /Áp dụng •/i });
+      fireEvent.click(applyBtn);
 
       // G1 and G2 applied
-      expect(await screen.findByText('CTKM Giảm 20k')).toBeInTheDocument();
+      expect((await screen.findAllByText('CTKM Giảm 20k'))[0]).toBeInTheDocument();
 
       // Red inline notice under shipping fee
       expect(
@@ -563,7 +588,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
       ).toBeInTheDocument();
 
       // Remove voucher [X] -> Shipping fee notice disappears
-      const removeBtn = container.querySelector('button.bg-red-50')!;
+      const removeBtn = screen.getByTestId('remove-voucher-button');
       fireEvent.click(removeBtn);
 
       await waitFor(() => {
@@ -608,6 +633,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         can_combine_with_freeship: false,
       };
       mockVouchersList = [g2Voucher];
+      localStorage.setItem('cothaotomca_selected_campaign_ids', JSON.stringify([14]));
 
       const { container } = render(
         <CheckoutForm
@@ -621,10 +647,17 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         />
       );
 
-      // Apply G2
-      const input = screen.getByPlaceholderText(/Mã Voucher/i);
-      fireEvent.change(input, { target: { value: 'G2_NO_BOTH' } });
-      fireEvent.click(screen.getByRole('button', { name: /Áp dụng/i }));
+      // Open Voucher Ticket Bar
+      const ticketBar = screen.getByTestId('voucher-ticket-bar');
+      fireEvent.click(ticketBar);
+
+      // Apply G2 voucher in modal
+      const voucherItem = await screen.findByText('G2_NO_BOTH');
+      const cb = voucherItem.closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+      fireEvent.click(cb);
+
+      const applyBtn = screen.getByRole('button', { name: /Áp dụng •/i });
+      fireEvent.click(applyBtn);
 
       // G1 is suppressed
       await waitFor(() => {
@@ -640,10 +673,10 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
       ).toBeInTheDocument();
 
       // Remove voucher [X] -> Both G1 and G3 restored
-      const removeBtn = container.querySelector('button.bg-red-50')!;
+      const removeBtn = screen.getByTestId('remove-voucher-button');
       fireEvent.click(removeBtn);
 
-      expect(await screen.findByText('CTKM Giảm 20k')).toBeInTheDocument();
+      expect((await screen.findAllByText('CTKM Giảm 20k'))[0]).toBeInTheDocument();
       expect(screen.queryByText(/không áp dụng cùng chương trình giảm phí vận chuyển/i)).toBeNull();
     });
 
@@ -674,6 +707,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         items: [],
       };
 
+      localStorage.setItem('cothaotomca_selected_campaign_ids', JSON.stringify([15]));
       render(
         <CheckoutForm
           order={null}
@@ -687,7 +721,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
       );
 
       // G1 is applied
-      expect(screen.getByText('Siêu Sale Không Freeship')).toBeInTheDocument();
+      expect(screen.getAllByText('Siêu Sale Không Freeship')[0]).toBeInTheDocument();
 
       // Red inline notice under shipping fee
       expect(
@@ -732,6 +766,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         can_combine_with_freeship: true,
       };
       mockVouchersList = [g2Voucher];
+      localStorage.setItem('cothaotomca_selected_campaign_ids', JSON.stringify([16]));
 
       const { container } = render(
         <CheckoutForm
@@ -746,15 +781,22 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
       );
 
       // Initially in Case 5
-      expect(screen.getByText('Đại Tiệc Cấm Ship')).toBeInTheDocument();
+      expect(screen.getAllByText('Đại Tiệc Cấm Ship')[0]).toBeInTheDocument();
       expect(
         (await screen.findAllByText(/CTKM Đại Tiệc Cấm Ship không áp dụng cùng chương trình giảm phí vận chuyển\./i)).length
       ).toBeGreaterThanOrEqual(1);
 
-      // Apply G2
-      const input = screen.getByPlaceholderText(/Mã Voucher/i);
-      fireEvent.change(input, { target: { value: 'G2_RESTORE_SHIP' } });
-      fireEvent.click(screen.getByRole('button', { name: /Áp dụng/i }));
+      // Open Voucher Ticket Bar
+      const ticketBar = screen.getByTestId('voucher-ticket-bar');
+      fireEvent.click(ticketBar);
+
+      // Apply G2 voucher in modal
+      const voucherItem = await screen.findByText('G2_RESTORE_SHIP');
+      const cb = voucherItem.closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+      fireEvent.click(cb);
+
+      const applyBtn = screen.getByRole('button', { name: /Áp dụng •/i });
+      fireEvent.click(applyBtn);
 
       // Inline banner under voucher input
       expect(
@@ -763,9 +805,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         )
       ).toBeInTheDocument();
 
-      const voucherRemoveBtn = screen.getAllByRole('button').find(
-        (b) => b.textContent?.trim() === 'Xóa' && b.className.includes('bg-red-50')
-      )!;
+      const voucherRemoveBtn = screen.getByTestId('remove-voucher-button');
       fireEvent.click(voucherRemoveBtn);
 
       expect(
@@ -800,6 +840,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         items: [],
       };
 
+      localStorage.setItem('cothaotomca_selected_campaign_ids', JSON.stringify([999]));
       render(
         <CheckoutForm
           order={null}

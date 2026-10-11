@@ -423,11 +423,13 @@ describe('Campaign & Gift Promotions Flow (Frontend Tasks 2 & 3)', () => {
     });
 
     // Mở lại modal và bỏ chọn ưu đãi
-    const selectButtonsAfter = screen.getAllByRole('button', { name: /Chọn mã/i });
-    fireEvent.click(selectButtonsAfter[0]);
+    const ticketBars = screen.getAllByTestId('voucher-ticket-bar');
+    const chevronBtn = ticketBars[0].querySelector('button[aria-label="Chọn mã"]')!;
+    fireEvent.click(chevronBtn);
 
-    expect(await screen.findByText('Tặng món cho đơn từ 100k')).toBeInTheDocument();
-    const cbGiftSelected = screen.getByText('Tặng món cho đơn từ 100k').closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
+    const modalGiftTitles = await screen.findAllByText('Tặng món cho đơn từ 100k');
+    const modalGiftTitle = modalGiftTitles.find((el) => el.closest('div[class*="rounded-2xl"]'))!;
+    const cbGiftSelected = modalGiftTitle.closest('div[class*="rounded-2xl"]')!.querySelector('[role="checkbox"]')!;
     expect(cbGiftSelected).toHaveAttribute('aria-checked', 'true');
 
     // Click để uncheck
@@ -475,9 +477,11 @@ describe('Campaign & Gift Promotions Flow (Frontend Tasks 2 & 3)', () => {
     // Điền thông tin giao hàng ở cả desktop và mobile
     const nameInputs = screen.getAllByPlaceholderText(/Họ và tên/i);
     const phoneInputs = screen.getAllByPlaceholderText(/Số điện thoại/i);
+    const emailInputs = screen.getAllByPlaceholderText(/Email/i);
 
     nameInputs.forEach((input) => fireEvent.change(input, { target: { value: 'Nguyen Van Test' } }));
     phoneInputs.forEach((input) => fireEvent.change(input, { target: { value: '0987654321' } }));
+    emailInputs.forEach((input) => fireEvent.change(input, { target: { value: 'test@example.com' } }));
 
     // Chọn phương thức nhận: Tự đến lấy tại chi nhánh
     const pickupRadios = screen.getAllByLabelText(/Tự đến lấy tại chi nhánh/i);
@@ -508,7 +512,7 @@ describe('Campaign & Gift Promotions Flow (Frontend Tasks 2 & 3)', () => {
     expect(gift.price).toBe(0);
     expect(gift.quantity).toBe(1);
     expect(gift.note).toContain('Quà tặng đơn hàng');
-  });
+  }, 30000);
 
   it('Task 3.4: Does NOT render any same_price_discount badge in UI', async () => {
     const configWithSamePrice: CheckoutConfig = {

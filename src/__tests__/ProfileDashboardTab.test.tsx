@@ -16,8 +16,8 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => {
+vi.mock("next-intl", () => {
+  const handler = (key: string, values?: any) => {
     const map: Record<string, string> = {
       orders_history: "Lịch sử đơn hàng",
       addresses: "Danh sách địa chỉ",
@@ -26,10 +26,21 @@ vi.mock("next-intl", () => ({
       fullname: "Họ và tên",
       change_password: "Đổi mật khẩu",
       delivery_home: "Giao hàng tận nơi",
+      address_book_link: "Danh sách địa chỉ →",
+      diamond_member: "DIAMOND",
+      gold_member: "GOLD",
+      member: "MEMBER",
+      tier_highest: "Hạng thành viên cao cấp nhất",
+      points_to_next_tier: `Còn ${values?.points} điểm để lên ${values?.tier}`,
     };
     return map[key] || key;
-  },
-}));
+  };
+  handler.rich = (key: string) => key;
+  return {
+    useTranslations: () => handler,
+    useLocale: () => "vi",
+  };
+});
 
 vi.mock("@/i18n/routing", () => ({
   Link: ({ href, children, ...props }: any) => {

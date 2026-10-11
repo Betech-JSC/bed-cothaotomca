@@ -48,6 +48,7 @@ import { buildDeliveryAddress, cleanDuplicateAddressParts, resolveNewWardName } 
 import { checkGuestTierByPhone, type GuestTierHint } from "@/services/authService";
 
 import { useAuth, getMemberTier, calculateMemberDiscount } from "@/contexts/AuthContext";
+import { formatBranchDisplayName, identifyBrandBranch } from "@/lib/branchHelper";
 import { useCart } from "@/contexts/CartContext";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getEarliestPreOrderSlot, getVietnamDate, getVietnamTimeString, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
 import WardSelectCombobox from "./WardSelectCombobox";
@@ -159,6 +160,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   const { user, token, refreshUser } = useAuth();
   const t = useTranslations("checkout");
+  const tVoucher = useTranslations("voucher");
+  const tCart = useTranslations("cart");
   let locale = "vi";
   try {
     if (typeof (NextIntl as any).useLocale === "function") {
@@ -782,7 +785,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       appliedVoucher.canCombineWithPromotions === false &&
       appliedVoucher.canCombineWithFreeship !== false
     ) {
-      return `Mã ${appliedVoucher.code} không áp dụng đồng thời với CTKM khác. Đã kích hoạt lại ưu đãi giảm phí vận chuyển cho bạn.`;
+      return t("promo_voucher_no_combine_ship_restored", { code: appliedVoucher.code });
     }
 
     // Case 4: G1 active + G2 [promo: false, ship: false]
@@ -791,16 +794,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       appliedVoucher.canCombineWithPromotions === false &&
       appliedVoucher.canCombineWithFreeship === false
     ) {
-      return `Mã ${appliedVoucher.code} không áp dụng đồng thời với CTKM khác.`;
+      return t("promo_voucher_no_combine", { code: appliedVoucher.code });
     }
 
     // Case 2: G1 active + G2 [promo: false]
     if (cartCampaignG1 && appliedVoucher.canCombineWithPromotions === false) {
-      return `Mã ${appliedVoucher.code} không áp dụng đồng thời với CTKM khác. Đã ưu tiên áp dụng theo mã của bạn.`;
+      return t("promo_voucher_prioritized", { code: appliedVoucher.code });
     }
 
     return null;
-  }, [appliedVoucher, cartCampaignG1]);
+  }, [appliedVoucher, cartCampaignG1, t]);
 
   const promotionMatrixShippingNotice = useMemo(() => {
     // Case 4: Mã G2 cấm cả promo & ship
@@ -810,12 +813,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       appliedVoucher.canCombineWithPromotions === false &&
       appliedVoucher.canCombineWithFreeship === false
     ) {
-      return `Mã ${appliedVoucher.code} không hỗ trợ giảm phí ship.`;
+      return t("promo_voucher_no_ship_discount", { code: appliedVoucher.code });
     }
 
     // Case 3: Mã G2 cấm giảm phí ship
     if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false) {
-      return `Mã ${appliedVoucher.code} không áp dụng cùng chương trình giảm phí vận chuyển.`;
+      return t("promo_voucher_no_ship_program", { code: appliedVoucher.code });
     }
 
     // Case 5: Campaign G1 can_combine_with_freeship = false, chưa add G2 (hoặc G2 không override)
@@ -824,11 +827,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       cartCampaignG1.can_combine_with_freeship === false &&
       (!appliedVoucher || appliedVoucher.canCombineWithPromotions !== false)
     ) {
-      return `CTKM ${cartCampaignG1.name} không áp dụng cùng chương trình giảm phí vận chuyển.`;
+      return t("promo_campaign_no_ship_program", { name: cartCampaignG1.name });
     }
 
     return null;
-  }, [appliedVoucher, cartCampaignG1]);
+  }, [appliedVoucher, cartCampaignG1, t]);
 
   // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleOrderDiscountPromo = useMemo(() => {
@@ -1193,12 +1196,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       d.setDate(d.getDate() + i);
       const iso = toISODateString(d);
       let label = formatVietnameseDate(d);
-      if (i === 0) label = `Hôm nay (${label})`;
-      else if (i === 1) label = `Ngày mai (${label})`;
+      if (i === 0) label = t("date_today", { date: label });
+      else if (i === 1) label = t("date_tomorrow", { date: label });
       dates.push({ iso, label });
     }
     return dates;
-  }, [operatingStatus, deliveryType, mockDate]);
+  }, [operatingStatus, deliveryType, mockDate, t]);
 
   const availableTimeSlots = useMemo(() => {
     const refDate = getVietnamDate(mockDate);
@@ -1250,18 +1253,18 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const validatePhoneInput = (val: string): string | null => {
     const clean = val.trim().replace(/\s+/g, "");
     if (!clean) {
-      return t("validation.phone_required") || "Vui lòng nhập số điện thoại.";
+      return t("validation.phone_required");
     }
     const normalized = clean.startsWith("+84") ? "0" + clean.slice(3) : clean;
     const phoneRegex = /^0[35789]\d{8}$/;
     if (!phoneRegex.test(normalized)) {
-      return t("validation.phone_invalid") || "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
+      return t("validation.phone_invalid");
     }
     if (/^(\d)\1{9}$/.test(normalized)) {
-      return t("validation.phone_invalid") || "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
+      return t("validation.phone_invalid");
     }
     if (normalized === "0123456789") {
-      return t("validation.phone_invalid") || "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.";
+      return t("validation.phone_invalid");
     }
     return null;
   };
@@ -1269,24 +1272,24 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const validateNameInput = (val: string): string | null => {
     const clean = val.trim();
     if (!clean) {
-      return t("validation.name_required") || "Vui lòng nhập họ và tên.";
+      return t("validation.name_required");
     }
     if (clean.length < 2) {
-      return t("validation.name_min") || "Họ và tên quá ngắn. Vui lòng nhập tối thiểu 2 ký tự.";
+      return t("validation.name_min");
     }
     const nameRegex = /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ\s'-]+$/u;
     if (!nameRegex.test(clean)) {
-      return t("validation.name_invalid") || "Họ và tên không hợp lệ. Vui lòng không nhập số hoặc ký tự đặc biệt.";
+      return t("validation.name_invalid");
     }
     return null;
   };
 
   const validateEmailInput = (val: string): string | null => {
     const clean = val.trim();
-    if (!clean) return t("validation.email_required") || "Vui lòng nhập địa chỉ email.";
+    if (!clean) return t("validation.email_required");
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(clean)) {
-      return t("validation.email_invalid") || "Email không hợp lệ. Vui lòng kiểm tra lại.";
+      return t("validation.email_invalid");
     }
     return null;
   };
@@ -1329,7 +1332,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         setVoucherSuccess(null);
         setBestDealNotice(null);
         setVoucherError(
-          `Mã giảm giá đã bị gỡ do đơn hàng hiện tại chưa đủ ${appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ.`
+          t("voucher_removed_min_not_met", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })
         );
         return;
       }
@@ -1359,7 +1362,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         setVoucherSuccess(null);
         setBestDealNotice(null);
         setVoucherError(
-          `Mã giảm giá đã bị gỡ do đơn hàng hiện tại chưa đủ ${appliedVoucher.prereqPrice.toLocaleString("vi-VN")}đ.`
+          t("voucher_removed_min_not_met", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })
         );
       }
     }
@@ -1446,7 +1449,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   const memberDiscountLabel = useMemo(() => {
     if (!user || memberTier.discountPercent <= 0) return "";
-    const tierName = memberTier.name;
+    const isDiamond = memberTier.tier === "diamond";
+    const isGold = memberTier.tier === "gold";
+    const tierName = isDiamond ? (tVoucher("tier_diamond") || "Kim Cương") : isGold ? (tVoucher("tier_gold") || "Vàng") : memberTier.name;
     if (memberTier.isUpgradeCelebration) {
       return (
         t("cost_summary.member_upgrade_label", {
@@ -1461,7 +1466,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         percent: memberTier.discountPercent,
       }) || memberTier.label
     );
-  }, [user, memberTier, t]);
+  }, [user, memberTier, t, tVoucher]);
 
   const total = (isCartCheckout && cartItems.length === 0) ? 0 : Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
 
@@ -1484,9 +1489,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       (voucherCandidate.code && /^SHIP(\d+|K)?$/i.test(voucherCandidate.code))
     );
 
-    // a) Nếu voucherCandidate.can_combine_with_promotions === false:
-    // Tự động ưu tiên voucher và clear CTKM xung đột khi áp dụng thay vì chặn cứng
-    // (Được xử lý tự động trong handleApplyVoucher / handleApplyVouchers)
+    // a) Nếu voucherCandidate.can_combine_with_promotions === false VÀ activeCampaigns.length > 0:
+    if (voucherCandidate.can_combine_with_promotions === false && activeCampaigns.length > 0) {
+      return {
+        allowed: false,
+        message: t("mutex_voucher_blocks_all_promotions"),
+      };
+    }
 
     // b) Nếu là Voucher món (!isShip) VÀ có campaign trong activeCampaigns mang can_combine_with_promotions === false:
     if (!isShip) {
@@ -1494,7 +1503,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       if (blockedCamp) {
         return {
           allowed: false,
-          message: `Chương trình "${blockedCamp?.name || "Ưu đãi"}" không áp dụng đồng thời với mã giảm giá món ăn.`,
+          message: t("mutex_campaign_blocks_food_voucher", { name: blockedCamp?.name || t("mutex_default_campaign_name") }),
         };
       }
     }
@@ -1505,7 +1514,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       if (blockedCamp) {
         return {
           allowed: false,
-          message: "Chương trình ưu đãi hiện tại không áp dụng cùng mã giảm phí vận chuyển.",
+          message: t("mutex_campaign_blocks_ship_voucher"),
         };
       }
     }
@@ -1520,7 +1529,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     ) {
       return {
         allowed: false,
-        message: "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship.",
+        message: tVoucher("order_voucher_no_freeship"),
       };
     }
 
@@ -1528,17 +1537,17 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     if (!isShip && voucherCandidate.can_combine_with_freeship === false && appliedShippingVoucher) {
       return {
         allowed: false,
-        message: "Mã giảm giá món ăn này không áp dụng cùng mã giảm phí vận chuyển đã chọn.",
+        message: t("mutex_food_voucher_blocks_ship_voucher"),
       };
     }
 
     return { allowed: true };
-  }, [allPromotionsList, selectedCampaignIds, appliedVoucher, appliedShippingVoucher]);
+  }, [allPromotionsList, selectedCampaignIds, appliedVoucher, appliedShippingVoucher, t, tVoucher]);
 
   const handleApplyVoucher = async (codeOverride?: string, isAuto = false) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
     if (!code) {
-      setVoucherError(t("validation.voucher_input_required") || "Vui lòng nhập mã giảm giá.");
+      setVoucherError(t("validation.voucher_input_required"));
       setVoucherSuccess(null);
       setBestDealNotice(null);
       return;
@@ -1567,7 +1576,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     const isCodeFreeship = code.includes("FREESHIP") || code.includes("PHISHIP") || /^SHIP(\d+|K)?$/i.test(code);
 
     if (isOrderAutoFreeship && isCodeFreeship) {
-      const friendlyMsg = "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.";
+      const friendlyMsg = tVoucher("auto_freeship_friendly_tip");
       setBestDealNotice(friendlyMsg);
       setVoucherError(null);
       setVoucherSuccess(null);
@@ -1577,7 +1586,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
 
     if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false && isCodeFreeship) {
-      const msg = "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship";
+      const msg = tVoucher("order_voucher_no_freeship");
       setVoucherError(msg);
       setBestDealNotice(null);
       setVoucherSuccess(null);
@@ -1599,7 +1608,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       if (res.valid && res.voucher) {
         const lockCheck = validateVoucherMutexLock(res.voucher);
         if (!lockCheck.allowed) {
-          setVoucherError(lockCheck.message || "Mã giảm giá không thể sử dụng cùng các ưu đãi đã chọn.");
+          setVoucherError(lockCheck.message || tVoucher("mutex_selected_promotions"));
           setVoucherSuccess(null);
           setBestDealNotice(null);
           setValidatingVoucher(false);
@@ -1612,7 +1621,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         );
 
         if (isOrderAutoFreeship && isCandidateFreeship) {
-          const friendlyMsg = "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.";
+          const friendlyMsg = tVoucher("auto_freeship_friendly_tip");
           setBestDealNotice(friendlyMsg);
           setVoucherError(null);
           setVoucherSuccess(null);
@@ -1621,7 +1630,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         }
 
         if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false && isCandidateFreeship) {
-          const msg = "Mã giảm giá đơn hàng hiện tại không áp dụng đồng thời với mã Freeship";
+          const msg = tVoucher("order_voucher_no_freeship");
           setVoucherError(msg);
           setBestDealNotice(null);
           setVoucherSuccess(null);
@@ -1631,14 +1640,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         const canCombine = res.voucher.can_combine_with_promotions !== false;
 
         if (!canCombine) {
-          setSelectedCampaignIds([]);
-          setStoredCampaignIds([]);
           // 1. Điều kiện tối thiểu của voucher (prereqPrice) được xét dựa trên originalSubtotal
           const prereqPrice = Number(res.voucher.prereq_price || 0);
           if (prereqPrice > 0 && originalSubtotal < prereqPrice) {
             const msg = res.voucher.code.toUpperCase() === "WSBCT50K"
-              ? `Đơn hàng tối thiểu ${prereqPrice.toLocaleString("vi-VN")} VNĐ để áp dụng mã ${res.voucher.code}`
-              : `Chưa đạt giá trị đơn tối thiểu ${prereqPrice.toLocaleString("vi-VN")}đ`;
+              ? t("voucher_min_order_for_code", { amount: prereqPrice.toLocaleString("vi-VN"), code: res.voucher.code })
+              : tVoucher("min_spend_not_met", { amount: prereqPrice.toLocaleString("vi-VN") });
             setVoucherError(msg);
             setAppliedVoucher(null);
             throw new Error(msg);
@@ -1705,7 +1712,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               setAppliedShippingVoucher(null);
             }
           }
-          setVoucherSuccess(res.message || "Áp dụng mã giảm giá thành công!");
+          setVoucherSuccess(res.message || t("voucher_apply_success"));
           setBestDealNotice(null);
           const codesToStore = isCandidateFreeship
             ? [appliedVoucher && !appliedVoucher.isFreeship ? appliedVoucher.code : null, res.voucher.code].filter(Boolean) as string[]
@@ -1717,8 +1724,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           const prereqPrice = Number(res.voucher.prereq_price || 0);
           if (prereqPrice > 0 && saleSubtotal < prereqPrice) {
             const msg = res.voucher.code.toUpperCase() === "WSBCT50K"
-              ? `Đơn hàng tối thiểu ${prereqPrice.toLocaleString("vi-VN")} VNĐ để áp dụng mã ${res.voucher.code}`
-              : `Chưa đạt giá trị đơn tối thiểu ${prereqPrice.toLocaleString("vi-VN")}đ`;
+              ? t("voucher_min_order_for_code", { amount: prereqPrice.toLocaleString("vi-VN"), code: res.voucher.code })
+              : tVoucher("min_spend_not_met", { amount: prereqPrice.toLocaleString("vi-VN") });
             setVoucherError(msg);
             setAppliedVoucher(null);
             throw new Error(msg);
@@ -1765,7 +1772,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               setAppliedShippingVoucher(null);
             }
           }
-          setVoucherSuccess(res.message || "Áp dụng mã giảm giá thành công!");
+          setVoucherSuccess(res.message || t("voucher_apply_success"));
           setBestDealNotice(null);
           const codesToStore = isCandidateFreeship
             ? [appliedVoucher && !appliedVoucher.isFreeship ? appliedVoucher.code : null, res.voucher.code].filter(Boolean) as string[]
@@ -1779,7 +1786,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           res.message?.includes("freeship tự động") ||
           res.message?.includes("miễn phí vận chuyển tự động")
         ) {
-          const friendlyMsg = "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé.";
+          const friendlyMsg = tVoucher("auto_freeship_friendly_tip");
           setBestDealNotice(friendlyMsg);
           setVoucherError(null);
           setVoucherSuccess(null);
@@ -1792,14 +1799,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         throw new Error(res.message);
       }
     } catch (err: any) {
-      const msg = err?.message || "Không thể xác thực mã giảm giá.";
+      const msg = err?.message || t("voucher_validate_failed");
       if (
         msg.includes("Freeship tự động") ||
         msg.includes("freeship tự động") ||
         msg.includes("miễn phí vận chuyển tự động")
       ) {
         setBestDealNotice(
-          "Đơn hàng đã đạt điều kiện Freeship tự động! Bạn hãy giữ lại mã Freeship này để dùng cho đơn sau nhé."
+          tVoucher("auto_freeship_friendly_tip")
         );
         setVoucherError(null);
       } else {
@@ -1838,7 +1845,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const handleRemovePromotionFromBar = useCallback(() => {
     const hasVouchers = Boolean(appliedVoucher || appliedShippingVoucher);
     const hasCampaigns = selectedCampaignIds.length > 0;
-    if (hasVouchers && hasCampaigns) {
+    const isExclusiveVoucher = Boolean(
+      appliedVoucher?.canCombineWithPromotions === false ||
+      appliedShippingVoucher?.canCombineWithPromotions === false
+    );
+    if (isExclusiveVoucher) {
+      handleRemoveVoucher();
+    } else if (hasVouchers && hasCampaigns) {
       handleClearAllPromotions();
     } else if (hasVouchers) {
       handleRemoveVoucher();
@@ -1914,26 +1927,22 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           const prereqPrice = Number(res.voucher.prereq_price || 0);
           if (prereqPrice > 0 && subtotalForCalc < prereqPrice) {
             validationError = res.voucher.code.toUpperCase() === "WSBCT50K"
-              ? `Đơn hàng tối thiểu ${prereqPrice.toLocaleString("vi-VN")} VNĐ để áp dụng mã ${res.voucher.code}`
-              : `Chưa đạt giá trị đơn tối thiểu ${prereqPrice.toLocaleString("vi-VN")}đ`;
+              ? t("voucher_min_order_for_code", { amount: prereqPrice.toLocaleString("vi-VN"), code: res.voucher.code })
+              : tVoucher("min_spend_not_met", { amount: prereqPrice.toLocaleString("vi-VN") });
           } else {
             if (isCandidateFreeship) nextShip = candidate;
             else nextFood = candidate;
           }
         } else {
-          validationError = res.message || "Mã không hợp lệ hoặc không đủ điều kiện.";
+          validationError = res.message || t("voucher_invalid");
         }
       }
       setAppliedVoucher(nextFood);
       setAppliedShippingVoucher(nextShip);
-      if (nextFood?.canCombineWithPromotions === false || nextShip?.canCombineWithPromotions === false) {
-        setSelectedCampaignIds([]);
-        setStoredCampaignIds([]);
-      }
       const appliedCount = (nextFood ? 1 : 0) + (nextShip ? 1 : 0);
       if (appliedCount > 0) {
         setVoucherCode([nextFood?.code, nextShip?.code].filter(Boolean).join(", "));
-        setVoucherSuccess(`Đã áp dụng thành công ${appliedCount} ưu đãi!`);
+        setVoucherSuccess(tVoucher("applied_vouchers_success_count", { count: appliedCount }));
         setIsVoucherModalOpen(false);
         const appliedCodes = [nextFood?.code, nextShip?.code].filter(Boolean) as string[];
         setStoredVoucherCodes(appliedCodes);
@@ -1945,7 +1954,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         setIsVoucherModalOpen(false);
       }
     } catch (err: any) {
-      setVoucherError(err?.message || "Không thể áp dụng ưu đãi.");
+      setVoucherError(err?.message || t("voucher_apply_failed"));
     } finally {
       setValidatingVoucher(false);
     }
@@ -2023,13 +2032,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     const opCheck = checkOperatingHours(config?.operating_hours, undefined, deliveryType);
 
     if (isCartCheckout && cartItems.length === 0) {
-      setError(t("empty") || "Giỏ hàng của bạn đang trống.");
+      setError(t("empty"));
       setLoading(false);
       return;
     }
 
     if (isCartCheckout && isOutOfStockOverall) {
-      setError(t("oos_warning") || "Vui lòng xóa sản phẩm [Tạm hết hàng] để tiếp tục đặt hàng.");
+      setError(t("oos_warning"));
       setLoading(false);
       return;
     }
@@ -2058,21 +2067,21 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     if (deliveryType === "delivery") {
       if (!isSavedAddressSelected) {
         if (!selectedWard.trim() && !selectedWardId) {
-          errs["delivery.ward"] = t("validation.ward_required") || "* Vui lòng chọn Phường / Xã (Khu vực giao).";
+          errs["delivery.ward"] = t("validation.ward_required");
         }
         if (!streetAddress.trim()) {
-          errs["delivery.address"] = t("validation.address_required") || "Vui lòng nhập số nhà và tên đường.";
+          errs["delivery.address"] = t("validation.address_required");
         }
       } else {
         if (!streetAddress.trim() && !selectedSavedAddress?.full_address) {
-          errs["delivery.address"] = t("validation.address_required") || "Vui lòng nhập số nhà và tên đường.";
+          errs["delivery.address"] = t("validation.address_required");
         }
       }
     }
 
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
-      setError(t("validation.form_incomplete") || "Vui lòng kiểm tra lại thông tin còn thiếu hoặc chưa chính xác.");
+      setError(t("validation.form_incomplete"));
       setLoading(false);
       return;
     }
@@ -2088,13 +2097,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       const maxAllowed = opCheck.deliveryClose || "23:00";
 
       if (!expectedDeliveryTime) {
-        const msg = t("validation.delivery_time_required", { min: minAllowed, max: maxAllowed }) || `Vui lòng chọn giờ nhận hàng mong muốn (khung giờ ${minAllowed} - ${maxAllowed}).`;
+        const msg = t("validation.delivery_time_required", { min: minAllowed, max: maxAllowed });
         setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
       }
       if (expectedDeliveryTime < minAllowed || expectedDeliveryTime > maxAllowed) {
-        const msg = `Khung giờ nhận món phải từ ${minAllowed} đến ${maxAllowed}.`;
+        const msg = t("validation.delivery_time_out_of_range", { min: minAllowed, max: maxAllowed });
         setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
@@ -2102,7 +2111,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
       const [eH, eM] = expectedDeliveryTime.split(":").map(Number);
       if (eM % 15 !== 0) {
-        const msg = "Thời gian nhận món phải theo các mốc 15 phút (ví dụ: 10:00, 10:15, 10:30, 10:45).";
+        const msg = t("validation.delivery_time_step");
         setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
         setLoading(false);
         return;
@@ -2113,7 +2122,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       if (deliveryDate === todayISO) {
         const curTime = getVietnamTimeString(refDate);
         if (curTime > (opCheck.scheduleCutoff || "21:30")) {
-          const msg = "Sau 21:30, quán đã ngưng nhận đơn đặt trước trong ngày. Quý khách vui lòng chọn hẹn giờ từ ngày mai.";
+          const msg = t("validation.schedule_cutoff_passed", { cutoff: opCheck.scheduleCutoff || "21:30" });
           setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
           setLoading(false);
           return;
@@ -2124,7 +2133,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         const minBufferM = curH * 60 + curM + 90;
         const selectedM = eH * 60 + eM;
         if (selectedM < minBufferM) {
-          const msg = "Đơn đặt trước phải cách thời điểm hiện tại tối thiểu 90 phút.";
+          const msg = t("validation.preorder_min_buffer", { minutes: 90 });
           setFieldErrors((prev) => ({ ...prev, "delivery.expected_delivery": msg }));
           setLoading(false);
           return;
@@ -2327,8 +2336,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         setPendingOrder(result.data);
       }
     } catch (err: unknown) {
-      const fallbackErrorMessage =
-        "Có lỗi xảy ra trong quá trình khởi tạo đơn hàng. Quý khách vui lòng thử lại hoặc liên hệ hotline để được hỗ trợ.";
+      const fallbackErrorMessage = t("submit_error_generic");
 
       if (err instanceof OrderApiError) {
         const displayMessage =
@@ -2374,13 +2382,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         customerPhone,
         "Khách hàng hủy từ màn hình thanh toán VietQR"
       );
-      setCancelToastMessage("Đơn hàng đã được hủy theo yêu cầu");
+      setCancelToastMessage(t("order_cancelled_toast"));
     } catch (err: unknown) {
       console.error("Lỗi khi hủy đơn hàng chờ thanh toán:", err);
       if (err instanceof OrderApiError) {
-        setCancelToastMessage(err.message || "Đơn hàng đã được hủy theo yêu cầu");
+        setCancelToastMessage(err.message || t("order_cancelled_toast"));
       } else {
-        setCancelToastMessage("Đơn hàng đã được hủy theo yêu cầu");
+        setCancelToastMessage(t("order_cancelled_toast"));
       }
     } finally {
       setPendingOrder(null);
@@ -2442,12 +2450,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 }`}
             >
               <div className="text-sm font-semibold flex-1 leading-relaxed font-sans whitespace-pre-line">
-                {operatingStatus.message}
+                {operatingStatus.canOrderNow
+                  ? t("operating_banner_open", { openHours: operatingStatus.openHoursStr || "09:00 - 22:30" })
+                  : t("operating_banner_preorder_only", { openHours: operatingStatus.openHoursStr || "09:00 - 22:30" })}
               </div>
             </div>
 
             <h2 className="title-1 text-primary border-b border-gray-100 pb-3">
-              Thông tin liên hệ
+              {t("customer_info")}
             </h2>
 
             {/* Họ và tên */}
@@ -2667,10 +2677,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
                         <span>📍</span>
-                        <span>Chọn từ danh sách địa chỉ</span>
+                        <span>{t("address_book_select")}</span>
                       </span>
                       <Link href={"/profile?tab=addresses" as any} className="text-xs text-secondary hover:underline font-semibold">
-                        Danh sách địa chỉ →
+                        {t("address_book_link")}
                       </Link>
                     </div>
                     <select
@@ -2685,10 +2695,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     >
                       {customerAddresses.map((addr) => (
                         <option key={addr.id} value={addr.id}>
-                          {addr.recipient_name} ({addr.phone}) - {cleanDuplicateAddressParts(addr.full_address || buildDeliveryAddress(addr.street_address, addr.ward, addr.district, addr.province))} {addr.is_default ? "(Mặc định)" : ""}
+                          {addr.recipient_name} ({addr.phone}) - {cleanDuplicateAddressParts(addr.full_address || buildDeliveryAddress(addr.street_address, addr.ward, addr.district, addr.province))} {addr.is_default ? `(${t("default_badge")})` : ""}
                         </option>
                       ))}
-                      <option value="new">+ Nhập địa chỉ nhận hàng khác</option>
+                      <option value="new">{t("enter_other_address")}</option>
                     </select>
 
                     {/* Hiển thị tóm tắt địa chỉ đã chọn khi dùng địa chỉ trong sổ */}
@@ -2703,7 +2713,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           </div>
                           {selectedSavedAddress.is_default && (
                             <span className="shrink-0 whitespace-nowrap text-[10px] sm:text-[11px] bg-secondary/10 text-secondary font-semibold px-2 py-0.5 rounded-full border border-secondary/20">
-                              Mặc định
+                              {t("default_badge")}
                             </span>
                           )}
                         </div>
@@ -2734,7 +2744,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       <div className="flex items-center justify-between pb-1 border-b border-gray-200">
                         <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
                           <span>📝</span>
-                          <span>Điền thông tin địa chỉ nhận hàng mới</span>
+                          <span>{t("new_address_heading")}</span>
                         </span>
                         {(streetAddress || selectedWard || selectedWardId) && (
                           <button
@@ -2754,7 +2764,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             className="text-xs text-red-500 hover:text-red-700 font-medium hover:underline flex items-center gap-1 cursor-pointer"
                           >
                             <span>✕</span>
-                            <span>Xóa trắng form</span>
+                            <span>{t("clear_form")}</span>
                           </button>
                         )}
                       </div>
@@ -2816,7 +2826,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           }
                         }}
                         hasError={!!fieldError("delivery.ward")}
-                        errorMessage={fieldError("delivery.ward") || t("validation.ward_required") || "* Vui lòng chọn Phường / Xã (Khu vực giao)."}
+                        errorMessage={fieldError("delivery.ward") || t("validation.ward_required")}
                       />
                     </div>
 
@@ -2834,7 +2844,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             className="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1 font-serif cursor-pointer"
                           >
                             <span>✕</span>
-                            <span>Xóa nhanh</span>
+                            <span>{t("clear_quick")}</span>
                           </button>
                         )}
                       </div>
@@ -2862,8 +2872,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             type="button"
                             onClick={() => setStreetAddress("")}
                             className="absolute right-2.5 top-1/2 -translate-y-1/2 size-5 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
-                            title="Xóa địa chỉ"
-                            aria-label="Xóa nội dung số nhà, tên đường"
+                            title={t("clear_address_title")}
+                            aria-label={t("clear_street_aria")}
                           >
                             ✕
                           </button>
@@ -2883,7 +2893,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                               onChange={(e) => setSaveToAddressBook(e.target.checked)}
                               className="rounded text-secondary focus:ring-secondary size-4 accent-secondary cursor-pointer"
                             />
-                            <span>Lưu địa chỉ này vào danh sách địa chỉ</span>
+                            <span>{t("save_address")}</span>
                           </label>
                         </div>
                       )}
@@ -2915,10 +2925,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     onChange={(e) => setSelectedBranchId(Number(e.target.value))}
                     className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary transition-colors text-base cursor-pointer font-serif leading-[150%] tracking-[0%]"
                   >
-                    {config.branches?.map((branch, index) => {
-                      const rawName = branch.branchName || (branch as any).title || branch.address || `Chi nhánh #${branch.id}`;
-                      const cleanName = rawName.replace(/^Chi\s*nhánh\s*(\d+[\s:.-]*)?/i, "").trim();
-                      const displayName = cleanName ? `Chi nhánh ${index + 1} - ${cleanName}` : `Chi nhánh ${index + 1}`;
+                    {config.branches?.map((branch) => {
+                      const displayName = formatBranchDisplayName(branch, locale);
                       return (
                         <option key={branch.id} value={branch.id} className="text-gray-900 bg-white py-1">
                           {displayName}
@@ -2935,11 +2943,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       {t("pickup_address_label")}
                     </p>
                     <p className="text-gray-600 leading-relaxed font-medium">
-                      {selectedBranch.address}
+                      {locale === "en" ? (identifyBrandBranch(selectedBranch)?.addressEn || selectedBranch.address) : selectedBranch.address}
                     </p>
                     {(selectedBranch.contactNumber || "024.9999.7122") && (
                       <p className="text-gray-500 font-semibold">
-                        Hotline:{" "}
+                        {t("hotline_label")}{" "}
                         <a
                           href={`tel:${(selectedBranch.contactNumber || "024.9999.7122").replace(/[^0-9+]/g, "")}`}
                           className="text-primary font-bold hover:underline"
@@ -3050,7 +3058,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 002-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <span>Chọn ngày nhận hàng</span>
+                        <span>{t("select_delivery_date")}</span>
                       </label>
                       <div className="relative">
                         <select
@@ -3078,7 +3086,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span>Chọn giờ nhận hàng ({(operatingStatus.deliveryOpen || "10:00") + " - " + (operatingStatus.deliveryClose || "23:00")})</span>
+                        <span>{t("select_delivery_time", { range: (operatingStatus.deliveryOpen || "10:00") + " - " + (operatingStatus.deliveryClose || "23:00") })}</span>
                       </label>
                       <div className="relative">
                         <select
@@ -3105,7 +3113,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             ))
                           ) : (
                             <option value="" disabled>
-                              {t("preorder_closed_today") || "Hôm nay đã hết khung giờ (Vui lòng chọn ngày mai)"}
+                              {t("preorder_closed_today")}
                             </option>
                           )}
                         </select>
@@ -3235,7 +3243,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         )}
                         {isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice && (
                           <p className="text-[11px] text-secondary mt-1">
-                            Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
+                            {t("promo_voucher_no_combine", { code: appliedVoucher?.code })}
                           </p>
                         )}
 
@@ -3245,7 +3253,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           <div className="flex items-center border border-gray-200 rounded-full px-2 py-0.5 2xl:py-1 bg-white">
                             <button
                               type="button"
-                              aria-label="Decrease quantity"
+                              aria-label={tCart("decrease_quantity")}
                               className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer"
                               disabled={item.quantity <= 1 || item.isOutOfStock}
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -3257,7 +3265,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             </span>
                             <button
                               type="button"
-                              aria-label="Increase quantity"
+                              aria-label={tCart("increase_quantity")}
                               className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer"
                               disabled={item.isOutOfStock}
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
@@ -3270,9 +3278,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           <button
                             type="button"
                             onClick={() => removeFromCart(item.id)}
+                            aria-label={tCart("remove_item_aria") || tCart("delete")}
                             className="text-gray-400 hover:text-red-500 transition-colors text-xs 2xl:text-sm font-semibold cursor-pointer"
                           >
-                            Xóa
+                            {tCart("delete")}
                           </button>
                         </div>
                       </div>
@@ -3320,7 +3329,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     )}
                     {isBestDealVoucherApplied && order.originalPrice && order.originalPrice > order.unitPrice && (
                       <p className="text-[11px] text-secondary mt-1">
-                        Mã {appliedVoucher?.code} không áp dụng đồng thời với CTKM khác.
+                        {t("promo_voucher_no_combine", { code: appliedVoucher?.code })}
                       </p>
                     )}
 
@@ -3330,7 +3339,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       <div className="flex items-center border border-gray-200 rounded-full px-2 py-0.5 2xl:py-1 bg-white">
                         <button
                           type="button"
-                          aria-label="Decrease quantity"
+                          aria-label={tCart("decrease_quantity")}
                           className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm disabled:opacity-30 cursor-pointer"
                           disabled={quantity <= 1}
                           onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -3360,7 +3369,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         />
                         <button
                           type="button"
-                          aria-label="Increase quantity"
+                          aria-label={tCart("increase_quantity")}
                           className="size-6 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 text-sm cursor-pointer"
                           onClick={() => setQuantity((q) => q + 1)}
                         >
@@ -3372,9 +3381,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       <button
                         type="button"
                         onClick={() => setQuantity(1)}
+                        aria-label={tCart("remove_item_aria") || tCart("delete")}
                         className="text-gray-400 hover:text-red-500 transition-colors text-xs 2xl:text-sm font-semibold cursor-pointer"
                       >
-                        {t("remove_voucher")}
+                        {tCart("delete")}
                       </button>
                     </div>
                   </div>
@@ -3417,7 +3427,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     </div>
                     <div className="flex items-center justify-between pt-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-gray-500 font-medium">x1</span>
+                        <span className="text-xs text-gray-500 font-medium">{t("qty_times", { count: 1 })}</span>
                         {(() => {
                           const giftCount = getBuyXGetYGiftOnlyItems(eligibleOrderGiftPromo).length;
                           return giftCount > 1 ? (
@@ -3475,7 +3485,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         <span className="text-[11px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                           {tag}
                         </span>
-                        <span className="text-xs text-gray-500 font-medium">x1</span>
+                        <span className="text-xs text-gray-500 font-medium">{t("qty_times", { count: 1 })}</span>
                         {giftItems && giftItems.length > 1 && (
                           <button
                             type="button"
@@ -3506,8 +3516,48 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 onClick={() => setIsVoucherModalOpen(true)}
                 onRemove={handleRemovePromotionFromBar}
               />
+              {/* Direct voucher input for fast entry & compatibility */}
+              <div className="hidden" data-testid="direct-voucher-input-wrapper">
+                <input
+                  type="text"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (!appliedVoucher && !validatingVoucher && voucherCode.trim()) {
+                        handleApplyVoucher();
+                      }
+                    }
+                  }}
+                  readOnly={Boolean(appliedVoucher || appliedShippingVoucher)}
+                  disabled={validatingVoucher}
+                  placeholder={t("voucher_input_placeholder")}
+                />
+                {appliedVoucher || appliedShippingVoucher ? (
+                  <button
+                    type="button"
+                    onClick={handleRemoveVoucher}
+                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold"
+                  >
+                    {t("remove_voucher")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleApplyVoucher()}
+                    disabled={validatingVoucher || !voucherCode.trim()}
+                    className="bg-primary hover:bg-primary/95 text-white font-bold"
+                  >
+                    {validatingVoucher ? t("checking_voucher") : t("apply_voucher")}
+                  </button>
+                )}
+              </div>
               {voucherError && (
                 <p className="text-xs text-red-600 font-semibold px-2">{voucherError}</p>
+              )}
+              {voucherSuccess && (
+                <p className="text-xs text-emerald-600 font-semibold px-2 animate-fade-in">{voucherSuccess}</p>
               )}
               {bestDealNotice && (
                 <p className="text-xs text-secondary font-semibold px-2">{bestDealNotice}</p>
@@ -3577,7 +3627,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 !isMemberCardSelected ? (
                   <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                     <span className="flex-1 min-w-0 leading-snug">
-                      {t("cost_summary.member_discount_unselected") || "Ưu đãi thành viên (Đã bỏ chọn)"}
+                      {t("cost_summary.member_discount_unselected")}
                     </span>
                     <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                       0đ
@@ -3586,7 +3636,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 ) : isMemberExcludedByPromotions ? (
                   <div className="flex justify-between items-center text-sm font-medium text-gray-500 border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                     <span className="flex-1 min-w-0 leading-snug">
-                      {t("cost_summary.member_discount_mutex") || "Ưu đãi thành viên (Không áp dụng đồng thời với ưu đãi đã chọn)"}
+                      {t("cost_summary.member_discount_mutex")}
                     </span>
                     <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                       0đ
@@ -3595,7 +3645,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 ) : memberDiscount > 0 ? (
                   <div className="flex justify-between items-center text-sm font-medium text-secondary border-t border-gray-200/60 pt-2.5 gap-2 animate-fade-in">
                     <span className="flex-1 min-w-0 leading-snug">
-                      {memberDiscountLabel || t("cost_summary.member_discount_default") || "Ưu đãi thành viên"}
+                      {memberDiscountLabel || t("cost_summary.member_discount_default")}
                     </span>
                     <span className="font-bold text-base shrink-0 whitespace-nowrap text-right">
                       -{formatPrice(memberDiscount)}
@@ -3608,12 +3658,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 <span className="text-gray-600 flex items-center gap-1.5">
                   <span>{t("shipping_fee")}</span>
                   {calculatingShipping && (
-                    <span className="text-xs text-gray-400 animate-pulse">(Đang tính...)</span>
+                    <span className="text-xs text-gray-400 animate-pulse">{t("shipping_calculating")}</span>
                   )}
                 </span>
                 <div className="text-right">
                   {deliveryType === "pickup" ? (
-                    <span className="text-secondary font-bold">0đ ({t("delivery_pickup")})</span>
+                    <span className="text-secondary font-bold">{t("shipping_free_pickup", { label: t("delivery_pickup") })}</span>
                   ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                     <span className="text-gray-500 font-bold text-base">--</span>
                   ) : (shippingVoucherDiscount > 0 || appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship"))) ? (
@@ -3626,7 +3676,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         )}
                         <span className="text-secondary font-bold text-base">0đ</span>
                         <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
-                          Mã {appliedShippingVoucher?.code || appliedVoucher?.code}
+                          {t("code_badge", { code: appliedShippingVoucher?.code || appliedVoucher?.code || "" })}
                         </span>
                       </div>
                     ) : (
@@ -3639,11 +3689,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             {formatPrice(effectiveShippingFee)}
                           </span>
                           <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
-                            Mã {appliedShippingVoucher?.code || appliedVoucher?.code}
+                            {t("code_badge", { code: appliedShippingVoucher?.code || appliedVoucher?.code || "" })}
                           </span>
                         </div>
                         <span className="text-xs text-secondary font-semibold">
-                          Giảm {formatPrice(shippingVoucherDiscount)} phí vận chuyển
+                          {t("shipping_discount_amount", { amount: formatPrice(shippingVoucherDiscount) })}
                         </span>
                       </div>
                     )
@@ -3657,10 +3707,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       <span className="text-secondary font-bold text-base">0đ</span>
                       <span className="text-[10px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
                         {appliedShippingVoucher
-                          ? `Mã ${appliedShippingVoucher.code}`
+                          ? t("code_badge", { code: appliedShippingVoucher.code })
                           : appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship")
-                            ? `Mã ${appliedVoucher.code}`
-                            : "Freeship tự động"}
+                            ? t("code_badge", { code: appliedVoucher.code })
+                            : tVoucher("auto_freeship_badge")}
                       </span>
                     </div>
                   ) : shippingDiscount > 0 && shippingFee < originalFee ? (
@@ -3674,7 +3724,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         </span>
                       </div>
                       <span className="text-xs text-secondary font-semibold">
-                        Giảm {formatPrice(shippingDiscount)} phí vận chuyển
+                        {t("shipping_discount_amount", { amount: formatPrice(shippingDiscount) })}
                       </span>
                     </div>
                   ) : shipping > 0 ? (
@@ -3776,7 +3826,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 : deliveryType === "delivery" && !isDeliverable
                   ? t("delivery_area_not_supported_btn")
                   : !operatingStatus.canOrderNow || (deliveryType === "delivery" && deliverySchedule === "schedule")
-                    ? (t("preorder_cta") || "Đặt trước")
+                    ? t("preorder_cta")
                     : t("place_order")}
             </button>
           </div>
@@ -3835,7 +3885,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           isOpen={isOrderGiftModalOpen}
           onClose={() => setIsOrderGiftModalOpen(false)}
           title={t("order_gift_tag")}
-          subtitle={`Chương trình: ${eligibleOrderGiftPromo.name}`}
+          subtitle={t("campaign_subtitle", { name: eligibleOrderGiftPromo.name })}
           items={getBuyXGetYGiftOnlyItems(eligibleOrderGiftPromo)}
           selectedId={selectedOrderGiftId}
           onSelect={(item) => {
@@ -3852,7 +3902,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             isOpen={!!selectedBuyXGetYPromoForModal}
             onClose={() => setSelectedBuyXGetYPromoForModal(null)}
             title={t("combo_tag")}
-            subtitle={`Chương trình: ${selectedBuyXGetYPromoForModal.name}`}
+            subtitle={t("campaign_subtitle", { name: selectedBuyXGetYPromoForModal.name })}
             items={giftOnlyItems}
             selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || giftOnlyItems.find((i) => i.is_available !== false)?.id || null}
             onSelect={(item) => {

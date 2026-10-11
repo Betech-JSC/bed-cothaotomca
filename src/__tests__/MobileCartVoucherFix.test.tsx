@@ -144,11 +144,11 @@ describe('Mobile Cart Voucher & Member Discount Fix', () => {
   it('Step 1 order summary displays member discount row when memberDiscount > 0', () => {
     render(<MobileCartFlow onClose={vi.fn()} />);
 
-    // 725.000 * 5% = 36.250 làm tròn 37.000đ
+    // 725.000 * 5% = 36.250 làm tròn xuống 36.000đ theo Math.floor trong AuthContext
     expect(screen.getByText(/Ưu đãi thành viên/i)).toBeInTheDocument();
-    expect(screen.getByText(/-37\.000 VNĐ/i)).toBeInTheDocument();
+    expect(screen.getByText(/-36\.000 VNĐ/i)).toBeInTheDocument();
 
-    // Tổng thanh toán: 725.000 - 37.000 (member) + 30.000 (default shipping) = 718.000 VNĐ
-    expect(screen.getByText(/718\.000 VNĐ/i)).toBeInTheDocument();
+    // Tổng thanh toán: 725.000 - 36.000 (member) + 30.000 (default shipping) = 719.000 VNĐ
+    expect(screen.getByText(/719\.000 VNĐ/i)).toBeInTheDocument();
   });
 });

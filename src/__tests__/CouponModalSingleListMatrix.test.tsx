@@ -59,9 +59,10 @@ vi.mock('@/i18n/routing', () => ({
 let mockCurrentUser: any = null;
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: mockCurrentUser }),
-  getMemberTier: (pts = 0) => {
-    if (pts >= 800) return { tier: 'diamond', name: 'Diamond', discountPercent: 8, label: '' };
-    if (pts >= 400) return { tier: 'gold', name: 'Gold', discountPercent: 5, label: '' };
+  getMemberTier: (pts: any = 0) => {
+    const num = typeof pts === 'object' && pts !== null ? (pts.points ?? 0) : Number(pts || 0);
+    if (num >= 800) return { tier: 'diamond', name: 'Diamond', discountPercent: 8, label: '' };
+    if (num >= 400) return { tier: 'gold', name: 'Gold', discountPercent: 5, label: '' };
     return { tier: 'member', name: 'Member', discountPercent: 0, label: '' };
   },
 }));
@@ -2009,4 +2010,45 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     expect(await screen.findByText('Tặng Trà Đào Cho Đơn 100K')).toBeInTheDocument();
     expect(screen.getByText('Đang cập nhật danh sách quà tặng')).toBeInTheDocument();
   });
+
+  it('Matrix 38: STT 2 - Header Subtitle đếm chính xác bao gồm hasMemberTierCard (2 campaigns + 1 member tier card = 3 active), đồng bộ hoàn toàn với Section Title', async () => {
+    mockCurrentUser = { id: 1, name: 'Gold User', points: 500, tier: 'gold' }; // Gold tier (pts >= 400)
+    mockCampaignsList = [
+      {
+        id: 101,
+        name: 'Giảm 10K Đơn 50K',
+        discount_type: 'fixed',
+        discount_value: 10000,
+        promotion_type: 'order_discount',
+        min_order_value: 50000,
+        start_at: '2026-09-01T00:00:00Z',
+        end_at: '2026-10-31T00:00:00Z',
+      },
+      {
+        id: 102,
+        name: 'Giảm 20K Đơn 100K',
+        discount_type: 'fixed',
+        discount_value: 20000,
+        promotion_type: 'order_discount',
+        min_order_value: 100000,
+        start_at: '2026-09-01T00:00:00Z',
+        end_at: '2026-10-31T00:00:00Z',
+      },
+    ];
+    mockVouchersList = [];
+
+    render(
+      <CouponModal
+        isOpen={true}
+        onClose={vi.fn()}
+        subtotal={150000}
+        onApplyVoucher={vi.fn()}
+      />
+    );
+
+    // 2 campaigns + 1 member tier card = 3
+    expect(await screen.findByText('3 ưu đãi đang diễn ra')).toBeInTheDocument();
+    expect(screen.getByText('Chương trình ưu đãi (3)')).toBeInTheDocument();
+  });
 });
+

@@ -216,7 +216,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                           type="button"
                           onClick={() => removeFromCart(item.id)}
                           className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 font-semibold transition-colors cursor-pointer"
-                          aria-label={t("delete") || "Xóa món"}
+                          aria-label={t("remove_item_aria") || t("delete")}
                         >
                           <svg
                             className="w-3 h-3"

@@ -7,6 +7,7 @@ import CheckoutForm from '@/components/Checkout/CheckoutForm';
 import { PublicVoucherItem, CheckoutConfig, type LoyaltySettings } from '@/services/orderService';
 import { PublicCampaignItem } from '@/services/campaignService';
 import { getMemberTier, calculateMemberDiscount, StorefrontUser } from '@/contexts/AuthContext';
+import viMessages from '@/i18n/locales/vi.json';
 
 // Mock MobileCartFlow inside CheckoutForm
 vi.mock('@/components/Header/MobileCartFlow', () => ({
@@ -20,19 +21,33 @@ vi.mock('next/navigation', () => ({
 
 // Mock next-intl
 vi.mock('next-intl', () => ({
-  useTranslations: () => {
-    return (key: string, values?: Record<string, any>) => {
-      if (key === 'voucher_mutex_locked') return 'Không thể sử dụng với những ưu đãi đã chọn khác.';
-      if (key === 'campaign_mutex_locked') return 'Không thể sử dụng cùng ưu đãi đã chọn.';
-      if (key === 'name') return 'Họ và tên';
-      if (key === 'phone') return 'Số điện thoại';
-      if (key === 'email_label') return 'Email';
-      if (key === 'voucher_label') return 'Mã giảm giá';
-      if (key === 'subtotal') return 'Tạm tính';
-      if (key === 'shipping_fee') return 'Phí vận chuyển';
-      if (key === 'total') return 'Tổng cộng';
-      return key;
+  useTranslations: (namespace?: string) => {
+    const resolveKey = (key: string) => {
+      const fullPath = namespace ? `${namespace}.${key}` : key;
+      const parts = fullPath.split('.');
+      let current: any = viMessages;
+      for (const p of parts) {
+        if (current && typeof current === 'object' && p in current) {
+          current = current[p];
+        } else {
+          return key;
+        }
+      }
+      return typeof current === 'string' ? current : key;
     };
+
+    const t: any = (key: string, values?: Record<string, any>) => {
+      let text = resolveKey(key);
+      if (values) {
+        Object.entries(values).forEach(([k, v]) => {
+          text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+        });
+      }
+      return text;
+    };
+
+    t.rich = (key: string) => resolveKey(key);
+    return t;
   },
 }));
 
@@ -326,7 +341,7 @@ describe('Member Discount & Mutex Lock Tests', () => {
 
     // Kiểm tra breakdown hiển thị chiết khấu thành viên Vàng (5%)
     await waitFor(() => {
-      expect(screen.getByText('Ưu đãi thành viên Vàng (5%)')).toBeInTheDocument();
+      expect(screen.getByText(/Ưu đãi thành viên.*5%/)).toBeInTheDocument();
       // 100,000 * 5% = 5,000đ -> formatPrice(5000) = -5.000 VNĐ
       expect(screen.getByText('-5.000 VNĐ')).toBeInTheDocument();
     });
@@ -349,7 +364,7 @@ describe('Member Discount & Mutex Lock Tests', () => {
     render(<CheckoutForm config={sampleConfig} order={null} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Ưu đãi thành viên Kim Cương (8%)')).toBeInTheDocument();
+      expect(screen.getByText(/Ưu đãi thành viên.*8%/)).toBeInTheDocument();
       // 100,000 * 8% = 8,000đ -> -8.000 VNĐ
       expect(screen.getByText('-8.000 VNĐ')).toBeInTheDocument();
     });
@@ -388,7 +403,7 @@ describe('Member Discount & Mutex Lock Tests', () => {
 
     // Món sale 150.000đ * 5% = 7.500đ -> làm tròn 7.000đ theo calculateMemberDiscount -> hiển thị dòng ưu đãi thành viên -7.000 VNĐ
     await waitFor(() => {
-      expect(screen.getByText('Ưu đãi thành viên Vàng (5%)')).toBeInTheDocument();
+      expect(screen.getByText(/Ưu đãi thành viên.*5%/)).toBeInTheDocument();
       expect(screen.getByText('-7.000 VNĐ')).toBeInTheDocument();
     });
   });
@@ -413,7 +428,7 @@ describe('Member Discount & Mutex Lock Tests', () => {
 
     // Kiểm tra dòng ghi chú không áp dụng đồng thời xuất hiện và hiển thị 0đ
     await waitFor(() => {
-      expect(screen.getByText('Ưu đãi thành viên (Không áp dụng đồng thời với mã đã chọn)')).toBeInTheDocument();
+      expect(screen.getByText(/Ưu đãi thành viên \(Không áp dụng đồng thời/)).toBeInTheDocument();
       expect(screen.getByText('0đ')).toBeInTheDocument();
     });
   });

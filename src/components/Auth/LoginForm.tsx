@@ -18,6 +18,7 @@ type LoginFormProps = {
 
 const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
   const t = useTranslations("signin");
+  const tAuth = useTranslations("auth");
   const locale = useLocale();
   const { login, loginWithGoogle, loginWithToken } = useAuth();
   const router = useRouter();
@@ -185,7 +186,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
     e.preventDefault();
     const cleanOtp = otpCode.trim();
     if (cleanOtp.length !== 6) {
-      setOtpError("Vui lòng nhập đầy đủ mã OTP 6 chữ số.");
+      setOtpError(tAuth("otp_invalid_length"));
       return;
     }
 
@@ -201,7 +202,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
 
       if (res.token && res.user) {
         loginWithToken(res.token, res.user);
-        setOtpSuccess("🎉 Kích hoạt tài khoản thành công! Đang chuyển hướng...");
+        setOtpSuccess(tAuth("activation_success"));
         setTimeout(() => {
           setShowActivationModal(false);
           if (onLoginSuccess) {
@@ -211,10 +212,10 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
           }
         }, 1200);
       } else {
-        setOtpError(res.message || "Kích hoạt không thành công.");
+        setOtpError(res.message || tAuth("activation_failed"));
       }
     } catch (err: any) {
-      setOtpError(err.message || "Mã xác thực không chính xác hoặc đã hết hạn.");
+      setOtpError(err.message || tAuth("otp_invalid_or_expired"));
     } finally {
       setOtpLoading(false);
     }
@@ -229,9 +230,9 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
     try {
       const res = await resendActivationApi(pendingEmail.trim());
       setResendCountdown(60);
-      setOtpSuccess(res.message || "Mã kích hoạt mới đã được gửi tới email của bạn!");
+      setOtpSuccess(res.message || tAuth("activation_resent"));
     } catch (err: any) {
-      setOtpError(err.message || "Không thể gửi lại mã kích hoạt.");
+      setOtpError(err.message || tAuth("activation_resend_failed"));
     } finally {
       setOtpLoading(false);
     }
@@ -396,7 +397,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
                   </svg>
                 </span>
-                <span>Kích hoạt tài khoản</span>
+                <span>{tAuth("activate_title")}</span>
               </h3>
               <button
                 type="button"
@@ -408,19 +409,19 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
             </div>
 
             <p className="text-xs text-gray-600 leading-relaxed">
-              Nhập mã OTP 6 chữ số đã được gửi tới email để kích hoạt tài khoản của bạn:
+              {tAuth("otp_enter_to_activate")}
             </p>
 
             <form onSubmit={handleVerifyOtp} className="space-y-3.5">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-700 block">
-                  Email tài khoản
+                  {tAuth("account_email")}
                 </label>
                 <input
                   type="email"
                   value={pendingEmail}
                   onChange={(e) => setPendingEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder={tAuth("email_placeholder")}
                   required
                   className="w-full rounded-xl border border-gray-300 px-3 py-2 text-base md:text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[44px] md:h-[40px] text-gray-900 shadow-xs"
                 />
@@ -428,7 +429,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
 
               <div className="space-y-1 text-center pt-1">
                 <label className="text-xs font-bold uppercase tracking-wider text-gray-600 block">
-                  Mã xác thực OTP (6 số)
+                  {tAuth("otp_label")}
                 </label>
                 <input
                   type="text"
@@ -462,11 +463,11 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
                     : "btn-secondary text-white shadow-md shadow-secondary/20 hover:shadow-lg cursor-pointer"
                 } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
-                {otpLoading ? "Đang kích hoạt..." : "Xác nhận kích hoạt"}
+                {otpLoading ? tAuth("activating") : tAuth("confirm_activation")}
               </button>
 
               <div className="flex items-center justify-between text-xs text-gray-600 pt-1">
-                <span>Chưa nhận được mã?</span>
+                <span>{tAuth("no_code_received")}</span>
                 <button
                   type="button"
                   onClick={handleResendActivation}
@@ -477,7 +478,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
                       : "text-secondary hover:underline cursor-pointer"
                   }`}
                 >
-                  {resendCountdown > 0 ? `Gửi lại (${resendCountdown}s)` : "Gửi lại mã OTP"}
+                  {resendCountdown > 0 ? tAuth("resend_in", { seconds: resendCountdown }) : tAuth("resend_otp")}
                 </button>
               </div>
             </form>

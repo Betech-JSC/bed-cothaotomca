@@ -13,6 +13,7 @@ import {
 
 const RegisterForm = () => {
   const t = useTranslations("signup");
+  const tAuth = useTranslations("auth");
   const locale = useLocale();
   const { register, loginWithGoogle, loginWithToken } = useAuth();
   const router = useRouter();
@@ -319,7 +320,7 @@ const RegisterForm = () => {
     e.preventDefault();
     const cleanOtp = otpCode.trim();
     if (cleanOtp.length !== 6) {
-      setOtpError("Vui lòng nhập đúng 6 chữ số mã xác thực OTP.");
+      setOtpError(tAuth("otp_invalid_length"));
       return;
     }
 
@@ -335,15 +336,15 @@ const RegisterForm = () => {
 
       if (res.token && res.user) {
         loginWithToken(res.token, res.user);
-        setOtpSuccess("🎉 Kích hoạt tài khoản thành công! Đang chuyển hướng...");
+        setOtpSuccess(tAuth("activation_success_profile"));
         setTimeout(() => {
           router.push("/profile");
         }, 1200);
       } else {
-        setOtpError(res.message || "Kích hoạt không thành công.");
+        setOtpError(res.message || tAuth("activation_failed"));
       }
     } catch (err: any) {
-      setOtpError(err.message || "Mã xác thực không chính xác hoặc đã hết hạn.");
+      setOtpError(err.message || tAuth("otp_invalid_or_expired"));
     } finally {
       setOtpLoading(false);
     }
@@ -358,9 +359,9 @@ const RegisterForm = () => {
     try {
       const res = await resendActivationApi(activationEmail);
       setResendCountdown(60);
-      setOtpSuccess(res.message || "Mã kích hoạt mới đã được gửi tới email của bạn!");
+      setOtpSuccess(res.message || tAuth("activation_resent"));
     } catch (err: any) {
-      setOtpError(err.message || "Không thể gửi lại mã kích hoạt. Vui lòng thử lại sau.");
+      setOtpError(err.message || tAuth("activation_resend_failed"));
     } finally {
       setOtpLoading(false);
     }
@@ -377,21 +378,21 @@ const RegisterForm = () => {
             </svg>
           </div>
           <h1 className="text-[24px] sm:text-[28px] font-bold text-primary font-display leading-tight tracking-[0.01em]">
-            Kích hoạt tài khoản
+            {tAuth("activate_title")}
           </h1>
           <p className="text-gray-600 max-w-[380px] mx-auto text-sm leading-relaxed">
-            Chúng tôi đã gửi mã xác thực 6 chữ số tới email: <br />
+            {tAuth("otp_sent_to_email")} <br />
             <span className="font-bold text-primary">{activationEmail}</span>
           </p>
           <p className="text-xs text-gray-500 italic">
-            (Vui lòng kiểm tra cả hòm thư đến và thư rác - Spam/Junk)
+            {tAuth("check_spam_hint")}
           </p>
         </div>
 
         <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
           <div className="space-y-1.5 text-center">
             <label className="text-xs uppercase tracking-wider text-gray-600 font-bold block">
-              Nhập mã OTP 6 chữ số
+              {tAuth("otp_label")}
             </label>
             <input
               type="text"
@@ -425,11 +426,11 @@ const RegisterForm = () => {
                 : "btn-secondary text-white shadow-md shadow-secondary/20 hover:shadow-lg cursor-pointer"
             } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
           >
-            {otpLoading ? "Đang xác thực..." : "Kích hoạt tài khoản"}
+            {otpLoading ? tAuth("verifying") : tAuth("activate_btn")}
           </button>
 
           <div className="flex items-center justify-between text-xs text-gray-600 pt-2 px-1">
-            <span>Chưa nhận được mã?</span>
+            <span>{tAuth("no_code_received")}</span>
             <button
               type="button"
               onClick={handleResend}
@@ -440,7 +441,7 @@ const RegisterForm = () => {
                   : "text-secondary hover:underline cursor-pointer"
               }`}
             >
-              {resendCountdown > 0 ? `Gửi lại sau (${resendCountdown}s)` : "Gửi lại mã kích hoạt"}
+              {resendCountdown > 0 ? tAuth("resend_countdown", { seconds: resendCountdown }) : tAuth("resend_activation")}
             </button>
           </div>
 
@@ -455,7 +456,7 @@ const RegisterForm = () => {
               className="text-xs text-gray-500 hover:text-primary transition-colors font-medium inline-flex items-center gap-1 cursor-pointer"
             >
               <span>←</span>
-              <span>Quay lại form đăng ký</span>
+              <span>{tAuth("back_to_register")}</span>
             </button>
           </div>
         </form>
@@ -491,7 +492,7 @@ const RegisterForm = () => {
                 {duplicateAlert.message}
               </h3>
               <p className="text-xs text-amber-800/90 mt-1 leading-relaxed">
-                Tài khoản với thông tin này đã tồn tại trong hệ thống. Vui lòng đăng nhập hoặc khôi phục mật khẩu nếu bạn không nhớ thông tin.
+                {tAuth("duplicate_account_desc")}
               </p>
             </div>
           </div>
@@ -502,13 +503,13 @@ const RegisterForm = () => {
               href={duplicateAlert.loginUrl as any}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-2 rounded-xl bg-secondary text-white text-xs sm:text-sm font-bold hover:bg-secondary/90 active:scale-98 transition-all shadow-xs text-center min-h-[38px] cursor-pointer"
             >
-              Đăng nhập ngay
+              {tAuth("login_now")}
             </Link>
             <Link
               href={duplicateAlert.forgotUrl as any}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs sm:text-sm font-semibold hover:bg-amber-100/70 active:scale-98 transition-all shadow-xs text-center min-h-[38px] cursor-pointer"
             >
-              Quên mật khẩu?
+              {tAuth("forgot_password_question")}
             </Link>
           </div>
         </div>
@@ -555,24 +556,27 @@ const RegisterForm = () => {
             <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1 animate-in fade-in">
               <p className="font-semibold flex items-center gap-1.5">
                 <span>⚠️</span>
-                <span>Email này đã được đăng ký tài khoản.</span>
+                <span>{tAuth("email_already_registered")}</span>
               </p>
               <p>
-                Bạn có muốn{" "}
-                <Link
-                  href={{ pathname: "/signin", query: { email: formData.email } } as any}
-                  className="text-secondary font-bold underline hover:text-secondary/80"
-                >
-                  Đăng nhập
-                </Link>{" "}
-                hoặc{" "}
-                <Link
-                  href={{ pathname: "/forgot-password", query: { email: formData.email } } as any}
-                  className="text-secondary font-bold underline hover:text-secondary/80"
-                >
-                  Quên mật khẩu
-                </Link>
-                ?
+                {tAuth.rich("do_you_want_to", {
+                  login: () => (
+                    <Link
+                      href={{ pathname: "/signin", query: { email: formData.email } } as any}
+                      className="text-secondary font-bold underline hover:text-secondary/80"
+                    >
+                      {tAuth("login_action")}
+                    </Link>
+                  ),
+                  forgot: () => (
+                    <Link
+                      href={{ pathname: "/forgot-password", query: { email: formData.email } } as any}
+                      className="text-secondary font-bold underline hover:text-secondary/80"
+                    >
+                      {tAuth("forgot_password_action")}
+                    </Link>
+                  ),
+                })}
               </p>
             </div>
           )}
@@ -601,24 +605,27 @@ const RegisterForm = () => {
             <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1 animate-in fade-in">
               <p className="font-semibold flex items-center gap-1.5">
                 <span>⚠️</span>
-                <span>Số điện thoại này đã được đăng ký tài khoản.</span>
+                <span>{tAuth("phone_already_registered")}</span>
               </p>
               <p>
-                Bạn có muốn{" "}
-                <Link
-                  href={{ pathname: "/signin", query: { phone: formData.phone } } as any}
-                  className="text-secondary font-bold underline hover:text-secondary/80"
-                >
-                  Đăng nhập
-                </Link>{" "}
-                hoặc{" "}
-                <Link
-                  href={{ pathname: "/forgot-password", query: { phone: formData.phone } } as any}
-                  className="text-secondary font-bold underline hover:text-secondary/80"
-                >
-                  Quên mật khẩu
-                </Link>
-                ?
+                {tAuth.rich("do_you_want_to", {
+                  login: () => (
+                    <Link
+                      href={{ pathname: "/signin", query: { phone: formData.phone } } as any}
+                      className="text-secondary font-bold underline hover:text-secondary/80"
+                    >
+                      {tAuth("login_action")}
+                    </Link>
+                  ),
+                  forgot: () => (
+                    <Link
+                      href={{ pathname: "/forgot-password", query: { phone: formData.phone } } as any}
+                      className="text-secondary font-bold underline hover:text-secondary/80"
+                    >
+                      {tAuth("forgot_password_action")}
+                    </Link>
+                  ),
+                })}
               </p>
             </div>
           )}

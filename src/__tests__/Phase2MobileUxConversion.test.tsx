@@ -30,6 +30,20 @@ vi.mock("next-intl", () => ({
         "product.ingredients": "Thành phần & Nguyên liệu",
         "product.taste_notes": "Hương vị & Điểm đặc trưng",
         "product.preservation": "Hướng dẫn bảo quản & Sử dụng",
+        google_profile_title: "Hoàn Thiện Hồ Sơ Tài Khoản",
+        phone_placeholder_example: "Ví dụ: 0912345678",
+        password_placeholder: "Nhập mật khẩu...",
+        confirm_password_placeholder: "Nhập lại mật khẩu...",
+        google_profile_submit: "Hoàn Tất Hồ Sơ",
+        phone_invalid: "Số điện thoại không hợp lệ",
+        password_mismatch: "Mật khẩu xác nhận không khớp",
+      };
+      return map[key] || key;
+    };
+    t.rich = (key: string, values?: any) => {
+      const map: Record<string, string> = {
+        google_profile_desc:
+          "Để hoàn tất đăng ký tài khoản Google và thuận tiện nhận hàng, vui lòng cập nhật số điện thoại và đặt mật khẩu đăng nhập.",
       };
       return map[key] || key;
     };

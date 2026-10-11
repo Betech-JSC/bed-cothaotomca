@@ -33,7 +33,7 @@ export default function WardSelectCombobox({
   errorMessage,
 }: WardSelectComboboxProps) {
   const t = useTranslations("checkout");
-  const defaultErrorMessage = t("validation.ward_required") || "* Vui lòng chọn Phường / Xã (Khu vực giao).";
+  const defaultErrorMessage = t("validation.ward_required");
   const activeErrorMessage = errorMessage || defaultErrorMessage;
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,7 +121,7 @@ export default function WardSelectCombobox({
   return (
     <div className="space-y-2 relative" ref={containerRef}>
       <label className="text-sm font-serif font-semibold text-primary block">
-        {t("ward_select_label") || "Phường / Xã (Khu vực giao)"}
+        {t("ward_select_label")}
         <RequiredMark />
       </label>
 
@@ -138,7 +138,7 @@ export default function WardSelectCombobox({
             setIsOpen(true);
             setSearchQuery("");
           }}
-          placeholder={t("ward_select_placeholder") || "-- Gõ hoặc chọn Phường / Xã (VD: An Hội Tây, P.14, Gò Vấp) --"}
+          placeholder={t("ward_select_placeholder")}
           className={`w-full h-11 rounded-[4px] border px-[14px] pr-10 bg-white text-gray-900 focus:outline-none text-sm font-serif cursor-pointer transition-all ${hasError
               ? "border-red-500 ring-1 ring-red-500 bg-red-50/30"
               : "border-gray-300 focus:border-primary"
@@ -152,7 +152,7 @@ export default function WardSelectCombobox({
               type="button"
               onClick={handleClear}
               className="hover:text-red-500 p-1 text-xs font-bold transition-colors"
-              title={t("ward_select_clear") || "Xóa lựa chọn"}
+              title={t("ward_select_clear")}
             >
               ✕
             </button>
@@ -197,7 +197,7 @@ export default function WardSelectCombobox({
             })
           ) : (
             <div className="px-4 py-3 text-gray-500 text-center italic text-xs">
-              {t("ward_select_not_found", { query: searchQuery }) || `Không tìm thấy Phường/Xã phù hợp với "${searchQuery}"`}
+              {t("ward_select_not_found", { query: searchQuery })}
             </div>
           )}
         </div>

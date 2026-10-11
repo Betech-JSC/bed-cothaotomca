@@ -157,7 +157,7 @@ const Footer = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                   </svg>
-                                  <span>{t('footer.directions') || "Chỉ đường trên Google Maps"}</span>
+                                  <span>{t('footer.directions')}</span>
                                 </a>
                               </div>
                             )}
@@ -223,7 +223,7 @@ const Footer = () => {
           </div>
 
           <div className="text-center md:text-right body-2 text-white/70" suppressHydrationWarning>
-            © {new Date().getFullYear()} Cô Thảo Tôm Cá. All rights reserved.
+            {t('common.copyright', { year: new Date().getFullYear() })}
           </div>
         </div>
       </div>

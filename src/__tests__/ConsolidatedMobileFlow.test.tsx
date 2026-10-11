@@ -386,7 +386,7 @@ describe('ConsolidatedMobileFlow Comprehensive Test Suite', () => {
       expect(memberBadge).toHaveTextContent(/GOLD/i);
 
       // Nút Xóa ✕ hiển thị trên thanh vé
-      const removeBtn = screen.getByRole('button', { name: 'Xóa' });
+      const removeBtn = screen.getByTestId('remove-voucher-button');
       expect(removeBtn).toBeInTheDocument();
 
       // Bấm nút ✕ để tắt quyền lợi hội viên
@@ -534,8 +534,9 @@ describe('ConsolidatedMobileFlow Comprehensive Test Suite', () => {
       expect(headerTitle?.className).toContain('sm:inline');
     });
 
-    it('Task 5.4: Trang Tra Cứu Đơn Hàng có padding pt-6 sm:pt-10 md:pt-16 lg:pt-28 và space-y-6 sm:space-y-8', () => {
-      const { container } = render(<OrderLookupPage />);
+    it('Task 5.4: Trang Tra Cứu Đơn Hàng có padding pt-6 sm:pt-10 md:pt-16 lg:pt-28 và space-y-6 sm:space-y-8', async () => {
+      const Page = await OrderLookupPage();
+      const { container } = render(Page);
 
       const wrapper = container.querySelector('.min-h-screen');
       expect(wrapper).toBeInTheDocument();

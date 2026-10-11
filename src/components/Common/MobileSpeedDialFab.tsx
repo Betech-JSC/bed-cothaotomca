@@ -28,7 +28,7 @@ export default function MobileSpeedDialFab() {
   const settings = useGeneralSettings();
   const { subtotal } = useCart();
   const pathname = usePathname();
-  const t = useTranslations();
+  const t = useTranslations("common.speed_dial");
 
   // Scroll visibility for scroll-to-top button (> 300px)
   useEffect(() => {
@@ -106,10 +106,10 @@ export default function MobileSpeedDialFab() {
                 type="button"
                 onClick={scrollToTop}
                 className="flex items-center gap-2.5 group cursor-pointer"
-                aria-label="Cuộn lên đầu trang"
+                aria-label={t("scroll_to_top")}
               >
                 <span className="bg-white/95 text-gray-800 text-xs font-semibold px-2.5 py-1 rounded-full shadow-md border border-gray-100">
-                  Lên đầu trang
+                  {t("back_to_top")}
                 </span>
                 <div className="size-11 rounded-full bg-secondary text-white flex items-center justify-center shadow-lg border border-white/30 active:scale-95 transition-transform">
                   <span className="mt-1 size-2.5 rotate-45 border-t-2 border-l-2 border-white" />
@@ -123,11 +123,11 @@ export default function MobileSpeedDialFab() {
               target="_blank"
               rel="noopener noreferrer nofollow"
               className="flex items-center gap-2.5 group cursor-pointer"
-              aria-label="Gọi hotline"
+              aria-label={t("call_hotline")}
               onClick={() => setIsOpen(false)}
             >
               <span className="bg-white/95 text-gray-800 text-xs font-semibold px-2.5 py-1 rounded-full shadow-md border border-gray-100">
-                Hotline: {settings?.hotline || "024.9999.7122"}
+                {t("hotline_label", { phone: settings?.hotline || "024.9999.7122" })}
               </span>
               <div className="size-11 rounded-full bg-[#E53935] text-white flex items-center justify-center shadow-lg border border-white/30 active:scale-95 transition-transform">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -142,11 +142,11 @@ export default function MobileSpeedDialFab() {
               target="_blank"
               rel="noopener noreferrer nofollow"
               className="flex items-center gap-2.5 group cursor-pointer"
-              aria-label="Chat Zalo"
+              aria-label={t("chat_zalo")}
               onClick={() => setIsOpen(false)}
             >
               <span className="bg-white/95 text-gray-800 text-xs font-semibold px-2.5 py-1 rounded-full shadow-md border border-gray-100">
-                Chat Zalo
+                {t("chat_zalo")}
               </span>
               <div className="size-11 rounded-full bg-[#0068FF] text-white flex items-center justify-center shadow-lg border border-white/30 active:scale-95 transition-transform">
                 <span className="font-bold text-xs tracking-tighter">Zalo</span>
@@ -159,11 +159,11 @@ export default function MobileSpeedDialFab() {
               target="_blank"
               rel="noopener noreferrer nofollow"
               className="flex items-center gap-2.5 group cursor-pointer"
-              aria-label="Nhắn tin Facebook"
+              aria-label={t("message_facebook")}
               onClick={() => setIsOpen(false)}
             >
               <span className="bg-white/95 text-gray-800 text-xs font-semibold px-2.5 py-1 rounded-full shadow-md border border-gray-100">
-                Messenger
+                {t("messenger")}
               </span>
               <div className="size-11 rounded-full bg-[#0084FF] text-white flex items-center justify-center shadow-lg border border-white/30 active:scale-95 transition-transform">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -181,10 +181,10 @@ export default function MobileSpeedDialFab() {
                 setIsCouponModalOpen(true);
               }}
               className="flex items-center gap-2.5 group cursor-pointer"
-              aria-label="Xem ưu đãi và khuyến mãi"
+              aria-label={t("view_promotions")}
             >
               <span className="bg-white/95 text-gray-800 text-xs font-semibold px-2.5 py-1 rounded-full shadow-md border border-gray-100 flex items-center gap-1.5">
-                <span>Ưu đãi & Khuyến mãi</span>
+                <span>{t("promotions_title")}</span>
                 {totalPromotions > 0 && (
                   <span className="bg-secondary text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
                     {totalPromotions}
@@ -207,7 +207,7 @@ export default function MobileSpeedDialFab() {
           onClick={() => setIsOpen((prev) => !prev)}
           className={`relative size-13 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.25)] border-2 border-white/30 active:scale-90 cursor-pointer ${isOpen ? "bg-primary text-yellow rotate-90" : "bg-secondary text-white"
             }`}
-          aria-label={isOpen ? "Đóng menu liên hệ" : "Mở menu liên hệ và ưu đãi"}
+          aria-label={isOpen ? t("close_contact_menu") : t("open_contact_menu")}
           aria-expanded={isOpen}
         >
           {isOpen ? (

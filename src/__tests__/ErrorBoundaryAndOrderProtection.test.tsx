@@ -37,6 +37,12 @@ vi.mock("next-intl", () => ({
       retry: "Thử lại",
       continue_shopping: "Tiếp tục mua hàng",
       payment_cod: "Thanh toán khi nhận hàng (COD)",
+      title: "Đã có gián đoạn kết nối",
+      description: "Hệ thống vừa cập nhật phiên bản mới hoặc kết nối mạng bị gián đoạn. Quý khách vui lòng thử tải lại trang hoặc liên hệ hotline để được hỗ trợ nhanh nhất.",
+      retry_btn: "Tải lại trang",
+      home_btn: "Về trang chủ",
+      hotline_label: "Hotline hỗ trợ: ",
+      brand_name: "Cô Thảo Tôm Cá",
     };
     return messages[key] || key;
   },

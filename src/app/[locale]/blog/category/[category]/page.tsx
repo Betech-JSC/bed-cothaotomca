@@ -92,11 +92,16 @@ export default async function BlogCategoryPage({
       const translation = getTranslation(currentCategory.translations, locale) as any;
       const correctSlug = currentCategory.slug || slugify(translation?.title || currentCategory.title || "danh-muc");
       
-      // Use localized redirect
-      redirect({
-        pathname: '/blog/category/[category]',
-        params: { category: correctSlug }
-      } as any);
+      // Use localized redirect with guard condition to prevent infinite redirect loops
+      if (correctSlug && correctSlug.trim() !== categorySlug) {
+        redirect({
+          href: {
+            pathname: '/blog/category/[category]',
+            params: { category: correctSlug.trim() },
+          },
+          locale: locale as any,
+        });
+      }
     }
   }
 

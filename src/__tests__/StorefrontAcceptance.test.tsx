@@ -145,7 +145,7 @@ describe('Storefront Component & Logic Unit Tests (Layer 2 Secondary)', () => {
 
     render(<ProductDetailsInfo productData={productDataLinked} />);
 
-    const buyButton = screen.getByRole('button', { name: /Thêm vào giỏ hàng/i });
+    const buyButton = screen.getByRole('button', { name: /Thêm vào giỏ/i });
     expect(buyButton).toBeInTheDocument();
     expect(buyButton).not.toBeDisabled();
     expect(buyButton.className).toContain('btn-primary');

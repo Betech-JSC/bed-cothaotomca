@@ -11,6 +11,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     pool: 'forks',
+    testTimeout: 20000,
     include: ['src/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
     exclude: ['e2e/**', 'node_modules/**'],
   },

@@ -9,6 +9,7 @@ import { verifyResetOtpApi } from "@/services/authService";
 
 export default function ResetPasswordContainer() {
   const t = useTranslations("reset_password");
+  const tAuth = useTranslations("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -48,11 +49,11 @@ export default function ResetPasswordContainer() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
-      setError("Vui lòng nhập email.");
+      setError(tAuth("email_required"));
       return;
     }
     if (otpCode.trim().length !== 6) {
-      setError("Vui lòng nhập đúng 6 chữ số mã OTP.");
+      setError(tAuth("otp_invalid_length"));
       return;
     }
 
@@ -64,12 +65,12 @@ export default function ResetPasswordContainer() {
       const res = await verifyResetOtpApi(email.trim(), otpCode.trim());
       if (res.token) {
         setToken(res.token);
-        setMessage("Xác thực OTP thành công! Vui lòng nhập mật khẩu mới.");
+        setMessage(tAuth("otp_correct_new_password"));
       } else {
-        setError("Mã OTP không hợp lệ.");
+        setError(tAuth("otp_invalid"));
       }
     } catch (err: any) {
-      setError(err.message || "Mã xác thực OTP không chính xác hoặc đã hết hạn.");
+      setError(err.message || tAuth("otp_invalid_or_expired"));
     } finally {
       setLoading(false);
     }
@@ -144,7 +145,7 @@ export default function ResetPasswordContainer() {
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/bg-login.jpg"
-          alt="Bữa ăn hải sản ấm cúng"
+          alt={tAuth("bg_image_alt")}
           fill
           className="object-cover object-center"
           priority
@@ -167,7 +168,7 @@ export default function ResetPasswordContainer() {
                   <span className="font-semibold text-primary">{email}</span>
                 </>
               ) : (
-                "Nhập email và mã OTP 6 số nhận được để tạo mật khẩu mới."
+                tAuth("enter_email_and_otp_desc")
               )}
             </p>
           </div>
@@ -190,21 +191,21 @@ export default function ResetPasswordContainer() {
             <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4 w-full">
               <div className="space-y-1 text-left">
                 <label className="text-xs font-semibold text-primary block">
-                  Email tài khoản
+                  {tAuth("account_email")}
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="name@example.com"
+                  placeholder={tAuth("email_placeholder")}
                   className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-2.5 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] md:h-[42px] text-gray-900"
                 />
               </div>
 
               <div className="space-y-1 text-center">
                 <label className="text-xs uppercase tracking-wider text-gray-600 font-bold block">
-                  Mã OTP 6 chữ số
+                  {tAuth("otp_label")}
                 </label>
                 <input
                   type="text"
@@ -226,7 +227,7 @@ export default function ResetPasswordContainer() {
                     : "btn-secondary text-white shadow-md shadow-secondary/20 hover:shadow-lg cursor-pointer"
                 } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
-                {loading ? "Đang xác thực..." : "Xác nhận OTP & Tiếp tục"}
+                {loading ? tAuth("verifying") : tAuth("confirm_otp_continue")}
               </button>
 
               <div className="text-center pt-2 text-xs">
@@ -235,7 +236,7 @@ export default function ResetPasswordContainer() {
                   className="text-gray-500 hover:text-primary transition-colors font-medium inline-flex items-center gap-1 cursor-pointer"
                 >
                   <span>←</span>
-                  <span>Yêu cầu gửi lại mã OTP</span>
+                  <span>{tAuth("request_resend_otp")}</span>
                 </Link>
               </div>
             </form>

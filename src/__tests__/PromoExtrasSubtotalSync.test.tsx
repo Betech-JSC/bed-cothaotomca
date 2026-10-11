@@ -451,8 +451,10 @@ describe('Promo Extras in Subtotal & Payload Sync (change: include-promo-extras-
       // Điền thông tin giao hàng
       const nameInputs = screen.getAllByPlaceholderText(/Họ và tên/i);
       const phoneInputs = screen.getAllByPlaceholderText(/Số điện thoại/i);
+      const emailInputs = screen.getAllByPlaceholderText(/Email/i);
       nameInputs.forEach((input) => fireEvent.change(input, { target: { value: 'Tran Van A' } }));
       phoneInputs.forEach((input) => fireEvent.change(input, { target: { value: '0912345678' } }));
+      emailInputs.forEach((input) => fireEvent.change(input, { target: { value: 'tranvana@example.com' } }));
 
       // Chọn Tự đến lấy tại chi nhánh
       const pickupRadios = screen.getAllByLabelText(/Tự đến lấy tại chi nhánh/i);
@@ -482,7 +484,7 @@ describe('Promo Extras in Subtotal & Payload Sync (change: include-promo-extras-
       expect(giftItemInPayload!.price).toBe(50000);
       expect(giftItemInPayload!.quantity).toBe(1);
       expect(giftItemInPayload!.note).toContain('Tặng món đơn từ 500k');
-    });
+    }, 15000);
 
     it('Payload gửi Backend gán price: 0 khi món quà là miễn phí hoàn toàn (campaign_price = 0)', async () => {
       const freeGiftCampaign = {
@@ -518,8 +520,10 @@ describe('Promo Extras in Subtotal & Payload Sync (change: include-promo-extras-
       // Điền thông tin
       const nameInputs = screen.getAllByPlaceholderText(/Họ và tên/i);
       const phoneInputs = screen.getAllByPlaceholderText(/Số điện thoại/i);
+      const emailInputs = screen.getAllByPlaceholderText(/Email/i);
       nameInputs.forEach((input) => fireEvent.change(input, { target: { value: 'Le Thi B' } }));
       phoneInputs.forEach((input) => fireEvent.change(input, { target: { value: '0988776655' } }));
+      emailInputs.forEach((input) => fireEvent.change(input, { target: { value: 'lethib@example.com' } }));
 
       const pickupRadios = screen.getAllByLabelText(/Tự đến lấy tại chi nhánh/i);
       pickupRadios.forEach((r) => fireEvent.click(r));

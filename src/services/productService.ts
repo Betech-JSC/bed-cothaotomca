@@ -60,6 +60,10 @@ export interface Product {
   is_best_seller: boolean;
   ingredients: Ingredient[];
   translations: Translation[];
+  alternate_slugs?: {
+    vi?: { slug: string; category_slug: string };
+    en?: { slug: string; category_slug: string };
+  };
   category?: {
     id: number;
     title: string;

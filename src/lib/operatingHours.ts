@@ -250,6 +250,7 @@ export interface OperatingCheckResult {
   operating_window?: OperatingWindow;
   currentTime: string;
   message: string | null;
+  openHoursStr?: string;
   storeOpen: string;
   storeClose: string;
   deliveryOpen: string;
@@ -408,6 +409,7 @@ export function checkOperatingHours(
     operating_window: operatingWindow,
     currentTime,
     message,
+    openHoursStr,
     storeOpen: storeOpenStr,
     storeClose: storeCloseStr,
     deliveryOpen: deliveryOpenStr,

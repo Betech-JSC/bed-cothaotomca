@@ -20,7 +20,7 @@ import LoginForm from "../components/Auth/LoginForm";
 // Mock next-intl
 vi.mock("next-intl", () => ({
   useLocale: () => "vi",
-  useTranslations: () => (key: string) => {
+  useTranslations: () => {
     const map: Record<string, string> = {
       title: "Đăng ký tài khoản",
       description: "Đăng ký thành viên để tích điểm",
@@ -42,8 +42,57 @@ vi.mock("next-intl", () => ({
       show_password: "Hiện",
       hide_password: "Ẩn",
       or: "hoặc",
+      confirm_activation: "Xác nhận kích hoạt",
+      activate_title: "Kích hoạt tài khoản",
+      otp_enter_to_activate: "Nhập mã OTP 6 chữ số đã được gửi tới email để kích hoạt tài khoản của bạn:",
+      account_email: "Email tài khoản",
+      otp_label: "Nhập mã OTP 6 chữ số",
+      no_code_received: "Chưa nhận được mã?",
+      resend_otp: "Gửi lại mã OTP",
+      activate_btn: "Kích hoạt tài khoản",
+      forgot_password_question: "Quên mật khẩu?",
+      back_to_register: "Quay lại form đăng ký",
+      duplicate_account_desc: "Tài khoản với thông tin này đã tồn tại trong hệ thống. Vui lòng đăng nhập hoặc khôi phục mật khẩu nếu bạn không nhớ thông tin.",
+      email_already_registered: "Email này đã được đăng ký tài khoản.",
+      phone_already_registered: "Số điện thoại này đã được đăng ký tài khoản.",
+      do_you_want_to: "Bạn có muốn {login} hoặc {forgot}?",
+      login_action: "Đăng nhập",
+      forgot_password_action: "Quên mật khẩu",
     };
-    return map[key] || key;
+    const t = (key: string, params?: Record<string, any>) => {
+      let str = map[key] || key;
+      if (params) {
+        Object.keys(params).forEach((p) => {
+          str = str.replace(`{${p}}`, String(params[p]));
+        });
+      }
+      return str;
+    };
+    t.rich = (key: string, values?: Record<string, any>) => {
+      if (!values) return map[key] || key;
+      const parts: any[] = [];
+      const template = map[key] || key;
+      const regex = /\{(\w+)\}/g;
+      let lastIdx = 0;
+      let match;
+      while ((match = regex.exec(template)) !== null) {
+        if (match.index > lastIdx) {
+          parts.push(template.substring(lastIdx, match.index));
+        }
+        const param = match[1];
+        if (typeof values[param] === "function") {
+          parts.push(values[param]());
+        } else if (values[param] !== undefined) {
+          parts.push(values[param]);
+        }
+        lastIdx = regex.lastIndex;
+      }
+      if (lastIdx < template.length) {
+        parts.push(template.substring(lastIdx));
+      }
+      return React.createElement(React.Fragment, null, ...parts);
+    };
+    return t;
   },
 }));
 

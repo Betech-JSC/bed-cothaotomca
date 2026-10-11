@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -72,6 +72,8 @@ interface OrderItem {
 
 const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: ProfileDashboardProps) => {
   const t = useTranslations("profile");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const { addToCart, setIsCartOpen } = useCart();
   const searchParams = useSearchParams();
   const tabParam = searchParams?.get("tab");
@@ -251,13 +253,13 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       const res = await updateProfile(payload);
 
       if (res.success) {
-        setInfoSuccess(t("save_success") || "Đã lưu thay đổi thông tin cá nhân!");
+        setInfoSuccess(t("save_success"));
         await refreshUser();
       } else {
-        setInfoError(res.message || "Cập nhật thông tin thất bại.");
+        setInfoError(res.message || t("update_info_failed"));
       }
     } catch (err: any) {
-      setInfoError("Đã xảy ra lỗi. Vui lòng thử lại sau.");
+      setInfoError(tCommon("error_generic"));
     } finally {
       setLoading(false);
     }
@@ -269,29 +271,29 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     setPasswordError(null);
 
     if (!passwordData.current_password) {
-      setPasswordError(t("password_required") || "Vui lòng nhập mật khẩu hiện tại.");
+      setPasswordError(t("password_required"));
       return;
     }
     if (passwordData.new_password.length < 6) {
-      setPasswordError(t("password_min") || "Mật khẩu mới phải có ít nhất 6 ký tự.");
+      setPasswordError(t("password_min"));
       return;
     }
     if (passwordData.new_password !== passwordData.new_password_confirmation) {
-      setPasswordError(t("password_mismatch") || "Mật khẩu xác nhận không trùng khớp.");
+      setPasswordError(t("password_mismatch"));
       return;
     }
 
     setPasswordLoading(true);
     try {
       const res = await changePasswordApi(passwordData);
-      setPasswordSuccess(res.message || t("password_change_success") || "Đổi mật khẩu thành công!");
+      setPasswordSuccess(res.message || t("password_change_success"));
       setPasswordData({
         current_password: "",
         new_password: "",
         new_password_confirmation: "",
       });
     } catch (err: any) {
-      setPasswordError(err.message || t("password_change_failed") || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại.");
+      setPasswordError(err.message || t("password_change_failed"));
     } finally {
       setPasswordLoading(false);
     }
@@ -342,12 +344,12 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   };
 
   const handleDeleteAddress = async (id: number) => {
-    if (!window.confirm(t("delete_address_confirm") || "Bạn có chắc chắn muốn xóa địa chỉ này?")) return;
+    if (!window.confirm(t("delete_address_confirm"))) return;
     try {
       await deleteCustomerAddressApi(id);
       await fetchAddresses();
     } catch (err: any) {
-      alert(err.message || "Không thể xóa địa chỉ.");
+      alert(err.message || t("delete_address_failed"));
     }
   };
 
@@ -425,7 +427,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      alert("Kích thước hình ảnh đại diện tối đa là 2MB.");
+      alert(t("avatar_max_size"));
       return;
     }
 
@@ -449,15 +451,15 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       const body = await res.json();
 
       if (res.ok) {
-        alert("Cập nhật ảnh đại diện thành công!");
+        alert(t("avatar_update_success"));
         await refreshUser();
       } else {
-        const errorMsg = body.errors?.avatar?.[0] || body.message || "Cập nhật ảnh đại diện thất bại.";
+        const errorMsg = body.errors?.avatar?.[0] || body.message || t("avatar_update_failed");
         alert(errorMsg);
       }
     } catch (err: any) {
       console.error(err);
-      alert("Đã xảy ra lỗi kết nối. Vui lòng thử lại sau.");
+      alert(tCommon("network_error"));
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -476,7 +478,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
         accentText: "text-primary",
         progressColor: "bg-primary",
         progressPercent: 100,
-        nextTierText: "Hạng thành viên cao cấp nhất",
+        nextTierText: t("tier_highest"),
       };
     } else if (points >= 400) {
       const needed = Math.max(0, 800 - points);
@@ -489,7 +491,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
         accentText: "text-amber-800",
         progressColor: "bg-gradient-to-r from-amber-500 to-yellow-500",
         progressPercent: percent,
-        nextTierText: `Còn ${needed} điểm để lên DIAMOND`,
+        nextTierText: t("points_to_next_tier", { points: needed, tier: "DIAMOND" }),
       };
     } else {
       const needed = Math.max(0, 400 - points);
@@ -502,7 +504,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
         accentText: "text-gray-700",
         progressColor: "bg-gray-700",
         progressPercent: percent,
-        nextTierText: `Còn ${needed} điểm để lên GOLD`,
+        nextTierText: t("points_to_next_tier", { points: needed, tier: "GOLD" }),
       };
     }
   };
@@ -521,7 +523,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/15 text-secondary border border-secondary/30 text-[0.8125rem] font-bold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-            {t("status_pending_confirmation") || "Chờ xác nhận"}
+            {t("status_pending_confirmation")}
           </span>
         );
       case "confirmed":
@@ -533,34 +535,34 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary text-white text-[0.8125rem] font-bold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
             {isPickup
-              ? (t("status_preparing") || "Đang chuẩn bị")
-              : (t("status_delivering") || "Đang giao hàng")}
+              ? t("status_preparing")
+              : t("status_delivering")}
           </span>
         );
       case "completed":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white text-[0.8125rem] font-bold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-white" />
-            {t("status_completed") || "Hoàn thành"}
+            {t("status_completed")}
           </span>
         );
       case "cancelled":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-300 text-[0.8125rem] font-bold shadow-xs">
-            {t("status_cancelled") || "Đã hủy"}
+            {t("status_cancelled")}
           </span>
         );
       case "expired":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-300 text-[0.8125rem] font-bold shadow-xs">
-            {t("status_expired") || "Hết hạn"}
+            {t("status_expired")}
           </span>
         );
       case "cancel_requested":
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow/30 text-brown border border-secondary/30 text-[0.8125rem] font-bold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-secondary" />
-            {t("status_cancel_requested") || "Yêu cầu hủy"}
+            {t("status_cancel_requested")}
           </span>
         );
       default:
@@ -577,7 +579,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     if (!order.items || order.items.length === 0) return;
 
     order.items.forEach((it) => {
-      const variantStr = it.variant_size ? `Size ${it.variant_size}` : "Tiêu chuẩn";
+      const variantStr = it.variant_size ? `Size ${it.variant_size}` : t("standard_variant");
       const itemPayload = {
         id: `${it.product_id || it.product_code || it.product_name}-${it.variant_size || "std"}`,
         productId: it.product_id ? Number(it.product_id) : 1,
@@ -687,7 +689,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   }`}
               >
                 <span className={`font-extrabold text-secondary text-sm leading-none transition-opacity duration-300 ${refreshingPoints ? "animate-pulse" : ""}`}>
-                  {user.points?.toLocaleString("vi-VN") || 0}
+                  {user.points?.toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US') || 0}
                 </span>
                 <span className="text-[11px] font-medium text-gray-500 group-hover:text-gray-700">{t("points_label")}</span>
                 <svg
@@ -821,7 +823,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 </div>
               ) : orders.length === 0 ? (
                 <div className="text-center py-12 text-gray-400 font-medium text-[14px]">
-                  {t("no_orders") || "Chưa có đơn hàng nào."}
+                  {t("no_orders")}
                 </div>
               ) : (
                 orders.map((order, idx) => {
@@ -843,7 +845,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                         <div className="flex flex-wrap items-center gap-y-3">
                           <div className="pr-4 md:pr-6">
                             <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1 uppercase">
-                              {t("order_code") || "MÃ GIAO DỊCH"}
+                              {t("order_code")}
                             </span>
                             <span className="text-xs sm:text-sm md:text-base font-bold font-mono text-primary whitespace-nowrap">
                               {formattedCode}
@@ -854,7 +856,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
                           <div className="px-0 sm:px-2 md:px-4">
                             <span className="text-[0.875rem] text-gray-400 font-normal block leading-tight mb-1 uppercase">
-                              {t("order_date") || "NGÀY GIAO DỊCH"}
+                              {t("order_date")}
                             </span>
                             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                               <span className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 whitespace-nowrap">
@@ -882,7 +884,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                           onClick={() => setExpandedOrderCode(isExpanded ? null : order.order_code)}
                           className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-secondary/40 hover:bg-amber-50/50 text-xs font-bold text-gray-700 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
                         >
-                          <span>{isExpanded ? (t("hide_details") || "Thu gọn") : (t("view_details") || "Xem chi tiết")}</span>
+                          <span>{isExpanded ? t("hide_details") : t("view_details")}</span>
                           <svg
                             className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
                             fill="none"
@@ -901,7 +903,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                           </svg>
-                          <span>{t("reorder") || "Mua lại"}</span>
+                          <span>{t("reorder")}</span>
                         </button>
                       </div>
 
@@ -1046,7 +1048,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                               href={`/order-lookup?order=${order.order_code}&phone=${order.delivery?.contact_number || user.phone || ""}` as any}
                               className="text-secondary hover:underline font-bold flex items-center gap-1 cursor-pointer"
                             >
-                              <span>Theo dõi tiến trình & tra cứu chi tiết</span>
+                              <span>{t("track_order_link")}</span>
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
@@ -1081,7 +1083,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 <path d="M10 10C12.2091 10 14 8.20914 14 6C14 3.79086 12.2091 2 10 2C7.79086 2 6 3.79086 6 6C6 8.20914 7.79086 10 10 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M3 17C3 14.2386 6.13401 12 10 12C13.866 12 17 14.2386 17 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              {t("title") || "Thông tin cá nhân"}
+              {t("title")}
             </h3>
 
             {infoSuccess && (
@@ -1099,7 +1101,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Full Name */}
               <div className="col-span-full space-y-1.5">
                 <label className="text-sm font-semibold text-primary block">
-                  {t("fullname") || "Họ và tên"} <span className="text-red-500">*</span>
+                  {t("fullname")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -1114,7 +1116,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Phone */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-primary block">
-                  {t("phone") || "Số điện thoại"} <span className="text-red-500">*</span>
+                  {t("phone")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
@@ -1129,7 +1131,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
               {/* Email */}
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-primary block">
-                  {t("email") || "Email"}
+                  {t("email")}
                 </label>
                 <input
                   type="email"
@@ -1503,9 +1505,6 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
 
               {/* Phường / Xã with Combobox */}
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-primary block">
-                  {t("ward")} <span className="text-red-500">*</span>
-                </label>
                 <WardSelectCombobox
                   wards={availableWards}
                   selectedWardId={addressForm.ward_id}
@@ -1541,7 +1540,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                     setAddressForm((prev) => ({ ...prev, street_address: e.target.value }))
                   }
                   required
-                  placeholder="Ví dụ: 123 Lê Lợi"
+                  placeholder={t("street_address_placeholder")}
                   className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[40px] text-gray-900"
                 />
               </div>
@@ -1557,7 +1556,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                   onChange={(e) =>
                     setAddressForm((prev) => ({ ...prev, notes: e.target.value }))
                   }
-                  placeholder="Ví dụ: Giao giờ hành chính, gọi trước 15 phút"
+                  placeholder={t("delivery_notes_placeholder")}
                   className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[40px] text-gray-900"
                 />
               </div>

@@ -118,7 +118,7 @@ export default function PaymentQRScreen({
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `QR_Thanh_Toan_${orderData.order_code}.png`;
+      link.download = t("qr.download_filename", { code: orderData.order_code });
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -132,7 +132,7 @@ export default function PaymentQRScreen({
         const link = document.createElement("a");
         link.href = currentQrUrl;
         link.target = "_blank";
-        link.download = `QR_Thanh_Toan_${orderData.order_code}.png`;
+        link.download = t("qr.download_filename", { code: orderData.order_code });
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -160,7 +160,7 @@ export default function PaymentQRScreen({
       await orderService.simulatePayment(orderData.order_code);
       // Polling tự động sẽ phát hiện order đã "paid" và redirect
     } catch (err: any) {
-      setSimulateError(err?.message || "Giả lập thanh toán thất bại");
+      setSimulateError(err?.message || t("qr.dev_simulate_failed"));
     } finally {
       setSimulating(false);
     }
@@ -186,7 +186,7 @@ export default function PaymentQRScreen({
             ) : (
               <Image
                 src={currentQrUrl}
-                alt="QR thanh toán VietQR"
+                alt={t("qr.image_alt")}
                 fill
                 className="object-contain"
                 unoptimized
@@ -305,7 +305,7 @@ export default function PaymentQRScreen({
             {isCancelling ? (
               <>
                 <span className="animate-spin inline-block">⟳</span>
-                <span>{t("qr.cancelling") || "Đang huỷ đơn..."}</span>
+                <span>{t("qr.cancelling")}</span>
               </>
             ) : (
               countdown.isExpired ? t("qr.reorder") : t("qr.cancel_back")
@@ -325,10 +325,10 @@ export default function PaymentQRScreen({
               {simulating ? (
                 <>
                   <span className="animate-spin inline-block">⟳</span>
-                  <span>Đang giả lập VietQR...</span>
+                  <span>{t("qr.dev_simulating")}</span>
                 </>
               ) : (
-                "Giả lập thanh toán VietQR thành công (Dev)"
+                t("qr.dev_simulate_btn")
               )}
             </button>
             {simulateError && (
@@ -401,10 +401,10 @@ export default function PaymentQRScreen({
 
           {/* Order summary */}
           <div className="border-t border-gray-100 pt-4 space-y-2 body-1 text-gray-700">
-            <p className="label-1 text-gray-500">{t("order_summary") || "Mã đơn hàng"}</p>
+            <p className="label-1 text-gray-500">{t("qr.order_code_label")}</p>
             <p className="title-2 font-mono text-primary">{orderData.order_code?.startsWith("#") ? orderData.order_code : `#${orderData.order_code}`}</p>
             <div className="flex justify-between pt-2 text-primary">
-              <span className="whitespace-nowrap font-bold">{t("total") || "Tổng thanh toán"}</span>
+              <span className="whitespace-nowrap font-bold">{t("total")}</span>
               <span className="whitespace-nowrap font-display text-secondary lg:headline-2">{formatPrice(amount)}</span>
             </div>
           </div>

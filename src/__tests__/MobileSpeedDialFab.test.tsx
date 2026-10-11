@@ -5,10 +5,27 @@ import "@testing-library/jest-dom";
 import MobileSpeedDialFab from "@/components/Common/MobileSpeedDialFab";
 
 // Mock next-intl
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-  useLocale: () => "vi",
-}));
+vi.mock("next-intl", () => {
+  const map: Record<string, string> = {
+    scroll_to_top: "Cuộn lên đầu trang",
+    back_to_top: "Lên đầu trang",
+    call_hotline: "Gọi hotline",
+    chat_zalo: "Chat Zalo",
+    message_facebook: "Nhắn tin Facebook",
+    messenger: "Messenger",
+    view_promotions: "Xem ưu đãi và khuyến mãi",
+    promotions_title: "Ưu đãi & Khuyến mãi",
+    open_contact_menu: "Mở menu liên hệ và ưu đãi",
+    close_contact_menu: "Đóng menu liên hệ",
+  };
+  return {
+    useTranslations: () => (key: string, values?: any) => {
+      if (key === "hotline_label") return `Hotline: ${values?.phone || ""}`;
+      return map[key] || key;
+    },
+    useLocale: () => "vi",
+  };
+});
 
 // Mock routing pathname
 let mockPathname = "/";

@@ -222,11 +222,11 @@ describe("Gói 4 Hotfix Luồng Mobile Checkout (STT 4/5/11, STT 7, STT 9, STT 1
 
       // Chờ VoucherTicketBar hiển thị ở Step 1
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Xóa" })).toBeInTheDocument();
+        expect(screen.getByTestId("remove-voucher-button")).toBeInTheDocument();
       });
 
       // Bấm nút xóa của TicketBar
-      const clearBtn = screen.getByRole("button", { name: "Xóa" });
+      const clearBtn = screen.getByTestId("remove-voucher-button");
       fireEvent.click(clearBtn);
 
       // Sau khi bấm xóa, thẻ thành viên phải chuyển sang trạng thái đã bỏ chọn

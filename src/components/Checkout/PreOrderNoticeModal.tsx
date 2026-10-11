@@ -41,7 +41,7 @@ export default function PreOrderNoticeModal({
         <div className="border-b border-gray-100 pb-3">
           <div>
             <h3 className="title-2 font-display text-primary font-bold leading-tight">
-              {notice.title}
+              {t("title")}
             </h3>
             <p className="body-3 text-gray-500 font-sans mt-0.5">
               {t("subtitle")}

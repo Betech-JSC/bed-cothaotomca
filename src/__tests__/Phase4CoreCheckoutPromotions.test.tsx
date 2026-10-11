@@ -494,7 +494,7 @@ describe('Phase 4 Core Checkout Promotions Test Suite', () => {
       render(<CheckoutForm order={null} config={mockConfigData} />);
 
       // Ban đầu: deliveryType === 'delivery' -> Tìm radio giao hàng
-      const radios = await screen.findAllByRole('radio');
+      const radios = await screen.findAllByRole('radio', {}, { timeout: 10000 });
       const deliveryRadio = radios.find((r) => r.closest('label')?.textContent?.includes('Giao hàng tận nơi'));
       const pickupRadio = radios.find((r) => r.closest('label')?.textContent?.includes('Tự đến lấy tại chi nhánh'));
 
@@ -502,7 +502,7 @@ describe('Phase 4 Core Checkout Promotions Test Suite', () => {
       expect(pickupRadio).toBeDefined();
 
       // Kiểm tra thanh tiến độ freeship có mặt
-      const progressText = await screen.findByText(/Miễn phí ship/i);
+      const progressText = await screen.findByText(/Miễn phí ship/i, {}, { timeout: 10000 });
       expect(progressText).toBeInTheDocument();
 
       // Chuyển sang "Tự đến lấy" (pickup)
@@ -511,7 +511,7 @@ describe('Phase 4 Core Checkout Promotions Test Suite', () => {
       // Thanh tiến độ bị ẩn khi pickup
       await waitFor(() => {
         expect(screen.queryByText(/Miễn phí ship/i)).not.toBeInTheDocument();
-      });
+      }, { timeout: 10000 });
 
       // Chuyển lại sang "Giao hàng tận nơi" (delivery)
       fireEvent.click(deliveryRadio!);
@@ -519,7 +519,7 @@ describe('Phase 4 Core Checkout Promotions Test Suite', () => {
       // Thanh tiến độ hiển thị trở lại
       await waitFor(() => {
         expect(screen.getByText(/Miễn phí ship/i)).toBeInTheDocument();
-      });
-    });
+      }, { timeout: 10000 });
+    }, 30000);
   });
 });

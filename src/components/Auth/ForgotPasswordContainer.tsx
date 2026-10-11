@@ -8,6 +8,7 @@ import { verifyResetOtpApi } from "@/services/authService";
 
 export default function ForgotPasswordContainer() {
   const t = useTranslations("forgot_password");
+  const tAuth = useTranslations("auth");
   const router = useRouter();
 
   // Steps: 'request' | 'otp' | 'new_password'
@@ -62,8 +63,7 @@ export default function ForgotPasswordContainer() {
 
       if (res.ok) {
         setMessage(
-          body.message ||
-            "Mã OTP và liên kết khôi phục đã được gửi tới email của bạn (hiệu lực trong 15 phút)."
+          body.message || tAuth("otp_recovery_sent")
         );
         setStep("otp");
         setResendCountdown(60);
@@ -84,7 +84,7 @@ export default function ForgotPasswordContainer() {
     e.preventDefault();
     const cleanOtp = otpCode.trim();
     if (cleanOtp.length !== 6) {
-      setError("Vui lòng nhập đầy đủ mã OTP 6 chữ số.");
+      setError(tAuth("otp_invalid_length"));
       return;
     }
 
@@ -96,13 +96,13 @@ export default function ForgotPasswordContainer() {
       const res = await verifyResetOtpApi(email.trim(), cleanOtp);
       if (res.token) {
         setResetToken(res.token);
-        setMessage("Mã xác thực chính xác! Vui lòng thiết lập mật khẩu mới.");
+        setMessage(tAuth("otp_correct_new_password"));
         setStep("new_password");
       } else {
-        setError("Mã xác thực không hợp lệ.");
+        setError(tAuth("otp_invalid"));
       }
     } catch (err: any) {
-      setError(err.message || "Mã OTP không chính xác hoặc đã hết hạn.");
+      setError(err.message || tAuth("otp_invalid_or_expired"));
     } finally {
       setLoading(false);
     }
@@ -113,11 +113,11 @@ export default function ForgotPasswordContainer() {
     e.preventDefault();
 
     if (password.length < 6) {
-      setError("Mật khẩu mới phải có ít nhất 6 ký tự.");
+      setError(tAuth("password_min"));
       return;
     }
     if (password !== passwordConfirmation) {
-      setError("Mật khẩu nhập lại không trùng khớp.");
+      setError(tAuth("password_mismatch"));
       return;
     }
 
@@ -143,13 +143,13 @@ export default function ForgotPasswordContainer() {
       const body = await res.json();
 
       if (res.ok) {
-        setMessage("🎉 Mật khẩu đã được đặt lại thành công! Đang chuyển sang trang Đăng nhập...");
+        setMessage(tAuth("reset_password_success"));
         setTimeout(() => {
           router.push("/signin");
         }, 1500);
       } else {
         const errorMessage =
-          body.errors?.password?.[0] || body.message || body.error || "Đặt lại mật khẩu thất bại.";
+          body.errors?.password?.[0] || body.message || body.error || tAuth("reset_password_failed");
         setError(errorMessage);
       }
     } catch (err: any) {
@@ -165,7 +165,7 @@ export default function ForgotPasswordContainer() {
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/bg-login.jpg"
-          alt="Bữa ăn hải sản ấm cúng"
+          alt={tAuth("bg_image_alt")}
           fill
           className="object-cover object-center"
           priority
@@ -179,17 +179,17 @@ export default function ForgotPasswordContainer() {
           {/* Header */}
           <div className="text-center space-y-2 mb-4">
             <h1 className="text-[24px] sm:text-[28px] font-bold text-primary font-display leading-tight tracking-[0.01em]">
-              {step === "new_password" ? "Tạo mật khẩu mới" : t("title")}
+              {step === "new_password" ? tAuth("create_new_password") : t("title")}
             </h1>
             <p className="text-gray-600 max-w-[400px] mx-auto text-xs sm:text-sm leading-relaxed">
               {step === "request" && t("description")}
               {step === "otp" && (
                 <>
-                  Nhập mã OTP 6 số đã được gửi tới email: <br />
+                  {tAuth("otp_sent_to_email")} <br />
                   <span className="font-bold text-primary">{email}</span>
                 </>
               )}
-              {step === "new_password" && "Thiết lập mật khẩu mới an toàn cho tài khoản của bạn."}
+              {step === "new_password" && tAuth("set_new_password_desc")}
             </p>
           </div>
 
@@ -252,7 +252,7 @@ export default function ForgotPasswordContainer() {
             <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4 w-full">
               <div className="space-y-1.5 text-center">
                 <label className="text-xs uppercase tracking-wider text-gray-600 font-bold block">
-                  Mã OTP 6 chữ số
+                  {tAuth("otp_label")}
                 </label>
                 <input
                   type="text"
@@ -274,11 +274,11 @@ export default function ForgotPasswordContainer() {
                     : "btn-secondary text-white shadow-md shadow-secondary/20 hover:shadow-lg cursor-pointer"
                 } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
-                {loading ? "Đang xác thực..." : "Xác nhận mã OTP"}
+                {loading ? tAuth("verifying") : tAuth("confirm_otp")}
               </button>
 
               <div className="flex items-center justify-between text-xs text-gray-600 pt-1">
-                <span>Chưa nhận được mã?</span>
+                <span>{tAuth("no_code_received")}</span>
                 <button
                   type="button"
                   onClick={handleRequestReset}
@@ -289,7 +289,7 @@ export default function ForgotPasswordContainer() {
                       : "text-secondary hover:underline cursor-pointer"
                   }`}
                 >
-                  {resendCountdown > 0 ? `Gửi lại (${resendCountdown}s)` : "Gửi lại mã"}
+                  {resendCountdown > 0 ? tAuth("resend_countdown", { seconds: resendCountdown }) : tAuth("resend_code")}
                 </button>
               </div>
 
@@ -304,7 +304,7 @@ export default function ForgotPasswordContainer() {
                   className="text-xs text-gray-500 hover:text-primary transition-colors font-medium inline-flex items-center gap-1 cursor-pointer"
                 >
                   <span>←</span>
-                  <span>Nhập lại email khác</span>
+                  <span>{tAuth("reenter_different_email")}</span>
                 </button>
               </div>
             </form>
@@ -315,28 +315,28 @@ export default function ForgotPasswordContainer() {
             <form onSubmit={handleResetPassword} className="flex flex-col gap-4 w-full">
               <div className="space-y-1.5 text-left">
                 <label className="text-sm text-primary font-semibold block">
-                  Mật khẩu mới
+                  {tAuth("new_password_label")}
                 </label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="Tối thiểu 6 ký tự"
+                  placeholder={tAuth("new_password_placeholder")}
                   className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
 
               <div className="space-y-1.5 text-left">
                 <label className="text-sm text-primary font-semibold block">
-                  Xác nhận mật khẩu mới
+                  {tAuth("confirm_new_password_label")}
                 </label>
                 <input
                   type="password"
                   value={passwordConfirmation}
                   onChange={(e) => setPasswordConfirmation(e.target.value)}
                   required
-                  placeholder="Nhập lại mật khẩu mới"
+                  placeholder={tAuth("confirm_new_password_placeholder")}
                   className="input-form w-full rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-base md:text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[44px] text-gray-900"
                 />
               </div>
@@ -350,7 +350,7 @@ export default function ForgotPasswordContainer() {
                     : "btn-secondary text-white shadow-md shadow-secondary/20 hover:shadow-lg cursor-pointer"
                 } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
-                {loading ? "Đang lưu..." : "Xác nhận đổi mật khẩu"}
+                {loading ? tAuth("saving") : tAuth("confirm_change_password")}
               </button>
 
               <div className="text-center text-[14px] pt-1">
