@@ -142,7 +142,9 @@ export default async function ProductDetailsPage({
   const t = await getTranslations({ locale });
 
   const translation = getTranslation<Translation>(product.translations, locale);
+  const translationEn = getTranslation<Translation>(product.translations, 'en');
   const productName = translation?.custom_name || product.custom_name || translation?.name || product.name || "";
+  const productNameEn = translationEn?.custom_name || translationEn?.name || (product as any).name_en || (locale === 'en' ? productName : undefined);
 
   // Thu thập danh sách ảnh (bao gồm ảnh đại diện và ảnh gallery con)
   const galleryImages: { url: string; alt: string }[] = [];
@@ -181,6 +183,8 @@ export default async function ProductDetailsPage({
 
   const productData = {
     title: productName,
+    title_en: productNameEn,
+    name_en: productNameEn,
     description: product.description,
     variant_type: product.variant_type,
     image: {
@@ -227,6 +231,8 @@ export default async function ProductDetailsPage({
           code: v.code || "",
           stock: v.stock !== undefined ? Number(v.stock) : (product.stock !== undefined ? Number(product.stock) : 0),
           title: locale === "vi" ? v.size : (v.size_en || v.size),
+          title_en: v.size_en || v.size,
+          size_en: v.size_en,
           price: finalPrice,
           original_price: isCamp ? basePrice : undefined,
           discount_percent: isCamp ? (configuredPercent || calcPercent) : undefined,
@@ -265,6 +271,8 @@ export default async function ProductDetailsPage({
           code: product.code || "",
           stock: product.stock !== undefined ? Number(product.stock) : 0,
           title: t("product.standard"),
+          title_en: "Standard",
+          size_en: "Standard",
           price: prodFinalPrice,
           original_price: isProdCamp ? prodBasePrice : undefined,
           discount_percent: isProdCamp ? (configuredPercent || calcPercent) : undefined,

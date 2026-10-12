@@ -1108,5 +1108,11 @@
     "phone_label": "Số điện thoại",
     "password_placeholder": "Nhập mật khẩu...",
     "confirm_password_placeholder": "Nhập lại mật khẩu..."
+  },
+  "home_popup": {
+    "do_not_show_today": "Không hiển thị lại hôm nay",
+    "close": "Đóng",
+    "view_now": "Xem ngay",
+    "special_offer": "Ưu đãi đặc biệt"
   }
 }

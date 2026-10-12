@@ -193,6 +193,13 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
     };
   }, [item, cartGrossSubtotal, userTier]);
 
+  const isAllOutOfStock = React.useMemo(() => {
+    if (item.variants && item.variants.length > 0) {
+      return item.variants.every((v: any) => (!v.code || !v.code.trim()) || v.status === 0 || v.status === false);
+    }
+    return (!item.price && !(item as any).min_price) || (item as any).status === 0 || (item as any).status === false;
+  }, [item]);
+
   const { price, originalPrice, hasDiscount, discountPercent } = pricing;
 
   return (
@@ -207,6 +214,13 @@ const CardProduct: React.FC<CardProductProps> = ({ item, isHot }) => {
                 ? `-${(item as any).active_campaign.discount_percent}%`
                 : "-10%"}
           </span>
+        </div>
+      )}
+
+      {/* Out of Stock Badge */}
+      {isAllOutOfStock && (
+        <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 bg-gray-600/90 text-white text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full z-10 shadow-sm backdrop-blur-xs">
+          <span>{t("product.out_of_stock") || "Tạm hết hàng"}</span>
         </div>
       )}
 

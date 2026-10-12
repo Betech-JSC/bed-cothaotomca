@@ -31,6 +31,7 @@ export interface ProductVariant {
   original_price?: string | number | null;
   active_campaign?: any;
   stock?: number;
+  status?: number;
 }
 
 export interface ProductImage {
@@ -50,6 +51,7 @@ export interface Product {
   id: number;
   slug?: string;
   name: string;
+  name_en?: string;
   custom_name?: string;
   description: string;
   price: string;
@@ -100,12 +102,14 @@ export interface Product {
 /** Props cho ProductDetailsInfo — map từ GET /products/slug/{slug} */
 export interface ProductDetailView {
   title: string;
+  title_en?: string;
+  name_en?: string;
   description: string;
   variant_type?: string | null;
   code?: string;
   unit?: string;
   images: { url: string; alt: string }[];
-  sizes: { id?: number; code?: string; title: string; price: number; original_price?: number; stock?: number; discount_percent?: number }[];
+  sizes: { id?: number; code?: string; title: string; title_en?: string; size_en?: string; price: number; original_price?: number; stock?: number; discount_percent?: number; status?: number }[];
   infos: { title: string; content: string }[];
   category: { title: string; slug: string };
   checkout: {
@@ -170,6 +174,7 @@ export function normalizeProductDetail(item: Product): Product {
     original_price: v.original_price !== undefined ? v.original_price : null,
     active_campaign: v.active_campaign ?? null,
     stock: v.stock ?? 0,
+    status: v.status !== undefined ? Number(v.status) : 1,
   }));
 
   const images = (item.images ?? [])
@@ -199,7 +204,11 @@ export function mapProductToDetailView(
   const translation = getTranslation(product.translations, locale) as
     | Translation
     | undefined;
+  const translationEn = getTranslation(product.translations, "en") as
+    | Translation
+    | undefined;
   const name = translation?.custom_name || product.custom_name || translation?.name || product.name;
+  const title_en = translationEn?.custom_name || translationEn?.name || product.name_en;
   const description =
     translation?.description || product.description || "";
 
@@ -285,20 +294,29 @@ export function mapProductToDetailView(
           const finalPrice = isCamp ? campP : vPriceNum;
           const original_price = isCamp ? baseP : undefined;
 
+          const title_en = v.size_en || v.size || labels.standard;
           return {
             id: v.id,
             code: v.code,
             title: title || labels.standard,
+            title_en,
+            size_en: v.size_en,
             price: finalPrice,
             original_price,
+            stock: v.stock,
+            status: v.status !== undefined ? Number(v.status) : 1,
           };
         })
       : [{
           id: product.id,
           code: product.code,
           title: labels.standard,
+          title_en: labels.standard,
+          size_en: labels.standard,
           price: prodFinalPrice,
           original_price: isProdCamp ? prodBasePrice : undefined,
+          stock: product.stock,
+          status: (product as any).status !== undefined ? Number((product as any).status) : 1,
         }];
 
   const infos = (product.sections ?? []).map((section) => ({
@@ -308,6 +326,8 @@ export function mapProductToDetailView(
 
   return {
     title: name,
+    title_en,
+    name_en: title_en,
     description,
     variant_type: product.variant_type,
     code: product.code,

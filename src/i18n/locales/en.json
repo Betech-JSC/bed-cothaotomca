@@ -1108,5 +1108,11 @@
     "phone_label": "Phone number",
     "password_placeholder": "Enter password...",
     "confirm_password_placeholder": "Confirm password..."
+  },
+  "home_popup": {
+    "do_not_show_today": "Don't show again today",
+    "close": "Close",
+    "view_now": "View details",
+    "special_offer": "Special Offer"
   }
 }

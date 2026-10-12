@@ -20,6 +20,10 @@ export interface CartItem {
   product_variant_id?: number;
   parentProductId?: number;
   parent_product_id?: number;
+  title_en?: string;
+  variant_en?: string;
+  product_id?: number | string;
+  variant_id?: number | string;
 }
 
 interface CartContextType {
@@ -72,13 +76,16 @@ export function checkItemOutOfStock(item: CartItem, cache: any[]): boolean {
     );
     if (v) {
       if (!v.code || !v.code.trim()) return true;
+      if (v.status === 0 || v.status === false) return true;
       return false;
     }
     if (!p.code || !p.code.trim()) return true;
+    if (p.status === 0 || p.status === false) return true;
     return false;
   }
 
   if (!p.code || !p.code.trim()) return true;
+  if (p.status === 0 || p.status === false) return true;
   return false;
 }
 
@@ -286,13 +293,50 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       const newUnit = currentPrice || item.unitPrice;
       const newOrig = origPrice && origPrice > newUnit ? origPrice : newUnit;
 
-      if (item.unitPrice !== newUnit || item.originalPrice !== newOrig || item.isOutOfStock !== isOut) {
+      // Self-healing for title_en, variant_en, product_id, variant_id
+      let matchedV: any = undefined;
+      if (p.variants && p.variants.length > 0) {
+        matchedV = p.variants.find(
+          (vObj: any) =>
+            vObj.size === item.variant ||
+            vObj.size_en === item.variant ||
+            (item.variantId && (Number(vObj.id) === Number(item.variantId) || Number(vObj.kiotviet_id) === Number(item.variantId))) ||
+            Number(vObj.id) === Number(item.productId) ||
+            Number(vObj.kiotviet_id) === Number(item.productId) ||
+            (vObj.code && item.productCode && vObj.code === item.productCode)
+        );
+      }
+
+      const enTitle = p.name_en || (p.translations?.find((t: any) => t.locale === "en")?.name ?? undefined);
+      const enVariant = matchedV?.size_en || (matchedV?.translations?.find((t: any) => t.locale === "en")?.size ?? undefined);
+
+      const nextTitleEn = enTitle || item.title_en;
+      const nextVariantEn = enVariant || item.variant_en;
+      const nextProductId = item.product_id ?? p.id ?? p.kiotviet_id;
+      const nextVariantId = item.variant_id ?? (matchedV?.id || matchedV?.kiotviet_id || item.variantId);
+
+      const hasHealingChange =
+        (enTitle && item.title_en !== enTitle) ||
+        (enVariant && item.variant_en !== enVariant) ||
+        (!item.product_id && nextProductId !== undefined) ||
+        (!item.variant_id && nextVariantId !== undefined);
+
+      if (
+        item.unitPrice !== newUnit ||
+        item.originalPrice !== newOrig ||
+        item.isOutOfStock !== isOut ||
+        hasHealingChange
+      ) {
         changed = true;
         return {
           ...item,
           unitPrice: newUnit,
           originalPrice: newOrig,
           isOutOfStock: isOut,
+          title_en: nextTitleEn,
+          variant_en: nextVariantEn,
+          product_id: nextProductId,
+          variant_id: nextVariantId,
         };
       }
       return item;
@@ -304,12 +348,16 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   }, [isLoaded, productsCache, cartItems]);
 
   const addToCart = (item: Omit<CartItem, "quantity">, quantity = 1) => {
-    const isOutOfStock = checkItemOutOfStock(item as CartItem, productsCache);
+    const isOutOfStock = checkItemOutOfStock(item as CartItem, productsCache) || Boolean((item as any).isOutOfStock);
+    if (isOutOfStock) {
+      console.warn("Cannot add out of stock item to cart:", item.title, item.variant);
+      return;
+    }
     setCartItems((prev) => {
       const existing = prev.find((i) => i.id === item.id);
       if (existing) {
         return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + quantity, isOutOfStock } : i
+          i.id === item.id ? { ...i, ...item, quantity: i.quantity + quantity, isOutOfStock } : i
         );
       }
       return [...prev, { ...item, quantity, isOutOfStock }];

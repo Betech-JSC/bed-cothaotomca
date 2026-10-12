@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import * as NextIntl from "next-intl";
 import { useCart } from "@/contexts/CartContext";
 import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName, formatImageUrl } from "@/lib/format";
+import { getCartItemTitle, getCartItemVariant } from "@/lib/cartLocalization";
 import { useBranches } from "@/contexts/BranchContext";
 import { getActiveCampaigns, type PublicCampaignItem } from "@/services/campaignService";
 import {
@@ -2278,7 +2279,7 @@ export default function MobileCartFlow({
                           <div className="relative size-16 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
                             <Image
                               src={item.imageUrl}
-                              alt={item.title}
+                              alt={getCartItemTitle(item, locale)}
                               fill
                               className="object-cover"
                             />
@@ -2295,11 +2296,11 @@ export default function MobileCartFlow({
                             <div className="flex justify-between items-start gap-2">
                               <div className="min-w-0 flex-1">
                                 <h4 className="title-3 text-primary font-bold font-display line-clamp-2 leading-snug break-words">
-                                  {item.title}
+                                  {getCartItemTitle(item, locale)}
                                 </h4>
-                                {!isDefaultVariant(item.variant) && (
+                                {!isDefaultVariant(getCartItemVariant(item, locale)) && (
                                   <p className="text-xs sm:text-sm text-gray-500 font-semibold uppercase mt-0.5">
-                                    {cleanVariantName(item.variant)}
+                                    {cleanVariantName(getCartItemVariant(item, locale))}
                                   </p>
                                 )}
                                 {isOut && (

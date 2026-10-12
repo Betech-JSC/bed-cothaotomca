@@ -6,7 +6,9 @@ import { Link } from "@/i18n/routing";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
+import { getCartItemTitle, getCartItemVariant } from "@/lib/cartLocalization";
 import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 
 interface CartPopupProps {
   onClose: () => void;
@@ -15,6 +17,16 @@ interface CartPopupProps {
 export default function CartPopup({ onClose }: CartPopupProps) {
   const t = useTranslations("cart");
   const tCheckout = useTranslations("checkout");
+  let locale = "vi";
+  try {
+    if (typeof (NextIntl as any).useLocale === "function") {
+      locale = (NextIntl as any).useLocale() || "vi";
+    } else if (typeof window !== "undefined" && window.location.pathname.startsWith("/en")) {
+      locale = "en";
+    }
+  } catch {
+    locale = "vi";
+  }
   const { user, refreshUser } = useAuth();
   const {
     cartItems,
@@ -142,7 +154,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                     <div className="relative size-16 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
                       <Image
                         src={item.imageUrl}
-                        alt={item.title}
+                        alt={getCartItemTitle(item, locale)}
                         fill
                         className="object-cover"
                       />
@@ -160,7 +172,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                       <div className="flex justify-between items-start gap-2">
                         <div>
                           <h4 className="title-3 text-primary font-bold font-display line-clamp-1">
-                            {item.title}
+                            {getCartItemTitle(item, locale)}
                           </h4>
                           {isOut && (
                             <span className="inline-block text-[11px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.2 rounded mt-0.5">
@@ -179,9 +191,9 @@ export default function CartPopup({ onClose }: CartPopupProps) {
                           </span>
                         </div>
                       </div>
-                      {!isDefaultVariant(item.variant) && (
+                      {!isDefaultVariant(getCartItemVariant(item, locale)) && (
                         <p className="text-[11px] text-gray-500 font-semibold uppercase">
-                          {cleanVariantName(item.variant)}
+                          {cleanVariantName(getCartItemVariant(item, locale))}
                         </p>
                       )}
 

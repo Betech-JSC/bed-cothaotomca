@@ -11,6 +11,8 @@ import { locales as supportedLocales } from '@/i18n/config';
 import Image from 'next/image';
 import { getApi } from '@/services/apiService';
 import { HeroBanner } from '@/services/heroBannerService';
+import { getBanners, type Banner } from '@/services/bannerService';
+import HomePromotionPopup from '@/components/Home/HomePromotionPopup';
 import { Product } from '@/services/productService';
 import { Category } from '@/services/categoryService';
 import { slugify, formatImageUrl } from '@/lib/format';
@@ -73,9 +75,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   }
   const t = await getTranslations({ locale });
 
-  const [heroBannersData, sliderBannersData, productsData, categoriesData, blogsData] = await Promise.all([
+  const [heroBannersData, sliderBannersData, popupBannersData, productsData, categoriesData, blogsData] = await Promise.all([
     getApi<HeroBanner>('banners', { params: { position: 'hero_home', lang: locale } }).catch(() => ({ data: [] })),
     getApi<HeroBanner>('banners', { params: { position: 'slide_home', lang: locale } }).catch(() => ({ data: [] })),
+    getBanners({ position: 'popup_home', lang: locale }).catch(() => ({ data: [] })),
     getApi<Product>('products', { params: { lang: locale } }).catch(() => ({ data: [] })),
     getApi<Category>('categories', { params: { lang: locale, is_featured: true } }).catch(() => ({ data: [] })),
     getBlogs({ per_page: 10, lang: locale }).catch(() => ({ data: [] }))
@@ -191,8 +194,23 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     };
   });
 
+  const popupBannerRaw = (popupBannersData.data || []).find(
+    (b) => b.status === 1 || b.status === true || (b.status as any) === undefined
+  ) || (popupBannersData.data?.[0] ?? null);
+
+  let popupBanner: Banner | null = null;
+  if (popupBannerRaw) {
+    const translation = getTranslation(popupBannerRaw.translations, locale) as any;
+    popupBanner = {
+      ...popupBannerRaw,
+      title: translation?.title || popupBannerRaw.title,
+      description: translation?.description || popupBannerRaw.description,
+    };
+  }
+
   return (
     <main>
+      <HomePromotionPopup banner={popupBanner} />
       <SectionHero items={sliderHero} />
       <section className="md:py-20 py-[50px] xl:py-[100px] relative overflow-hidden">
         <div className="absolute top-6 left-0 max-w-[280px] md:max-w-[320px] xl:max-w-[420px] w-full h-[120px] md:h-[100px] xl:h-[130px]">

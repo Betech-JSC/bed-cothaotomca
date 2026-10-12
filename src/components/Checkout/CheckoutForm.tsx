@@ -7,6 +7,7 @@ import * as NextIntl from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName, formatImageUrl } from "@/lib/format";
+import { getCartItemTitle, getCartItemVariant } from "@/lib/cartLocalization";
 import { getActiveCampaigns, type PublicCampaignItem } from "@/services/campaignService";
 import {
   calcOrderTotal,
@@ -74,14 +75,18 @@ export interface CheckoutOrderItem {
   slug: string;
   categorySlug: string;
   title: string;
+  title_en?: string;
   imageUrl: string;
   variant: string;
+  variant_en?: string;
   unitPrice: number;
   originalPrice?: number;
   variantId?: number;
   product_variant_id?: number;
   parentProductId?: number;
   parent_product_id?: number;
+  product_id?: number | string;
+  variant_id?: number | string;
 }
 
 interface CheckoutFormProps {
@@ -220,13 +225,17 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           slug: order.slug,
           categorySlug: order.categorySlug,
           title: order.title,
+          title_en: order.title_en,
           imageUrl: order.imageUrl,
           variant: order.variant,
+          variant_en: order.variant_en,
           unitPrice: order.unitPrice,
           originalPrice: order.originalPrice,
           variantId: order.variantId ?? order.product_variant_id,
           product_variant_id: order.product_variant_id ?? order.variantId,
           parentProductId: order.parentProductId ?? order.parent_product_id,
+          product_id: order.product_id ?? order.productId,
+          variant_id: order.variant_id ?? (order.variantId ?? order.product_variant_id),
         }, 1);
       }
     }
@@ -3201,7 +3210,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       <div className="relative size-16 2xl:size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
                         <Image
                           src={item.imageUrl}
-                          alt={item.title}
+                          alt={getCartItemTitle(item, locale)}
                           fill
                           className="object-cover"
                         />
@@ -3212,7 +3221,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         <div className="flex justify-between items-start gap-2">
                           <div>
                             <p className="title-3 font-display text-primary font-bold whitespace-pre-line line-clamp-2">
-                              {item.title}
+                              {getCartItemTitle(item, locale)}
                             </p>
                             {item.isOutOfStock && (
                               <span className="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-bold text-red-600 bg-red-100 rounded-full">
@@ -3236,9 +3245,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           </div>
                         </div>
 
-                        {!isDefaultVariant(item.variant) && (
+                        {!isDefaultVariant(getCartItemVariant(item, locale)) && (
                           <p className="body-2 text-gray-500 font-medium truncate">
-                            {cleanVariantName(item.variant)}
+                            {cleanVariantName(getCartItemVariant(item, locale))}
                           </p>
                         )}
                         {isBestDealVoucherApplied && item.originalPrice && item.originalPrice > item.unitPrice && (
@@ -3294,7 +3303,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   <div className="relative size-16 2xl:size-20 flex-shrink-0 rounded-[12px] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
                     <Image
                       src={order.imageUrl}
-                      alt={order.title}
+                      alt={getCartItemTitle(order, locale)}
                       fill
                       className="object-cover"
                     />
@@ -3304,7 +3313,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   <div className="flex-1 min-w-0 space-y-1.5 2xl:space-y-2">
                     <div className="flex justify-between items-start gap-2">
                       <p className="title-3 font-display text-primary font-bold whitespace-pre-line line-clamp-2">
-                        {order.title}
+                        {getCartItemTitle(order, locale)}
                       </p>
                       <div className="text-right shrink-0">
                         {!isBestDealVoucherApplied && order.originalPrice && order.originalPrice > order.unitPrice ? (
@@ -3322,9 +3331,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       </div>
                     </div>
 
-                    {!isDefaultVariant(order.variant) && (
+                    {!isDefaultVariant(getCartItemVariant(order, locale)) && (
                       <p className="body-2 text-gray-500 font-medium truncate">
-                        {cleanVariantName(order.variant)}
+                        {cleanVariantName(getCartItemVariant(order, locale))}
                       </p>
                     )}
                     {isBestDealVoucherApplied && order.originalPrice && order.originalPrice > order.unitPrice && (

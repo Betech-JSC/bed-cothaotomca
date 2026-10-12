@@ -24,10 +24,13 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
   const { addToCart, setIsCartOpen } = useCart();
 
   const selectedSize = productData.sizes[selectedSizeIndex];
-  const isSelectedOutOfStock = !selectedSize?.code || !selectedSize.code.trim();
+  const isSelectedOutOfStock = !selectedSize?.code || !selectedSize.code.trim() || selectedSize?.status === 0 || (selectedSize as any)?.status === false;
 
   const handleAddToCart = () => {
     if (isSelectedOutOfStock) return;
+    const titleEn = productData.title_en || productData.name_en;
+    const variantEn = selectedSize?.title_en || selectedSize?.size_en;
+
     addToCart({
       id: `${productData.checkout.slug}-${selectedSize.title}`,
       productId: selectedSize.id ?? productData.checkout.productId,
@@ -35,13 +38,17 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
       slug: productData.checkout.slug,
       categorySlug: productData.checkout.categorySlug,
       title: productData.title,
+      title_en: titleEn,
       imageUrl: productData.images[0]?.url || "/cover.jpg",
       variant: selectedSize.title,
+      variant_en: variantEn,
       unitPrice: selectedSize.price,
       originalPrice: selectedSize.original_price,
       variantId: selectedSize.id,
       product_variant_id: selectedSize.id,
       parentProductId: productData.checkout.productId,
+      product_id: productData.checkout.productId,
+      variant_id: selectedSize.id,
     }, quantity);
 
     setIsAdded(true);
@@ -77,14 +84,14 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
             <div className="flex-1 w-full">
               <div className="flex items-center flex-wrap md:gap-4 gap-3 xl:gap-3">
                 {productData.sizes.map((size, index) => {
-                  const isOutOfStockSize = !size.code || !size.code.trim();
+                  const isOutOfStockSize = (!size.code || !size.code.trim()) || size.status === 0 || (size as any).status === false;
                   return (
                     <div
                       key={index}
                       onClick={() => !isOutOfStockSize && setSelectedSizeIndex(index)}
                       className={`w-max px-3 min-w-[48px] min-h-[48px] flex items-center justify-center button-1 size-12 rounded-full duration-300 ease-in-out ${
                         isOutOfStockSize
-                          ? "opacity-40 line-through bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none "
+                          ? "line-through opacity-40 bg-gray-100 text-gray-400 cursor-not-allowed "
                           : "cursor-pointer "
                       }${
                         selectedSizeIndex === index

@@ -58,10 +58,11 @@ export function formatPrivateVoucherError(errMsg: string): string {
 
 export interface CartItemProductEligibilityCheck {
   id?: number | string;
-  product_id?: number;
+  product_id?: number | string;
   productId?: number;
   product_variant_id?: number | null;
   variantId?: number | null;
+  variant_id?: number | string | null;
   parentProductId?: number | null;
   parent_product_id?: number | null;
   productCode?: string | null;
