@@ -96,7 +96,7 @@ export default function MobileSpeedDialFab() {
       )}
 
       {/* Floating Speed-Dial Container (Mobile only: lg:hidden) */}
-      <div className="fixed right-4 bottom-2 z-40 lg:hidden select-none pointer-events-auto flex flex-col items-end">
+      <div className="fixed right-6 bottom-6 md:right-8 md:bottom-8 z-40 lg:hidden select-none pointer-events-auto flex flex-col items-end">
         {/* Expanded Speed-Dial Action Items */}
         {isOpen && (
           <div className="flex flex-col items-end gap-2.5 mb-3 animate-in slide-in-from-bottom-5 duration-200">
@@ -205,7 +205,7 @@ export default function MobileSpeedDialFab() {
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className={`relative size-13 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.25)] border-2 border-white/30 active:scale-90 cursor-pointer ${isOpen ? "bg-primary text-yellow rotate-90" : "bg-secondary text-white"
+          className={`relative size-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.25)] border-2 border-white/30 active:scale-90 cursor-pointer ${isOpen ? "bg-primary text-yellow rotate-90" : "bg-secondary text-white"
             }`}
           aria-label={isOpen ? t("close_contact_menu") : t("open_contact_menu")}
           aria-expanded={isOpen}
@@ -218,7 +218,7 @@ export default function MobileSpeedDialFab() {
             </svg>
           ) : (
             /* CSKH / Headset Icon */
-            <svg className="size-6.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
               <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
             </svg>
