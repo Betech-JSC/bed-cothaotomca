@@ -842,6 +842,18 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return null;
   }, [appliedVoucher, cartCampaignG1, t]);
 
+  const isFreeshipBlocked = useMemo(() => {
+    const isG1BlockingFreeship = Boolean(
+      cartCampaignG1 &&
+      cartCampaignG1.can_combine_with_freeship === false &&
+      !(appliedVoucher && appliedVoucher.canCombineWithPromotions === false && appliedVoucher.canCombineWithFreeship !== false)
+    );
+    const isG2BlockingFreeship = Boolean(
+      appliedVoucher && appliedVoucher.canCombineWithFreeship === false
+    );
+    return isG1BlockingFreeship || isG2BlockingFreeship;
+  }, [cartCampaignG1, appliedVoucher]);
+
   // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleOrderDiscountPromo = useMemo(() => {
     if (isBestDealVoucherApplied) return null;
@@ -1017,12 +1029,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     eligibleBuyXGetYPromos.forEach((p) => {
       list.push(p);
     });
+    if (cartCampaignG1 && !list.some((p) => String(p.id) === String(cartCampaignG1.id))) {
+      list.push(cartCampaignG1);
+    }
     return list;
   }, [
     eligibleOrderDiscountPromo,
     eligibleOrderGiftPromo,
     selectedOrderGiftItem,
     eligibleBuyXGetYPromos,
+    cartCampaignG1,
   ]);
 
   const promoItemsExtraPrice = useMemo(() => {
@@ -1096,7 +1112,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           !(appliedVoucher && appliedVoucher.canCombineWithPromotions === false && appliedVoucher.canCombineWithFreeship !== false)
         );
         const isG2BlockingFreeship = Boolean(
-          appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false
+          appliedVoucher && appliedVoucher.canCombineWithFreeship === false
         );
         const isFreeshipBlocked = isG1BlockingFreeship || isG2BlockingFreeship;
 
@@ -2281,7 +2297,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         description: description.trim() || undefined,
         is_apply_voucher: !!(appliedVoucher || appliedShippingVoucher),
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
-        shipping_voucher_code: appliedShippingVoucher ? appliedShippingVoucher.code : undefined,
+        shipping_voucher_code: appliedShippingVoucher ? appliedShippingVoucher.code : (appliedVoucher?.isFreeship ? appliedVoucher.code : undefined),
         applied_deal_type: isBestDealVoucherApplied ? "voucher" : undefined,
         voucher: appliedVoucher
           ? {
@@ -2291,10 +2307,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             can_combine_with_freeship: appliedVoucher.canCombineWithFreeship,
           }
           : null,
-        shipping_voucher: appliedShippingVoucher
+        shipping_voucher: (appliedShippingVoucher || (appliedVoucher?.isFreeship ? appliedVoucher : null))
           ? {
-            voucher_id: appliedShippingVoucher.id,
-            amount: appliedShippingVoucher.value,
+            voucher_id: (appliedShippingVoucher || appliedVoucher)?.id,
+            amount: (appliedShippingVoucher || appliedVoucher)?.value,
           }
           : undefined,
         payment_method: paymentMethod, // CASH (COD) or TRANSFER (SePay)
@@ -3565,9 +3581,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               {voucherError && (
                 <p className="text-xs text-red-600 font-semibold px-2">{voucherError}</p>
               )}
-              {voucherSuccess && (
-                <p className="text-xs text-emerald-600 font-semibold px-2 animate-fade-in">{voucherSuccess}</p>
-              )}
               {bestDealNotice && (
                 <p className="text-xs text-secondary font-semibold px-2">{bestDealNotice}</p>
               )}
@@ -3868,6 +3881,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           )
         }
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
+        isFreeshipBlocked={isFreeshipBlocked}
         appliedVoucherCode={appliedVoucher?.code || appliedShippingVoucher?.code || ""}
         appliedVoucherCodes={modalAppliedVoucherCodes}
         appliedCampaignIds={selectedCampaignIds}

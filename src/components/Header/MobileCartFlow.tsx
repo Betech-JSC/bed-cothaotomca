@@ -674,6 +674,7 @@ export default function MobileCartFlow({
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   const [hotline, setHotline] = useState<string>("024.9999.7122");
   const [calculatedFee, setCalculatedFee] = useState<number>(0);
+  const [hasCalculatedFee, setHasCalculatedFee] = useState<boolean>(false);
   const [originalFee, setOriginalFee] = useState<number>(0);
   const [shippingDiscount, setShippingDiscount] = useState<number>(0);
   const [isFreeship, setIsFreeship] = useState<boolean>(false);
@@ -871,6 +872,18 @@ export default function MobileCartFlow({
     return null;
   }, [appliedVoucher, cartCampaignG1, t]);
 
+  const isFreeshipBlocked = useMemo(() => {
+    const isG1BlockingFreeship = Boolean(
+      cartCampaignG1 &&
+      cartCampaignG1.can_combine_with_freeship === false &&
+      !(appliedVoucher && appliedVoucher.canCombineWithPromotions === false && appliedVoucher.canCombineWithFreeship !== false)
+    );
+    const isG2BlockingFreeship = Boolean(
+      appliedVoucher && appliedVoucher.canCombineWithFreeship === false
+    );
+    return isG1BlockingFreeship || isG2BlockingFreeship;
+  }, [cartCampaignG1, appliedVoucher]);
+
   useEffect(() => {
     if (deliveryType !== "delivery" || !cartItems || cartItems.length === 0) {
       setCalculatedFee(0);
@@ -880,6 +893,7 @@ export default function MobileCartFlow({
       setIsDeliverable(true);
       setShippingMessage(null);
       setCalculatingShipping(false);
+      setHasCalculatedFee(false);
       return;
     }
 
@@ -902,7 +916,7 @@ export default function MobileCartFlow({
           !(appliedVoucher && appliedVoucher.canCombineWithPromotions === false && appliedVoucher.canCombineWithFreeship !== false)
         );
         const isG2BlockingFreeship = Boolean(
-          appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false
+          appliedVoucher && appliedVoucher.canCombineWithFreeship === false
         );
         const isFreeshipBlocked = isG1BlockingFreeship || isG2BlockingFreeship;
 
@@ -915,6 +929,7 @@ export default function MobileCartFlow({
         setShippingDiscount(finalDiscount);
         setIsFreeship(finalFreeship);
         setFreeshipReason(isFreeshipBlocked ? null : (res.freeship_reason || null));
+        setHasCalculatedFee(true);
 
         const hasWard = !!selectedWard || !!selectedWardId;
         setIsDeliverable(hasWard ? res.is_deliverable : true);
@@ -947,7 +962,7 @@ export default function MobileCartFlow({
   const defaultShippingFee = parseFloat(config?.default_shipping_fee || "30000") || 30000;
   const shippingFee = (cartItems.length === 0 || deliveryType !== "delivery")
     ? 0
-    : (isFreeship ? 0 : (calculatedFee || defaultShippingFee));
+    : (isFreeship ? 0 : (hasCalculatedFee ? calculatedFee : (calculatedFee || defaultShippingFee)));
 
   const { subtotal, shipping } = calcOrderTotal(
     lineItems,
@@ -1243,12 +1258,16 @@ export default function MobileCartFlow({
     eligibleBuyXGetYPromos.forEach((p) => {
       list.push(p);
     });
+    if (cartCampaignG1 && !list.some((p) => String(p.id) === String(cartCampaignG1.id))) {
+      list.push(cartCampaignG1);
+    }
     return list;
   }, [
     eligibleOrderDiscountPromo,
     eligibleOrderGiftPromo,
     selectedOrderGiftItem,
     eligibleBuyXGetYPromos,
+    cartCampaignG1,
   ]);
 
   const promoItemsExtraPrice = useMemo(() => {
@@ -3626,6 +3645,7 @@ export default function MobileCartFlow({
           )
         }
         canCombineWithFreeship={appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined}
+        isFreeshipBlocked={isFreeshipBlocked}
         appliedVoucherCode={appliedVoucher?.code || appliedShippingVoucher?.code || ""}
         appliedVoucherCodes={[appliedVoucher?.code, appliedShippingVoucher?.code].filter(Boolean) as string[]}
         appliedCampaignIds={selectedCampaignIds}

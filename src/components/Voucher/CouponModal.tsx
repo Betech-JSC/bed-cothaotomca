@@ -87,6 +87,7 @@ export interface CouponModalProps {
   isAutoFreeship?: boolean;
   isAutoShippingDiscountActive?: boolean;
   canCombineWithFreeship?: boolean;
+  isFreeshipBlocked?: boolean;
   appliedVoucherCode?: string;
   appliedVoucherCodes?: string[];
   appliedCampaignIds?: (number | string)[];
@@ -750,6 +751,7 @@ export default function CouponModal({
   isAutoFreeship,
   isAutoShippingDiscountActive,
   canCombineWithFreeship,
+  isFreeshipBlocked = false,
   appliedVoucherCode = "",
   appliedVoucherCodes,
   appliedCampaignIds,
@@ -1344,6 +1346,85 @@ export default function CouponModal({
     return "";
   }, [isMemberCardLocked, hasSelectedExclusiveVoucher, hasSelectedExclusiveCampaign, t]);
 
+  // Xác định điều kiện khóa thẻ Trợ giá ship tự động (shipping-promotion-card)
+  const isShippingPromotionLocked = useMemo(() => {
+    // 1. Khóa khi CheckoutForm / MobileCartFlow báo freeship bị chặn
+    if (isFreeshipBlocked) return true;
+
+    // 2. Khóa khi prop canCombineWithFreeship === false từ voucher ở checkout
+    if (canCombineWithFreeship === false) return true;
+
+    // 3. Khóa khi có bất kỳ campaign nào đang được chọn trong modal có can_combine_with_freeship === false
+    const hasLockedSelectedCampaign = selectedCampaignItems.some(
+      (c) => c.can_combine_with_freeship === false
+    );
+    if (hasLockedSelectedCampaign) return true;
+
+    // 4. Khóa khi có bất kỳ activeCartPromos nào (Quà tặng, Combo, Buy X Get Y) có can_combine_with_freeship === false
+    const hasLockedActiveCartPromo = activeCartPromos.some(
+      (p) => p.can_combine_with_freeship === false
+    );
+    if (hasLockedActiveCartPromo) return true;
+
+    // 5. Khóa khi appliedCampaignIds có campaign cấm freeship
+    if (appliedCampaignIds && appliedCampaignIds.length > 0) {
+      const hasAppliedLockedCampaign = allCampaigns.some(
+        (c) => appliedCampaignIds.some((id) => String(id) === String(c.id)) && c.can_combine_with_freeship === false
+      );
+      if (hasAppliedLockedCampaign) return true;
+    }
+
+    // 6. Khóa khi có bất kỳ voucher nào đang được chọn trong modal có can_combine_with_freeship === false
+    const hasLockedSelectedVoucher = selectedVoucherItems.some(
+      (v) => v.can_combine_with_freeship === false
+    );
+    if (hasLockedSelectedVoucher) return true;
+
+    return false;
+  }, [
+    isFreeshipBlocked,
+    canCombineWithFreeship,
+    selectedCampaignItems,
+    activeCartPromos,
+    appliedCampaignIds,
+    allCampaigns,
+    selectedVoucherItems,
+  ]);
+
+  const shippingPromotionLockReason = useMemo(() => {
+    if (!isShippingPromotionLocked) return "";
+
+    const hasLockedSelectedVoucher = selectedVoucherItems.some(
+      (v) => v.can_combine_with_freeship === false
+    );
+    if (hasLockedSelectedVoucher) {
+      return t("order_voucher_no_freeship");
+    }
+
+    return t("campaign_no_freeship");
+  }, [isShippingPromotionLocked, selectedVoucherItems, t]);
+
+  const shippingMinOrderAmount = useMemo(() => {
+    if (shippingSettingsState?.is_min_amount_enabled) {
+      return Number(shippingSettingsState.min_order_amount || 0);
+    }
+    return 0;
+  }, [shippingSettingsState]);
+
+  const isShippingPromotionEligible = useMemo(() => {
+    if (shippingMinOrderAmount > 0) {
+      return subtotal >= shippingMinOrderAmount;
+    }
+    return true;
+  }, [shippingMinOrderAmount, subtotal]);
+
+  const shippingPromotionMissingAmount = useMemo(() => {
+    if (!isShippingPromotionEligible && shippingMinOrderAmount > 0) {
+      return Math.max(0, shippingMinOrderAmount - subtotal);
+    }
+    return 0;
+  }, [isShippingPromotionEligible, shippingMinOrderAmount, subtotal]);
+
   const checkCampaignMutexLock = useCallback(
     (camp: PublicCampaignItem): CampaignLockResult => {
       const isSelected = selectedCampaignIds.some((id) => String(id) === String(camp.id));
@@ -1916,6 +1997,114 @@ export default function CouponModal({
   const renderCampaignCard = (camp: PublicCampaignItem, isEligible: boolean) => {
     const isVirtualCard = camp.id === "shipping-promotion-card";
     if (isVirtualCard) {
+      // Khi bị khóa do không áp dụng đồng thời với campaign/voucher khác
+      if (isShippingPromotionLocked) {
+        return (
+          <div
+            key={camp.id}
+            aria-disabled="true"
+            className="relative rounded-2xl border transition-all overflow-hidden flex items-center gap-3.5 p-3 shadow-xs opacity-50 border-gray-200 bg-gray-50/70 select-none cursor-not-allowed"
+          >
+            {/* Banner grayscale */}
+            <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 relative border flex items-center justify-center grayscale bg-gray-200 border-gray-300">
+              <CampaignBannerImage
+                camp={camp}
+                isLocked={true}
+                fallbackTag={t("promo_tag")}
+              />
+            </div>
+            {/* Content */}
+            <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
+              <h4 className="title-3 font-display text-gray-600 font-bold leading-snug line-clamp-2">
+                {camp.name}
+              </h4>
+              {camp.description && (
+                <div className="body-3 font-sans text-gray-500 line-clamp-2">
+                  {camp.description}
+                </div>
+              )}
+              {/* Lý do khóa màu đỏ/cam */}
+              <p className="text-red-500 text-xs font-semibold leading-normal">
+                {shippingPromotionLockReason}
+              </p>
+              {/* Xem chi tiết thể lệ */}
+              <div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCampaign(camp);
+                  }}
+                  className="body-3 font-sans text-secondary hover:underline cursor-pointer inline-flex items-center gap-1 font-medium"
+                >
+                  <span>{t("view_terms_detail")}</span>
+                </button>
+              </div>
+            </div>
+            <div className="text-gray-300 text-sm shrink-0 pr-1">
+              ›
+            </div>
+          </div>
+        );
+      }
+
+      // Khi không đủ điều kiện (chưa đạt giá trị đơn tối thiểu)
+      if (!isShippingPromotionEligible) {
+        return (
+          <div
+            key={camp.id}
+            aria-disabled="true"
+            className="relative rounded-2xl border transition-all overflow-hidden flex items-center gap-3.5 p-3 shadow-xs opacity-50 border-gray-200 bg-gray-50/70 select-none cursor-not-allowed"
+          >
+            {/* Banner grayscale */}
+            <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 relative border flex items-center justify-center grayscale bg-gray-200 border-gray-300">
+              <CampaignBannerImage
+                camp={camp}
+                isLocked={true}
+                fallbackTag={t("promo_tag")}
+              />
+            </div>
+            {/* Content */}
+            <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
+              <h4 className="title-3 font-display text-gray-600 font-bold leading-snug line-clamp-2">
+                {camp.name}
+              </h4>
+              {camp.description && (
+                <div className="body-3 font-sans text-gray-500 line-clamp-2">
+                  {camp.description}
+                </div>
+              )}
+              {/* Cảnh báo số tiền còn thiếu */}
+              <p className="text-secondary text-xs font-semibold leading-normal">
+                {shippingMinOrderAmount > 0 && shippingPromotionMissingAmount > 0
+                  ? t("buy_more_campaign_hint", {
+                      minSpend: formatPrice(shippingMinOrderAmount),
+                      missingAmount: formatPrice(shippingPromotionMissingAmount),
+                    })
+                  : t("min_spend_not_met", { amount: formatPrice(shippingMinOrderAmount) })}
+              </p>
+              {/* Xem chi tiết thể lệ */}
+              <div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCampaign(camp);
+                  }}
+                  className="body-3 font-sans text-secondary hover:underline cursor-pointer inline-flex items-center gap-1 font-medium"
+                >
+                  <span>{t("view_terms_detail")}</span>
+                </button>
+              </div>
+            </div>
+            <div className="text-gray-300 text-sm shrink-0 pr-1">
+              ›
+            </div>
+          </div>
+        );
+      }
+
+      // Đủ điều kiện và không bị khóa
       return (
         <div
           key={camp.id}
@@ -2825,8 +3014,13 @@ export default function CouponModal({
                       <div className="space-y-3">
                         {hasMemberTierCard && renderMemberTierCard()}
                         {eligibleCampaigns.map((camp) => renderCampaignCard(camp, true))}
-                        {shippingPromotionItem && renderCampaignCard(shippingPromotionItem, true)}
+                        {shippingPromotionItem && isShippingPromotionEligible && !isShippingPromotionLocked && (
+                          renderCampaignCard(shippingPromotionItem, true)
+                        )}
                         {ineligibleCampaigns.map((camp) => renderCampaignCard(camp, false))}
+                        {shippingPromotionItem && (!isShippingPromotionEligible || isShippingPromotionLocked) && (
+                          renderCampaignCard(shippingPromotionItem, false)
+                        )}
                       </div>
                     </div>
                   )}

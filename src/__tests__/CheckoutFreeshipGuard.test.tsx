@@ -338,4 +338,122 @@ describe('Checkout Freeship Guard & Anti-waste Tests (Tasks 3.1, 3.2, 3.3)', () 
       expect(calledUrl).toContain('is_auto_freeship=0');
     });
   });
+
+  describe('Task 3.4: Thẻ Trợ giá ship tự động (shipping-promotion-card) - Disable / Khóa tổng quát', () => {
+    const mockShippingSettings = {
+      is_min_amount_enabled: true,
+      min_order_amount: 400000,
+      card_title: 'Giảm 20K Ship Cho Đơn Từ 400K',
+      card_banner: '/images/ship-banner.png',
+      card_badge: 'TRỢ GIÁ SHIP',
+      card_description: 'Ưu đãi tự động giảm 20.000đ cước vận chuyển cho đơn hàng từ 400.000đ.',
+    };
+
+    it('hiển thị thẻ trợ giá ship sáng bình thường khi đơn đủ điều kiện và không bị khóa', async () => {
+      render(
+        <CouponModal
+          isOpen={true}
+          onClose={vi.fn()}
+          subtotal={500000}
+          shippingSettings={mockShippingSettings as any}
+        />
+      );
+
+      expect(await screen.findByText('Giảm 20K Ship Cho Đơn Từ 400K')).toBeInTheDocument();
+      expect(screen.getByText('Chi tiết điều kiện áp dụng ›')).toBeInTheDocument();
+      const card = screen.getByText('Giảm 20K Ship Cho Đơn Từ 400K').closest('div[class*="rounded-2xl"]')!;
+      expect(card.className).not.toContain('cursor-not-allowed');
+      expect(card.className).toContain('cursor-pointer');
+    });
+
+    it('disable và hiển thị gợi ý mua thêm khi đơn chưa đạt giá trị tối thiểu (subtotal < min_order_amount)', async () => {
+      render(
+        <CouponModal
+          isOpen={true}
+          onClose={vi.fn()}
+          subtotal={250000}
+          shippingSettings={mockShippingSettings as any}
+        />
+      );
+
+      expect(await screen.findByText('Giảm 20K Ship Cho Đơn Từ 400K')).toBeInTheDocument();
+      const card = screen.getByText('Giảm 20K Ship Cho Đơn Từ 400K').closest('div[class*="rounded-2xl"]')!;
+      expect(card.className).toContain('cursor-not-allowed');
+      expect(card.className).toContain('opacity-50');
+      expect(screen.getByText(/Chưa đạt giá trị đơn tối thiểu.*400\.000.*Mua thêm 150\.000/i)).toBeInTheDocument();
+    });
+
+    it('tự động khóa và hiển thị lý do màu đỏ khi prop canCombineWithFreeship === false hoặc isFreeshipBlocked === true', async () => {
+      render(
+        <CouponModal
+          isOpen={true}
+          onClose={vi.fn()}
+          subtotal={500000}
+          canCombineWithFreeship={false}
+          shippingSettings={mockShippingSettings as any}
+        />
+      );
+
+      expect(await screen.findByText('Giảm 20K Ship Cho Đơn Từ 400K')).toBeInTheDocument();
+      const card = screen.getByText('Giảm 20K Ship Cho Đơn Từ 400K').closest('div[class*="rounded-2xl"]')!;
+      expect(card.className).toContain('cursor-not-allowed');
+      expect(card.className).toContain('opacity-50');
+      expect(screen.getByText('Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship')).toBeInTheDocument();
+    });
+
+    it('tự động khóa khi có Campaign đang áp dụng có can_combine_with_freeship === false', async () => {
+      const promoCampaign = {
+        id: 99,
+        name: 'Mua 2 Tặng 1 Trà Sữa',
+        can_combine_with_freeship: false,
+        can_combine_with_promotions: true,
+      };
+
+      render(
+        <CouponModal
+          isOpen={true}
+          onClose={vi.fn()}
+          subtotal={500000}
+          appliedCampaignIds={[99]}
+          campaigns={[promoCampaign as any]}
+          shippingSettings={mockShippingSettings as any}
+        />
+      );
+
+      expect(await screen.findByText('Giảm 20K Ship Cho Đơn Từ 400K')).toBeInTheDocument();
+      const card = screen.getByText('Giảm 20K Ship Cho Đơn Từ 400K').closest('div[class*="rounded-2xl"]')!;
+      expect(card.className).toContain('cursor-not-allowed');
+      expect(card.className).toContain('opacity-50');
+      expect(screen.getByText('Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship')).toBeInTheDocument();
+    });
+
+    it('tự động khóa khi có activeCartPromos có can_combine_with_freeship === false', async () => {
+      const cartPromo = {
+        id: 101,
+        name: 'Quà tặng khai trương',
+        can_combine_with_freeship: false,
+        promotion_type: 'order_gift_discount' as const,
+        min_order_value: 0,
+        discount_type: 'custom',
+        discount_value: 0,
+        items: [],
+      };
+
+      render(
+        <CouponModal
+          isOpen={true}
+          onClose={vi.fn()}
+          subtotal={500000}
+          activePromotions={[cartPromo as any]}
+          shippingSettings={mockShippingSettings as any}
+        />
+      );
+
+      expect(await screen.findByText('Giảm 20K Ship Cho Đơn Từ 400K')).toBeInTheDocument();
+      const card = screen.getByText('Giảm 20K Ship Cho Đơn Từ 400K').closest('div[class*="rounded-2xl"]')!;
+      expect(card.className).toContain('cursor-not-allowed');
+      expect(card.className).toContain('opacity-50');
+      expect(screen.getByText('Chương trình khuyến mãi hiện tại không áp dụng cùng mã Freeship')).toBeInTheDocument();
+    });
+  });
 });
