@@ -20,6 +20,7 @@ import {
   CampaignEligibilityResult,
   CampaignLockResult,
 } from "@/services/campaignService";
+import { mergeCampaignObjects } from "@/types/campaign";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { useAuth, StorefrontUser, getMemberTier } from "@/contexts/AuthContext";
@@ -59,20 +60,30 @@ export function formatPrivateVoucherError(errMsg: string): string {
 export interface CartItemProductEligibilityCheck {
   id?: number | string;
   product_id?: number | string;
-  productId?: number;
-  product_variant_id?: number | null;
-  variantId?: number | null;
+  productId?: number | string;
+  product_variant_id?: number | string | null;
+  variantId?: number | string | null;
   variant_id?: number | string | null;
-  parentProductId?: number | null;
-  parent_product_id?: number | null;
+  parentProductId?: number | string | null;
+  parent_product_id?: number | string | null;
+  db_id?: number | string | null;
+  product_db_id?: number | string | null;
+  variant_db_id?: number | string | null;
   productCode?: string | null;
   product_code?: string | null;
+  code?: string | null;
+  sku?: string | null;
   kiotviet_id?: number | string | null;
+  kiotvietId?: number | string | null;
   variant?: string | null;
   variant_name?: string | null;
+  variant_vi?: string | null;
+  variant_en?: string | null;
   name?: string | null;
   product_name?: string | null;
   title?: string | null;
+  title_vi?: string | null;
+  title_en?: string | null;
   quantity?: number;
 }
 
@@ -280,44 +291,69 @@ export function getVoucherBadgeLabel(
   return `-${formatPrice(v.value)}`;
 }
 
-export function evaluateCampaignEligibility(
-  c: PublicCampaignItem | ActivePromotion,
-  options: {
-    subtotal?: number;
-    originalSubtotal?: number;
-    cartItems?: CartItemProductEligibilityCheck[];
-    isBrowseMode?: boolean;
-    t?: (key: string, values?: Record<string, any>) => string;
+const toPositiveNumber = (val: any): number | null => {
+  if (val === null || val === undefined || val === "") return null;
+  const num = Number(val);
+  return !isNaN(num) && num > 0 ? num : null;
+};
+
+const normStr = (str?: string | null) =>
+  (str || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[()_\-–—[\],.]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const isNameMatch = (a?: string | null, b?: string | null) => {
+  const na = normStr(a);
+  const nb = normStr(b);
+  if (!na || !nb) return false;
+  return na === nb || na.includes(nb) || nb.includes(na);
+};
+
+const isVariantNameCompatible = (itemVariant?: string | null, targetName?: string | null) => {
+  if (!itemVariant || !targetName) return false;
+  if (isNameMatch(itemVariant, targetName)) return true;
+
+  // Khi biến thể có hậu tố ngôn ngữ trong ngoặc như "Set 2 (Japanese Rice)" vs "Set 2 (Cơm gạo Nhật)",
+  // trích xuất phần định danh biến thể trước dấu "(" để đối chiếu chính xác ("set 2" === "set 2").
+  const rawBaseItem = String(itemVariant).split("(")[0];
+  const rawBaseTarget = String(targetName).split("(")[0];
+  const baseItem = normStr(rawBaseItem);
+  const baseTarget = normStr(rawBaseTarget);
+  if (baseItem && baseTarget && baseItem.length >= 2 && baseItem === baseTarget) {
+    return true;
   }
-): CampaignEligibilityResult {
-  const { subtotal = 0, originalSubtotal, cartItems, isBrowseMode = false, t } = options;
 
-  if (isBrowseMode) {
-    return { eligible: true };
-  }
+  return false;
+};
 
-  // 1. Kiểm tra min_order_value
-  const minSpend = Number(c.min_order_value || 0);
-  const effectiveSpend =
-    c.can_combine_with_promotions === false && originalSubtotal !== undefined && originalSubtotal > 0
-      ? originalSubtotal
-      : subtotal;
+export interface ExtractedTriggerMeta {
+  ti: any;
+  tiProductId: number | null;
+  tiVariantId: number | null;
+  tiVariantName: string | null;
+  tiProductName: string | null;
+  productIds: number[];
+  variantIds: number[];
+  allProductVariantIds: number[];
+  kiotvietIds: number[];
+  variantKiotvietIds: number[];
+  productCodes: string[];
+  variantNames: string[];
+  productNames: string[];
+  names: string[];
+  hasSpecificVariant: boolean;
+}
 
-  if (minSpend > 0 && effectiveSpend < minSpend) {
-    const missingAmount = Math.max(0, minSpend - effectiveSpend);
-    return {
-      eligible: false,
-      reason: t
-        ? (t("buy_more_campaign_hint", {
-            minSpend: formatPrice(minSpend),
-            missingAmount: formatPrice(missingAmount),
-          }) || `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missingAmount)} để áp dụng`)
-        : `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missingAmount)} để áp dụng`,
-      missingAmount,
-    };
-  }
-
-  // Helper kiểm tra trigger items nếu campaign có cấu hình
+export function extractTriggerMeta(c: PublicCampaignItem | ActivePromotion): {
+  settingsObj: Record<string, any>;
+  triggerItems: any[];
+  hasTriggerItems: boolean;
+  triggerMetaList: ExtractedTriggerMeta[];
+} {
   let settingsObj: Record<string, any> = {};
   if (typeof c.settings === "object" && c.settings !== null) {
     settingsObj = c.settings as Record<string, any>;
@@ -360,33 +396,9 @@ export function evaluateCampaignEligibility(
   }
 
   const hasTriggerItems = Array.isArray(triggerItems) && triggerItems.length > 0;
-
-  const toPositiveNumber = (val: any): number | null => {
-    if (val === null || val === undefined || val === "") return null;
-    const num = Number(val);
-    return !isNaN(num) && num > 0 ? num : null;
-  };
-
-  const normStr = (str?: string | null) =>
-    (str || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[()_\-–—[\],.]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-  const isNameMatch = (a?: string | null, b?: string | null) => {
-    const na = normStr(a);
-    const nb = normStr(b);
-    if (!na || !nb) return false;
-    return na === nb || na.includes(nb) || nb.includes(na);
-  };
-
-  // Thu thập danh sách triggerMeta từ cả triggerItems VÀ c.items
   const campaignItems: any[] = Array.isArray(c.items) ? c.items : [];
 
-  const triggerMetaList = triggerItems.map((ti: any) => {
+  const triggerMetaList: ExtractedTriggerMeta[] = triggerItems.map((ti: any) => {
     const rawTiPId = (typeof ti === "number" || typeof ti === "string")
       ? ti
       : (ti?.product_id ?? ti?.id ?? ti?.productId ?? ti?.product?.id);
@@ -397,21 +409,53 @@ export function evaluateCampaignEligibility(
       : null;
     const tiVariantId = toPositiveNumber(rawTiVId);
 
+    const tiVariantDbIds: number[] = (ti && typeof ti === "object" && Array.isArray(ti.variant_db_ids))
+      ? ti.variant_db_ids.map(toPositiveNumber).filter((id: number | null): id is number => id !== null)
+      : [];
+
     const rawTiKId = (ti && typeof ti === "object")
       ? (ti.kiotviet_id ?? ti.kiotvietId ?? ti.kiot_viet_id)
       : null;
     const tiKiotvietId = toPositiveNumber(rawTiKId);
 
+    const tiProductKiotvietId = (ti && typeof ti === "object")
+      ? toPositiveNumber(ti.product_kiotviet_id ?? ti.productKiotvietId)
+      : null;
+
+    const tiVariantKiotvietId = (ti && typeof ti === "object")
+      ? toPositiveNumber(ti.variant_kiotviet_id ?? ti.variantKiotvietId)
+      : null;
+
+    const tiVariantKiotvietIds: number[] = (ti && typeof ti === "object" && Array.isArray(ti.variant_kiotviet_ids))
+      ? ti.variant_kiotviet_ids.map(toPositiveNumber).filter((id: number | null): id is number => id !== null)
+      : [];
+
     const tiProductCode = (ti && typeof ti === "object")
       ? (ti.product_code ?? ti.productCode ?? ti.code ?? ti.sku ?? null)
       : null;
 
+    const tiVariantCodes: string[] = (ti && typeof ti === "object" && Array.isArray(ti.variant_codes))
+      ? ti.variant_codes.filter(Boolean).map((s: any) => String(s))
+      : [];
+
     const tiVariantName = (ti && typeof ti === "object")
       ? (ti.variant_name ?? ti.variantName ?? ti.variant ?? ti.size ?? null)
+      : null;
+    const tiVariantNameEn = (ti && typeof ti === "object")
+      ? (ti.variant_name_en ?? ti.variantNameEn ?? ti.variant_en ?? ti.size_en ?? null)
+      : null;
+    const tiVariantNameVi = (ti && typeof ti === "object")
+      ? (ti.variant_name_vi ?? ti.variantNameVi ?? ti.variant_vi ?? ti.size_vi ?? null)
       : null;
 
     const tiProductName = (ti && typeof ti === "object")
       ? (ti.product_name ?? ti.productName ?? ti.name ?? ti.title ?? null)
+      : null;
+    const tiProductNameEn = (ti && typeof ti === "object")
+      ? (ti.product_name_en ?? ti.productNameEn ?? ti.name_en ?? ti.title_en ?? null)
+      : null;
+    const tiProductNameVi = (ti && typeof ti === "object")
+      ? (ti.product_name_vi ?? ti.productNameVi ?? ti.name_vi ?? ti.title_vi ?? null)
       : null;
 
     // Tìm trong c.items các item có cùng product_id hoặc product_variant_id (hoặc các item trong c.items có !is_free)
@@ -430,7 +474,12 @@ export function evaluateCampaignEligibility(
         if (tiVariantId && ciVId) {
           return tiVariantId === ciVId;
         }
-        if (tiVariantName && ci.product_name && !isNameMatch(tiVariantName, ci.product_name)) {
+        if (
+          tiVariantName &&
+          ci.product_name &&
+          !isVariantNameCompatible(tiVariantName, ci.product_name) &&
+          !(tiVariantNameEn && isVariantNameCompatible(tiVariantNameEn, ci.product_name_en || ci.product_name))
+        ) {
           return false;
         }
         return true;
@@ -438,10 +487,17 @@ export function evaluateCampaignEligibility(
 
       // 3. Khớp theo tên biến thể / tên sản phẩm nếu ci không phải quà tặng miễn phí (!is_free)
       if (ci.is_free === false) {
-        if (tiVariantName && ci.product_name && isNameMatch(tiVariantName, ci.product_name)) {
+        const ciNames = [ci.product_name, ci.product_name_en, ci.product_name_vi, ci.name, ci.title].filter(Boolean);
+        if (tiVariantName && ciNames.some((n) => isVariantNameCompatible(tiVariantName, n))) {
           return true;
         }
-        if (tiProductName && ci.product_name && isNameMatch(tiProductName, ci.product_name)) {
+        if (tiVariantNameEn && ciNames.some((n) => isVariantNameCompatible(tiVariantNameEn, n))) {
+          return true;
+        }
+        if (tiProductName && ciNames.some((n) => isNameMatch(tiProductName, n))) {
+          return true;
+        }
+        if (tiProductNameEn && ciNames.some((n) => isNameMatch(tiProductNameEn, n))) {
           return true;
         }
         const nonFreeCount = campaignItems.filter((x: any) => x && !x.is_free).length;
@@ -453,6 +509,14 @@ export function evaluateCampaignEligibility(
       return false;
     });
 
+    const hasSpecificVariant = Boolean(
+      tiVariantId ||
+      tiVariantName ||
+      tiVariantNameEn ||
+      tiVariantNameVi ||
+      tiVariantKiotvietId
+    );
+
     const productIds: number[] = Array.from(
       new Set(
         [
@@ -462,11 +526,43 @@ export function evaluateCampaignEligibility(
       )
     );
 
+    const allProductVariantIds: number[] = Array.from(
+      new Set(
+        [
+          tiVariantId,
+          ...tiVariantDbIds,
+          ...matchingCampaignItems.flatMap((ci: any) => [
+            toPositiveNumber(ci.product_variant_id ?? ci.variantId ?? ci.variant_id),
+            ...(Array.isArray(ci.variant_db_ids) ? ci.variant_db_ids.map(toPositiveNumber) : []),
+          ]),
+        ].filter((id): id is number => id !== null)
+      )
+    );
+
     const variantIds: number[] = Array.from(
       new Set(
         [
           tiVariantId,
-          ...matchingCampaignItems.map((ci: any) => toPositiveNumber(ci.product_variant_id ?? ci.variantId ?? ci.variant_id)),
+          ...(!hasSpecificVariant ? tiVariantDbIds : []),
+          ...matchingCampaignItems.flatMap((ci: any) => [
+            toPositiveNumber(ci.product_variant_id ?? ci.variantId ?? ci.variant_id),
+            ...(!hasSpecificVariant && Array.isArray(ci.variant_db_ids) ? ci.variant_db_ids.map(toPositiveNumber) : []),
+          ]),
+        ].filter((id): id is number => id !== null)
+      )
+    );
+
+    const variantKiotvietIds: number[] = Array.from(
+      new Set(
+        [
+          tiVariantKiotvietId,
+          ...(tiVariantId ? [tiKiotvietId] : []),
+          ...(!hasSpecificVariant ? tiVariantKiotvietIds : []),
+          ...matchingCampaignItems.flatMap((ci: any) => [
+            toPositiveNumber(ci.variant_kiotviet_id ?? ci.variantKiotvietId),
+            ...(ci.product_variant_id || ci.variant_id || ci.variantId ? [toPositiveNumber(ci.kiotviet_id ?? ci.kiotvietId)] : []),
+            ...(!hasSpecificVariant && Array.isArray(ci.variant_kiotviet_ids) ? ci.variant_kiotviet_ids.map(toPositiveNumber) : []),
+          ]),
         ].filter((id): id is number => id !== null)
       )
     );
@@ -475,7 +571,15 @@ export function evaluateCampaignEligibility(
       new Set(
         [
           tiKiotvietId,
-          ...matchingCampaignItems.map((ci: any) => toPositiveNumber(ci.kiotviet_id ?? ci.kiotvietId)),
+          tiProductKiotvietId,
+          tiVariantKiotvietId,
+          ...tiVariantKiotvietIds,
+          ...matchingCampaignItems.flatMap((ci: any) => [
+            toPositiveNumber(ci.kiotviet_id ?? ci.kiotvietId),
+            toPositiveNumber(ci.product_kiotviet_id ?? ci.productKiotvietId),
+            toPositiveNumber(ci.variant_kiotviet_id ?? ci.variantKiotvietId),
+            ...(Array.isArray(ci.variant_kiotviet_ids) ? ci.variant_kiotviet_ids.map(toPositiveNumber) : []),
+          ]),
         ].filter((id): id is number => id !== null)
       )
     );
@@ -484,30 +588,64 @@ export function evaluateCampaignEligibility(
       new Set(
         [
           tiProductCode,
-          ...matchingCampaignItems.flatMap((ci: any) => [ci.product_code, ci.productCode, ci.code, ci.sku]),
+          ...(!hasSpecificVariant ? tiVariantCodes : []),
+          ...matchingCampaignItems.flatMap((ci: any) => [
+            ci.product_code,
+            ci.productCode,
+            ci.code,
+            ci.sku,
+            ...(!hasSpecificVariant && Array.isArray(ci.variant_codes) ? ci.variant_codes : []),
+          ]),
         ]
           .filter(Boolean)
           .map((s) => String(s).toLowerCase().trim())
       )
     );
 
-    const names: string[] = Array.from(
+    const variantNames: string[] = Array.from(
       new Set(
         [
           tiVariantName,
-          tiProductName,
+          tiVariantNameEn,
+          tiVariantNameVi,
           ...matchingCampaignItems.flatMap((ci: any) => [
-            ci.product_name,
-            ci.name,
-            ci.title,
             ci.variant_name,
+            ci.variant_name_en,
+            ci.variant_name_vi,
             ci.variant,
+            ci.variant_en,
+            ci.variant_vi,
           ]),
         ]
           .filter(Boolean)
           .map((s) => String(s).trim())
       )
     );
+
+    const productNames: string[] = Array.from(
+      new Set(
+        [
+          tiProductName,
+          tiProductNameEn,
+          tiProductNameVi,
+          ...matchingCampaignItems.flatMap((ci: any) => [
+            ci.product_name,
+            ci.product_name_en,
+            ci.product_name_vi,
+            ci.name,
+            ci.name_en,
+            ci.name_vi,
+            ci.title,
+            ci.title_en,
+            ci.title_vi,
+          ]),
+        ]
+          .filter(Boolean)
+          .map((s) => String(s).trim())
+      )
+    );
+
+    const names: string[] = Array.from(new Set([...variantNames, ...productNames]));
 
     return {
       ti,
@@ -517,96 +655,207 @@ export function evaluateCampaignEligibility(
       tiProductName,
       productIds,
       variantIds,
+      allProductVariantIds,
       kiotvietIds,
+      variantKiotvietIds,
       productCodes,
+      variantNames,
+      productNames,
       names,
+      hasSpecificVariant,
     };
   });
+
+  return {
+    settingsObj,
+    triggerItems,
+    hasTriggerItems,
+    triggerMetaList,
+  };
+}
+
+export function evaluateCampaignEligibility(
+  c: PublicCampaignItem | ActivePromotion,
+  options: {
+    subtotal?: number;
+    originalSubtotal?: number;
+    cartItems?: CartItemProductEligibilityCheck[];
+    isBrowseMode?: boolean;
+    t?: (key: string, values?: Record<string, any>) => string;
+  }
+): CampaignEligibilityResult {
+  const { subtotal = 0, originalSubtotal, cartItems, isBrowseMode = false, t } = options;
+
+  if (isBrowseMode) {
+    return { eligible: true };
+  }
+
+  // 1. Kiểm tra min_order_value
+  const minSpend = Number(c.min_order_value || 0);
+  const effectiveSpend =
+    c.can_combine_with_promotions === false && originalSubtotal !== undefined && originalSubtotal > 0
+      ? originalSubtotal
+      : subtotal;
+
+  if (minSpend > 0 && effectiveSpend < minSpend) {
+    const missingAmount = Math.max(0, minSpend - effectiveSpend);
+    return {
+      eligible: false,
+      reason: t
+        ? (t("buy_more_campaign_hint", {
+            minSpend: formatPrice(minSpend),
+            missingAmount: formatPrice(missingAmount),
+          }) || `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missingAmount)} để áp dụng`)
+        : `Chưa đạt giá trị đơn tối thiểu ${formatPrice(minSpend)}. Mua thêm ${formatPrice(missingAmount)} để áp dụng`,
+      missingAmount,
+    };
+  }
+
+  const { settingsObj, hasTriggerItems, triggerMetaList } = extractTriggerMeta(c);
 
   const isCartItemMatchingTrigger = (item: CartItemProductEligibilityCheck) => {
     const rawPId = item.product_id ?? item.productId ?? item.id;
     const pId = toPositiveNumber(rawPId);
-    const rawVId = item.product_variant_id ?? item.variantId ?? (item as any).variant_id;
+    const rawVId = item.product_variant_id ?? item.variantId ?? item.variant_id;
     const vId = toPositiveNumber(rawVId);
-    const rawParentPId = item.parentProductId ?? (item as any).parent_product_id;
+    const rawParentPId = item.parentProductId ?? item.parent_product_id;
     const parentPId = toPositiveNumber(rawParentPId);
-    const rawKvId = (item as any).kiotviet_id ?? (item as any).kiotvietId;
+    const dbId = toPositiveNumber(item.db_id);
+    const productDbId = toPositiveNumber(item.product_db_id);
+    const variantDbId = toPositiveNumber(item.variant_db_id);
+    const rawKvId = item.kiotviet_id ?? item.kiotvietId;
     const kvId = toPositiveNumber(rawKvId);
 
     // Xử lý id dạng chuỗi kép ghép "80-1146" hoặc "80-Set 2"
     let compoundFirstId: number | null = null;
+    let compoundSecondId: number | null = null;
     if (typeof item.id === "string" && item.id.includes("-")) {
       const parts = item.id.split("-");
       compoundFirstId = toPositiveNumber(parts[0]);
+      compoundSecondId = toPositiveNumber(parts[1]);
     }
 
-    const itemCode = (item.productCode ?? item.product_code ?? (item as any).code ?? (item as any).sku ?? "")
+    const itemProductIdCandidates = [pId, parentPId, dbId, productDbId, compoundFirstId].filter(
+      (id): id is number => id !== null
+    );
+    const itemVariantIdCandidates = [vId, variantDbId, pId, dbId, compoundSecondId].filter(
+      (id): id is number => id !== null
+    );
+    const itemAllIdCandidates = Array.from(
+      new Set([...itemProductIdCandidates, ...itemVariantIdCandidates, kvId].filter((id): id is number => id !== null))
+    );
+
+    const itemCode = (item.productCode ?? item.product_code ?? item.code ?? item.sku ?? "")
       .toString()
       .toLowerCase()
       .trim();
-    const itemVariantName = item.variant ?? (item as any).variant_name;
-    const itemProductName = item.title ?? (item as any).name ?? (item as any).product_name;
+
+    const itemVariantNames = Array.from(
+      new Set(
+        [item.variant, item.variant_en, item.variant_vi, item.variant_name]
+          .filter(Boolean)
+          .map((s) => String(s).trim())
+      )
+    );
+    const itemProductNames = Array.from(
+      new Set(
+        [item.title, item.title_en, item.title_vi, item.name, item.product_name]
+          .filter(Boolean)
+          .map((s) => String(s).trim())
+      )
+    );
 
     return triggerMetaList.some((meta) => {
+      const hasVariantNameMatch =
+        itemVariantNames.length > 0 &&
+        meta.names.some((name) => itemVariantNames.some((iv) => isVariantNameCompatible(iv, name)));
+      const hasProductNameMatch =
+        itemProductNames.length > 0 &&
+        meta.names.some((name) => itemProductNames.some((ip) => isNameMatch(ip, name)));
+
       // 1. Khớp KiotViet ID
-      if (meta.kiotvietIds.length > 0) {
-        if (kvId !== null && meta.kiotvietIds.includes(kvId)) return true;
-        if (pId !== null && meta.kiotvietIds.includes(pId)) return true;
-        if (vId !== null && meta.kiotvietIds.includes(vId)) return true;
-        if (parentPId !== null && meta.kiotvietIds.includes(parentPId)) return true;
-        if (compoundFirstId !== null && meta.kiotvietIds.includes(compoundFirstId)) return true;
+      if (meta.hasSpecificVariant) {
+        if (
+          meta.variantKiotvietIds.length > 0 &&
+          [kvId, vId, pId, variantDbId, compoundSecondId]
+            .filter((id): id is number => id !== null)
+            .some((id) => meta.variantKiotvietIds.includes(id))
+        ) {
+          return true;
+        }
+        if (
+          meta.kiotvietIds.length > 0 &&
+          itemAllIdCandidates.some((id) => meta.kiotvietIds.includes(id))
+        ) {
+          if (itemVariantNames.length === 0 || meta.variantNames.length === 0 || hasVariantNameMatch) {
+            return true;
+          }
+        }
+      } else if (meta.kiotvietIds.length > 0) {
+        if (itemAllIdCandidates.some((id) => meta.kiotvietIds.includes(id))) {
+          return true;
+        }
       }
 
       // 2. Khớp Product Code / SKU
-      if (itemCode && meta.productCodes.length > 0) {
-        if (meta.productCodes.includes(itemCode)) return true;
+      if (itemCode && meta.productCodes.length > 0 && meta.productCodes.includes(itemCode)) {
+        if (!meta.hasSpecificVariant || itemVariantNames.length === 0 || meta.variantNames.length === 0 || hasVariantNameMatch) {
+          return true;
+        }
       }
 
-      // 3. Khớp Database ID: item.productId hoặc item.parentProductId hoặc item.variantId
+      // 3. Khớp Database ID: productIds, variantIds, allProductVariantIds, kiotvietIds
       const isParentIdMatch =
-        (pId !== null && meta.productIds.includes(pId)) ||
-        (parentPId !== null && meta.productIds.includes(parentPId)) ||
-        (compoundFirstId !== null && meta.productIds.includes(compoundFirstId));
+        itemProductIdCandidates.some((id) => meta.productIds.includes(id)) ||
+        itemAllIdCandidates.some((id) => meta.allProductVariantIds.includes(id)) ||
+        itemAllIdCandidates.some((id) => meta.kiotvietIds.includes(id));
 
-      if (meta.variantIds.length > 0) {
-        // a. pId khớp variantId HOẶC vId khớp variantId
-        if ((pId !== null && meta.variantIds.includes(pId)) || (vId !== null && meta.variantIds.includes(vId))) {
+      const isVariantIdMatch = itemVariantIdCandidates.some((id) => meta.variantIds.includes(id));
+
+      if (meta.hasSpecificVariant || meta.variantIds.length > 0) {
+        // a. Khớp trực tiếp theo Variant ID cụ thể
+        if (isVariantIdMatch) {
           return true;
         }
 
-        // b. Product ID khớp VÀ (vId khớp HOẶC tên biến thể khớp HOẶC cart item không phân biệt biến thể)
+        // b. Product ID gốc khớp VÀ (tên biến thể tương thích HOẶC trigger không chỉ định tên biến thể HOẶC cart item không có biến thể)
         if (isParentIdMatch) {
-          if (vId !== null && meta.variantIds.includes(vId)) return true;
-          if (itemVariantName && meta.names.some((name) => isNameMatch(itemVariantName, name))) return true;
-          if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) return true;
-          if (!itemVariantName && vId === null) return true;
+          if (hasVariantNameMatch) return true;
+          if (meta.variantNames.length === 0 && hasProductNameMatch) return true;
+          if (itemVariantNames.length === 0 && vId === null && variantDbId === null) return true;
         }
 
-        // c. Khớp theo tên biến thể khi có variantId
-        if (itemVariantName && meta.names.some((name) => isNameMatch(itemVariantName, name))) {
+        // c. Khớp theo tên biến thể khi có variant
+        if (hasVariantNameMatch) {
           if (isParentIdMatch) return true;
-          if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) return true;
-          if (meta.names.some((name) => normStr(itemVariantName) === normStr(name))) return true;
+          if (hasProductNameMatch) return true;
+          if (meta.names.some((name) => itemVariantNames.some((iv) => normStr(iv) === normStr(name)))) return true;
         }
       } else {
-        // Nếu không có variantId cụ thể (áp dụng cho toàn bộ sản phẩm):
+        // Nếu không có variant cụ thể (áp dụng cho toàn bộ sản phẩm cha):
         if (isParentIdMatch) {
           return true;
         }
       }
 
-      // 4. Khớp Tên / Biến thể
-      if (itemVariantName && meta.names.some((name) => isNameMatch(itemVariantName, name))) {
+      // 4. Khớp Tên / Biến thể Đa Ngôn Ngữ (VI & EN)
+      if (hasVariantNameMatch) {
         if (isParentIdMatch) return true;
-        if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) return true;
-        if (meta.names.some((name) => normStr(itemVariantName) === normStr(name))) return true;
+        if (hasProductNameMatch) return true;
+        if (meta.names.some((name) => itemVariantNames.some((iv) => normStr(iv) === normStr(name)))) return true;
       }
 
-      if (itemProductName && meta.names.some((name) => isNameMatch(itemProductName, name))) {
-        if (meta.variantIds.length === 0 || !itemVariantName) {
+      if (hasProductNameMatch) {
+        if ((!meta.hasSpecificVariant && meta.variantIds.length === 0) || itemVariantNames.length === 0) {
           return true;
         }
-        if (meta.names.some((name) => normStr(itemProductName) === normStr(name))) {
+        if (hasVariantNameMatch) {
+          return true;
+        }
+        if (
+          meta.variantNames.length === 0 &&
+          meta.names.some((name) => itemProductNames.some((ip) => normStr(ip) === normStr(name)))
+        ) {
           return true;
         }
       }
@@ -713,19 +962,22 @@ export function evaluateCampaignEligibility(
   }
 
   const matchingItems = cartItems.filter((item) => {
-    const rawPId = item.product_id ?? item.productId;
-    const pId = rawPId !== null && rawPId !== undefined ? Number(rawPId) : null;
-    const rawVId = item.product_variant_id ?? item.variantId;
-    const vId = rawVId !== null && rawVId !== undefined ? Number(rawVId) : null;
-    const parentPId = item.parentProductId ?? (item as any).parent_product_id ? Number(item.parentProductId ?? (item as any).parent_product_id) : null;
+    const pId = toPositiveNumber(item.product_id ?? item.productId);
+    const vId = toPositiveNumber(item.product_variant_id ?? item.variantId ?? item.variant_id);
+    const parentPId = toPositiveNumber(item.parentProductId ?? item.parent_product_id);
+    const dbId = toPositiveNumber(item.db_id);
+    const productDbId = toPositiveNumber(item.product_db_id);
+    const variantDbId = toPositiveNumber(item.variant_db_id);
+    const kvId = toPositiveNumber(item.kiotviet_id ?? item.kiotvietId);
+
+    const variantCandidates = [vId, variantDbId, pId, dbId, kvId].filter((id): id is number => id !== null);
+    const productCandidates = [pId, parentPId, dbId, productDbId, kvId].filter((id): id is number => id !== null);
 
     const matchesVariant = Boolean(
-      (vId && targetVariantIds.length > 0 && targetVariantIds.includes(vId)) ||
-      (pId && targetVariantIds.length > 0 && targetVariantIds.includes(pId))
+      targetVariantIds.length > 0 && variantCandidates.some((id) => targetVariantIds.includes(id))
     );
     const matchesProduct = Boolean(
-      (pId && targetProductIds.length > 0 && targetProductIds.includes(pId)) ||
-      (parentPId && targetProductIds.length > 0 && targetProductIds.includes(parentPId))
+      targetProductIds.length > 0 && productCandidates.some((id) => targetProductIds.includes(id))
     );
     return matchesVariant || matchesProduct;
   });
@@ -1137,13 +1389,23 @@ export default function CouponModal({
     return null;
   }, [shippingSettingsState]);
 
-  // Combined campaigns list
+  // Combined campaigns list (deep-merge matching activePromotions & public campaigns)
   const allCampaigns = useMemo(() => {
+    const mergedCampaigns = campaigns.map((c) => {
+      if (!activePromotions || activePromotions.length === 0) return c;
+      const matchingActive = activePromotions.find(
+        (ap) => ap && String(ap.id) === String(c.id)
+      );
+      if (matchingActive) {
+        return mergeCampaignObjects(matchingActive as PublicCampaignItem, c);
+      }
+      return c;
+    });
     if (shippingPromotionItem) {
-      return [shippingPromotionItem, ...campaigns];
+      return [shippingPromotionItem, ...mergedCampaigns];
     }
-    return campaigns;
-  }, [campaigns, shippingPromotionItem]);
+    return mergedCampaigns;
+  }, [campaigns, activePromotions, shippingPromotionItem]);
 
   // Active cart promotions flags
   const activeCartPromos = useMemo(() => {
@@ -1411,19 +1673,23 @@ export default function CouponModal({
     return 0;
   }, [shippingSettingsState]);
 
+  const effectiveShippingSubtotal = useMemo(() => {
+    return Math.max(subtotal, originalSubtotal || 0);
+  }, [subtotal, originalSubtotal]);
+
   const isShippingPromotionEligible = useMemo(() => {
     if (shippingMinOrderAmount > 0) {
-      return subtotal >= shippingMinOrderAmount;
+      return effectiveShippingSubtotal >= shippingMinOrderAmount;
     }
     return true;
-  }, [shippingMinOrderAmount, subtotal]);
+  }, [shippingMinOrderAmount, effectiveShippingSubtotal]);
 
   const shippingPromotionMissingAmount = useMemo(() => {
     if (!isShippingPromotionEligible && shippingMinOrderAmount > 0) {
-      return Math.max(0, shippingMinOrderAmount - subtotal);
+      return Math.max(0, shippingMinOrderAmount - effectiveShippingSubtotal);
     }
     return 0;
-  }, [isShippingPromotionEligible, shippingMinOrderAmount, subtotal]);
+  }, [isShippingPromotionEligible, shippingMinOrderAmount, effectiveShippingSubtotal]);
 
   const checkCampaignMutexLock = useCallback(
     (camp: PublicCampaignItem): CampaignLockResult => {
@@ -2166,9 +2432,16 @@ export default function CouponModal({
 
           {/* Content */}
           <div className="flex-1 min-w-0 flex flex-col justify-center space-y-1">
-            <h4 className="title-3 font-display text-gray-600 font-bold leading-snug line-clamp-2">
-              {camp.name}
-            </h4>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="title-3 font-display text-gray-600 font-bold leading-snug line-clamp-2">
+                {camp.name}
+              </h4>
+              {Number(camp.settings?.usage_limit_per_user ?? camp.usage_limit_per_user ?? 0) === 1 && (
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 border border-amber-300 shrink-0">
+                  Chỉ áp dụng 1 lần/khách
+                </span>
+              )}
+            </div>
 
             <div className="body-2 font-sans font-bold text-gray-800">
               <span className="line-clamp-1">
@@ -2268,6 +2541,11 @@ export default function CouponModal({
             }`}>
               {camp.name}
             </h4>
+            {Number(camp.settings?.usage_limit_per_user ?? camp.usage_limit_per_user ?? 0) === 1 && (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 border border-amber-300 shrink-0">
+                Chỉ áp dụng 1 lần/khách
+              </span>
+            )}
             {isSelected && !isBrowseMode && (
               <span className="body-3 font-sans font-bold text-secondary bg-secondary/15 px-2 py-0.5 rounded-full shrink-0">
                 {t("in_use")}
@@ -2827,10 +3105,17 @@ export default function CouponModal({
               )}
 
               {/* Title */}
-              <div className="text-center space-y-1">
+              <div className="text-center space-y-1.5">
                 <h2 className="title-1 font-display text-primary font-bold leading-tight">
                   {selectedCampaign.name}
                 </h2>
+                {Number(selectedCampaign.settings?.usage_limit_per_user ?? selectedCampaign.usage_limit_per_user ?? 0) === 1 && (
+                  <div>
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800 border border-amber-300">
+                      Chỉ áp dụng 1 lần/khách
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Timing & Special Note Info Card */}

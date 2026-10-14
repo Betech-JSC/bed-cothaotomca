@@ -6,6 +6,7 @@ export type DeliveryType = "delivery" | "pickup";
 
 export interface CreateOrderItem {
   product_id: number;
+  product_variant_id?: number;
   product_code: string;
   product_name: string;
   quantity: number;
@@ -39,6 +40,10 @@ export interface CreateOrderPayload {
   } | null;
   items: CreateOrderItem[];
   discount?: number;
+  campaign_id?: number;
+  campaign_ids?: number[];
+  campaign_name?: string;
+  campaign_discount?: number;
   member_discount?: number;
   member_tier?: string;
   tier_discount_percent?: number;

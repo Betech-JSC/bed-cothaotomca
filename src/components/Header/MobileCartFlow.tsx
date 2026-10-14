@@ -10,6 +10,7 @@ import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName, form
 import { getCartItemTitle, getCartItemVariant } from "@/lib/cartLocalization";
 import { useBranches } from "@/contexts/BranchContext";
 import { getActiveCampaigns, type PublicCampaignItem } from "@/services/campaignService";
+import { mergePromotionsWithPublicCampaigns } from "@/types/campaign";
 import {
   calcOrderTotal,
   calculateShippingFee,
@@ -122,7 +123,7 @@ export default function MobileCartFlow({
   inline?: boolean;
   initialDeliveryType?: DeliveryType;
 }) {
-  const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen, setIsCartOpen, hasOutOfStockItems } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen, setIsCartOpen, hasOutOfStockItems, restoreCampaignItemsToOriginalPrice } = useCart();
   const isOutOfStockOverall = Boolean(hasOutOfStockItems || cartItems.some((i) => i.isOutOfStock));
   const { user, token, refreshUser } = useAuth();
   const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
@@ -382,6 +383,7 @@ export default function MobileCartFlow({
   // Config
   const [config, setConfig] = useState<CheckoutConfig | null>(null);
   const [publicCampaigns, setPublicCampaigns] = useState<PublicCampaignItem[]>([]);
+  const [publicCampaignsLoaded, setPublicCampaignsLoaded] = useState(false);
   const branches = useBranches();
 
   // Accordion summary expanded (default expanded so items are visible like on PC)
@@ -724,7 +726,10 @@ export default function MobileCartFlow({
 
   // Load checkout config and active campaigns
   useEffect(() => {
-    getActiveCampaigns().then(setPublicCampaigns).catch(() => {});
+    getActiveCampaigns()
+      .then(setPublicCampaigns)
+      .catch(() => {})
+      .finally(() => setPublicCampaignsLoaded(true));
     getCheckoutConfig()
       .then((cfg) => {
         setConfig(cfg);
@@ -887,56 +892,10 @@ export default function MobileCartFlow({
   }, []);
 
   const allPromotionsList = useMemo(() => {
-    const list: ActivePromotion[] = [...(config?.active_promotions || [])];
-    const existingIds = new Set(list.map((p) => String(p.id)));
-
-    for (const c of publicCampaigns) {
-      if (!existingIds.has(String(c.id))) {
-        let settingsObj: any = c.settings || {};
-        if (typeof settingsObj === "string") {
-          try {
-            settingsObj = JSON.parse(settingsObj);
-          } catch {
-            settingsObj = {};
-          }
-        }
-        const rawItems = (c.items && c.items.length > 0) ? c.items : ((c as any).gift_items || []);
-        list.push({
-          id: typeof c.id === "number" ? c.id : (parseInt(String(c.id), 10) || 0),
-          name: c.name,
-          description: c.description || null,
-          banner: c.banner || null,
-          promotion_type: c.promotion_type,
-          min_order_value: c.min_order_value || 0,
-          discount_type: c.discount_type,
-          discount_value: c.discount_value,
-          max_discount: c.max_discount || null,
-          settings: settingsObj,
-          can_combine_with_promotions: c.can_combine_with_promotions ?? true,
-          can_combine_with_freeship: c.can_combine_with_freeship ?? true,
-          applicable_product_ids: c.applicable_product_ids,
-          applicable_variant_ids: c.applicable_variant_ids,
-          trigger_items: (c as any).trigger_items || settingsObj?.trigger_items,
-          items: rawItems.map((it: any) => ({
-            id: it.id,
-            product_id: it.product_id,
-            product_variant_id: it.product_variant_id,
-            product_name: it.product_name,
-            product_code: it.product_code,
-            kiotviet_id: it.kiotviet_id,
-            image: it.image || "",
-            original_price: it.original_price || 0,
-            campaign_price: it.campaign_price || 0,
-            is_free: it.is_free ?? (it.campaign_price === 0),
-            is_available: it.is_available ?? !it.disabled,
-            disabled: it.disabled ?? false,
-            disabled_reason: it.disabled_reason || null,
-          })),
-        } as any);
-        existingIds.add(String(c.id));
-      }
-    }
-    return list;
+    return mergePromotionsWithPublicCampaigns(
+      config?.active_promotions,
+      publicCampaigns
+    ) as ActivePromotion[];
   }, [config?.active_promotions, publicCampaigns]);
 
   // Campaign G1 trong giỏ hàng (Mobile Flow)
@@ -1175,6 +1134,7 @@ export default function MobileCartFlow({
 
   // Auto-prune stale selected campaigns if cart changes and campaign is no longer eligible
   useEffect(() => {
+    if (!publicCampaignsLoaded) return;
     if (selectedCampaignIds.length === 0) return;
     if (!allPromotionsList || allPromotionsList.length === 0) return;
     if (!cartItems || cartItems.length === 0) return;
@@ -1195,7 +1155,7 @@ export default function MobileCartFlow({
       setSelectedCampaignIds(validCampaignIds);
       setStoredCampaignIds(validCampaignIds);
     }
-  }, [selectedCampaignIds, allPromotionsList, subtotal, originalSubtotal, cartItems]);
+  }, [publicCampaignsLoaded, selectedCampaignIds, allPromotionsList, subtotal, originalSubtotal, cartItems]);
 
   const foodVoucherDiscount = useMemo(() => {
     if (appliedVoucher?.isFreeship || appliedVoucher?.discountType === "freeship") return 0;
@@ -2143,6 +2103,39 @@ export default function MobileCartFlow({
       }
     }
 
+    const activeSamePriceCampaignIds = !isBestDealVoucherApplied
+      ? (allPromotionsList || [])
+          .filter((p) => {
+            if (p.promotion_type !== "same_price_discount") return false;
+            const discountedItems = cartItems.filter(
+              (it) => it.originalPrice && it.originalPrice > it.unitPrice
+            );
+            if (discountedItems.length === 0) return false;
+            if (!p.items || p.items.length === 0) return false;
+            return p.items.some((pi) =>
+              discountedItems.some(
+                (di) =>
+                  (pi.product_id && Number(pi.product_id) === Number(di.productId)) ||
+                  (pi.kiotviet_id && Number(pi.kiotviet_id) === Number(di.productId)) ||
+                  (pi.product_code && di.productCode && String(pi.product_code) === String(di.productCode))
+              )
+            );
+          })
+          .map((p) => Number(p.id))
+      : [];
+
+    const appliedCampaignIds = !isBestDealVoucherApplied
+      ? Array.from(
+          new Set(
+            [
+              ...appliedCartPromotions.map((p) => Number(p.id)),
+              ...selectedCampaignIds.map((id) => Number(id)),
+              ...activeSamePriceCampaignIds,
+            ].filter((id) => Number.isFinite(id) && id > 0)
+          )
+        )
+      : [];
+
     try {
       const result = await createOrder({
         idempotency_key: idempotencyKey,
@@ -2226,6 +2219,8 @@ export default function MobileCartFlow({
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
         shipping_voucher_code: appliedShippingVoucher ? appliedShippingVoucher.code : (appliedVoucher?.isFreeship ? appliedVoucher.code : undefined),
         applied_deal_type: isBestDealVoucherApplied ? "voucher" : undefined,
+        campaign_id: appliedCampaignIds.length > 0 ? appliedCampaignIds[0] : undefined,
+        campaign_ids: appliedCampaignIds.length > 0 ? appliedCampaignIds : undefined,
         voucher: appliedVoucher
           ? {
             voucher_id: appliedVoucher.id,
@@ -2276,7 +2271,41 @@ export default function MobileCartFlow({
           err.message && !isTechnicalErrorMessage(err.message)
             ? err.message
             : fallbackErrorMessage;
-        setError(displayMessage);
+        const campaignErrorMsg = err.errors?.campaign_id?.[0] || displayMessage;
+        setError(campaignErrorMsg);
+
+        if (err.errors?.campaign_id || err.errors?.used_campaign_ids) {
+          setVoucherError(campaignErrorMsg);
+          const rejectedIds = (err.errors?.used_campaign_ids || []).map((id) => String(id));
+          setSelectedCampaignIds((prev) => {
+            const next =
+              rejectedIds.length > 0
+                ? prev.filter((id) => !rejectedIds.includes(String(id)))
+                : [];
+            setStoredCampaignIds(next);
+            return next;
+          });
+
+          const rejectedSamePricePromos = (allPromotionsList || []).filter(
+            (p) =>
+              p.promotion_type === "same_price_discount" &&
+              (rejectedIds.length === 0 || rejectedIds.includes(String(p.id)))
+          );
+          const hasDiscountedCartItems = cartItems.some(
+            (item) => item.originalPrice && item.originalPrice > item.unitPrice
+          );
+          if (rejectedSamePricePromos.length > 0 || hasDiscountedCartItems) {
+            const blockedProductIds = rejectedSamePricePromos.flatMap((p) =>
+              (p.items || [])
+                .map((it) => Number(it.product_id || it.kiotviet_id || 0))
+                .filter((id) => id > 0)
+            );
+            restoreCampaignItemsToOriginalPrice?.(
+              blockedProductIds.length > 0 ? blockedProductIds : undefined
+            );
+          }
+        }
+
         if (err.errors) {
           const mapped: Record<string, string> = {};
           Object.entries(err.errors).forEach(([key, msgs]) => {
