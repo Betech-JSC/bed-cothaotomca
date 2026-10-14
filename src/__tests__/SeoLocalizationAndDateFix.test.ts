@@ -1,6 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { resolveMetaTitle, resolveMetaDescription, resolveMetaKeywords, MetaPage } from '../services/seoService';
 import { formatVietnameseDate } from '../lib/operatingHours';
+
+vi.mock('@/i18n/routing', () => ({
+  Link: () => null,
+  redirect: vi.fn(),
+  usePathname: () => '/',
+  useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
+}));
+
+vi.mock('@/i18n/i18n-navigation', () => ({
+  Link: () => null,
+  redirect: vi.fn(),
+  usePathname: () => '/',
+  useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
+}));
 
 describe('SEO Localization & Resolver Tests', () => {
   const sampleMeta: MetaPage = {
@@ -113,6 +127,46 @@ describe('SEO Localization & Resolver Tests', () => {
       const metadata = await generateMetadata({ params: Promise.resolve({ locale: 'en' }) });
       expect(metadata.title).toBe('Contact Us | Co Thao Tom Ca');
       expect((metadata.openGraph as any)?.title).toBe('Contact Us | Co Thao Tom Ca');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('getBlogDetail preserves single blog object from API instead of turning it into [] (fixing 404 on blog detail page)', async () => {
+    const originalFetch = global.fetch;
+    const sampleBlog = {
+      id: 40,
+      slug: 'cach-an-ca-hoi-ngam-tuong-ngon',
+      title: '4 cách ăn cá hồi ngâm tương ngon chuẩn bài, "hao cơm" nhất',
+      seo_title: '4 cách ăn cá hồi ngâm tương ngon chuẩn bài, "hao cơm" nhất',
+      seo_description: 'Cùng Cô Thảo Tôm Cá khám phá 4 cách ăn cá hồi ngâm tương ngon chuẩn vị.',
+      thumbnail: 'https://cms.cothaotomca.vn/storage/uploads/2026/08/cach-an-ca-hoi-ngam-tuong-ngon.webp',
+      category: { id: 4, title: 'Bí Quyết', slug: 'bi-quyet', translations: [] },
+      translations: [],
+    };
+
+    global.fetch = (async () =>
+      new Response(JSON.stringify({ data: sampleBlog }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })) as any;
+
+    try {
+      const { getBlogDetail } = await import('../services/blogService');
+      const res = await getBlogDetail('cach-an-ca-hoi-ngam-tuong-ngon', { lang: 'vi' });
+      expect(Array.isArray(res.data)).toBe(false);
+      expect(res.data?.id).toBe(40);
+      expect(res.data?.slug).toBe('cach-an-ca-hoi-ngam-tuong-ngon');
+
+      const { generateMetadata } = await import('../app/[locale]/blog/category/[category]/[slug]/page');
+      const metadata = await generateMetadata({
+        params: Promise.resolve({
+          locale: 'vi',
+          category: 'bi-quyet',
+          slug: 'cach-an-ca-hoi-ngam-tuong-ngon',
+        }),
+      });
+      expect(metadata.title).toBe('4 cách ăn cá hồi ngâm tương ngon chuẩn bài, "hao cơm" nhất');
     } finally {
       global.fetch = originalFetch;
     }
