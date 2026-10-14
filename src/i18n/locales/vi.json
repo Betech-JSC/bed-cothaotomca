@@ -823,7 +823,7 @@
     "title": "Đăng nhập",
     "description": "Đăng nhập ngay để tích điểm và không bỏ lỡ ưu đãi độc quyền.",
     "email_phone": "Email hoặc Số điện thoại",
-    "email_phone_placeholder": "name@email.com",
+    "email_phone_placeholder": "Nhập Email hoặc Số điện thoại",
     "password": "Mật khẩu",
     "password_placeholder": "Nhập mật khẩu",
     "button": "Đăng nhập",

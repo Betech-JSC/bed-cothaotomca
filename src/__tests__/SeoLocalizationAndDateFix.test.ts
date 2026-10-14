@@ -74,4 +74,48 @@ describe('SEO Localization & Resolver Tests', () => {
     expect(formattedEn).toContain('Wednesday');
     expect(formattedEn).toContain('14/10/2026');
   });
+
+  it('getSingleApi and getMetaPage return null instead of [] when backend returns 500 fallback { data: [] }', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = (async () =>
+      new Response(JSON.stringify({ message: 'Server Error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })) as any;
+
+    try {
+      const { getMetaPage, getSeoSettings } = await import('../services/seoService');
+      const { getProductBySlug } = await import('../services/productService');
+
+      const meta = await getMetaPage('contact', 'en');
+      expect(meta).toBeNull();
+
+      const seo = await getSeoSettings('en');
+      expect(seo).toBeNull();
+
+      const product = await getProductBySlug('non-existent-slug', { lang: 'en' });
+      expect(product).toBeNull();
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('ContactPage generateMetadata does not throw TypeError when getMetaPage("contact") returns null', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = (async () =>
+      new Response(JSON.stringify({ data: null }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })) as any;
+
+    try {
+      const { generateMetadata } = await import('../app/[locale]/contact/page');
+      const metadata = await generateMetadata({ params: Promise.resolve({ locale: 'en' }) });
+      expect(metadata.title).toBe('Contact Us | Co Thao Tom Ca');
+      expect((metadata.openGraph as any)?.title).toBe('Contact Us | Co Thao Tom Ca');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
+

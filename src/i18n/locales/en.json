@@ -823,7 +823,7 @@
     "title": "Sign In",
     "description": "Sign in now to earn points and enjoy exclusive offers.",
     "email_phone": "Email or Phone Number",
-    "email_phone_placeholder": "name@email.com",
+    "email_phone_placeholder": "Enter Email or Phone Number",
     "password": "Password",
     "password_placeholder": "Enter password",
     "button": "Sign In",
