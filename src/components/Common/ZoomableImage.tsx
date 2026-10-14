@@ -5,6 +5,7 @@ import Image, { ImageProps } from 'next/image';
 import SafeImage from '@/components/Common/SafeImage';
 import { createPortal } from 'react-dom';
 import Chevron from '@/components/Icons/Chevron';
+import { useLocale } from 'next-intl';
 
 export interface GalleryItem {
   url: string;
@@ -30,6 +31,8 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
   onIndexChange,
   ...props
 }) => {
+  const locale = useLocale();
+  const isEn = locale === 'en';
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [modalIndex, setModalIndex] = useState(initialIndex);
@@ -108,7 +111,7 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
           e.stopPropagation();
           setIsOpen(false);
         }}
-        aria-label="Đóng"
+        aria-label={isEn ? 'Close' : 'Đóng'}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -121,7 +124,7 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
         <button
           type="button"
           onClick={handlePrev}
-          aria-label="Ảnh trước"
+          aria-label={isEn ? 'Previous image' : 'Ảnh trước'}
           className="absolute left-3 md:left-8 top-1/2 -translate-y-1/2 z-30 size-11 md:size-13 rounded-full bg-white/15 hover:bg-white/30 text-white border border-white/20 backdrop-blur-md flex items-center justify-center transition-all cursor-pointer focus:outline-none active:scale-90"
         >
           <div className="rotate-90">
@@ -151,7 +154,7 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
         <button
           type="button"
           onClick={handleNext}
-          aria-label="Ảnh tiếp theo"
+          aria-label={isEn ? 'Next image' : 'Ảnh tiếp theo'}
           className="absolute right-3 md:right-8 top-1/2 -translate-y-1/2 z-30 size-11 md:size-13 rounded-full bg-white/15 hover:bg-white/30 text-white border border-white/20 backdrop-blur-md flex items-center justify-center transition-all cursor-pointer focus:outline-none active:scale-90"
         >
           <div className="-rotate-90">
@@ -181,7 +184,7 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({
                   ref={(el) => { thumbRefs.current[gIdx] = el; }}
                   type="button"
                   onClick={() => handleSelectIndex(gIdx)}
-                  aria-label={`Xem ảnh ${gIdx + 1}`}
+                  aria-label={isEn ? `View image ${gIdx + 1}` : `Xem ảnh ${gIdx + 1}`}
                   className={`relative flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-xl overflow-hidden transition-all duration-300 cursor-pointer bg-white/5 ${
                     isActive
                       ? 'border-2 border-primary ring-2 ring-primary/50 scale-105 opacity-100'

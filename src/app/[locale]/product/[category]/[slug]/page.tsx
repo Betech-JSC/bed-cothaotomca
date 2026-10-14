@@ -30,18 +30,22 @@ export async function generateMetadata(
   const translation = getTranslation<Translation>(product.translations, locale);
   const isEn = locale === 'en';
   const productName = (isEn ? (translation?.custom_name || translation?.name) : (translation?.custom_name || product.custom_name || translation?.name || product.name)) || product.custom_name || product.name || "";
-  const productDescription = (isEn ? translation?.description : null) || product.description || translation?.description || "";
+  const rawProductDescription = (isEn ? translation?.description : null) || product.description || translation?.description || "";
+  const productDescription = isEn ? rawProductDescription.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá") : rawProductDescription;
 
   // Ưu tiên SEO từ bản dịch -> Tên theo ngôn ngữ -> Fallback root
   const seoTitle = translation?.seo_title || (isEn ? (productName || product.seo_title || product.meta_title) : (product.seo_title || product.meta_title || productName));
-  const seoDescription = translation?.seo_description || (isEn ? (productDescription || product.seo_description || product.meta_description) : (product.seo_description || product.meta_description || productDescription));
+  const rawSeoDescription = translation?.seo_description || (isEn ? (productDescription || product.seo_description || product.meta_description) : (product.seo_description || product.meta_description || productDescription)) || "";
+  const seoDescription = isEn ? rawSeoDescription.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá") : rawSeoDescription;
   const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
 
   const { viCatSlug, viProductSlug, enCatSlug, enProductSlug } = getProductLocalizedSlugs(product);
 
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
   const customCanonical = translation?.canonical_url || product.canonical_url;
-  const canonicalUrl = customCanonical || `${baseUrl}/${locale}/product/${category}/${slug}`;
+  const canonicalUrl = customCanonical || (isEn
+    ? `${baseUrl}/en/product/${enCatSlug}/${enProductSlug}`
+    : `${baseUrl}/san-pham/${viCatSlug}/${viProductSlug}`);
   const customOgImage = translation?.og_image || product.og_image;
   const previousImages = (await parent).openGraph?.images || [];
   const productImage = customOgImage || product.image || (previousImages.length > 0 ? (typeof previousImages[0] === 'string' ? previousImages[0] : (previousImages[0] as any).url) : "/cover.jpg");
@@ -55,7 +59,7 @@ export async function generateMetadata(
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/product/${viCatSlug}/${viProductSlug}`,
+        vi: `${baseUrl}/san-pham/${viCatSlug}/${viProductSlug}`,
         en: `${baseUrl}/en/product/${enCatSlug}/${enProductSlug}`,
       },
     },
@@ -142,8 +146,10 @@ export default async function ProductDetailsPage({
   const t = await getTranslations({ locale });
 
   const translation = getTranslation<Translation>(product.translations, locale);
+  const translationVi = getTranslation<Translation>(product.translations, 'vi');
   const translationEn = getTranslation<Translation>(product.translations, 'en');
   const productName = translation?.custom_name || product.custom_name || translation?.name || product.name || "";
+  const productNameVi = product.custom_name || translationVi?.custom_name || translationVi?.name || product.name || "";
   const productNameEn = translationEn?.custom_name || translationEn?.name || (product as any).name_en || (locale === 'en' ? productName : undefined);
 
   // Thu thập danh sách ảnh (bao gồm ảnh đại diện và ảnh gallery con)
@@ -181,15 +187,20 @@ export default async function ProductDetailsPage({
     galleryImages.push({ url: formatImageUrl(product.image) || "/cover.jpg", alt: productName });
   }
 
+  const rawDescription = (locale === 'en' ? (translation?.description || product.description) : (product.description || translation?.description)) || "";
+  const cleanedDescription = locale === 'en' ? rawDescription.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá") : rawDescription;
+
   const productData = {
     title: productName,
+    title_vi: productNameVi,
+    name_vi: productNameVi,
     title_en: productNameEn,
     name_en: productNameEn,
-    description: product.description,
+    description: cleanedDescription,
     variant_type: product.variant_type,
     image: {
       url: formatImageUrl(product.image) || galleryImages[0]?.url || "/cover.jpg",
-      alt: product.name,
+      alt: productName || product.name || "Cô Thảo Tôm Cá",
     },
     images: galleryImages,
     sizes: product.variants && product.variants.length > 0
@@ -228,9 +239,12 @@ export default async function ProductDetailsPage({
 
         return {
           id: v.id,
+          kiotviet_id: v.kiotviet_id,
           code: v.code || "",
           stock: v.stock !== undefined ? Number(v.stock) : (product.stock !== undefined ? Number(product.stock) : 0),
           title: locale === "vi" ? v.size : (v.size_en || v.size),
+          title_vi: v.size || v.size_en,
+          size_vi: v.size,
           title_en: v.size_en || v.size,
           size_en: v.size_en,
           price: finalPrice,
@@ -268,9 +282,12 @@ export default async function ProductDetailsPage({
 
         return [{
           id: product.id,
+          kiotviet_id: (product as any).kiotviet_id,
           code: product.code || "",
           stock: product.stock !== undefined ? Number(product.stock) : 0,
           title: t("product.standard"),
+          title_vi: "Tiêu chuẩn",
+          size_vi: "Tiêu chuẩn",
           title_en: "Standard",
           size_en: "Standard",
           price: prodFinalPrice,
@@ -295,10 +312,13 @@ export default async function ProductDetailsPage({
     },
     infos: product.sections?.map((section: any) => ({
       title: section.title,
-      content: section.content
+      content: locale === 'en' && typeof section.content === 'string'
+        ? section.content.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá")
+        : section.content
     })) || [],
     checkout: {
       productId: product.id,
+      kiotviet_id: (product as any).kiotviet_id,
       productCode: product.code || (product.variants?.[0]?.code ?? "") || "",
       slug: product.slug || slug,
       categorySlug: (() => {
@@ -348,14 +368,17 @@ export default async function ProductDetailsPage({
     };
   }) || [];
 
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
+
   return (
     <main>
       <AlternateLinksUpdater links={alternateLinksMap} />
       <JsonLd
         type="Product"
         data={product}
-        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')}/${locale}/product/${productData.category.slug}/${slug}`}
-
+        url={locale === 'en'
+          ? `${baseUrl}/en/product/${enCatSlug}/${enProductSlug}`
+          : `${baseUrl}/san-pham/${viCatSlug}/${viProductSlug}`}
       />
       <section className="md:py-[56px] pt-4 pb-12 xl:py-[60px]">
         <div className="container">

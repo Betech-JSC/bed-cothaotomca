@@ -6,7 +6,7 @@ import BoxMessage from "@/components/Icons/BoxMessage";
 import SocialShare from "@/components/SocialShare";
 import ProductInfoAccordion from "@/components/Product/ProductInfoAccordion";
 import { useTranslations } from "next-intl";
-// import { useRouter } from "@/i18n/routing";
+import { useRouter } from "@/i18n/routing";
 import type { ProductDetailView } from "@/services/productService";
 
 import { useCart } from "@/contexts/CartContext";
@@ -17,7 +17,7 @@ interface ProductDetailsInfoProps {
 
 const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
   const t = useTranslations();
-  // const router = useRouter();
+  const router = useRouter();
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
@@ -28,7 +28,9 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
 
   const handleAddToCart = () => {
     if (isSelectedOutOfStock) return;
+    const titleVi = productData.title_vi || productData.name_vi || productData.title;
     const titleEn = productData.title_en || productData.name_en;
+    const variantVi = selectedSize?.title_vi || selectedSize?.size_vi || selectedSize?.title;
     const variantEn = selectedSize?.title_en || selectedSize?.size_en;
 
     addToCart({
@@ -38,17 +40,24 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
       slug: productData.checkout.slug,
       categorySlug: productData.checkout.categorySlug,
       title: productData.title,
+      title_vi: titleVi,
       title_en: titleEn,
       imageUrl: productData.images[0]?.url || "/cover.jpg",
       variant: selectedSize.title,
+      variant_vi: variantVi,
       variant_en: variantEn,
       unitPrice: selectedSize.price,
       originalPrice: selectedSize.original_price,
       variantId: selectedSize.id,
       product_variant_id: selectedSize.id,
       parentProductId: productData.checkout.productId,
+      parent_product_id: productData.checkout.productId,
       product_id: productData.checkout.productId,
       variant_id: selectedSize.id,
+      db_id: productData.checkout.productId,
+      product_db_id: productData.checkout.productId,
+      variant_db_id: selectedSize.id,
+      kiotviet_id: (selectedSize as any).kiotviet_id ?? (productData.checkout as any).kiotviet_id,
     }, quantity);
 
     setIsAdded(true);
@@ -190,7 +199,7 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                 if (typeof window !== "undefined" && window.innerWidth < 1024) {
                   setIsCartOpen(true);
                 } else {
-                  window.location.href = "/checkout";
+                  router.push("/checkout");
                 }
               }}
               className="btn btn-secondary font-bold !min-w-0 w-full px-2 sm:px-3 text-[13px] sm:text-sm md:text-base tracking-normal flex items-center justify-center gap-1.5 sm:gap-2"

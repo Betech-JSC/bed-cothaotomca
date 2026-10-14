@@ -86,10 +86,21 @@ export default function ProductIndexPage({
     const translation = getTranslation(cat?.translations, locale) as any;
     const title = translation?.title || cat?.title || "";
     const slug = locale === 'vi' ? (cat?.slug || slugify(title)) : slugify(title || cat?.slug || "");
+    const altSlugs = (cat as any)?.alternate_slugs;
+    const candidateSlugs = Array.from(new Set([
+      slug,
+      cat?.slug,
+      slugify(title),
+      slugify(cat?.title || ""),
+      typeof altSlugs?.en === 'string' ? altSlugs.en : altSlugs?.en?.slug,
+      typeof altSlugs?.vi === 'string' ? altSlugs.vi : altSlugs?.vi?.slug,
+      ...(cat?.translations?.flatMap((tr: any) => [tr?.slug, slugify(tr?.title || "")]) || [])
+    ].filter(Boolean) as string[]));
     return {
       id: cat?.id?.toString() || "",
       title,
-      slug: slug || cat?.slug || ""
+      slug: slug || cat?.slug || "",
+      candidateSlugs,
     }
   }), [categories, locale]);
 
@@ -129,19 +140,42 @@ export default function ProductIndexPage({
       ? (productCategory?.slug || slugify(categoryName))
       : (slugify(categoryName || productCategory?.slug || "") || productCategory?.slug);
     
-    // Store all category slugs for filtering (support both DB slug and title slug)
-    const allCategorySlugs = p?.categories && p.categories.length > 0
+    const allCategoryIds = Array.from(new Set([
+      ...(p?.categories?.map(c => c?.id?.toString()).filter(Boolean) || []),
+      ...(p?.category?.id ? [p.category.id.toString()] : []),
+      categoryId,
+    ].filter(Boolean) as string[]));
+
+    // Store all category slugs for filtering (support DB slug, title slug, alternate_slugs, and mapped categoriesDisplay slugs by id)
+    const rawCatSlugs = p?.categories && p.categories.length > 0
       ? p.categories.flatMap(cat => {
           const trans = getTranslation(cat?.translations, locale) as any;
           const title = trans?.title || cat?.title || "";
-          const slugs = [];
-          if (cat?.slug) slugs.push(cat.slug);
-          if (title) slugs.push(slugify(title));
-          return slugs;
+          const alt = (cat as any)?.alternate_slugs;
+          const matchedDisplay = categoriesDisplay.find(cd => cd.id && String(cd.id) === String(cat?.id));
+          return [
+            cat?.slug,
+            slugify(title),
+            slugify(cat?.title || ""),
+            typeof alt?.en === 'string' ? alt.en : alt?.en?.slug,
+            typeof alt?.vi === 'string' ? alt.vi : alt?.vi?.slug,
+            ...(matchedDisplay ? matchedDisplay.candidateSlugs : []),
+          ].filter(Boolean) as string[];
         })
-      : [categorySlug, slugify(categoryName)].filter(Boolean);
+      : [
+          categorySlug,
+          productCategory?.slug,
+          slugify(categoryName),
+          ...(categoriesDisplay.find(cd => cd.id && cd.id === categoryId)?.candidateSlugs || []),
+        ].filter(Boolean) as string[];
+
+    const allCategorySlugs = Array.from(new Set(rawCatSlugs));
 
     const productSlug = p?.slug || slugify(name);
+    const rawDesc = translation?.description || p?.description || "";
+    const cleanedDesc = locale === 'en' && typeof rawDesc === 'string'
+      ? rawDesc.replace(/\bat Bếp\b/gi, 'at Cô Thảo Tôm Cá')
+      : rawDesc;
 
     return {
       id: p?.id || 0,
@@ -154,6 +188,7 @@ export default function ProductIndexPage({
       original_price: (p as any)?.original_price,
       active_campaign: (p as any)?.active_campaign,
       category: { id: categoryId, title: categoryName, slug: categorySlug },
+      allCategoryIds,
       allCategorySlugs, // Add this for multi-category filtering
       ingredientIds: p?.ingredients?.map(ing => ing?.id?.toString()).filter(Boolean) as string[] || [],
       variants: p?.variants,
@@ -161,10 +196,10 @@ export default function ProductIndexPage({
         url: formatImageUrl(p?.image) || "/cover.jpg",
         alt: name
       },
-      description: translation?.description || p?.description || "",
+      description: cleanedDesc,
       created_at: p?.created_at || '2024-03-15T00:00:00Z',
     };
-  }), [uniqueProducts, locale]);
+  }), [uniqueProducts, locale, categoriesDisplay]);
 
   const pushWithFilters = (newCategorySlug: string | null, newIngredientSlugs: string[], newPage: number = 1) => {
     setIsFilterOpen(false)
@@ -190,8 +225,21 @@ export default function ProductIndexPage({
     }
   }
 
+  const currentCategory = useMemo(() => {
+    if (!category) return undefined;
+    const norm = slugify(category) || category;
+    return categoriesDisplay.find(
+      cat =>
+        cat.slug === category ||
+        slugify(cat.title) === category ||
+        cat.candidateSlugs.includes(category) ||
+        cat.candidateSlugs.includes(norm)
+    );
+  }, [category, categoriesDisplay])
+
   const handleCategoryClick = (slug: string) => {
-    const nextCategory = category === slug ? null : slug
+    const isSame = category === slug || currentCategory?.slug === slug || currentCategory?.candidateSlugs.includes(slug);
+    const nextCategory = isSame ? null : slug
     pushWithFilters(nextCategory, selectedIngredients, 1)
   }
 
@@ -220,9 +268,6 @@ export default function ProductIndexPage({
   const clearCategory = () => pushWithFilters(null, selectedIngredients, 1)
   const clearIngredients = () => pushWithFilters(category, [], 1)
   const clearAll = () => pushWithFilters(null, [], 1)
-  const currentCategory = useMemo(() => {
-    return categoriesDisplay.find(cat => cat.slug === category || slugify(cat.title) === category)
-  }, [category, categoriesDisplay])
 
   const breadcrumbs = useMemo(() => {
     const base: { title: string; url?: any }[] = [
@@ -237,8 +282,13 @@ export default function ProductIndexPage({
   const filteredProductsSorted = useMemo(() => {
     return productsDisplay.filter(p => {
       // Category match: if no category in URL, match all. 
-      // Otherwise, check if ANY of the product's categories matches the URL slug.
-      const catMatch = !category || p.allCategorySlugs.includes(category)
+      // Otherwise, check if ANY of the product's categories matches by id, slug, or candidateSlugs.
+      const catMatch =
+        !category ||
+        p.allCategorySlugs.includes(category) ||
+        p.allCategorySlugs.includes(slugify(category)) ||
+        Boolean(currentCategory?.id && p.allCategoryIds.includes(currentCategory.id)) ||
+        Boolean(currentCategory && p.allCategorySlugs.some(s => currentCategory.candidateSlugs.includes(s)))
 
       // Ingredient match: the product has ANY of the selected ingredients (OR logic for combos/multi-ingredients).
 
@@ -250,7 +300,7 @@ export default function ProductIndexPage({
         })
       return catMatch && ingMatch
     })
-  }, [category, selectedIngredients, productsDisplay, ingredientsDisplay])
+  }, [category, currentCategory, selectedIngredients, productsDisplay, ingredientsDisplay])
 
   return (
     <section id="products-section" className="py-[60px] scroll-mt-24">
@@ -270,7 +320,7 @@ export default function ProductIndexPage({
           <ProductFilter
             isFilterOpen={isFilterOpen}
             setIsFilterOpen={setIsFilterOpen}
-            category={category}
+            category={currentCategory?.slug || category}
             selectedIngredients={selectedIngredients}
             categoriesDisplay={categoriesDisplay}
             ingredientsDisplay={ingredientsDisplay}

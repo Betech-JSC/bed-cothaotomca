@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname } from "@/i18n/routing";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import CouponModal from "./CouponModal";
 import { getAvailableVouchers, PublicVoucherItem, getShippingSettings, ShippingSettings } from "@/services/orderService";
 import { getActiveCampaigns, PublicCampaignItem } from "@/services/campaignService";
@@ -10,6 +10,7 @@ import { useCart } from "@/contexts/CartContext";
 
 export default function FloatingVoucherButton() {
   const t = useTranslations("voucher");
+  const locale = useLocale();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [vouchers, setVouchers] = useState<PublicVoucherItem[]>([]);
@@ -18,18 +19,18 @@ export default function FloatingVoucherButton() {
   const { subtotal } = useCart();
 
   useEffect(() => {
-    getAvailableVouchers()
+    getAvailableVouchers(locale)
       .then((data) => setVouchers(data))
       .catch(() => setVouchers([]));
 
-    getActiveCampaigns()
+    getActiveCampaigns(locale)
       .then((data) => setCampaigns(data))
       .catch(() => setCampaigns([]));
 
-    getShippingSettings()
+    getShippingSettings(locale)
       .then((data) => setShippingSettings(data))
       .catch(() => setShippingSettings(null));
-  }, []);
+  }, [locale]);
 
   // Hide floating widget when on /cart or /checkout routes (supporting locale prefixes like /vi/cart, /en/checkout)
   const isExcluded = Boolean(

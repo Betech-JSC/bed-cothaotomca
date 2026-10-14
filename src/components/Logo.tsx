@@ -28,7 +28,7 @@ const Logo = ({
     <Link
       href="/"
       className={`flex items-center justify-center ${className}`}
-      aria-label="Be - Cô Thảo"
+      aria-label="Cô Thảo Tôm Cá"
     >
       <div
         className="relative duration-500 ease-in-out"
@@ -36,7 +36,7 @@ const Logo = ({
       >
         <Image
           src="/images/logo.png"
-          alt="Be - Cô Thảo logo"
+          alt="Cô Thảo Tôm Cá logo"
           fill
           className="object-contain block"
           priority

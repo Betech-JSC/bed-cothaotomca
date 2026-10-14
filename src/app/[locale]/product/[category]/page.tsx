@@ -94,20 +94,28 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const categories = categoriesResp.data;
   const ingredients = ingredientsResp.data;
 
-  // Helper to find category by DB slug or translated title slug
+  // Helper to find category by DB slug, alternate_slugs, or translated title slug
   const findCategory = (categories: Category[], slug: string, lang: string) => {
+    const normalizedTarget = slugify(slug) || slug;
     return categories.find(cat => {
-      // 1. Direct DB slug match
-      if (cat.slug === slug) return true;
+      // 1. Direct DB slug or alternate_slugs match
+      if (cat.slug === slug || cat.slug === normalizedTarget) return true;
+      const altSlugs = (cat as any).alternate_slugs;
+      if (altSlugs) {
+        if (altSlugs.en === slug || altSlugs.vi === slug || altSlugs.en?.slug === slug || altSlugs.vi?.slug === slug) {
+          return true;
+        }
+      }
 
       // 2. Translated title slug match for current language
       const translation = cat.translations?.find((t: any) => t.locale === lang) ||
         cat.translations?.find((t: any) => t.locale.startsWith(lang));
       const title = translation?.title || cat.title || '';
-      if (slugify(title) === slug) return true;
+      if (slugify(title) === slug || slugify(title) === normalizedTarget) return true;
+      if (slugify(cat.title || '') === slug || slugify(cat.title || '') === normalizedTarget) return true;
 
-      // 3. Fallback check across any translation title
-      if (cat.translations?.some((t: any) => slugify(t.title) === slug)) return true;
+      // 3. Fallback check across any translation title or slug
+      if (cat.translations?.some((t: any) => t.slug === slug || slugify(t.title) === slug || slugify(t.title) === normalizedTarget)) return true;
 
       return false;
     });
@@ -176,6 +184,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     let filteredList = fullCatalog;
     if (categorySlug) {
       filteredList = filteredList.filter(p => {
+        if (categoryId && (
+          p.categories?.some(c => String(c.id) === String(categoryId)) ||
+          (p.category && String(p.category.id) === String(categoryId))
+        )) {
+          return true;
+        }
         const productCat = p.categories && p.categories.length > 0 ? p.categories[0] : p.category;
         const catTrans = productCat?.translations?.find((t: any) => t.locale === locale) ||
                          productCat?.translations?.find((t: any) => t.locale?.startsWith(locale));
@@ -187,12 +201,16 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               const trans = cat.translations?.find((t: any) => t.locale === locale) ||
                             cat.translations?.find((t: any) => t.locale?.startsWith(locale));
               const title = trans?.title || cat.title || '';
-              const slugs = [];
+              const slugs: string[] = [];
               if (cat.slug) slugs.push(cat.slug);
               if (title) slugs.push(slugify(title));
-              return slugs;
+              if (cat.title) slugs.push(slugify(cat.title));
+              const alt = (cat as any).alternate_slugs;
+              if (alt?.en) slugs.push(typeof alt.en === 'string' ? alt.en : alt.en.slug);
+              if (alt?.vi) slugs.push(typeof alt.vi === 'string' ? alt.vi : alt.vi.slug);
+              return slugs.filter(Boolean);
             })
-          : [pCatSlug];
+          : [pCatSlug, slugify(catTitle)].filter(Boolean);
         
         return allSlugs.includes(canonicalCategorySlug) || allSlugs.includes(categorySlug);
       });

@@ -1,11 +1,34 @@
-import { getTranslations } from 'next-intl/server'
+import { getTranslations, getLocale } from 'next-intl/server'
 import { locales as supportedLocales, defaultLocale } from '@/i18n/config'
 import { Link } from '@/i18n/i18n-navigation'
+import { headers } from 'next/headers'
 
-export default async function NotFound({ params }: { params: { locale?: string } }) {
-  const locale = params?.locale || defaultLocale;
+export default async function NotFound({ params }: { params?: Promise<{ locale?: string }> | { locale?: string } }) {
+  let detectedLocale: string | undefined;
+  try {
+    detectedLocale = await getLocale();
+  } catch {
+    // ignore
+  }
 
-  // Use defaultLocale when incoming locale is not supported
+  if (!detectedLocale || detectedLocale === defaultLocale) {
+    try {
+      const resolvedParams = params ? await params : undefined;
+      if (resolvedParams?.locale) {
+        detectedLocale = resolvedParams.locale;
+      } else {
+        const hdrs = await headers();
+        const pathname = hdrs.get('x-pathname') || hdrs.get('x-invoke-path') || hdrs.get('x-matched-path') || hdrs.get('referer') || '';
+        if (/(\/|^)en(\/|$)/.test(pathname)) {
+          detectedLocale = 'en';
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const locale = detectedLocale || defaultLocale;
   const useLocale = supportedLocales.includes(locale as any) ? locale : defaultLocale;
   const t = await getTranslations({ locale: useLocale });
 

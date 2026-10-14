@@ -1,6 +1,7 @@
-import { defaultLocale } from '@/i18n/config'
+import { defaultLocale, locales as supportedLocales } from '@/i18n/config'
 import '@/styles/globals.scss'
 import type { Metadata, Viewport } from 'next'
+import { getLocale } from 'next-intl/server'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -17,9 +18,19 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  let locale: string = defaultLocale;
+  try {
+    const detected = await getLocale();
+    if (detected && supportedLocales.includes(detected as any)) {
+      locale = detected;
+    }
+  } catch {
+    locale = defaultLocale;
+  }
+
   return (
-    <html lang={defaultLocale} className="overflow-x-hidden max-w-full w-full">
+    <html lang={locale} className="overflow-x-hidden max-w-full w-full">
       <body className="overflow-x-hidden max-w-full w-full">
         {children}
       </body>

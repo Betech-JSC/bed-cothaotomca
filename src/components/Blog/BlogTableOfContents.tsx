@@ -102,7 +102,7 @@ export default function BlogTableOfContents() {
   return (
     <>
       {/* Nút Bong Bóng Nổi (Floating Bubble Button) ở góc trái màn hình */}
-      <div className="fixed bottom-6 left-6 md:bottom-8 md:left-8 z-40 select-none">
+      <div className="fixed bottom-24 left-6 md:bottom-24 md:left-8 z-40 select-none">
         <button
           type="button"
           onClick={() => {
@@ -139,7 +139,7 @@ export default function BlogTableOfContents() {
 
           {/* Content Modal / Bottom Sheet */}
           <div
-            className={`fixed bottom-0 left-0 right-0 md:bottom-24 md:left-8 md:right-auto md:w-[380px] max-w-full z-[10000] bg-white rounded-t-[28px] md:rounded-[24px] p-5 pb-6 space-y-4 shadow-2xl max-h-[75vh] flex flex-col overflow-hidden ${
+            className={`fixed bottom-0 left-0 right-0 md:bottom-40 md:left-8 md:right-auto md:w-[380px] max-w-full z-[10000] bg-white rounded-t-[28px] md:rounded-[24px] p-5 pb-6 space-y-4 shadow-2xl max-h-[75vh] flex flex-col overflow-hidden ${
               isAnimatingOut ? 'animate-toc-slide-out' : 'animate-toc-slide-in'
             }`}
           >

@@ -4,12 +4,14 @@ export interface BannerTranslation {
   locale: string;
   title: string;
   description?: string | null;
+  button_text?: string | null;
 }
 
 export interface Banner {
   id: number;
   title: string;
   description?: string | null;
+  button_text?: string | null;
   image: string;
   image_mobile?: string | null;
   link?: string | null;

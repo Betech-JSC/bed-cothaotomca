@@ -6,10 +6,10 @@ const API_BASE = (
 
 export type { PublicCampaignItem, CampaignEligibilityResult, CampaignLockResult };
 
-export async function getActiveCampaigns(): Promise<PublicCampaignItem[]> {
+export async function getActiveCampaigns(locale: string = "vi"): Promise<PublicCampaignItem[]> {
   try {
-    const res = await fetch(`${API_BASE}/campaigns`, {
-      headers: { Accept: "application/json" },
+    const res = await fetch(`${API_BASE}/campaigns?lang=${encodeURIComponent(locale)}`, {
+      headers: { Accept: "application/json", "Accept-Language": locale },
       cache: "no-store",
       signal: AbortSignal.timeout(10000),
     });

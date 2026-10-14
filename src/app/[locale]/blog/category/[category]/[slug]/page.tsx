@@ -72,8 +72,52 @@ export async function generateMetadata({
   const seoKeywords = translation?.seo_keywords || blog.seo_keywords || blog.meta_keywords || "";
 
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
+  const viTrans = getTranslation<BlogTranslation>(blog.translations, 'vi');
+  const enTrans = getTranslation<BlogTranslation>(blog.translations, 'en');
+  const viCatTrans = getTranslation<BlogCategoryTranslation>(blog.category?.translations, 'vi');
+  const enCatTrans = getTranslation<BlogCategoryTranslation>(blog.category?.translations, 'en');
+
+  const altSlugs = (blog as any).alternate_slugs;
+  let matchedViBlog: any = null;
+  let matchedEnBlog: any = null;
+
+  if (isEn && !altSlugs?.vi?.slug && blog.id) {
+    const viBlogsRes = await getBlogs({ lang: 'vi', per_page: 100 }).catch(() => null);
+    matchedViBlog = (viBlogsRes?.data || []).find((b: any) => Number(b.id) === Number(blog.id));
+  } else if (!isEn && !altSlugs?.en?.slug && !(enTrans as any)?.slug && !enTrans?.title && blog.id) {
+    const enBlogsRes = await getBlogs({ lang: 'en', per_page: 100 }).catch(() => null);
+    matchedEnBlog = (enBlogsRes?.data || []).find((b: any) => Number(b.id) === Number(blog.id));
+  }
+
+  const viCatSlug = altSlugs?.vi?.category_slug
+    || matchedViBlog?.category?.slug
+    || blog.category?.slug
+    || slugify(viCatTrans?.title || matchedViBlog?.category?.title || blog.category?.title || 'tin-tuc')
+    || 'tin-tuc';
+  const rawEnCatSlug = altSlugs?.en?.category_slug
+    || (enCatTrans as any)?.slug
+    || slugify(enCatTrans?.title || matchedEnBlog?.category?.title || '')
+    || (isEn ? category : '')
+    || 'news';
+  const enCatSlug = rawEnCatSlug === 'blog' ? 'news' : rawEnCatSlug;
+
+  const viBlogSlug = altSlugs?.vi?.slug
+    || matchedViBlog?.slug
+    || (viTrans as any)?.slug
+    || (!isEn ? blog.slug : '')
+    || slugify(viTrans?.title || matchedViBlog?.title || blog.title || '')
+    || slug;
+  const enBlogSlug = altSlugs?.en?.slug
+    || (enTrans as any)?.slug
+    || (matchedEnBlog?.slug && matchedEnBlog.slug !== viBlogSlug ? matchedEnBlog.slug : '')
+    || (isEn ? blog.slug : '')
+    || slugify(enTrans?.title || matchedEnBlog?.title || '')
+    || viBlogSlug;
+
   const customCanonical = translation?.canonical_url || blog.canonical_url;
-  const canonicalUrl = customCanonical || `${baseUrl}/${locale}/blog/category/${category}/${slug}`;
+  const canonicalUrl = customCanonical || (isEn
+    ? `${baseUrl}/en/blog/${enCatSlug}/${enBlogSlug}`
+    : `${baseUrl}/tin-tuc/${viCatSlug}/${viBlogSlug}`);
   const customOgImage = translation?.og_image || blog.og_image;
   const blogImage = customOgImage || translation?.thumbnail || blog.thumbnail || "/cover.jpg";
   const customRobots = translation?.meta_robots || blog.meta_robots || undefined;
@@ -86,8 +130,8 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/blog/category/${category}/${slug}`,
-        en: `${baseUrl}/en/blog/category/${category}/${slug}`,
+        vi: `${baseUrl}/tin-tuc/${viCatSlug}/${viBlogSlug}`,
+        en: `${baseUrl}/en/blog/${enCatSlug}/${enBlogSlug}`,
       },
     },
     openGraph: {
@@ -167,6 +211,10 @@ export default async function BlogDetailsPage({
     const itemCatTranslation = getTranslation<BlogCategoryTranslation>(item.category?.translations, locale);
     const title = itemTranslation?.title || item.title;
     const catName = itemCatTranslation?.title || item.category?.title || categoryName;
+    const rawCatSlug = locale === 'en'
+      ? (slugify(catName) || item.category?.slug || 'news')
+      : (item.category?.slug || slugify(catName) || 'tin-tuc');
+    const finalCatSlug = (locale === 'en' && rawCatSlug === 'blog') ? 'news' : rawCatSlug;
 
     return {
       image: {
@@ -177,18 +225,23 @@ export default async function BlogDetailsPage({
       slug: item.slug,
       category: {
         title: catName,
-        slug: item.category?.slug || slugify(catName),
+        slug: finalCatSlug,
       },
       created_at: item.created_at,
     };
   });
+
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
+  const cleanCategory = locale === 'en' && category === 'blog' ? 'news' : category;
 
   return (
     <main>
       <JsonLd
         type="Article"
         data={blog}
-        url={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')}/${locale}/blog/category/${category}/${slug}`}
+        url={locale === 'en'
+          ? `${baseUrl}/en/blog/${cleanCategory}/${slug}`
+          : `${baseUrl}/tin-tuc/${cleanCategory}/${slug}`}
       />
       <section className="min-h-screen w-full md:py-12 py-8 xl:py-16">
         <div className="container md:space-y-8 space-y-6 xl:space-y-8">

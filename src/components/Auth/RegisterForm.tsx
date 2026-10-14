@@ -112,12 +112,14 @@ const RegisterForm = () => {
 
         const btnElement = document.getElementById("google-signin-btn-register");
         if (btnElement) {
+          btnElement.innerHTML = "";
           google.accounts.id.renderButton(btnElement, {
             text: "signup_with",
             theme: "outline",
             size: "large",
             width: btnElement.clientWidth || 382,
             logo_alignment: "left",
+            locale: locale,
           });
         }
       }
@@ -132,14 +134,14 @@ const RegisterForm = () => {
       if (res.success) {
         router.push("/profile");
       } else {
-        setError(res.message || "Xác thực tài khoản Google thất bại.");
+        setError(
+          res.message ||
+            (locale === "en"
+              ? "Google authentication failed."
+              : "Xác thực tài khoản Google thất bại.")
+        );
       }
     };
-
-    if ((window as any).google) {
-      initializeGoogle();
-      return;
-    }
 
     const targetScriptSrc = `https://accounts.google.com/gsi/client?hl=${locale}`;
     const existingScript = document.getElementById("google-gsi-client") as HTMLScriptElement | null;
@@ -153,21 +155,19 @@ const RegisterForm = () => {
         initializeGoogle();
       };
       document.body.appendChild(script);
-    } else {
-      if (existingScript.src !== targetScriptSrc) {
-        existingScript.remove();
-        const script = document.createElement("script");
-        script.id = "google-gsi-client";
-        script.src = targetScriptSrc;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-          initializeGoogle();
-        };
-        document.body.appendChild(script);
-      } else {
+    } else if (existingScript.src !== targetScriptSrc) {
+      existingScript.remove();
+      const script = document.createElement("script");
+      script.id = "google-gsi-client";
+      script.src = targetScriptSrc;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
         initializeGoogle();
-      }
+      };
+      document.body.appendChild(script);
+    } else if ((window as any).google) {
+      initializeGoogle();
     }
   }, [loading, isActivating, loginWithGoogle, router, locale]);
 
@@ -208,7 +208,11 @@ const RegisterForm = () => {
           setIsActivating(true);
           setActivationEmail(formData.email);
           setResendCountdown(60);
-          setOtpSuccess("Đăng ký thành công! Vui lòng nhập mã OTP 6 số để kích hoạt tài khoản.");
+          setOtpSuccess(
+            locale === "en"
+              ? "Registration successful! Please enter the 6-digit OTP code to activate your account."
+              : "Đăng ký thành công! Vui lòng nhập mã OTP 6 số để kích hoạt tài khoản."
+          );
         } else {
           router.push("/profile");
         }
@@ -224,7 +228,7 @@ const RegisterForm = () => {
         const isPhoneDup =
           Boolean(phoneError) ||
           Boolean(suggestion && (suggestion.type === "phone" || suggestion.url?.includes("phone") || suggestion.login_url?.includes("phone"))) ||
-          Boolean(typeof res.message === "string" && res.message.toLowerCase().includes("số điện thoại"));
+          Boolean(typeof res.message === "string" && (res.message.toLowerCase().includes("số điện thoại") || res.message.toLowerCase().includes("phone")));
 
         const isEmailDup =
           Boolean(emailError) ||
@@ -234,7 +238,10 @@ const RegisterForm = () => {
         if (isPhoneDup && isEmailDup) {
           setDuplicateAlert({
             type: "both",
-            message: "Số điện thoại và Email này đã được đăng ký tài khoản.",
+            message:
+              locale === "en"
+                ? "This phone number and email are already registered."
+                : "Số điện thoại và Email này đã được đăng ký tài khoản.",
             loginUrl: `/login?phone=${encodeURIComponent(phoneVal)}`,
             forgotUrl: `/forgot-password?phone=${encodeURIComponent(phoneVal)}`,
           });
@@ -243,7 +250,12 @@ const RegisterForm = () => {
           const rawMsg = Array.isArray(phoneError) ? phoneError[0] : (typeof phoneError === "string" ? phoneError : null);
           setDuplicateAlert({
             type: "phone",
-            message: rawMsg || suggestion?.message || "Số điện thoại này đã được đăng ký tài khoản.",
+            message:
+              rawMsg ||
+              suggestion?.message ||
+              (locale === "en"
+                ? "This phone number is already registered."
+                : "Số điện thoại này đã được đăng ký tài khoản."),
             loginUrl: suggestion?.login_url || suggestion?.url || `/login?phone=${encodeURIComponent(phoneVal)}`,
             forgotUrl: suggestion?.forgot_url || `/forgot-password?phone=${encodeURIComponent(phoneVal)}`,
           });
@@ -252,7 +264,12 @@ const RegisterForm = () => {
           const rawMsg = Array.isArray(emailError) ? emailError[0] : (typeof emailError === "string" ? emailError : null);
           setDuplicateAlert({
             type: "email",
-            message: rawMsg || suggestion?.message || "Email này đã được đăng ký tài khoản.",
+            message:
+              rawMsg ||
+              suggestion?.message ||
+              (locale === "en"
+                ? "This email is already registered."
+                : "Email này đã được đăng ký tài khoản."),
             loginUrl: suggestion?.login_url || suggestion?.url || `/login?email=${encodeURIComponent(emailVal)}`,
             forgotUrl: suggestion?.forgot_url || `/forgot-password?email=${encodeURIComponent(emailVal)}`,
           });
@@ -260,14 +277,24 @@ const RegisterForm = () => {
         } else if (suggestion) {
           setDuplicateAlert({
             type: "phone",
-            message: suggestion.message || res.message || "Thông tin này đã được đăng ký tài khoản.",
+            message:
+              suggestion.message ||
+              res.message ||
+              (locale === "en"
+                ? "This information is already registered."
+                : "Thông tin này đã được đăng ký tài khoản."),
             loginUrl: suggestion.login_url || suggestion.url || `/login?phone=${encodeURIComponent(phoneVal)}`,
             forgotUrl: suggestion.forgot_url || `/forgot-password?phone=${encodeURIComponent(phoneVal)}`,
           });
           setError(null);
         } else {
           setDuplicateAlert(null);
-          setError(res.message || "Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.");
+          setError(
+            res.message ||
+              (locale === "en"
+                ? "Registration failed. Please check your information."
+                : "Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.")
+          );
         }
       }
     } catch (err: any) {
@@ -282,7 +309,7 @@ const RegisterForm = () => {
       const isPhoneDup =
         Boolean(phoneError) ||
         Boolean(suggestion && (suggestion.type === "phone" || suggestion.url?.includes("phone") || suggestion.login_url?.includes("phone"))) ||
-        Boolean(typeof err?.message === "string" && err.message.toLowerCase().includes("số điện thoại"));
+        Boolean(typeof err?.message === "string" && (err.message.toLowerCase().includes("số điện thoại") || err.message.toLowerCase().includes("phone")));
 
       const isEmailDup =
         Boolean(emailError) ||
@@ -293,7 +320,11 @@ const RegisterForm = () => {
         const rawMsg = Array.isArray(phoneError) ? phoneError[0] : (typeof phoneError === "string" ? phoneError : null);
         setDuplicateAlert({
           type: "phone",
-          message: rawMsg || "Số điện thoại này đã được đăng ký tài khoản.",
+          message:
+            rawMsg ||
+            (locale === "en"
+              ? "This phone number is already registered."
+              : "Số điện thoại này đã được đăng ký tài khoản."),
           loginUrl: suggestion?.login_url || suggestion?.url || `/login?phone=${encodeURIComponent(phoneVal)}`,
           forgotUrl: suggestion?.forgot_url || `/forgot-password?phone=${encodeURIComponent(phoneVal)}`,
         });
@@ -302,14 +333,23 @@ const RegisterForm = () => {
         const rawMsg = Array.isArray(emailError) ? emailError[0] : (typeof emailError === "string" ? emailError : null);
         setDuplicateAlert({
           type: "email",
-          message: rawMsg || "Email này đã được đăng ký tài khoản.",
+          message:
+            rawMsg ||
+            (locale === "en"
+              ? "This email is already registered."
+              : "Email này đã được đăng ký tài khoản."),
           loginUrl: suggestion?.login_url || suggestion?.url || `/login?email=${encodeURIComponent(emailVal)}`,
           forgotUrl: suggestion?.forgot_url || `/forgot-password?email=${encodeURIComponent(emailVal)}`,
         });
         setError(null);
       } else {
         setDuplicateAlert(null);
-        setError(err.message || "Đăng ký thất bại. Vui lòng thử lại.");
+        setError(
+          err.message ||
+            (locale === "en"
+              ? "Registration failed. Please try again."
+              : "Đăng ký thất bại. Vui lòng thử lại.")
+        );
       }
     } finally {
       setLoading(false);

@@ -123,7 +123,7 @@ export default function MobileCartFlow({
   inline?: boolean;
   initialDeliveryType?: DeliveryType;
 }) {
-  const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen, setIsCartOpen, hasOutOfStockItems, restoreCampaignItemsToOriginalPrice } = useCart();
+  const { cartItems, isLoaded, updateQuantity, removeFromCart, clearCart, isCartOpen, setIsCartOpen, hasOutOfStockItems, restoreCampaignItemsToOriginalPrice } = useCart();
   const isOutOfStockOverall = Boolean(hasOutOfStockItems || cartItems.some((i) => i.isOutOfStock));
   const { user, token, refreshUser } = useAuth();
   const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
@@ -456,10 +456,10 @@ export default function MobileCartFlow({
 
 
   useEffect(() => {
-    getLoyaltySettings().then((s) => {
+    getLoyaltySettings(locale).then((s) => {
       setLoyaltySettings(s);
     });
-  }, []);
+  }, [locale]);
 
   // Voucher
   const [voucherCode, setVoucherCode] = useState("");
@@ -641,8 +641,8 @@ export default function MobileCartFlow({
   }, [inline, isMobileScreen, onClose, setIsCartOpen]);
 
   useEffect(() => {
-    getAvailableVouchers().then(setAvailableVouchers).catch(() => setAvailableVouchers([]));
-  }, []);
+    getAvailableVouchers(locale).then(setAvailableVouchers).catch(() => setAvailableVouchers([]));
+  }, [locale]);
 
   // Pending order (bank transfer QR)
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
@@ -726,11 +726,11 @@ export default function MobileCartFlow({
 
   // Load checkout config and active campaigns
   useEffect(() => {
-    getActiveCampaigns()
+    getActiveCampaigns(locale)
       .then(setPublicCampaigns)
       .catch(() => {})
       .finally(() => setPublicCampaignsLoaded(true));
-    getCheckoutConfig()
+    getCheckoutConfig(undefined, locale)
       .then((cfg) => {
         setConfig(cfg);
         if (cfg.branches && cfg.branches.length > 0) {
@@ -744,7 +744,7 @@ export default function MobileCartFlow({
             { value: "delivery", label: t("delivery_home") },
             { value: "pickup", label: t("delivery_pickup") },
           ],
-          default_shipping_fee: "30000",
+          default_shipping_fee: "50000",
           branches: branches && branches.length > 0
             ? branches.map(b => ({
               id: b.id,
@@ -792,14 +792,14 @@ export default function MobileCartFlow({
             ]
         });
       });
-  }, [branches]);
+  }, [branches, locale, t]);
 
   // Cart-aware refetch: re-fetch with cartItems whenever cart changes (debounced 300ms)
   useEffect(() => {
     if (!cartItems || cartItems.length === 0) return;
     const items = cartItems.map((item) => ({ product_id: item.productId }));
     const timer = setTimeout(() => {
-      getCheckoutConfig(items)
+      getCheckoutConfig(items, locale)
         .then((cfg) => {
           setConfig(cfg);
         })
@@ -808,7 +808,7 @@ export default function MobileCartFlow({
         });
     }, 300);
     return () => clearTimeout(timer);
-  }, [cartItems]);
+  }, [cartItems, locale]);
 
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings | null>(null);
   const [hotline, setHotline] = useState<string>("024.9999.7122");
@@ -823,7 +823,7 @@ export default function MobileCartFlow({
   const [calculatingShipping, setCalculatingShipping] = useState<boolean>(false);
 
   useEffect(() => {
-    getShippingSettings().then(setShippingSettings);
+    getShippingSettings(locale).then(setShippingSettings);
     getGeneralSettings()
       .then((settings) => {
         if (settings?.hotline) {
@@ -831,7 +831,7 @@ export default function MobileCartFlow({
         }
       })
       .catch(() => { });
-  }, []);
+  }, [locale]);
 
   // 1. Tiền giảm của khuyến mại món hiện tại: sum((item.originalPrice - item.unitPrice) * quantity) (với các món có originalPrice > unitPrice)
   const totalItemDiscount = useMemo(() => {
@@ -901,17 +901,41 @@ export default function MobileCartFlow({
   // Campaign G1 trong giỏ hàng (Mobile Flow)
   const cartCampaignG1 = useMemo(() => {
     if (!allPromotionsList || allPromotionsList.length === 0) return null;
-    if (selectedCampaignIds.length === 0) return null;
     const checkAmount = originalSubtotal > 0 ? originalSubtotal : rawSubtotal;
-    const promos = allPromotionsList.filter((p) => {
-      return selectedCampaignIds.some((id) => String(id) === String(p.id));
-    });
+    const discountedItems = cartItems.filter((it) => it.originalPrice && it.originalPrice > it.unitPrice);
+    const activeSamePricePromos = !isBestDealVoucherApplied && discountedItems.length > 0
+      ? allPromotionsList.filter((p) => {
+          if (p.promotion_type !== "same_price_discount" || !p.items || p.items.length === 0) return false;
+          return p.items.some((pi) =>
+            discountedItems.some(
+              (di) =>
+                (pi.product_id && Number(pi.product_id) === Number(di.productId)) ||
+                (pi.kiotviet_id && Number(pi.kiotviet_id) === Number(di.productId)) ||
+                (pi.product_code && di.productCode && String(pi.product_code) === String(di.productCode))
+            )
+          );
+        })
+      : [];
+    const selectedPromos = allPromotionsList.filter((p) =>
+      selectedCampaignIds.some((id) => String(id) === String(p.id))
+    );
+    const promos = [
+      ...selectedPromos,
+      ...activeSamePricePromos.filter((sp) => !selectedPromos.some((p) => String(p.id) === String(sp.id))),
+    ];
+    if (promos.length === 0) return null;
+
+    const noFreeshipPromo = promos.find(
+      (p) => p.can_combine_with_freeship === false && (p.min_order_value || 0) <= checkAmount
+    );
+    if (noFreeshipPromo) return noFreeshipPromo;
+
     const orderDiscountPromo = promos.find(
       (p) => p.promotion_type === "order_discount" && checkAmount >= (p.min_order_value || 0)
     );
     if (orderDiscountPromo) return orderDiscountPromo;
     return promos.find((p) => (p.min_order_value || 0) <= checkAmount) || null;
-  }, [allPromotionsList, originalSubtotal, rawSubtotal, selectedCampaignIds]);
+  }, [allPromotionsList, originalSubtotal, rawSubtotal, selectedCampaignIds, cartItems, isBestDealVoucherApplied]);
 
   // Ma trận Khuyến mãi 6 Cases (Thông báo Voucher Mobile Flow)
   const promotionMatrixVoucherNotice = useMemo(() => {
@@ -1052,7 +1076,7 @@ export default function MobileCartFlow({
       });
   }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, appliedShippingVoucher, config?.branches, cartCampaignG1]);
 
-  const defaultShippingFee = parseFloat(config?.default_shipping_fee || "30000") || 30000;
+  const defaultShippingFee = parseFloat(config?.default_shipping_fee || "50000") || 50000;
   const shippingFee = (cartItems.length === 0 || deliveryType !== "delivery")
     ? 0
     : (isFreeship ? 0 : (hasCalculatedFee ? calculatedFee : (calculatedFee || defaultShippingFee)));
@@ -1329,8 +1353,8 @@ export default function MobileCartFlow({
         const giftQty = Number(promo.settings?.gift_quantity ?? promo.settings?.get_quantity ?? (promo as any).gift_quantity ?? 1);
         const isFree = item?.campaign_price === 0 || Boolean(item?.is_free);
         const tag = isFree
-          ? `Mua ${buyQty} tặng ${giftQty}`
-          : `Mua ${buyQty} giảm ${giftQty}`;
+          ? (locale === "en" ? `Buy ${buyQty} get ${giftQty}` : `Mua ${buyQty} tặng ${giftQty}`)
+          : (locale === "en" ? `Buy ${buyQty} discount ${giftQty}` : `Mua ${buyQty} giảm ${giftQty}`);
         return {
           promo,
           item,
@@ -1339,7 +1363,7 @@ export default function MobileCartFlow({
         };
       })
       .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string; giftItems: PromotionGiftItem[] } => Boolean(x && x.item));
-  }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap]);
+  }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap, locale]);
 
   const appliedCartPromotions = useMemo(() => {
     const list: ActivePromotion[] = [];
@@ -2219,7 +2243,9 @@ export default function MobileCartFlow({
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
         shipping_voucher_code: appliedShippingVoucher ? appliedShippingVoucher.code : (appliedVoucher?.isFreeship ? appliedVoucher.code : undefined),
         applied_deal_type: isBestDealVoucherApplied ? "voucher" : undefined,
-        campaign_id: appliedCampaignIds.length > 0 ? appliedCampaignIds[0] : undefined,
+        campaign_id: (!isBestDealVoucherApplied && cartCampaignG1?.can_combine_with_freeship === false && Number(cartCampaignG1.id) > 0)
+          ? Number(cartCampaignG1.id)
+          : (appliedCampaignIds.length > 0 ? appliedCampaignIds[0] : undefined),
         campaign_ids: appliedCampaignIds.length > 0 ? appliedCampaignIds : undefined,
         voucher: appliedVoucher
           ? {
@@ -2435,7 +2461,17 @@ export default function MobileCartFlow({
                   {t("order_summary")}
                 </h3>
 
-                {cartItems.length === 0 ? (
+                {isLoaded === false ? (
+                  <div className="py-6 space-y-4 animate-pulse" data-testid="mobile-cart-loading-skeleton">
+                    <div className="flex gap-3 items-center">
+                      <div className="size-16 rounded-xl bg-gray-200 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4" />
+                        <div className="h-3 bg-gray-100 rounded w-1/2" />
+                      </div>
+                    </div>
+                  </div>
+                ) : cartItems.length === 0 ? (
                   <div className="py-8 text-center space-y-2">
                     <p className="body-1 text-gray-500 font-medium">{t("empty")}</p>
                     {/* Điều hướng sang trang /product và đóng giỏ hàng khi người dùng bấm tiếp tục mua sắm */}
@@ -2718,7 +2754,7 @@ export default function MobileCartFlow({
                   </div>
 
                   {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}
-                  {deliveryType !== "pickup" && (deliveryType as string) !== "takeaway" && shippingSettings?.is_min_amount_enabled && (
+                  {deliveryType !== "pickup" && (deliveryType as string) !== "takeaway" && shippingSettings?.is_min_amount_enabled && subtotal > 0 && (
                     <SmartCartProgressBar
                       subtotal={subtotal}
                       shippingSettings={shippingSettings}
@@ -2737,7 +2773,7 @@ export default function MobileCartFlow({
                     {/* 1) Tạm tính */}
                     <div className="flex justify-between items-center text-base">
                       <span className="text-gray-500 font-medium">{t("subtotal")}</span>
-                      <span className="text-primary font-bold font-display">{formatPrice(displaySubtotal)}</span>
+                      <span className="text-primary font-bold font-display">{formatOrderPrice(displaySubtotal)}</span>
                     </div>
 
                     {/* 2) Khuyến mãi đơn hàng tự động */}
@@ -2935,7 +2971,11 @@ export default function MobileCartFlow({
                 <div className="flex justify-between items-center text-sm font-medium">
                   <span className="text-gray-600">{t("subtotal")}</span>
                   <span className="text-primary font-bold text-base">
-                    {formatPrice(displaySubtotal)}
+                    {isLoaded === false ? (
+                      <span className="inline-block h-5 w-20 bg-gray-200 rounded animate-pulse align-middle" />
+                    ) : (
+                      formatOrderPrice(displaySubtotal)
+                    )}
                   </span>
                 </div>
 
@@ -3116,7 +3156,7 @@ export default function MobileCartFlow({
                 <div className="flex justify-between items-center border-t border-gray-200/80 pt-3 gap-2">
                   <span className="text-gray-900 font-bold text-sm flex-1 min-w-0">{t("total")}</span>
                   <span className="text-xl font-display text-secondary font-extrabold shrink-0 whitespace-nowrap text-right tracking-tight">
-                    {formatPrice(total)}
+                    {formatOrderPrice(total)}
                   </span>
                 </div>
               </div>
@@ -3202,6 +3242,7 @@ export default function MobileCartFlow({
                 <div className="space-y-3">
                   <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
                     {t("email_label")}
+                    <RequiredMark />
                   </label>
                   <input
                     type="email"
@@ -3832,6 +3873,7 @@ export default function MobileCartFlow({
         isMemberCardSelected={isMemberCardSelected}
         onToggleMemberCard={setIsMemberCardSelected}
         loyaltySettings={loyaltySettings}
+        shippingSettings={shippingSettings}
         campaigns={publicCampaigns.length > 0 ? publicCampaigns : undefined}
       />
 

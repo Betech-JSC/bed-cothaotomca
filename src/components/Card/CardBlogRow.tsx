@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Link } from "@/i18n/i18n-navigation";
 import React from "react";
 import { formatDate, formatImageUrl } from "@/lib/format";
+import { useLocale } from "next-intl";
 
 type BlogItem = {
   image: {
@@ -22,6 +23,7 @@ type CardBlogProps = {
 };
 
 const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
+  const locale = useLocale();
   const imageSrc = formatImageUrl(item.image?.url) || '/cover.jpg';
   const [hasError, setHasError] = React.useState(false);
 
@@ -55,7 +57,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
             </Link>
             <span className="opacity-80">|</span>
             <span className="body-2">
-              {formatDate(item.created_at)}
+              {formatDate(item.created_at, locale)}
             </span>
           </div>
         </div>
@@ -71,7 +73,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
           </Link>
           <span className="opacity-80">|</span>
           <span className="body-2">
-            {formatDate(item.created_at)}
+            {formatDate(item.created_at, locale)}
           </span>
         </div>
 

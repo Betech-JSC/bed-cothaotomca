@@ -22,8 +22,10 @@ import {
 } from "@/services/campaignService";
 import { mergeCampaignObjects } from "@/types/campaign";
 import { useRouter, usePathname } from "@/i18n/routing";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useAuth, StorefrontUser, getMemberTier } from "@/contexts/AuthContext";
+
+const VIETNAMESE_DIACRITICS_REGEX = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
 
 export function formatPrivateVoucherError(errMsg: string): string {
   const msgLower = (errMsg || "").toLowerCase();
@@ -121,13 +123,13 @@ export interface CouponModalProps {
   loyaltySettings?: LoyaltySettings | null;
 }
 
-// Module-level in-memory cache to prevent layout shift / flickering on open
-let cachedCampaigns: PublicCampaignItem[] | null = null;
-let cachedVouchers: PublicVoucherItem[] | null = null;
+// Module-level in-memory cache keyed by locale to prevent layout shift / flickering on open
+let cachedCampaigns: Record<string, PublicCampaignItem[]> = {};
+let cachedVouchers: Record<string, PublicVoucherItem[]> = {};
 
 export function resetCouponModalCache(): void {
-  cachedCampaigns = null;
-  cachedVouchers = null;
+  cachedCampaigns = {};
+  cachedVouchers = {};
 }
 
 function CampaignBannerImage({
@@ -1026,6 +1028,12 @@ export default function CouponModal({
   loyaltySettings: loyaltySettingsProp,
 }: CouponModalProps) {
   const t = useTranslations("voucher");
+  let locale = "vi";
+  try {
+    locale = useLocale() || "vi";
+  } catch {
+    locale = "vi";
+  }
   const router = useRouter();
   const rawPathname = usePathname();
   const currentPath = (rawPathname || "") as string;
@@ -1073,11 +1081,11 @@ export default function CouponModal({
     if (loyaltySettingsProp !== undefined) {
       setLoyaltySettings(loyaltySettingsProp);
     } else {
-      getLoyaltySettings().then((s) => {
+      getLoyaltySettings(locale).then((s) => {
         setLoyaltySettings(s);
       });
     }
-  }, [loyaltySettingsProp]);
+  }, [loyaltySettingsProp, locale]);
 
   const canCombineWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
 
@@ -1105,30 +1113,48 @@ export default function CouponModal({
   const discountPercent = isUpgrade ? upgradeDiscount : isDiamond ? defaultDiamondDiscount : defaultGoldDiscount;
 
   const memberCardTitle = useMemo(() => {
+    const isUntranslatedVi = (str?: string | null) =>
+      !str || (locale === "en" && VIETNAMESE_DIACRITICS_REGEX.test(str));
+
     if (isDiamond) {
       if (isUpgrade) {
         const tr = t("member_tier_upgrade_title_diamond", { percent: discountPercent });
         return (tr && tr !== "member_tier_upgrade_title_diamond") ? tr : `Ưu đãi mừng lên hạng Kim Cương - Giảm ${discountPercent}%`;
       }
       const tr = t("member_tier_card_title_diamond", { percent: discountPercent });
-      return loyaltySettings?.diamond_card_title || ((tr && tr !== "member_tier_card_title_diamond") ? tr : `Ưu đãi Hội viên Kim Cương - Giảm ${discountPercent}%`);
+      const fallbackTr = (tr && tr !== "member_tier_card_title_diamond") ? tr : `Ưu đãi Hội viên Kim Cương - Giảm ${discountPercent}%`;
+      return !isUntranslatedVi(loyaltySettings?.diamond_card_title)
+        ? loyaltySettings!.diamond_card_title!
+        : fallbackTr;
     }
     if (isUpgrade) {
       const tr = t("member_tier_upgrade_title_gold", { percent: discountPercent });
       return (tr && tr !== "member_tier_upgrade_title_gold") ? tr : `Ưu đãi mừng lên hạng Vàng - Giảm ${discountPercent}%`;
     }
     const tr = t("member_tier_card_title_gold", { percent: discountPercent });
-    return loyaltySettings?.gold_card_title || ((tr && tr !== "member_tier_card_title_gold") ? tr : `Ưu đãi Hội viên Vàng - Giảm ${discountPercent}%`);
-  }, [isDiamond, isUpgrade, discountPercent, loyaltySettings, t]);
+    const fallbackTr = (tr && tr !== "member_tier_card_title_gold") ? tr : `Ưu đãi Hội viên Vàng - Giảm ${discountPercent}%`;
+    return !isUntranslatedVi(loyaltySettings?.gold_card_title)
+      ? loyaltySettings!.gold_card_title!
+      : fallbackTr;
+  }, [isDiamond, isUpgrade, discountPercent, loyaltySettings, t, locale]);
 
   const memberCardDescription = useMemo(() => {
+    const isUntranslatedVi = (str?: string | null) =>
+      !str || (locale === "en" && VIETNAMESE_DIACRITICS_REGEX.test(str));
+
     if (isDiamond) {
       const tr = t("member_tier_desc_diamond");
-      return loyaltySettings?.diamond_card_description || ((tr && tr !== "member_tier_desc_diamond") ? tr : "Áp dụng tự động cho tài khoản hạng Diamond trên đơn hàng.");
+      const fallbackTr = (tr && tr !== "member_tier_desc_diamond") ? tr : "Áp dụng tự động cho tài khoản hạng Diamond trên đơn hàng.";
+      return !isUntranslatedVi(loyaltySettings?.diamond_card_description)
+        ? loyaltySettings!.diamond_card_description!
+        : fallbackTr;
     }
     const tr = t("member_tier_desc_gold");
-    return loyaltySettings?.gold_card_description || ((tr && tr !== "member_tier_desc_gold") ? tr : "Áp dụng tự động cho tài khoản hạng Gold trên đơn hàng.");
-  }, [isDiamond, loyaltySettings, t]);
+    const fallbackTr = (tr && tr !== "member_tier_desc_gold") ? tr : "Áp dụng tự động cho tài khoản hạng Gold trên đơn hàng.";
+    return !isUntranslatedVi(loyaltySettings?.gold_card_description)
+      ? loyaltySettings!.gold_card_description!
+      : fallbackTr;
+  }, [isDiamond, loyaltySettings, t, locale]);
 
   const memberCardBanner = isDiamond
     ? (loyaltySettings?.diamond_card_banner_url || loyaltySettings?.diamond_card?.banner_url || loyaltySettings?.diamond_card_banner)
@@ -1177,10 +1203,10 @@ export default function CouponModal({
   }, []);
 
   const [campaigns, setCampaigns] = useState<PublicCampaignItem[]>(
-    campaignsProp && campaignsProp.length > 0 ? campaignsProp : (cachedCampaigns || [])
+    campaignsProp && campaignsProp.length > 0 ? campaignsProp : (cachedCampaigns[locale] || [])
   );
   const [vouchers, setVouchers] = useState<PublicVoucherItem[]>(
-    vouchersProp && vouchersProp.length > 0 ? vouchersProp : (cachedVouchers || [])
+    vouchersProp && vouchersProp.length > 0 ? vouchersProp : (cachedVouchers[locale] || [])
   );
 
   useEffect(() => {
@@ -1320,17 +1346,20 @@ export default function CouponModal({
           setVouchers(vouchersProp);
         }
 
-        // If we have cached data, reuse it immediately to prevent flickering
-        if (cachedCampaigns && cachedCampaigns.length > 0 && cachedVouchers && cachedVouchers.length > 0) {
+        const localeCampaignCache = cachedCampaigns[locale];
+        const localeVoucherCache = cachedVouchers[locale];
+
+        // If we have cached data for this locale, reuse it immediately to prevent flickering
+        if (localeCampaignCache && localeCampaignCache.length > 0 && localeVoucherCache && localeVoucherCache.length > 0) {
           if (campaignsProp && campaignsProp.length > 0) {
             setCampaigns(campaignsProp);
           } else if (campaigns.length === 0) {
-            setCampaigns(cachedCampaigns);
+            setCampaigns(localeCampaignCache);
           }
           if (vouchersProp && vouchersProp.length > 0) {
             setVouchers(vouchersProp);
           } else if (vouchers.length === 0) {
-            setVouchers(cachedVouchers);
+            setVouchers(localeVoucherCache);
           }
           if (shippingSettings && !shippingSettingsState) setShippingSettingsState(shippingSettings);
           setLoading(false);
@@ -1338,15 +1367,15 @@ export default function CouponModal({
           setLoading(true);
           const fetchShipping = shippingSettings !== undefined
             ? Promise.resolve(shippingSettings)
-            : getShippingSettings().catch(() => null);
+            : getShippingSettings(locale).catch(() => null);
 
           const fetchCampaigns = (campaignsProp && campaignsProp.length > 0)
             ? Promise.resolve(campaignsProp)
-            : getActiveCampaigns().catch(() => []);
+            : getActiveCampaigns(locale).catch(() => []);
 
           const fetchVouchers = (vouchersProp && vouchersProp.length > 0)
             ? Promise.resolve(vouchersProp)
-            : getAvailableVouchers().catch(() => []);
+            : getAvailableVouchers(locale).catch(() => []);
 
           Promise.all([
             fetchCampaigns,
@@ -1354,10 +1383,10 @@ export default function CouponModal({
             fetchShipping,
           ]).then(([camps, vows, sSettings]) => {
             if (camps.length > 0) {
-              cachedCampaigns = camps;
+              cachedCampaigns[locale] = camps;
             }
             if (vows.length > 0) {
-              cachedVouchers = vows;
+              cachedVouchers[locale] = vows;
             }
             setCampaigns(campaignsProp && campaignsProp.length > 0 ? campaignsProp : camps);
             setVouchers(vouchersProp && vouchersProp.length > 0 ? vouchersProp : vows);
@@ -1371,23 +1400,60 @@ export default function CouponModal({
       wasOpenRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, isBrowseMode, appliedVoucherCode, appliedVoucherCodes, appliedCampaignIds, shippingSettings, subtotal, checkCampaignEligibility, campaignsProp, vouchersProp]);
+  }, [isOpen, isBrowseMode, appliedVoucherCode, appliedVoucherCodes, appliedCampaignIds, shippingSettings, subtotal, checkCampaignEligibility, campaignsProp, vouchersProp, locale]);
+
+  useEffect(() => {
+    if (shippingSettings !== undefined && shippingSettings !== null) {
+      setShippingSettingsState(shippingSettings);
+    }
+  }, [shippingSettings]);
 
   // Virtual campaign item for shipping discount card (FB-04)
   const shippingPromotionItem: PublicCampaignItem | null = useMemo(() => {
     if (shippingSettingsState?.is_min_amount_enabled && shippingSettingsState?.card_title) {
+      const isUntranslatedVi = (str?: string | null) =>
+        !str ||
+        (locale === "en" &&
+          (VIETNAMESE_DIACRITICS_REGEX.test(str) ||
+            /Giảm|Đơn từ|Mã chương trình|phí vận chuyển|Áp dụng/i.test(str)));
+
+      const minAmount = Number(shippingSettingsState.min_order_amount || 400000);
+      const discountVal = Number(shippingSettingsState.shipping_discount_value || 20000);
+      const minK = Math.round(minAmount / 1000);
+      const discountK = Math.round(discountVal / 1000);
+
+      const fallbackEnTitle =
+        shippingSettingsState.shipping_discount_type === "free"
+          ? `Free Shipping For Orders From ${minK}K`
+          : `${discountK}K Off Shipping For Orders From ${minK}K`;
+      const fallbackEnBadge = "Applicable to all eligible orders";
+      const fallbackEnDescription = `- Program code: K026-001\n- Offer: Direct ${discountVal.toLocaleString("en-US")} VND discount on shipping fee.\n- Condition: Applicable for orders from ${minAmount.toLocaleString("en-US")} VND.`;
+
+      const resolvedTitle =
+        locale === "en" && isUntranslatedVi(shippingSettingsState.card_title)
+          ? fallbackEnTitle
+          : shippingSettingsState.card_title;
+      const resolvedBadge =
+        locale === "en" && isUntranslatedVi(shippingSettingsState.card_badge)
+          ? fallbackEnBadge
+          : (shippingSettingsState.card_badge || null);
+      const resolvedDescription =
+        locale === "en" && isUntranslatedVi(shippingSettingsState.card_description)
+          ? fallbackEnDescription
+          : (shippingSettingsState.card_description || null);
+
       return {
         id: "shipping-promotion-card",
-        name: shippingSettingsState.card_title,
+        name: resolvedTitle,
         banner: shippingSettingsState.card_banner || null,
         start_at: null,
         end_at: null,
-        special_note: shippingSettingsState.card_badge || null,
-        description: shippingSettingsState.card_description || null,
+        special_note: resolvedBadge,
+        description: resolvedDescription,
       };
     }
     return null;
-  }, [shippingSettingsState]);
+  }, [shippingSettingsState, locale]);
 
   // Combined campaigns list (deep-merge matching activePromotions & public campaigns)
   const allCampaigns = useMemo(() => {

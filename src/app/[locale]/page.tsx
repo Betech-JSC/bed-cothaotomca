@@ -105,7 +105,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   const sliderHero = heroBannersData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
-    const title = translation?.title || item.title || "Cô Thảo Tôm Cá";
+    const rawTitle = translation?.title || item.title || "Cô Thảo Tôm Cá";
+    const title =
+      locale === 'en' && !translation?.title && item.title === 'Banner Trang chủ'
+        ? 'Cô Thảo Tôm Cá Banner'
+        : rawTitle;
     return {
       image: {
         url: formatImageUrl(item.image) || "/cover.jpg",
@@ -129,10 +133,16 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       : item.category;
 
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
-    const categoryName = catTranslation?.title || productCategory?.title || "Tất cả";
+    const categoryName = catTranslation?.title || productCategory?.title || (locale === 'en' ? 'All' : 'Tất cả');
     const categorySlug = locale === 'vi'
       ? (productCategory?.slug || slugify(categoryName))
       : (slugify(categoryName || productCategory?.slug || "") || productCategory?.slug);
+
+    const rawDesc = translation?.description || item.description;
+    const cleanedDesc =
+      locale === 'en' && typeof rawDesc === 'string'
+        ? rawDesc.replace(/\bat Bếp\b/gi, 'at Cô Thảo Tôm Cá')
+        : rawDesc;
 
     return {
       id: item.id,
@@ -149,7 +159,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         url: formatImageUrl(item.image) || "/cover.jpg",
         alt: name
       },
-      description: translation?.description || item.description,
+      description: cleanedDesc,
       variants: item.variants,
       created_at: '2024-03-15T00:00:00Z',
     };
@@ -191,6 +201,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     const catTranslation = getTranslation(item.category?.translations, locale) as any;
     const title = translation?.title || item.title;
     const categoryName = catTranslation?.title || item.category?.title || t('blog.category');
+    let catSlug = slugify(categoryName) || item.category?.slug || (locale === 'en' ? 'news' : 'tin-tuc');
+    if (locale === 'en' && catSlug === 'blog') {
+      catSlug = 'news';
+    }
 
     return {
       image: {
@@ -201,7 +215,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       slug: item.slug,
       category: {
         title: categoryName,
-        slug: slugify(categoryName),
+        slug: catSlug,
       },
       created_at: item.created_at,
     };
@@ -218,6 +232,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       ...popupBannerRaw,
       title: translation?.title || popupBannerRaw.title,
       description: translation?.description || popupBannerRaw.description,
+      button_text: translation?.button_text || (popupBannerRaw as any).button_text,
     };
   }
 
@@ -226,7 +241,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <HomePromotionPopup banner={popupBanner} />
       <SectionHero items={sliderHero} />
       <section className="md:py-20 py-[50px] xl:py-[100px] relative overflow-hidden">
-        <div className="absolute top-6 left-0 max-w-[280px] md:max-w-[320px] xl:max-w-[420px] w-full h-[120px] md:h-[100px] xl:h-[130px]">
+        <div className="absolute top-6 left-0 max-w-[280px] md:max-w-[320px] xl:max-w-[420px] w-full h-[120px] md:h-[100px] xl:h-[130px] pointer-events-none">
           <AnimateOnScroll animate="slideleft" delay={0} className="w-full h-full">
             <Image
               src="/images/home/image-fish.png"
@@ -237,7 +252,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </AnimateOnScroll>
         </div>
 
-        <div className="absolute -bottom-6 right-0 md:-right-16 max-w-[180px] md:max-w-[320px] xl:max-w-[427px] w-full h-[150px] md:h-[260px] xl:h-[350px]">
+        <div className="absolute -bottom-6 right-0 md:-right-16 max-w-[180px] md:max-w-[220px] lg:max-w-[300px] xl:max-w-[427px] w-full h-[150px] md:h-[190px] lg:h-[250px] xl:h-[350px] pointer-events-none">
           <AnimateOnScroll animate="slideright" delay={0} className="w-full h-full">
             <Image
               src="/images/home/image-crab.png"
@@ -251,11 +266,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <div className="grid grid-cols-12 md:gap-6 gap-4 xl:gap-8">
             <div className="col-span-full md:col-span-11 lg:col-span-10 xl:col-span-8">
               <AnimateOnScroll animate="slideup" delay={0} className="headline-3 text-secondary">{t('home.section-2.subTitle')}</AnimateOnScroll>
-              <div className="relative mt-4 mb-[94px] md:mb-8 xl:mb-12 lg:max-w-full md:max-w-[595px]">
+              <div className="relative mt-4 mb-[94px] md:mb-8 xl:mb-12 md:max-w-[540px] lg:max-w-[640px] xl:max-w-full md:pr-[140px] lg:pr-[160px] xl:pr-0">
                 <AnimateOnScroll animate="slideup" delay={0} className='z-10 relative'>
                   <h1 className="display-1 text-primary">{t('home.section-2.title')}</h1>
                 </AnimateOnScroll>
-                <div className="absolute block top-16 md:top-6 right-0 md:-right-20 xl:-right-20 size-[120px] md:size-[220px] xl:size-[250px]">
+                <div className="absolute block top-16 md:top-2 lg:top-4 right-0 md:-right-6 lg:-right-12 xl:-right-20 size-[120px] md:size-[150px] lg:size-[190px] xl:size-[250px] pointer-events-none">
                   <Image
                     src="/images/home/image-certificate.png"
                     alt="image certificate"
@@ -348,7 +363,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <div className="relative overflow-hidden aspect-w-4 aspect-h-5 rounded-[12px]">
                   <Image
                     src="/images/demo/image-category.jpg"
-                    alt="DANH MỤC SẢN PHẨM"
+                    alt={t('home.section-6.title')}
                     fill
                     className="object-cover w-full h-full"
                   />

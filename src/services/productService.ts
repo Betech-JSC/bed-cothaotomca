@@ -23,6 +23,7 @@ export interface Translation {
 
 export interface ProductVariant {
   id?: number;
+  kiotviet_id?: number;
   code?: string;
   size?: string;
   size_en?: string;
@@ -49,6 +50,7 @@ export interface ProductSection {
 
 export interface Product {
   id: number;
+  kiotviet_id?: number;
   slug?: string;
   name: string;
   name_en?: string;
@@ -102,6 +104,8 @@ export interface Product {
 /** Props cho ProductDetailsInfo — map từ GET /products/slug/{slug} */
 export interface ProductDetailView {
   title: string;
+  title_vi?: string;
+  name_vi?: string;
   title_en?: string;
   name_en?: string;
   description: string;
@@ -109,11 +113,26 @@ export interface ProductDetailView {
   code?: string;
   unit?: string;
   images: { url: string; alt: string }[];
-  sizes: { id?: number; code?: string; title: string; title_en?: string; size_en?: string; price: number; original_price?: number; stock?: number; discount_percent?: number; status?: number }[];
+  sizes: {
+    id?: number;
+    kiotviet_id?: number;
+    code?: string;
+    title: string;
+    title_vi?: string;
+    size_vi?: string;
+    title_en?: string;
+    size_en?: string;
+    price: number;
+    original_price?: number;
+    stock?: number;
+    discount_percent?: number;
+    status?: number;
+  }[];
   infos: { title: string; content: string }[];
   category: { title: string; slug: string };
   checkout: {
     productId: number;
+    kiotviet_id?: number;
     productCode: string;
     slug: string;
     categorySlug: string;
@@ -166,6 +185,7 @@ export function normalizeProductDetail(item: Product): Product {
   const base = normalizeProduct(item);
   const variants = (item.variants ?? []).map((v) => ({
     id: v.id,
+    kiotviet_id: v.kiotviet_id,
     code: v.code,
     size: v.size,
     size_en: v.size_en ?? v.size,
@@ -204,10 +224,14 @@ export function mapProductToDetailView(
   const translation = getTranslation(product.translations, locale) as
     | Translation
     | undefined;
+  const translationVi = getTranslation(product.translations, "vi") as
+    | Translation
+    | undefined;
   const translationEn = getTranslation(product.translations, "en") as
     | Translation
     | undefined;
   const name = translation?.custom_name || product.custom_name || translation?.name || product.name;
+  const title_vi = product.custom_name || translationVi?.custom_name || translationVi?.name || product.name;
   const title_en = translationEn?.custom_name || translationEn?.name || product.name_en;
   const description =
     translation?.description || product.description || "";
@@ -294,11 +318,16 @@ export function mapProductToDetailView(
           const finalPrice = isCamp ? campP : vPriceNum;
           const original_price = isCamp ? baseP : undefined;
 
+          const title_vi = v.size || v.size_en || labels.standard;
+          const size_vi = v.size || title_vi;
           const title_en = v.size_en || v.size || labels.standard;
           return {
             id: v.id,
+            kiotviet_id: v.kiotviet_id,
             code: v.code,
             title: title || labels.standard,
+            title_vi,
+            size_vi,
             title_en,
             size_en: v.size_en,
             price: finalPrice,
@@ -309,8 +338,11 @@ export function mapProductToDetailView(
         })
       : [{
           id: product.id,
+          kiotviet_id: product.kiotviet_id,
           code: product.code,
           title: labels.standard,
+          title_vi: labels.standard,
+          size_vi: labels.standard,
           title_en: labels.standard,
           size_en: labels.standard,
           price: prodFinalPrice,
@@ -326,6 +358,8 @@ export function mapProductToDetailView(
 
   return {
     title: name,
+    title_vi,
+    name_vi: title_vi,
     title_en,
     name_en: title_en,
     description,
@@ -338,6 +372,7 @@ export function mapProductToDetailView(
     category: { title: categoryTitle, slug: categorySlug },
     checkout: {
       productId: product.id,
+      kiotviet_id: product.kiotviet_id,
       productCode: product.code || String(product.id),
       slug: product.slug || slugify(name),
       categorySlug,

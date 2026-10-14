@@ -194,10 +194,16 @@ const Header = () => {
       const next = !prev;
       if (next) {
         setIsMobileOpen(false);
+        setOpenDropdownIndex(null);
       }
       return next;
     });
   };
+
+  const handleCloseSearch = useCallback(() => {
+    setIsSearchOpen(false);
+    setShowSuggestions(false);
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,6 +249,7 @@ const Header = () => {
                 )}
                 isOpen={openDropdownIndex === indexNavLeft}
                 onToggle={() => toggleDropdown(indexNavLeft)}
+                onCloseSearch={handleCloseSearch}
               />
             ))}
           </ul>
@@ -265,6 +272,7 @@ const Header = () => {
                 )}
                 isOpen={openDropdownIndex === indexNavRight}
                 onToggle={() => toggleDropdown(indexNavRight)}
+                onCloseSearch={handleCloseSearch}
               />
             ))}
 
@@ -374,6 +382,7 @@ type DesktopNavItemProps = {
   isActive: boolean;
   isOpen: boolean;
   onToggle: () => void;
+  onCloseSearch?: () => void;
 };
 
 const DesktopNavItem = ({
@@ -381,6 +390,7 @@ const DesktopNavItem = ({
   isActive,
   isOpen,
   onToggle,
+  onCloseSearch,
 }: DesktopNavItemProps) => {
   const baseClasses = "relative title-3 duration-300 ease-in-out py-2";
   const activeClasses = "text-secondary";
@@ -391,6 +401,9 @@ const DesktopNavItem = ({
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setIsHovered(true);
+    if (item.children && item.children.length > 0) {
+      onCloseSearch?.();
+    }
   };
 
   const handleMouseLeave = () => {

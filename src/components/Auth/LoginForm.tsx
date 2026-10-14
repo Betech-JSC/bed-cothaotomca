@@ -84,12 +84,14 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
 
         const btnElement = document.getElementById("google-signin-btn-login");
         if (btnElement) {
+          btnElement.innerHTML = "";
           google.accounts.id.renderButton(btnElement, {
             text: "signin_with",
             theme: "outline",
             size: "large",
             width: btnElement.clientWidth || 382,
             logo_alignment: "left",
+            locale: locale,
           });
         }
       }
@@ -109,14 +111,14 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
           router.push(redirectTarget);
         }
       } else {
-        setError(res.message || "Xác thực tài khoản Google thất bại.");
+        setError(
+          res.message ||
+            (locale === "en"
+              ? "Google authentication failed."
+              : "Xác thực tài khoản Google thất bại.")
+        );
       }
     };
-
-    if ((window as any).google) {
-      initializeGoogle();
-      return;
-    }
 
     const targetScriptSrc = `https://accounts.google.com/gsi/client?hl=${locale}`;
     const existingScript = document.getElementById("google-gsi-client") as HTMLScriptElement | null;
@@ -130,21 +132,19 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
         initializeGoogle();
       };
       document.body.appendChild(script);
-    } else {
-      if (existingScript.src !== targetScriptSrc) {
-        existingScript.remove();
-        const script = document.createElement("script");
-        script.id = "google-gsi-client";
-        script.src = targetScriptSrc;
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-          initializeGoogle();
-        };
-        document.body.appendChild(script);
-      } else {
+    } else if (existingScript.src !== targetScriptSrc) {
+      existingScript.remove();
+      const script = document.createElement("script");
+      script.id = "google-gsi-client";
+      script.src = targetScriptSrc;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
         initializeGoogle();
-      }
+      };
+      document.body.appendChild(script);
+    } else if ((window as any).google) {
+      initializeGoogle();
     }
   }, [loading, loginWithGoogle, router, onLoginSuccess, redirectTarget, locale]);
 
@@ -173,10 +173,20 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
           const email = res.data?.email || (formData.username.includes("@") ? formData.username : "");
           setPendingEmail(email);
         }
-        setError(res.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+        setError(
+          res.message ||
+            (locale === "en"
+              ? "Sign in failed. Please check your credentials."
+              : "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.")
+        );
       }
     } catch (err: any) {
-      setError(err.message || "Đăng nhập thất bại. Vui lòng thử lại.");
+      setError(
+        err.message ||
+          (locale === "en"
+            ? "Sign in failed. Please try again."
+            : "Đăng nhập thất bại. Vui lòng thử lại.")
+      );
     } finally {
       setLoading(false);
     }
@@ -308,10 +318,12 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
           <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-left space-y-1.5 animate-in fade-in">
             <div className="flex items-center gap-2 text-red-700 font-bold text-sm">
               <span className="text-base">🚫</span>
-              <span>Tài khoản đã bị khóa</span>
+              <span>{locale === "en" ? "Account Locked" : "Tài khoản đã bị khóa"}</span>
             </div>
             <p className="text-xs text-red-600">
-              Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hotline để được hỗ trợ.
+              {locale === "en"
+                ? "Your account has been locked. Please contact our hotline for support."
+                : "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hotline để được hỗ trợ."}
             </p>
             <div className="pt-1">
               <a
@@ -327,10 +339,12 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
           <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-left space-y-2 animate-in fade-in">
             <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
               <span className="text-base">⚠️</span>
-              <span>Tài khoản chưa được kích hoạt</span>
+              <span>{locale === "en" ? "Account Not Activated" : "Tài khoản chưa được kích hoạt"}</span>
             </div>
             <p className="text-xs text-amber-700">
-              Tài khoản của bạn chưa được kích hoạt. Vui lòng kích hoạt tài khoản qua email để đăng nhập.
+              {locale === "en"
+                ? "Your account has not been activated yet. Please verify your email to sign in."
+                : "Tài khoản của bạn chưa được kích hoạt. Vui lòng kích hoạt tài khoản qua email để đăng nhập."}
             </p>
             <div>
               <button
@@ -338,7 +352,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
                 onClick={() => setShowActivationModal(true)}
                 className="px-4 py-1.5 rounded-full bg-secondary text-white text-xs font-bold hover:bg-secondary/90 transition-all cursor-pointer shadow-sm"
               >
-                Kích hoạt ngay →
+                {locale === "en" ? "Activate now →" : "Kích hoạt ngay →"}
               </button>
             </div>
           </div>
@@ -367,7 +381,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
             <div className="w-full border-t border-gray-300/60"></div>
           </div>
           <span className="relative bg-yellow px-3.5 text-xs font-semibold uppercase text-gray-500 rounded-full">
-            {t("or") || "hoặc"}
+            {t("or") || (locale === "en" ? "or" : "hoặc")}
           </span>
         </div>
 
@@ -378,7 +392,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
 
         {/* Footer Links */}
         <div className="text-center text-[13px] sm:text-[14px] text-gray-600 mt-0.5">
-          <span>{t("no_account") || "Chưa có tài khoản?"} </span>
+          <span>{t("no_account") || (locale === "en" ? "Don't have an account?" : "Chưa có tài khoản?")} </span>
           <Link href="/signup" className="text-secondary font-bold hover:underline transition-all">
             {t("register_now")}
           </Link>
@@ -487,11 +501,12 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
 };
 
 const LoginForm = (props: LoginFormProps) => {
+  const locale = useLocale();
   return (
     <Suspense
       fallback={
         <div className="py-8 text-center text-gray-400 text-sm animate-pulse">
-          Đang tải biểu mẫu đăng nhập...
+          {locale === "en" ? "Loading sign-in form..." : "Đang tải biểu mẫu đăng nhập..."}
         </div>
       }
     >

@@ -1,20 +1,29 @@
 export function formatDate(date: Date | string | number, locale: string = 'vi') {
   const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: 'numeric',
+    year: 'numeric',
+  });
+  const parts = formatter.formatToParts(d);
+  const day = (parts.find(p => p.type === 'day')?.value || '01').padStart(2, '0');
+  const monthNum = parseInt(parts.find(p => p.type === 'month')?.value || '1', 10);
+  const year = parts.find(p => p.type === 'year')?.value || String(d.getFullYear());
+
   if (locale === 'vi') {
-    const day = d.getDate().toString().padStart(2, '0');
-    const month = (d.getMonth() + 1).toString().padStart(2, '0');
-    const year = d.getFullYear();
+    const month = monthNum.toString().padStart(2, '0');
     return `${day}/${month}/${year}`;
   }
 
   const months = [
-    'january', 'february', 'march', 'april', 'may', 'june',
-    'july', 'august', 'september', 'october', 'november', 'december'
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  const day = d.getDate().toString().padStart(2, '0');
-  const month = months[d.getMonth()];
-  const year = d.getFullYear();
-  return `${day} ${month}, ${year}`;
+  const month = months[monthNum - 1] || months[0];
+  return `${day} ${month} ${year}`;
 }
 
 export function formatPrice(price: number) {

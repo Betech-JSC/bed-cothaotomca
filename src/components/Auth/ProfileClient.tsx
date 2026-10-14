@@ -4,10 +4,12 @@ import React, { useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "@/i18n/routing";
 import ProfileDashboard from "@/components/Auth/ProfileDashboard";
+import { useLocale } from "next-intl";
 
 export default function ProfileClient() {
   const { user, loading, logout, updateProfile, refreshUser } = useAuth();
   const router = useRouter();
+  const locale = useLocale();
   const hasRefreshedRef = useRef(false);
 
   // Redirect to signin if not logged in
@@ -28,7 +30,9 @@ export default function ProfileClient() {
   if (loading || !user) {
     return (
       <div className="w-full min-h-[90vh] bg-yellow flex items-center justify-center">
-        <div className="animate-pulse text-primary font-bold text-lg font-serif">Đang tải...</div>
+        <div className="animate-pulse text-primary font-bold text-lg font-serif">
+          {locale === "en" ? "Loading..." : "Đang tải..."}
+        </div>
       </div>
     );
   }

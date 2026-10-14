@@ -192,7 +192,7 @@ export default function SmartCartProgressBar({
     return null;
   }
 
-  if (!milestone) {
+  if (subtotal <= 0 || !milestone) {
     return null;
   }
 
@@ -202,7 +202,7 @@ export default function SmartCartProgressBar({
     >
       <div className="flex items-center justify-between gap-2 text-xs font-semibold mb-2 font-sans">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="truncate">
+          <span className="leading-snug">
             {milestone.completed ? (
               <span className="text-secondary font-bold font-sans">{milestone.text}</span>
             ) : milestone.next?.type === "freeship" ? (

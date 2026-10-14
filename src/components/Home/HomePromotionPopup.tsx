@@ -2,18 +2,21 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Image from "next/image";
-import { Link } from "@/i18n/routing";
+import NextLink from "next/link";
 import { formatImageUrl } from "@/lib/format";
 import Close from "@/components/Icons/Close";
 import type { Banner } from "@/types/banner";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface HomePromotionPopupProps {
   banner: Banner | null;
 }
 
+const VIETNAMESE_REGEX = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+
 export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) {
   const t = useTranslations("home_popup");
+  const locale = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const [doNotShowAgain, setDoNotShowAgain] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -24,12 +27,21 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
     return bannerId ? `cothao_popup_dismiss_${bannerId}` : "cothao_popup_dismiss_general";
   }, [bannerId]);
 
+  const sessionKey = useMemo(() => {
+    return bannerId ? `cothao_popup_session_${bannerId}` : "cothao_popup_session_general";
+  }, [bannerId]);
+
   // Check storage on mount and schedule auto-open with 1.2s delay
   useEffect(() => {
     setIsMounted(true);
     if (!banner) return;
 
     try {
+      const sessionDismissed = sessionStorage.getItem(sessionKey);
+      if (sessionDismissed) {
+        return;
+      }
+
       const dismissUntil = localStorage.getItem(storageKey);
       if (dismissUntil) {
         const expiryTime = Number(dismissUntil);
@@ -39,7 +51,7 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
         }
       }
     } catch (err) {
-      console.warn("Could not read popup dismissal from localStorage:", err);
+      console.warn("Could not read popup dismissal from storage:", err);
     }
 
     const timer = setTimeout(() => {
@@ -47,10 +59,16 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
     }, 1200);
 
     return () => clearTimeout(timer);
-  }, [banner, storageKey]);
+  }, [banner, storageKey, sessionKey]);
 
   // Handle closing modal
   const handleClose = useCallback(() => {
+    try {
+      sessionStorage.setItem(sessionKey, "1");
+    } catch (err) {
+      console.warn("Could not save popup session state to sessionStorage:", err);
+    }
+
     if (doNotShowAgain) {
       try {
         const now = new Date();
@@ -69,7 +87,7 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
       }
     }
     setIsOpen(false);
-  }, [doNotShowAgain, storageKey]);
+  }, [doNotShowAgain, storageKey, sessionKey]);
 
   // Handle escape key
   useEffect(() => {
@@ -89,44 +107,48 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
     return null;
   }
 
-  const desktopImage = formatImageUrl(banner.image) || "/cover.jpg";
-  const mobileImage = formatImageUrl(banner.image_mobile) || desktopImage;
-  const hasLink = Boolean(banner.link && banner.link.trim());
-  const isExternalLink = banner.link?.startsWith("http://") || banner.link?.startsWith("https://");
+  const bannerImage = formatImageUrl(banner.image || banner.image_mobile) || "/cover.jpg";
+  const rawLink = banner.link?.trim() || "";
+  const hasLink = Boolean(rawLink);
+
+  let resolvedLink = rawLink;
+  if (hasLink && locale === "en") {
+    if (resolvedLink.startsWith("/san-pham")) {
+      resolvedLink = resolvedLink.replace(/^\/san-pham(\/|$)/, "/en/product$1");
+    } else if (/^https?:\/\/(www\.)?cothaotomca\.vn\/san-pham(\/|$)/i.test(resolvedLink)) {
+      resolvedLink = resolvedLink.replace(/\/san-pham(\/|$)/i, "/en/product$1");
+    } else if (resolvedLink.startsWith("/") && !resolvedLink.startsWith("/en")) {
+      resolvedLink = `/en${resolvedLink}`;
+    }
+  }
+
+  const isExternalLink = resolvedLink.startsWith("http://") || resolvedLink.startsWith("https://");
+
+  const rawButtonText = banner.button_text?.trim();
+  const ctaText =
+    rawButtonText && !(locale === "en" && (VIETNAMESE_REGEX.test(rawButtonText) || rawButtonText.toLowerCase() === "xem ngay"))
+      ? rawButtonText
+      : t("view_now") || (locale === "en" ? "Explore Now" : "Xem ngay");
 
   const imageContent = (
-    <div className="relative w-full aspect-[4/5] sm:aspect-[4/3] max-h-[50vh] sm:max-h-[340px] overflow-hidden bg-[#F1EEDF]">
-      {/* Desktop Image */}
-      <div className="hidden sm:block absolute inset-0">
-        <Image
-          src={desktopImage}
-          alt={banner.title || "Khuyến mãi"}
-          fill
-          priority
-          sizes="(max-width: 640px) 100vw, 480px"
-          className="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
-        />
-      </div>
-      {/* Mobile Image */}
-      <div className="block sm:hidden absolute inset-0">
-        <Image
-          src={mobileImage}
-          alt={banner.title || "Khuyến mãi"}
-          fill
-          priority
-          sizes="88vw"
-          className="object-cover w-full h-full transition-transform duration-500 active:scale-105"
-        />
-      </div>
+    <div className="relative w-full aspect-video aspect-[16/9] overflow-hidden bg-[#F1EEDF]">
+      <Image
+        src={bannerImage}
+        alt={banner.title || (locale === "en" ? "Promotion" : "Khuyến mãi")}
+        fill
+        priority
+        sizes="(max-width: 640px) 88vw, 480px"
+        className="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
+      />
     </div>
   );
 
   const renderBannerLink = (children: React.ReactNode, className?: string) => {
-    if (!hasLink || !banner.link) return children;
+    if (!hasLink || !resolvedLink) return children;
     if (isExternalLink) {
       return (
         <a
-          href={banner.link}
+          href={resolvedLink}
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleClose}
@@ -137,13 +159,13 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
       );
     }
     return (
-      <Link
-        href={banner.link as any}
+      <NextLink
+        href={resolvedLink}
         onClick={handleClose}
         className={className}
       >
         {children}
-      </Link>
+      </NextLink>
     );
   };
 
@@ -203,7 +225,7 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
           {hasLink && (
             <div className="pt-1 flex justify-center">
               {renderBannerLink(
-                <span>{t("view_now") || "Xem ngay"}</span>,
+                <span>{ctaText}</span>,
                 "w-full sm:w-auto min-w-[200px] text-center bg-secondary hover:bg-secondary/95 text-white font-display font-bold text-sm sm:text-base py-3 px-6 rounded-full shadow-md shadow-secondary/20 transition-all active:scale-[0.98] inline-block"
               )}
             </div>

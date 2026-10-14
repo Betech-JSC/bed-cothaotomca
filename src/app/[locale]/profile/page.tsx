@@ -36,13 +36,20 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  params,
+}: {
+  params?: Promise<{ locale: string }>;
+} = {}) {
+  const { locale } = params ? await params : { locale: "vi" };
   return (
     <main>
       <Suspense
         fallback={
           <div className="w-full min-h-[90vh] bg-yellow flex items-center justify-center">
-            <div className="animate-pulse text-primary font-bold text-lg font-serif">Đang tải...</div>
+            <div className="animate-pulse text-primary font-bold text-lg font-serif">
+              {locale === "en" ? "Loading..." : "Đang tải..."}
+            </div>
           </div>
         }
       >

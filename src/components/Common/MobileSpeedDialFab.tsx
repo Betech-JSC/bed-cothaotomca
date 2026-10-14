@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname } from "@/i18n/routing";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useCart } from "@/contexts/CartContext";
 import CouponModal from "@/components/Voucher/CouponModal";
@@ -28,6 +28,12 @@ export default function MobileSpeedDialFab() {
   const settings = useGeneralSettings();
   const { subtotal } = useCart();
   const pathname = usePathname();
+  let locale = "vi";
+  try {
+    locale = useLocale() || "vi";
+  } catch {
+    locale = "vi";
+  }
   const t = useTranslations("common.speed_dial");
 
   // Scroll visibility for scroll-to-top button (> 300px)
@@ -42,18 +48,18 @@ export default function MobileSpeedDialFab() {
 
   // Fetch promotions for coupon modal
   useEffect(() => {
-    getAvailableVouchers()
+    getAvailableVouchers(locale)
       .then((data) => setVouchers(data))
       .catch(() => setVouchers([]));
 
-    getActiveCampaigns()
+    getActiveCampaigns(locale)
       .then((data) => setCampaigns(data))
       .catch(() => setCampaigns([]));
 
-    getShippingSettings()
+    getShippingSettings(locale)
       .then((data) => setShippingSettings(data))
       .catch(() => setShippingSettings(null));
-  }, []);
+  }, [locale]);
 
   // Hide widget on cart/checkout pages to prevent UI interference
   const isExcluded = Boolean(

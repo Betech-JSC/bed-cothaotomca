@@ -345,19 +345,29 @@ describe("Mobile UI Refinements: Card, Header Logo, Product Details, and Step 2 
 
     it("calls addToCart and redirects to checkout on desktop (>=1024px) when clicking 'Mua ngay'", () => {
       Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1200 });
-      const originalLocation = window.location;
-      delete (window as any).location;
-      (window as any).location = { href: "" };
 
       render(<ProductDetailsInfo productData={productDataWithDiscount} />);
 
       const buyNowBtn = screen.getByRole("button", { name: /mua ngay/i });
       fireEvent.click(buyNowBtn);
 
-      expect(mockCartState.addToCart).toHaveBeenCalled();
-      expect(window.location.href).toBe("/checkout");
-
-      (window as any).location = originalLocation;
+      expect(mockCartState.addToCart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productId: 1,
+          parentProductId: 201,
+          product_id: 201,
+          variant_id: 1,
+          db_id: 201,
+          product_db_id: 201,
+          variant_db_id: 1,
+          title: "Chả Cá Lã Vọng",
+          title_vi: "Chả Cá Lã Vọng",
+          variant: "Hũ 250g",
+          variant_vi: "Hũ 250g",
+        }),
+        1
+      );
+      expect(mockPush).toHaveBeenCalledWith("/checkout");
     });
   });
 

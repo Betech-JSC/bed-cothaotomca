@@ -185,7 +185,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     locale = "vi";
   }
   const router = useRouter();
-  const { cartItems, updateQuantity, removeFromCart, clearCart, addToCart, hasOutOfStockItems, restoreCampaignItemsToOriginalPrice } = useCart();
+  const { cartItems, isLoaded, updateQuantity, removeFromCart, clearCart, addToCart, hasOutOfStockItems, restoreCampaignItemsToOriginalPrice } = useCart();
   const isOutOfStockOverall = hasOutOfStockItems ?? cartItems.some((i) => i.isOutOfStock);
   const isCartCheckout = !order;
 
@@ -196,22 +196,22 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   // SSR fallback: fetch config once on mount (no cartItems — works without JS cart context)
   useEffect(() => {
-    getActiveCampaigns()
+    getActiveCampaigns(locale)
       .then(setPublicCampaigns)
       .catch(() => { })
       .finally(() => setPublicCampaignsLoaded(true));
-    getCheckoutConfig().then(setConfigState).catch(() => { });
-  }, []);
+    getCheckoutConfig(undefined, locale).then(setConfigState).catch(() => { });
+  }, [locale]);
 
   // Cart-aware refetch: re-fetch with cartItems whenever cart changes (debounced 300ms)
   useEffect(() => {
     if (!cartItems || cartItems.length === 0) return;
     const items = cartItems.map((item) => ({ product_id: item.productId }));
     const timer = setTimeout(() => {
-      getCheckoutConfig(items).then(setConfigState).catch(() => { });
+      getCheckoutConfig(items, locale).then(setConfigState).catch(() => { });
     }, 300);
     return () => clearTimeout(timer);
-  }, [cartItems]);
+  }, [cartItems, locale]);
 
   // Refresh điểm KiotViet khi vào trang checkout
   const hasRefreshedUserRef = useRef(false);
@@ -511,10 +511,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
 
   useEffect(() => {
-    getLoyaltySettings().then((s) => {
+    getLoyaltySettings(locale).then((s) => {
       setLoyaltySettings(s);
     });
-  }, []);
+  }, [locale]);
 
   // Guest VIP tier hint states
   const [guestTierHint, setGuestTierHint] = useState<GuestTierHint | null>(null);
@@ -562,8 +562,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   }, [phone, user, guestTierDismissed]);
 
   useEffect(() => {
-    getAvailableVouchers().then(setAvailableVouchers).catch(() => setAvailableVouchers([]));
-  }, []);
+    getAvailableVouchers(locale).then(setAvailableVouchers).catch(() => setAvailableVouchers([]));
+  }, [locale]);
 
   // Operating hours check (10:00 - 23:00)
   const operatingStatus = useMemo(() => {
@@ -749,11 +749,39 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   // Campaign G1 trong giỏ hàng (nhận diện theo configState.active_promotions và mức giá đơn hàng)
   const cartCampaignG1 = useMemo(() => {
     if (!allPromotionsList || allPromotionsList.length === 0) return null;
-    if (selectedCampaignIds.length === 0) return null;
     const checkAmount = originalSubtotal > 0 ? originalSubtotal : subtotal;
-    const promos = allPromotionsList.filter((p) => {
-      return selectedCampaignIds.some((id) => String(id) === String(p.id));
-    });
+    const discountedItems = isCartCheckout
+      ? cartItems.filter((it) => it.originalPrice && it.originalPrice > it.unitPrice)
+      : order && order.originalPrice && order.originalPrice > order.unitPrice
+        ? [order]
+        : [];
+    const activeSamePricePromos = !isBestDealVoucherApplied && discountedItems.length > 0
+      ? allPromotionsList.filter((p) => {
+          if (p.promotion_type !== "same_price_discount" || !p.items || p.items.length === 0) return false;
+          return p.items.some((pi) =>
+            discountedItems.some(
+              (di) =>
+                (pi.product_id && Number(pi.product_id) === Number(di.productId)) ||
+                (pi.kiotviet_id && Number(pi.kiotviet_id) === Number(di.productId)) ||
+                (pi.product_code && di.productCode && String(pi.product_code) === String(di.productCode))
+            )
+          );
+        })
+      : [];
+    const selectedPromos = allPromotionsList.filter((p) =>
+      selectedCampaignIds.some((id) => String(id) === String(p.id))
+    );
+    const promos = [
+      ...selectedPromos,
+      ...activeSamePricePromos.filter((sp) => !selectedPromos.some((p) => String(p.id) === String(sp.id))),
+    ];
+    if (promos.length === 0) return null;
+
+    const noFreeshipPromo = promos.find(
+      (p) => p.can_combine_with_freeship === false && (p.min_order_value || 0) <= checkAmount
+    );
+    if (noFreeshipPromo) return noFreeshipPromo;
+
     const orderDiscountPromo = promos.find(
       (p) => p.promotion_type === "order_discount" && checkAmount >= (p.min_order_value || 0)
     );
@@ -764,7 +792,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         (p) => (p.min_order_value || 0) <= checkAmount
       ) || null
     );
-  }, [allPromotionsList, originalSubtotal, subtotal, selectedCampaignIds]);
+  }, [allPromotionsList, originalSubtotal, subtotal, selectedCampaignIds, isCartCheckout, cartItems, order, isBestDealVoucherApplied]);
 
   // Ma trận Khuyến mãi & Giảm giá (Promotion Matrix 6 Cases)
   const promotionMatrixVoucherNotice = useMemo(() => {
@@ -989,8 +1017,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         const giftQty = Number(promo.settings?.gift_quantity ?? promo.settings?.get_quantity ?? (promo as any).gift_quantity ?? 1);
         const isFree = item?.campaign_price === 0 || Boolean(item?.is_free);
         const tag = isFree
-          ? `Mua ${buyQty} tặng ${giftQty}`
-          : `Mua ${buyQty} giảm ${giftQty}`;
+          ? (locale === "en" ? `Buy ${buyQty} get ${giftQty}` : `Mua ${buyQty} tặng ${giftQty}`)
+          : (locale === "en" ? `Buy ${buyQty} discount ${giftQty}` : `Mua ${buyQty} giảm ${giftQty}`);
         return {
           promo,
           item,
@@ -999,7 +1027,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         };
       })
       .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string; giftItems: PromotionGiftItem[] } => Boolean(x && x.item));
-  }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap]);
+  }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap, locale]);
 
   const appliedCartPromotions = useMemo(() => {
     const list: ActivePromotion[] = [];
@@ -1045,7 +1073,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [hotline, setHotline] = useState<string>("024.9999.7122");
 
   useEffect(() => {
-    getShippingSettings().then(setShippingSettings);
+    getShippingSettings(locale).then(setShippingSettings);
     getGeneralSettings()
       .then((settings) => {
         if (settings?.hotline) {
@@ -1053,7 +1081,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         }
       })
       .catch(() => { });
-  }, []);
+  }, [locale]);
 
   // Trigger real-time calculation when address, subtotal or voucher changes
   useEffect(() => {
@@ -2317,7 +2345,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         voucher_code: appliedVoucher ? appliedVoucher.code : undefined,
         shipping_voucher_code: appliedShippingVoucher ? appliedShippingVoucher.code : (appliedVoucher?.isFreeship ? appliedVoucher.code : undefined),
         applied_deal_type: isBestDealVoucherApplied ? "voucher" : undefined,
-        campaign_id: appliedCampaignIds.length > 0 ? appliedCampaignIds[0] : undefined,
+        campaign_id: (!isBestDealVoucherApplied && cartCampaignG1?.can_combine_with_freeship === false && Number(cartCampaignG1.id) > 0)
+          ? Number(cartCampaignG1.id)
+          : (appliedCampaignIds.length > 0 ? appliedCampaignIds[0] : undefined),
         campaign_ids: appliedCampaignIds.length > 0 ? appliedCampaignIds : undefined,
         voucher: appliedVoucher
           ? {
@@ -3266,7 +3296,17 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             {/* Hộp danh sách sản phẩm */}
             <div className="space-y-4 divide-y divide-gray-100">
               {isCartCheckout ? (
-                cartItems.length === 0 ? (
+                isLoaded === false ? (
+                  <div className="py-6 space-y-4 animate-pulse" data-testid="cart-loading-skeleton">
+                    <div className="flex gap-4 items-center">
+                      <div className="size-16 rounded-[12px] bg-gray-200 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4" />
+                        <div className="h-3 bg-gray-100 rounded w-1/2" />
+                      </div>
+                    </div>
+                  </div>
+                ) : cartItems.length === 0 ? (
                   <div className="py-8 text-center space-y-2">
                     <p className="body-1 text-gray-500 font-medium">{t("empty")}</p>
                     <Link
@@ -3657,7 +3697,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             </div>
 
             {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}
-            {deliveryType !== "pickup" && (deliveryType as string) !== "takeaway" && shippingSettings?.is_min_amount_enabled && (
+            {deliveryType !== "pickup" && (deliveryType as string) !== "takeaway" && shippingSettings?.is_min_amount_enabled && subtotal > 0 && (
               <SmartCartProgressBar
                 subtotal={subtotal}
                 shippingSettings={shippingSettings}
@@ -3676,7 +3716,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               <div className="flex justify-between items-center text-sm font-medium">
                 <span className="text-gray-600">{t("subtotal")}</span>
                 <span className="text-primary font-bold text-base">
-                  {formatPrice(displaySubtotal)}
+                  {isCartCheckout && isLoaded === false ? (
+                    <span className="inline-block h-5 w-20 bg-gray-200 rounded animate-pulse align-middle" />
+                  ) : (
+                    formatOrderPrice(displaySubtotal)
+                  )}
                 </span>
               </div>
 
@@ -3957,6 +4001,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         isMemberCardSelected={isMemberCardSelected}
         onToggleMemberCard={setIsMemberCardSelected}
         loyaltySettings={loyaltySettings}
+        shippingSettings={shippingSettings}
         campaigns={publicCampaigns.length > 0 ? publicCampaigns : undefined}
       />
 

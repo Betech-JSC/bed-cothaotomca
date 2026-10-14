@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { getProducts } from '@/services/productService';
+import { getCategories } from '@/services/categoryService';
 import { getBlogs } from '@/services/blogService';
 import { getPolicies } from '@/services/policyService';
 import { slugify } from '@/lib/format';
@@ -50,10 +51,75 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 2. Dynamic products
   const productRoutes: MetadataRoute.Sitemap = [];
   try {
-    const productsRes = await getProducts({ per_page: 500 });
-    if (productsRes?.data) {
-      productsRes.data.forEach((product: any) => {
-        const { viCatSlug, viProductSlug, enCatSlug, enProductSlug } = getProductLocalizedSlugs(product);
+    const [viProductsRes, enProductsRes, viCatsRes, enCatsRes] = await Promise.all([
+      getProducts({ per_page: 500, lang: 'vi' }),
+      getProducts({ per_page: 500, lang: 'en' }).catch(() => null),
+      getCategories('vi').catch(() => null),
+      getCategories('en').catch(() => null),
+    ]);
+
+    const enProductsById = new Map<number, any>();
+    if (enProductsRes?.data) {
+      enProductsRes.data.forEach((p: any) => {
+        if (p?.id) enProductsById.set(Number(p.id), p);
+      });
+    }
+
+    const viCatsById = new Map<number, any>();
+    const viCatsBySlug = new Map<string, any>();
+    if (viCatsRes?.data) {
+      viCatsRes.data.forEach((c: any) => {
+        if (c?.id) viCatsById.set(Number(c.id), c);
+        if (c?.slug) viCatsBySlug.set(String(c.slug), c);
+      });
+    }
+
+    const enCatsById = new Map<number, any>();
+    if (enCatsRes?.data) {
+      enCatsRes.data.forEach((c: any) => {
+        if (c?.id) enCatsById.set(Number(c.id), c);
+      });
+    }
+
+    if (viProductsRes?.data) {
+      viProductsRes.data.forEach((product: any) => {
+        const enProduct = enProductsById.get(Number(product.id));
+        const baseSlugs = getProductLocalizedSlugs(product);
+        const cat = product?.categories && product.categories.length > 0
+          ? product.categories[0]
+          : (product?.category || (enProduct?.categories && enProduct.categories.length > 0 ? enProduct.categories[0] : enProduct?.category));
+        const rawCatSlug = cat?.slug || product?.category_slug || baseSlugs.viCatSlug || '';
+        const matchedViCatBySlug = rawCatSlug ? viCatsBySlug.get(rawCatSlug) : null;
+        const catId = Number(cat?.id || product?.category_id || enProduct?.category_id || matchedViCatBySlug?.id || 0);
+        const viCatObj = catId ? viCatsById.get(catId) : matchedViCatBySlug;
+        const enCatObj = catId ? enCatsById.get(catId) : null;
+        const enCatTrans = (enCatObj?.translations || cat?.translations || []).find((t: any) => t.locale === 'en');
+
+        const viCatSlug = product?.alternate_slugs?.vi?.category_slug
+          || viCatObj?.slug
+          || baseSlugs.viCatSlug
+          || 'san-pham';
+        const viProductSlug = product?.alternate_slugs?.vi?.slug
+          || product?.slug
+          || baseSlugs.viProductSlug;
+
+        const enCatSlug = product?.alternate_slugs?.en?.category_slug
+          || enProduct?.alternate_slugs?.en?.category_slug
+          || enCatObj?.alternate_slugs?.en?.slug
+          || (enCatTrans as any)?.slug
+          || slugify(enCatTrans?.title || enCatObj?.title || '')
+          || (enCatObj?.slug && enCatObj.slug !== viCatSlug ? enCatObj.slug : '')
+          || (baseSlugs.enCatSlug && baseSlugs.enCatSlug !== viCatSlug ? baseSlugs.enCatSlug : '')
+          || slugify(enProduct?.category?.title || '')
+          || baseSlugs.enCatSlug
+          || 'product';
+        const enProductSlug = product?.alternate_slugs?.en?.slug
+          || enProduct?.alternate_slugs?.en?.slug
+          || (enProduct?.slug && enProduct.slug !== viProductSlug ? enProduct.slug : '')
+          || slugify(enProduct?.custom_name || enProduct?.name || '')
+          || baseSlugs.enProductSlug
+          || viProductSlug;
+
         const viUrl = buildUrl('vi', `/san-pham/${viCatSlug}/${viProductSlug}`);
         const enUrl = buildUrl('en', `/product/${enCatSlug}/${enProductSlug}`);
 
@@ -84,21 +150,43 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 3. Dynamic blogs
   const blogRoutes: MetadataRoute.Sitemap = [];
   try {
-    const blogsRes = await getBlogs({ per_page: 500 });
+    const [blogsRes, enBlogsRes] = await Promise.all([
+      getBlogs({ per_page: 500, lang: 'vi' }),
+      getBlogs({ per_page: 500, lang: 'en' }).catch(() => null),
+    ]);
+
+    const enBlogsById = new Map<number, any>();
+    if (enBlogsRes?.data) {
+      enBlogsRes.data.forEach((b: any) => {
+        if (b?.id) enBlogsById.set(Number(b.id), b);
+      });
+    }
+
     if (blogsRes?.data) {
       blogsRes.data.forEach((blog: any) => {
+        const enBlog = enBlogsById.get(Number(blog.id));
         const viTrans = (blog.translations || []).find((t: any) => t.locale === 'vi');
-        const enTrans = (blog.translations || []).find((t: any) => t.locale === 'en');
+        const enTrans = (blog.translations || []).find((t: any) => t.locale === 'en')
+          || (enBlog?.translations || []).find((t: any) => t.locale === 'en');
 
         const viCategory = blog.category;
+        const enCategory = enBlog?.category || blog.category;
         const viCatTrans = (viCategory?.translations || []).find((t: any) => t.locale === 'vi');
-        const enCatTrans = (viCategory?.translations || []).find((t: any) => t.locale === 'en');
+        const enCatTrans = (viCategory?.translations || []).find((t: any) => t.locale === 'en')
+          || (enCategory?.translations || []).find((t: any) => t.locale === 'en');
 
-        const viCatSlug = viCategory?.slug || slugify(viCatTrans?.title || viCategory?.title || 'tin-tuc');
-        const enCatSlug = (enCatTrans as any)?.slug || slugify(enCatTrans?.title || '') || viCategory?.slug || 'blog';
+        const viCatSlug = viCategory?.slug || slugify(viCatTrans?.title || viCategory?.title || 'tin-tuc') || 'tin-tuc';
+        const rawEnCatSlug = (enCatTrans as any)?.slug
+          || slugify(enCatTrans?.title || enCategory?.title || '')
+          || enCategory?.slug
+          || 'news';
+        const enCatSlug = rawEnCatSlug === 'blog' ? 'news' : rawEnCatSlug;
 
         const viBlogSlug = (viTrans as any)?.slug || blog.slug || slugify(viTrans?.title || blog.title || '');
-        const enBlogSlug = (enTrans as any)?.slug || slugify(enTrans?.title || '') || blog.slug || '';
+        const enBlogSlug = (enTrans as any)?.slug
+          || (enBlog?.slug && enBlog.slug !== viBlogSlug ? enBlog.slug : '')
+          || slugify(enTrans?.title || enBlog?.title || '')
+          || viBlogSlug;
 
         const viUrl = buildUrl('vi', `/tin-tuc/${viCatSlug}/${viBlogSlug}`);
         const enUrl = buildUrl('en', `/blog/${enCatSlug}/${enBlogSlug}`);

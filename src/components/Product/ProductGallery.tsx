@@ -5,6 +5,7 @@ import Image from 'next/image';
 import ZoomableImage from '@/components/Common/ZoomableImage';
 import SafeImage from '@/components/Common/SafeImage';
 import Chevron from '@/components/Icons/Chevron';
+import { useLocale } from 'next-intl';
 
 export interface GalleryImage {
   url: string;
@@ -17,13 +18,16 @@ interface ProductGalleryProps {
   title?: string;
 }
 
-const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'Sản phẩm' }) => {
+const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title }) => {
+  const locale = useLocale();
+  const isEn = locale === 'en';
+  const resolvedTitle = title || (isEn ? 'Product' : 'Sản phẩm');
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const safeImages = images.length > 0 ? images : [{ url: '/cover.jpg', alt: title }];
+  const safeImages = images.length > 0 ? images : [{ url: '/cover.jpg', alt: resolvedTitle }];
 
   const handlePrev = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -89,7 +93,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
             <div key={idx} className="relative w-full h-full flex-shrink-0">
               <ZoomableImage
                 src={img.url || '/cover.jpg'}
-                alt={img.alt || `${title} ${idx + 1}`}
+                alt={img.alt || `${resolvedTitle} ${idx + 1}`}
                 fill
                 priority={idx === 0}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 650px"
@@ -107,7 +111,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
             <button
               type="button"
               onClick={handlePrev}
-              aria-label="Ảnh trước"
+              aria-label={isEn ? 'Previous image' : 'Ảnh trước'}
               className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 z-10 size-10 md:size-12 rounded-full bg-white/95 text-primary border border-gray-200/80 shadow-md backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-primary hover:text-yellow hover:border-primary active:scale-90 cursor-pointer focus:outline-none opacity-90 hover:opacity-100"
             >
               <div className="rotate-90">
@@ -118,7 +122,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
             <button
               type="button"
               onClick={handleNext}
-              aria-label="Ảnh tiếp theo"
+              aria-label={isEn ? 'Next image' : 'Ảnh tiếp theo'}
               className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 z-10 size-10 md:size-12 rounded-full bg-white/95 text-primary border border-gray-200/80 shadow-md backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-primary hover:text-yellow hover:border-primary active:scale-90 cursor-pointer focus:outline-none opacity-90 hover:opacity-100"
             >
               <div className="-rotate-90">
@@ -147,7 +151,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
                 }}
                 type="button"
                 onClick={() => setActiveIndex(idx)}
-                aria-label={`Xem ảnh ${idx + 1}`}
+                aria-label={isEn ? `View image ${idx + 1}` : `Xem ảnh ${idx + 1}`}
                 className={`relative flex-shrink-0 w-16 h-16 md:w-20 md:h-20 xl:w-24 xl:h-24 rounded-[14px] md:rounded-[16px] overflow-hidden transition-all duration-300 cursor-pointer bg-white ${
                   isActive
                     ? 'border-2 border-primary ring-2 ring-primary/20 shadow-md scale-[1.03] opacity-100'
@@ -156,7 +160,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title = 'S
               >
                 <SafeImage
                   src={img.url || '/cover.jpg'}
-                  alt={img.alt || `${title} thumbnail ${idx + 1}`}
+                  alt={img.alt || `${resolvedTitle} thumbnail ${idx + 1}`}
                   fill
                   sizes="(max-width: 768px) 64px, 96px"
                   className="object-cover w-full h-full"

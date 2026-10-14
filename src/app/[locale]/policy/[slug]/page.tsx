@@ -36,7 +36,9 @@ export async function generateMetadata({
   const title = currentPolicy.title || currentPolicy.name || "";
   const description = currentPolicy.seo_description || currentPolicy.meta_description || "";
 
-  const seoTitle = currentPolicy.seo_title || (isEn ? (title || currentPolicy.meta_title) : (currentPolicy.meta_title || title));
+  const seoTitle = isEn
+    ? (title || currentPolicy.seo_title || currentPolicy.meta_title)
+    : (currentPolicy.seo_title || currentPolicy.meta_title || title);
   const seoDescription = currentPolicy.seo_description || currentPolicy.meta_description || description;
   const seoKeywords = currentPolicy.seo_keywords || currentPolicy.meta_keywords || "";
 

@@ -163,16 +163,18 @@ export class OrderApiError extends Error {
 }
 
 export async function getCheckoutConfig(
-  cartItems?: { product_id: number }[]
+  cartItems?: { product_id: number }[],
+  locale: string = "vi"
 ): Promise<CheckoutConfig> {
   const hasCart = cartItems && cartItems.length > 0;
-  const res = await fetch(`${API_BASE}/orders/checkout-config`, {
+  const res = await fetch(`${API_BASE}/orders/checkout-config?lang=${encodeURIComponent(locale)}`, {
     method: hasCart ? "POST" : "GET",
     headers: {
       ...(hasCart ? { "Content-Type": "application/json" } : {}),
       Accept: "application/json",
+      "Accept-Language": locale,
     },
-    body: hasCart ? JSON.stringify({ cart_items: cartItems }) : undefined,
+    body: hasCart ? JSON.stringify({ cart_items: cartItems, lang: locale }) : undefined,
     cache: "no-store",
   });
 
@@ -414,10 +416,10 @@ export interface PublicVoucherItem {
   end_date?: string | null;
 }
 
-export async function getAvailableVouchers(): Promise<PublicVoucherItem[]> {
+export async function getAvailableVouchers(locale: string = "vi"): Promise<PublicVoucherItem[]> {
   try {
-    const res = await fetch(`${API_BASE}/vouchers`, {
-      headers: { Accept: "application/json" },
+    const res = await fetch(`${API_BASE}/vouchers?lang=${encodeURIComponent(locale)}`, {
+      headers: { Accept: "application/json", "Accept-Language": locale },
       cache: "no-store",
     });
     if (!res.ok) return [];
@@ -602,16 +604,38 @@ export interface ShippingSettings {
   card_banner?: string | null;
 }
 
-export async function getShippingSettings(): Promise<ShippingSettings | null> {
+export async function getShippingSettings(locale: string = "vi"): Promise<ShippingSettings | null> {
   try {
-    const res = await fetch(`${API_BASE}/shipping/settings`, {
-      headers: { Accept: "application/json" },
+    const res = await fetch(`${API_BASE}/shipping/settings?lang=${encodeURIComponent(locale)}`, {
+      headers: { Accept: "application/json", "Accept-Language": locale },
       cache: "no-store",
     });
 
     if (!res.ok) return null;
     const json = await res.json();
-    return json.data as ShippingSettings;
+    const data = json.data as ShippingSettings;
+    if (data && locale === "en") {
+      const viRegex = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]|Giảm|Đơn từ|Mã chương trình|phí vận chuyển|Áp dụng/i;
+      const isUntranslatedVi = (str?: string | null) => !str || viRegex.test(str);
+      const minAmount = Number(data.min_order_amount || 400000);
+      const discountVal = Number(data.shipping_discount_value || 20000);
+      const minK = Math.round(minAmount / 1000);
+      const discountK = Math.round(discountVal / 1000);
+
+      if (data.card_title && isUntranslatedVi(data.card_title)) {
+        data.card_title =
+          data.shipping_discount_type === "free"
+            ? `Free Shipping For Orders From ${minK}K`
+            : `${discountK}K Off Shipping For Orders From ${minK}K`;
+      }
+      if (isUntranslatedVi(data.card_badge)) {
+        data.card_badge = "Applicable to all eligible orders";
+      }
+      if (isUntranslatedVi(data.card_description)) {
+        data.card_description = `- Program code: K026-001\n- Offer: Direct ${discountVal.toLocaleString("en-US")} VND discount on shipping fee.\n- Condition: Applicable for orders from ${minAmount.toLocaleString("en-US")} VND.`;
+      }
+    }
+    return data;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("Failed to fetch shipping settings:", msg);
@@ -659,12 +683,12 @@ export const DEFAULT_LOYALTY_SETTINGS: LoyaltySettings = {
   diamond_upgrade_discount_percent: 10,
 };
 
-export async function getLoyaltySettings(): Promise<LoyaltySettings> {
+export async function getLoyaltySettings(locale: string = "vi"): Promise<LoyaltySettings> {
   try {
     const cleanBase = API_BASE.replace(/\/v1$/, "");
-    const res = await fetch(`${cleanBase}/v1/loyalty/settings`, {
+    const res = await fetch(`${cleanBase}/v1/loyalty/settings?lang=${encodeURIComponent(locale)}`, {
       method: "GET",
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", "Accept-Language": locale },
       cache: "no-store",
     });
 

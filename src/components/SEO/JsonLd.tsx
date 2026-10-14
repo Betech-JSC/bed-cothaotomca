@@ -24,13 +24,6 @@ export default function JsonLd({ type, data, url }: JsonLdProps) {
           '@type': 'Brand',
           name: 'Cô Thảo Tôm Cá',
         },
-        aggregateRating: {
-          '@type': 'AggregateRating',
-          ratingValue: '5.0',
-          reviewCount: '128',
-          bestRating: '5',
-          worstRating: '1',
-        },
         offers: {
           '@type': 'Offer',
           url: url,

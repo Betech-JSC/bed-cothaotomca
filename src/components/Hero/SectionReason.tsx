@@ -34,7 +34,7 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
   };
 
   return (
-    <section className="relative overflow-hidden h-[660px] md:h-[550px] xl:h-[810px]">
+    <section className="relative overflow-hidden h-[660px] lg:h-[550px] xl:h-[810px]">
       {/* Title overlay */}
       <div className="absolute inset-0 w-full pt-[38px] xl:pt-10 z-10 pointer-events-none">
         <div className="container">
@@ -47,19 +47,19 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
       </div>
 
       {/* Custom Vertical Pagination */}
-      <div className="absolute max-md:left-1/2 max-md:-translate-x-1/2 max-md:bottom-4 md:right-0 md:top-1/2 md:-translate-y-1/2 z-20 flex flex-row md:flex-col justify-center md:justify-end items-center md:items-end gap-2 md:pr-8">
+      <div className="absolute max-lg:left-1/2 max-lg:-translate-x-1/2 max-lg:bottom-4 lg:right-0 lg:top-1/2 lg:-translate-y-1/2 z-20 flex flex-row lg:flex-col justify-center lg:justify-end items-center lg:items-end gap-2 lg:pr-8">
         {items.map((_, index) => {
           const isActive = index === activeIndex;
           return (
             <button
               key={index}
               onClick={() => handlePaginationClick(index)}
-              className="flex items-center gap-2 md:gap-3 cursor-pointer group"
+              className="flex items-center gap-2 lg:gap-3 cursor-pointer group"
               aria-label={`Go to slide ${index + 1}`}
             >
               {/* Number */}
               <span
-                className={`size-10 md:size-12 flex items-center justify-center transition-all duration-500 ease-out select-none rounded-full
+                className={`size-10 lg:size-12 flex items-center justify-center transition-all duration-500 ease-out select-none rounded-full
                   ${isActive
                     ? "headline-3 text-white bg-secondary"
                     : "title-3 text-white/50"
@@ -73,16 +73,16 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
               <span
                 className={`
                   block h-[2px] transition-all duration-500 ease-out bg-white/50
-                  ${index === items.length - 1 ? 'hidden md:block' : 'block'}
+                  ${index === items.length - 1 ? 'hidden lg:block' : 'block'}
                   ${isActive
-                    ? "w-[30px] md:w-[75px] xl:w-[100px]"
+                    ? "w-[30px] lg:w-[75px] xl:w-[100px]"
                     : "w-[30px] xl:w-[32px]"
                   }
                 `}
               />
 
               {/* Dot / Ring indicator */}
-              <div className="relative hidden md:block">
+              <div className="relative hidden lg:block">
                 <div
                   className={`
                   size-5 border-[1.5px] rounded-full transition-all duration-500 ease-in-out
@@ -105,7 +105,7 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
         <Swiper
           modules={[Autoplay, EffectFade]}
           effect="fade"
-          fadeEffect={{ crossFade: false }}
+          fadeEffect={{ crossFade: true }}
           speed={700}
           spaceBetween={0}
           slidesPerView={1}
@@ -134,10 +134,10 @@ const SectionReason: React.FC<SectionReasonProps> = ({ items }) => {
                   className="object-cover w-full h-full hidden lg:block"
                 />
               <div className="absolute inset-0 w-full h-full bg-linear-chooseus"></div>
-              <div className="max-w-[840px] w-full md:h-full absolute top-20 md:top-0 left-0 flex items-center">
-                <div className="md:p-6 p-5 max-md:pb-[5rem] lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] md:max-w-[532px] lg:max-w-[600px] xl:max-w-[620px] w-[calc(100%-3rem)] md:w-full mx-auto md:mx-6 max-md:bg-yellow/80 max-md:backdrop-blur-[3px] max-md:rounded-3xl">
-                  <h3 className="display-2 max-md:text-[28px] md:text-yellow text-primary">{item.title}</h3>
-                  <p className="body-1 md:text-white text-primary">{item.description}</p>
+              <div className="max-w-[840px] w-full lg:h-full absolute top-24 lg:top-0 max-lg:mx-auto left-0 right-0 lg:right-auto flex items-center justify-center lg:justify-start">
+                <div className="md:p-6 p-5 max-md:pb-[5rem] md:pb-8 lg:p-10 xl:p-16 md:space-y-4 space-y-6 xl:space-y-6 max-w-[520px] md:max-w-[560px] lg:max-w-[600px] xl:max-w-[620px] w-[calc(100%-3rem)] lg:w-full mx-auto lg:mx-6 max-lg:bg-yellow/80 max-lg:backdrop-blur-[3px] max-lg:rounded-3xl">
+                  <h3 className="display-2 max-lg:text-[28px] lg:text-yellow text-primary">{item.title}</h3>
+                  <p className="body-1 lg:text-white text-primary">{item.description}</p>
                 </div>
               </div>
             </SwiperSlide>

@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server'
+import { getTranslations, getLocale } from 'next-intl/server'
 import { NextIntlClientProvider } from 'next-intl'
 import { getGeneralSettings } from '@/services/generalSettingService'
 import { getBranches } from '@/services/branchService'
@@ -8,10 +8,39 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FixedSocial from '@/components/FixedSocial'
 import { Providers } from './providers'
-import { defaultLocale } from '@/i18n/config'
+import { defaultLocale, locales as supportedLocales } from '@/i18n/config'
+import { headers } from 'next/headers'
 
 export default async function GlobalNotFound() {
-  const locale = defaultLocale;
+  let detectedLocale: string = defaultLocale;
+  try {
+    const loc = await getLocale();
+    if (loc && supportedLocales.includes(loc as any)) {
+      detectedLocale = loc;
+    }
+  } catch {
+    // ignore
+  }
+
+  if (detectedLocale === defaultLocale) {
+    try {
+      const hdrs = await headers();
+      const pathCandidate =
+        hdrs.get('x-pathname') ||
+        hdrs.get('x-invoke-path') ||
+        hdrs.get('x-matched-path') ||
+        hdrs.get('next-url') ||
+        hdrs.get('referer') ||
+        '';
+      if (/(\/|^)en(\/|$)/.test(pathCandidate)) {
+        detectedLocale = 'en';
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const locale = detectedLocale;
   const t = await getTranslations({ locale });
 
   // Fetch settings/branches to provide to header/footer like other layouts

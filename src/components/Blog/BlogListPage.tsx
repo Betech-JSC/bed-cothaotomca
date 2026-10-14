@@ -55,7 +55,9 @@ export default function BlogListPage({
   const transformBlog = (blog: Blog) => {
     const translation = getTranslation(blog.translations, locale) as any;
     const catTranslation = getTranslation(blog.category?.translations, locale) as any;
-    const categoryName = catTranslation?.title || blog.category?.title || "Tin tức";
+    const categoryName = catTranslation?.title || blog.category?.title || (locale === "en" ? "News" : "Tin tức");
+    const rawCatSlug = slugify(categoryName) || blog.category?.slug || (locale === "en" ? "news" : "tin-tuc");
+    const catSlug = locale === "en" && rawCatSlug === "blog" ? "news" : rawCatSlug;
 
     return {
       id: blog.id,
@@ -63,7 +65,7 @@ export default function BlogListPage({
       slug: blog.slug,
       category: {
         title: categoryName,
-        slug: slugify(categoryName),
+        slug: catSlug,
       },
       image: {
         url: blog.thumbnail,
@@ -82,10 +84,11 @@ export default function BlogListPage({
   const categoriesDisplay = useMemo(() => {
     return categories.map(cat => {
       const translation = getTranslation(cat.translations, locale) as any;
+      const rawSlug = slugify(translation?.title || cat.title || (locale === "en" ? "news" : "danh-muc"));
       return {
         id: cat.id,
-        name: translation?.title || cat.title || "Danh mục",
-        slug: slugify(translation?.title || cat.title || "danh-muc"),
+        name: translation?.title || cat.title || (locale === "en" ? "Category" : "Danh mục"),
+        slug: locale === "en" && rawSlug === "blog" ? "news" : rawSlug,
       };
     });
   }, [categories, locale]);

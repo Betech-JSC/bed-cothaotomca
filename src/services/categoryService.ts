@@ -21,8 +21,11 @@ export interface Category {
   translations: CategoryTranslation[];
 }
 
-export const getCategories = async () => {
-  return getApi<Category>('categories', { revalidate: 60 });
+export const getCategories = async (lang?: string) => {
+  return getApi<Category>('categories', {
+    revalidate: 60,
+    params: lang ? { lang } : undefined,
+  });
 };
 
 export const getCategoryTree = async () => {

@@ -2,10 +2,15 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import CouponModal, { evaluateCampaignEligibility } from "@/components/Voucher/CouponModal";
+import CouponModal, { evaluateCampaignEligibility, extractTriggerMeta } from "@/components/Voucher/CouponModal";
 import MobileCartFlow from "@/components/Header/MobileCartFlow";
 import CheckoutForm from "@/components/Checkout/CheckoutForm";
-import { PublicCampaignItem, getBuyXGetYGiftOnlyItems } from "@/types/campaign";
+import {
+  PublicCampaignItem,
+  getBuyXGetYGiftOnlyItems,
+  mergeCampaignObjects,
+  mergePromotionsWithPublicCampaigns,
+} from "@/types/campaign";
 import viMessages from "@/i18n/locales/vi.json";
 
 // Mock next-intl
@@ -646,5 +651,282 @@ describe("Campaign Gift [TẶNG SÚP MISO] & Banner Image Fallback Fix", () => {
     expect(gifts).toHaveLength(1);
     expect(gifts[0].id).toBe(20);
     expect(gifts[0].product_name).toBe("Coca Cola Free");
+  });
+
+  it("9. extractTriggerMeta: collects variant_kiotviet_ids, variant_db_ids, product_name_en, and variant_name_en from trigger_items and c.items", () => {
+    const bilingualCampaign: PublicCampaignItem = {
+      id: 601,
+      name: "[TẶNG CANH RONG BIỂN] Khi mua Set 2",
+      promotion_type: "order_gift_discount",
+      settings: {
+        buy_quantity: 1,
+        trigger_items: [
+          {
+            product_id: 80,
+            product_variant_id: 32,
+            product_name: "[TẶNG CANH] Cá hồi Na Uy áp chảo sốt Teriyaki",
+            product_name_en: "[FREE SOUP] Pan-Seared Norwegian Salmon with Teriyaki Sauce",
+            variant_name: "Set 2 (Cơm gạo Nhật)",
+            variant_name_en: "Set 2 (Japanese Rice)",
+            variant_kiotviet_ids: [10001, 10002],
+            variant_db_ids: [31, 32],
+            variant_codes: ["SALMON-S1", "SALMON-S2"],
+          },
+        ],
+      },
+      items: [
+        {
+          id: 99,
+          product_id: 99,
+          product_name: "Canh rong biển thịt bằm",
+          product_name_en: "Minced Pork Seaweed Soup",
+          product_code: "SOUP-01",
+          image: "/soup.jpg",
+          original_price: 25000,
+          campaign_price: 0,
+          is_free: true,
+        },
+      ],
+    };
+
+    const { hasTriggerItems, triggerMetaList } = extractTriggerMeta(bilingualCampaign);
+    expect(hasTriggerItems).toBe(true);
+    expect(triggerMetaList).toHaveLength(1);
+    const meta = triggerMetaList[0];
+    expect(meta.productIds).toContain(80);
+    expect(meta.variantIds).toContain(32);
+    expect(meta.allProductVariantIds).toEqual(expect.arrayContaining([31, 32]));
+    expect(meta.kiotvietIds).toEqual(expect.arrayContaining([10001, 10002]));
+    expect(meta.names).toEqual(
+      expect.arrayContaining([
+        "[TẶNG CANH] Cá hồi Na Uy áp chảo sốt Teriyaki",
+        "[FREE SOUP] Pan-Seared Norwegian Salmon with Teriyaki Sauce",
+        "Set 2 (Cơm gạo Nhật)",
+        "Set 2 (Japanese Rice)",
+      ])
+    );
+  });
+
+  it("10. evaluateCampaignEligibility: matches DB ID, Variant ID, KiotViet ID, and EN locale cart items ([FREE SOUP] + Set 2 (Japanese Rice))", () => {
+    const soupGiftCampaign: PublicCampaignItem = {
+      id: 602,
+      name: "[TẶNG CANH RONG BIỂN]",
+      promotion_type: "order_gift_discount",
+      min_order_value: 0,
+      settings: {
+        buy_quantity: 1,
+        trigger_items: [
+          {
+            product_id: 80,
+            product_variant_id: 32,
+            product_name: "[TẶNG CANH] Cá hồi Na Uy áp chảo sốt Teriyaki",
+            product_name_en: "[FREE SOUP] Pan-Seared Norwegian Salmon with Teriyaki Sauce",
+            variant_name: "Set 2 (Cơm gạo Nhật)",
+            variant_name_en: "Set 2 (Japanese Rice)",
+            variant_kiotviet_ids: [10001, 10002],
+            variant_db_ids: [31, 32],
+          },
+        ],
+      },
+      items: [
+        {
+          id: 99,
+          product_id: 99,
+          product_name: "Canh rong biển thịt bằm",
+          product_code: "SOUP-01",
+          image: "/soup.jpg",
+          original_price: 25000,
+          campaign_price: 0,
+          is_free: true,
+        },
+      ],
+    };
+
+    // 10.1: EN locale cart item with KiotViet ID (10002) and English title/variant
+    const enCartItem = {
+      id: "80-Set 2 (Japanese Rice)",
+      productId: 10002,
+      variantId: 10002,
+      parentProductId: 80,
+      title: "[FREE SOUP] Pan-Seared Norwegian Salmon with Teriyaki Sauce",
+      variant: "Set 2 (Japanese Rice)",
+      quantity: 1,
+    };
+    expect(
+      evaluateCampaignEligibility(soupGiftCampaign, {
+        subtotal: 159000,
+        cartItems: [enCartItem],
+      }).eligible
+    ).toBe(true);
+
+    // 10.2: EN locale cart item against un-enriched VI-only trigger_items (using base variant prefix "Set 2" + parentProductId)
+    const viOnlyTriggerCampaign: PublicCampaignItem = {
+      ...soupGiftCampaign,
+      settings: {
+        buy_quantity: 1,
+        trigger_items: [
+          {
+            product_id: 80,
+            product_variant_id: 32,
+            product_name: "[TẶNG CANH] Cá hồi Na Uy áp chảo sốt Teriyaki",
+            variant_name: "Set 2 (Cơm gạo Nhật)",
+          },
+        ],
+      },
+    };
+    expect(
+      evaluateCampaignEligibility(viOnlyTriggerCampaign, {
+        subtotal: 159000,
+        cartItems: [enCartItem],
+      }).eligible
+    ).toBe(true);
+
+    // 10.3: EN locale cart item with Set 1 ("Set 1 (White Rice)") must NOT match Set 2 trigger
+    const enSet1CartItem = {
+      id: "80-Set 1 (White Rice)",
+      productId: 10001,
+      variantId: 10001,
+      parentProductId: 80,
+      title: "[FREE SOUP] Pan-Seared Norwegian Salmon with Teriyaki Sauce",
+      variant: "Set 1 (White Rice)",
+      quantity: 1,
+    };
+    expect(
+      evaluateCampaignEligibility(viOnlyTriggerCampaign, {
+        subtotal: 159000,
+        cartItems: [enSet1CartItem],
+      }).eligible
+    ).toBe(false);
+
+    // 10.4: Cart item matching by variant_db_id / db_id
+    expect(
+      evaluateCampaignEligibility(viOnlyTriggerCampaign, {
+        subtotal: 159000,
+        cartItems: [
+          {
+            productId: 10002,
+            variant_db_id: 32,
+            product_db_id: 80,
+            title: "[FREE SOUP] Pan-Seared Norwegian Salmon with Teriyaki Sauce",
+            variant: "Custom EN Variant Label",
+            quantity: 1,
+          },
+        ],
+      }).eligible
+    ).toBe(true);
+  });
+
+  it("11. mergePromotionsWithPublicCampaigns: deep-merges settings.trigger_items, settings.gift_items, applicable_product_ids, and enriched items when IDs match", () => {
+    const partialActivePromotions = [
+      {
+        id: 301,
+        name: "[TẶNG SÚP MISO]",
+        promotion_type: "order_gift_discount",
+        min_order_value: 100000,
+        settings: {}, // Missing trigger_items & gift_items in partial checkout-config
+        items: [], // Empty items in partial checkout-config
+      },
+    ];
+
+    const enrichedPublicCampaigns: PublicCampaignItem[] = [
+      {
+        id: 301,
+        name: "[TẶNG SÚP MISO]",
+        promotion_type: "order_gift_discount",
+        min_order_value: 100000,
+        applicable_product_ids: [80],
+        applicable_variant_ids: [32],
+        settings: {
+          buy_quantity: 1,
+          trigger_items: [
+            {
+              product_id: 80,
+              product_variant_id: 32,
+              product_name: "[TẶNG CANH] Cá hồi Na Uy",
+              product_name_en: "[FREE SOUP] Norwegian Salmon",
+              variant_name: "Set 2 (Cơm gạo Nhật)",
+              variant_name_en: "Set 2 (Japanese Rice)",
+              variant_kiotviet_ids: [10002],
+            },
+          ],
+          gift_items: [{ product_id: 88, quantity: 1 }],
+        },
+        items: [
+          {
+            id: 88,
+            product_id: 88,
+            product_name: "Banchan (Súp miso)",
+            product_name_en: "Banchan (Miso Soup)",
+            product_code: "MISO-01",
+            image: "/storage/products/soup-miso.jpg",
+            original_price: 35000,
+            campaign_price: 0,
+            is_free: true,
+            is_available: true,
+          },
+        ],
+      },
+    ];
+
+    const mergedList = mergePromotionsWithPublicCampaigns(partialActivePromotions, enrichedPublicCampaigns);
+    expect(mergedList).toHaveLength(1);
+    expect(mergedList[0].id).toBe(301);
+    expect(mergedList[0].applicable_product_ids).toEqual([80]);
+    expect(mergedList[0].applicable_variant_ids).toEqual([32]);
+    expect(mergedList[0].settings?.trigger_items).toHaveLength(1);
+    expect(mergedList[0].settings?.trigger_items?.[0].product_name_en).toBe("[FREE SOUP] Norwegian Salmon");
+    expect(mergedList[0].settings?.gift_items).toHaveLength(1);
+    expect(mergedList[0].items).toHaveLength(1);
+    expect(mergedList[0].items?.[0].product_name).toBe("Banchan (Súp miso)");
+  });
+
+  it("12. CheckoutForm & MobileCartFlow integration: deep-merges partial active_promotions with publicCampaigns and displays free gift for EN locale cart item", async () => {
+    localStorage.setItem("cothaotomca_selected_campaign_ids", JSON.stringify([301]));
+
+    // Simulate English-locale cart item with KiotViet ID
+    mockCartItems = [
+      {
+        id: "80-Set 2 (Japanese Rice)",
+        productId: 10002,
+        variantId: 10002,
+        parentProductId: 80,
+        productCode: "SALMON-S2",
+        title: "[FREE SOUP] Pan-Seared Norwegian Salmon with Teriyaki Sauce",
+        title_vi: "[TẶNG CANH] Cá hồi Na Uy áp chảo sốt Teriyaki",
+        title_en: "[FREE SOUP] Pan-Seared Norwegian Salmon with Teriyaki Sauce",
+        variant: "Set 2 (Japanese Rice)",
+        variant_vi: "Set 2 (Cơm gạo Nhật)",
+        variant_en: "Set 2 (Japanese Rice)",
+        unitPrice: 159000,
+        quantity: 1,
+      },
+    ];
+
+    // Partial active_promotions in config has same id=301 but empty items and empty settings
+    const mockConfigWithPartialPromo: any = {
+      default_shipping_fee: "30000",
+      branches: [{ id: 1, branchName: "Chi nhánh 1", address: "123 Đường ABC", isActive: true }],
+      delivery_types: [{ value: "delivery", label: "Giao hàng" }],
+      payment_methods: { cod: { enabled: true }, qr: { enabled: true } },
+      active_promotions: [
+        {
+          id: 301,
+          name: "[TẶNG SÚP MISO]",
+          promotion_type: "order_gift_discount",
+          min_order_value: 100000,
+          settings: {},
+          items: [],
+        },
+      ],
+    };
+
+    render(<CheckoutForm order={null} config={mockConfigWithPartialPromo} />);
+
+    // Because allPromotionsList deep-merges publicCampaigns (mockMisoCampaign id=301) into active_promotions,
+    // the campaign is eligible (not auto-pruned!) and renders the free gift "Banchan (Súp miso)" at 0đ
+    await waitFor(() => {
+      expect(screen.getByText("Banchan (Súp miso)")).toBeInTheDocument();
+    });
+    expect(screen.getByText("0đ")).toBeInTheDocument();
   });
 });

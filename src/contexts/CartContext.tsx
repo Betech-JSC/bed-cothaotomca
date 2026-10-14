@@ -35,6 +35,7 @@ export interface CartItem {
 
 interface CartContextType {
   cartItems: CartItem[];
+  isLoaded: boolean;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   addToCart: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
@@ -441,6 +442,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     <CartContext.Provider
       value={{
         cartItems,
+        isLoaded,
         isCartOpen,
         setIsCartOpen,
         addToCart,
