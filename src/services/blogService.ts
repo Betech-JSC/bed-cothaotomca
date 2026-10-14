@@ -1,4 +1,4 @@
-import { getApi } from './apiService';
+import { getApi, getSingleApi } from './apiService';
 
 export interface BlogCategoryTranslation {
   id: number;
@@ -70,5 +70,5 @@ export const getBlogs = async (params: { page?: number; per_page?: number; offse
   return getApi<Blog>('blogs', { params: apiParams });
 };
 export const getBlogDetail = async (slug: string, params: { lang?: string } = {}, revalidate?: number) => {
-  return getApi<Blog>(`blogs/${slug}`, { params, revalidate });
+  return getSingleApi<Blog>(`blogs/${slug}`, { params, revalidate });
 };
