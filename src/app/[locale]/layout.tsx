@@ -56,8 +56,8 @@ export async function generateMetadata({
     seo = null
   }
 
-  const title = seo?.seo_title || seo?.title || defaultTitle
-  const description = seo?.seo_description || seo?.description || defaultDescription
+  const title = (isEn ? (seo?.seo_title_en || seo?.title_en) : (seo?.seo_title || seo?.title)) || defaultTitle
+  const description = (isEn ? (seo?.seo_description_en || seo?.description_en) : (seo?.seo_description || seo?.description)) || defaultDescription
   let image = seo?.seo_og_image_url || seo?.seo_og_image || seo?.meta_image || seo?.metaImage || seo?.meta_image_url || defaultImage
   // Make image absolute when necessary
   if (image && !image.startsWith('http')) image = `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`

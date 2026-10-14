@@ -1220,13 +1220,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       const d = new Date(refDate);
       d.setDate(d.getDate() + i);
       const iso = toISODateString(d);
-      let label = formatVietnameseDate(d);
+      let label = formatVietnameseDate(d, locale);
       if (i === 0) label = t("date_today", { date: label });
       else if (i === 1) label = t("date_tomorrow", { date: label });
       dates.push({ iso, label });
     }
     return dates;
-  }, [operatingStatus, deliveryType, mockDate, t]);
+  }, [operatingStatus, deliveryType, mockDate, locale, t]);
 
   const availableTimeSlots = useMemo(() => {
     const refDate = getVietnamDate(mockDate);
@@ -3111,7 +3111,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span>{t("select_delivery_time", { range: (operatingStatus.deliveryOpen || "10:00") + " - " + (operatingStatus.deliveryClose || "23:00") })}</span>
+                        <span>{t("select_delivery_time", {
+                          range: (operatingStatus.deliveryOpen || "10:00") + " - " + (operatingStatus.deliveryClose || "23:00"),
+                          hours: (operatingStatus.deliveryOpen || "10:00") + " - " + (operatingStatus.deliveryClose || "23:00")
+                        })}</span>
                       </label>
                       <div className="relative">
                         <select

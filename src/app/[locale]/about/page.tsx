@@ -11,7 +11,7 @@ import { getBlogs } from '@/services/blogService';
 import { slugify, formatImageUrl } from '@/lib/format';
 import AnimateOnScroll from '@/components/Animated/animated-appear';
 import { Metadata } from 'next';
-import { getMetaPage } from '@/services/seoService';
+import { getMetaPage, resolveMetaTitle, resolveMetaDescription, resolveMetaKeywords } from '@/services/seoService';
 
 export const revalidate = 120; // ISR: revalidate mỗi 2 phút
 
@@ -21,15 +21,15 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params;
+  const isEn = locale === 'en';
   const meta = await getMetaPage('about', locale).catch(() => null);
-  if (!meta) return {};
 
   const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('localhost:3000'))
     ? process.env.NEXT_PUBLIC_BASE_URL
     : 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
 
-  let canonicalUrl = meta.canonical_url;
+  let canonicalUrl = (isEn && meta?.canonical_url_en) || meta?.canonical_url;
   if (canonicalUrl && canonicalUrl.includes('localhost:3000')) {
     canonicalUrl = canonicalUrl.replace(/https?:\/\/localhost:3000/g, baseUrl);
   }
@@ -37,23 +37,34 @@ export async function generateMetadata({
     canonicalUrl = `${baseUrl}/${locale}/about`;
   }
 
-  let ogImage = meta.og_image;
+  let ogImage = (isEn && meta?.og_image_en) || meta?.og_image;
   if (ogImage && ogImage.includes('localhost:3000')) {
     ogImage = ogImage.replace(/https?:\/\/localhost:3000/g, baseUrl);
   }
 
   let robots: any = undefined;
-  if (meta.noindex || meta.nofollow) {
+  if (meta?.noindex || meta?.nofollow) {
     robots = {
       index: !meta.noindex,
       follow: !meta.nofollow,
     };
   }
 
+  const defaultTitle = isEn
+    ? 'About Us | Co Thao Tom Ca'
+    : 'Về chúng tôi | Cô Thảo Tôm Cá';
+  const defaultDescription = isEn
+    ? 'Discover the story, mission and quality commitment of Co Thao Tom Ca.'
+    : 'Tìm hiểu về câu chuyện thương hiệu, sứ mệnh và cam kết chất lượng của Cô Thảo Tôm Cá.';
+
+  const title = resolveMetaTitle(meta, locale, defaultTitle);
+  const description = resolveMetaDescription(meta, locale, defaultDescription);
+  const keywords = resolveMetaKeywords(meta, locale);
+
   return {
-    title: meta.seo_title || undefined,
-    description: meta.seo_description || undefined,
-    keywords: meta.seo_keywords || undefined,
+    title,
+    description,
+    keywords,
     robots,
     alternates: {
       canonical: canonicalUrl,
@@ -63,8 +74,8 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title: meta.seo_title || undefined,
-      description: meta.seo_description || undefined,
+      title,
+      description,
       url: canonicalUrl,
       images: ogImage ? [ogImage] : undefined,
       type: 'website',

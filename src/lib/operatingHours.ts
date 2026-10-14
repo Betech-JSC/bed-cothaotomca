@@ -119,16 +119,18 @@ export function getVietnamTimeString(date?: Date): string {
   }
 }
 
-export function formatVietnameseDate(date: Date): string {
+export function formatVietnameseDate(date: Date, locale: string = "vi"): string {
   try {
-    const days = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
-    const dayName = days[date.getDay()];
+    const isEn = locale === "en";
+    const daysVi = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+    const daysEn = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dayName = isEn ? daysEn[date.getDay()] : daysVi[date.getDay()];
     const dd = date.getDate().toString().padStart(2, "0");
     const mm = (date.getMonth() + 1).toString().padStart(2, "0");
     const yyyy = date.getFullYear();
     return `${dayName}, ${dd}/${mm}/${yyyy}`;
   } catch (err) {
-    return date.toLocaleDateString("vi-VN");
+    return date.toLocaleDateString(locale === "en" ? "en-US" : "vi-VN");
   }
 }
 

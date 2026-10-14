@@ -12,7 +12,7 @@ import ContactForm from '@/components/Contact/ContactForm';
 import AnimateOnScroll from '@/components/Animated/animated-appear';
 import { getBranches } from '@/services/branchService';
 import { Metadata } from 'next';
-import { getMetaPage } from '@/services/seoService';
+import { getMetaPage, resolveMetaTitle, resolveMetaDescription, resolveMetaKeywords } from '@/services/seoService';
 
 export const revalidate = 120; // ISR: revalidate mỗi 2 phút
 
@@ -22,25 +22,38 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params;
+  const isEn = locale === 'en';
   const meta = await getMetaPage('contact', locale).catch(() => null);
-  if (!meta) return {};
 
   const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
-  const canonicalUrl = meta.canonical_url || `${baseUrl}/${locale}/contact`;
+  const canonicalUrl = (isEn && meta?.canonical_url_en) || meta?.canonical_url || `${baseUrl}/${locale}/contact`;
+
+  const defaultTitle = isEn
+    ? 'Contact Us | Co Thao Tom Ca'
+    : 'Liên hệ | Cô Thảo Tôm Cá';
+  const defaultDescription = isEn
+    ? 'Contact Co Thao Tom Ca for support, ordering consultation and fastest delivery.'
+    : 'Liên hệ với Cô Thảo Tôm Cá để được hỗ trợ, tư vấn đặt hàng và giao hàng nhanh nhất.';
+
+  const title = resolveMetaTitle(meta, locale, defaultTitle);
+  const description = resolveMetaDescription(meta, locale, defaultDescription);
+  const keywords = resolveMetaKeywords(meta, locale);
 
   let robots: any = undefined;
-  if (meta.noindex || meta.nofollow) {
+  if (meta?.noindex || meta?.nofollow) {
     robots = {
       index: !meta.noindex,
       follow: !meta.nofollow,
     };
   }
 
+  const ogImage = (isEn && meta?.og_image_en) || meta?.og_image;
+
   return {
-    title: meta.seo_title || undefined,
-    description: meta.seo_description || undefined,
-    keywords: meta.seo_keywords || undefined,
+    title,
+    description,
+    keywords,
     robots,
     alternates: {
       canonical: canonicalUrl,

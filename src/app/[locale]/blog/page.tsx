@@ -4,7 +4,7 @@ import { HeroBanner } from "@/services/heroBannerService";
 import BlogListPage from "@/components/Blog/BlogListPage";
 import { formatImageUrl } from "@/lib/format";
 import { Metadata } from 'next';
-import { getMetaPage } from '@/services/seoService';
+import { getMetaPage, resolveMetaTitle, resolveMetaDescription, resolveMetaKeywords } from '@/services/seoService';
 
 export const revalidate = 60; // ISR: revalidate mỗi 60 giây
 
@@ -14,25 +14,38 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params;
+  const isEn = locale === 'en';
   const meta = await getMetaPage('blog', locale).catch(() => null);
-  if (!meta) return {};
 
   const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
-  const canonicalUrl = meta.canonical_url || `${baseUrl}/${locale}/blog`;
+  const canonicalUrl = (isEn && meta?.canonical_url_en) || meta?.canonical_url || `${baseUrl}/${locale}/blog`;
+
+  const defaultTitle = isEn
+    ? 'News & Culinary Tips | Co Thao Tom Ca'
+    : 'Tin tức & Bí quyết ẩm thực | Cô Thảo Tôm Cá';
+  const defaultDescription = isEn
+    ? 'Culinary news, cooking recipes, seafood secrets and delicious promotions from Co Thao Tom Ca.'
+    : 'Tin tức ẩm thực, cẩm nang nấu ăn, bí quyết chế biến hải sản và khuyến mãi hấp dẫn từ Cô Thảo Tôm Cá.';
+
+  const title = resolveMetaTitle(meta, locale, defaultTitle);
+  const description = resolveMetaDescription(meta, locale, defaultDescription);
+  const keywords = resolveMetaKeywords(meta, locale);
 
   let robots: any = undefined;
-  if (meta.noindex || meta.nofollow) {
+  if (meta?.noindex || meta?.nofollow) {
     robots = {
       index: !meta.noindex,
       follow: !meta.nofollow,
     };
   }
 
+  const ogImage = (isEn && meta?.og_image_en) || meta?.og_image;
+
   return {
-    title: meta.seo_title || undefined,
-    description: meta.seo_description || undefined,
-    keywords: meta.seo_keywords || undefined,
+    title,
+    description,
+    keywords,
     robots,
     alternates: {
       canonical: canonicalUrl,
@@ -42,10 +55,10 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title: meta.seo_title || undefined,
-      description: meta.seo_description || undefined,
+      title,
+      description,
       url: canonicalUrl,
-      images: meta.og_image ? [meta.og_image] : undefined,
+      images: ogImage ? [ogImage] : undefined,
       type: 'website',
     },
   };

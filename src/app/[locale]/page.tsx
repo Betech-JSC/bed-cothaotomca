@@ -19,7 +19,7 @@ import { slugify, formatImageUrl } from '@/lib/format';
 import { getBlogs, Blog } from '@/services/blogService';
 import AnimateOnScroll from "@/components/Animated/animated-appear";
 import { Metadata } from 'next';
-import { getMetaPage } from '@/services/seoService';
+import { getMetaPage, resolveMetaTitle, resolveMetaDescription, resolveMetaKeywords } from '@/services/seoService';
 
 export const revalidate = 60; // ISR: revalidate mỗi 60 giây
 
@@ -29,25 +29,38 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params;
+  const isEn = locale === 'en';
   const meta = await getMetaPage('home', locale).catch(() => null);
-  if (!meta) return {};
 
   const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
-  const canonicalUrl = meta.canonical_url || `${baseUrl}/${locale}`;
+  const canonicalUrl = (isEn && meta?.canonical_url_en) || meta?.canonical_url || `${baseUrl}/${locale}`;
+
+  const defaultTitle = isEn
+    ? 'Co Thao Tom Ca | Premium Seafood & Specialties'
+    : 'Cô Thảo Tôm Cá | Chuyên cung cấp Đặc Sản Tôm Cá, Hải Sản Tươi Ngon';
+  const defaultDescription = isEn
+    ? 'Co Thao Tom Ca proudly provides high quality fresh and marinated seafood. Clear origin, food safety and reliable delivery.'
+    : 'Cô Thảo Tôm Cá tự hào mang đến các sản phẩm thủy hải sản, tôm cá tươi sạch, chất lượng cao. Nguồn gốc rõ ràng, vệ sinh an toàn thực phẩm, giao hàng tận nơi.';
+
+  const title = resolveMetaTitle(meta, locale, defaultTitle);
+  const description = resolveMetaDescription(meta, locale, defaultDescription);
+  const keywords = resolveMetaKeywords(meta, locale);
 
   let robots: any = undefined;
-  if (meta.noindex || meta.nofollow) {
+  if (meta?.noindex || meta?.nofollow) {
     robots = {
       index: !meta.noindex,
       follow: !meta.nofollow,
     };
   }
 
+  const ogImage = (isEn && meta?.og_image_en) || meta?.og_image;
+
   return {
-    title: meta.seo_title || undefined,
-    description: meta.seo_description || undefined,
-    keywords: meta.seo_keywords || undefined,
+    title,
+    description,
+    keywords,
     robots,
     alternates: {
       canonical: canonicalUrl,
@@ -57,10 +70,10 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title: meta.seo_title || undefined,
-      description: meta.seo_description || undefined,
+      title,
+      description,
       url: canonicalUrl,
-      images: meta.og_image ? [meta.og_image] : undefined,
+      images: ogImage ? [ogImage] : undefined,
       type: 'website',
     },
   };
