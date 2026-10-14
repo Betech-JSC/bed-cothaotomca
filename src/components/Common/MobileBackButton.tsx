@@ -20,7 +20,11 @@ export default function MobileBackButton({
   const displayLabel = label || t("back") || "Quay lại";
 
   const handleBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
+    const isInternalReferrer =
+      typeof document !== "undefined" &&
+      !!document.referrer &&
+      document.referrer.startsWith(window.location.origin);
+    if (isInternalReferrer && typeof window !== "undefined" && window.history.length > 1) {
       router.back();
     } else {
       router.push(fallbackUrl as any);

@@ -49,10 +49,14 @@ describe("MobileBackButton Component (STT 43)", () => {
     expect(button).toHaveTextContent("Quay lại danh mục");
   });
 
-  it("navigates back via router.back() when history length > 1", () => {
+  it("navigates back via router.back() when history length > 1 and referrer is internal", () => {
     Object.defineProperty(window, "history", {
       writable: true,
       value: { length: 3 },
+    });
+    Object.defineProperty(document, "referrer", {
+      writable: true,
+      value: window.location.origin + "/product",
     });
 
     render(<MobileBackButton fallbackUrl="/product" />);
@@ -64,10 +68,52 @@ describe("MobileBackButton Component (STT 43)", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("navigates to fallbackUrl via router.push() when history length <= 1", () => {
+  it("navigates to fallbackUrl via router.push() when referrer is external (e.g. Google, Facebook) even if history length > 1", () => {
+    Object.defineProperty(window, "history", {
+      writable: true,
+      value: { length: 3 },
+    });
+    Object.defineProperty(document, "referrer", {
+      writable: true,
+      value: "https://www.google.com/search?q=cothaotomca",
+    });
+
+    render(<MobileBackButton fallbackUrl="/product" />);
+
+    const button = screen.getByRole("button", { name: "Quay lại" });
+    fireEvent.click(button);
+
+    expect(mockPush).toHaveBeenCalledWith("/product");
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it("navigates to fallbackUrl via router.push() when referrer is empty", () => {
+    Object.defineProperty(window, "history", {
+      writable: true,
+      value: { length: 3 },
+    });
+    Object.defineProperty(document, "referrer", {
+      writable: true,
+      value: "",
+    });
+
+    render(<MobileBackButton fallbackUrl="/product" />);
+
+    const button = screen.getByRole("button", { name: "Quay lại" });
+    fireEvent.click(button);
+
+    expect(mockPush).toHaveBeenCalledWith("/product");
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it("navigates to fallbackUrl via router.push() when history length <= 1 even if referrer is internal", () => {
     Object.defineProperty(window, "history", {
       writable: true,
       value: { length: 1 },
+    });
+    Object.defineProperty(document, "referrer", {
+      writable: true,
+      value: window.location.origin + "/product",
     });
 
     render(<MobileBackButton fallbackUrl="/blog" />);

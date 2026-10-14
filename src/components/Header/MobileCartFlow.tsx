@@ -122,7 +122,7 @@ export default function MobileCartFlow({
   inline?: boolean;
   initialDeliveryType?: DeliveryType;
 }) {
-  const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen, hasOutOfStockItems } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, clearCart, isCartOpen, setIsCartOpen, hasOutOfStockItems } = useCart();
   const isOutOfStockOverall = Boolean(hasOutOfStockItems || cartItems.some((i) => i.isOutOfStock));
   const { user, token, refreshUser } = useAuth();
   const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
@@ -497,12 +497,146 @@ export default function MobileCartFlow({
   const [voucherSuccess, setVoucherSuccess] = useState<string | null>(null);
   const [validatingVoucher, setValidatingVoucher] = useState(false);
 
+  // Helper to determine if we are in mobile viewport
+  const isMobileScreen = useCallback(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < 1280;
+  }, []);
+
+  const cartHistoryDepthRef = useRef<number>(0);
+  const isPopStateNavigatingRef = useRef<boolean>(false);
+  const isCartOpenRef = useRef<boolean>(isCartOpen);
+
+  useEffect(() => {
+    isCartOpenRef.current = isCartOpen;
+  }, [isCartOpen]);
+
+  // Clean up any stale modal state from previous page refresh
+  useEffect(() => {
+    if (!inline && typeof window !== "undefined" && !isCartOpen && window.history.state?.modal === "cart") {
+      window.history.replaceState(null, "", window.location.href);
+    }
+  }, [inline, isCartOpen]);
+
   useEffect(() => {
     setIsVoucherModalOpen(false);
     if (isCartOpen && !inline) {
       setStep(1);
     }
   }, [isCartOpen, inline]);
+
+  // Sync browser history with mobile cart open / close
+  useEffect(() => {
+    if (inline || !isMobileScreen()) return;
+
+    if (isCartOpen) {
+      if (typeof window !== "undefined" && window.history.state?.modal !== "cart") {
+        window.history.pushState({ modal: "cart", step: 1 }, "", window.location.href);
+        cartHistoryDepthRef.current = 1;
+      } else if (typeof window !== "undefined" && window.history.state?.modal === "cart") {
+        cartHistoryDepthRef.current = window.history.state.step || 1;
+      }
+    } else {
+      if (
+        typeof window !== "undefined" &&
+        window.history.state?.modal === "cart" &&
+        cartHistoryDepthRef.current > 0 &&
+        !isPopStateNavigatingRef.current
+      ) {
+        const depth = cartHistoryDepthRef.current;
+        cartHistoryDepthRef.current = 0;
+        window.history.go(-depth);
+      } else {
+        cartHistoryDepthRef.current = 0;
+      }
+    }
+  }, [isCartOpen, inline, isMobileScreen]);
+
+  // Listen to popstate (Back / Forward button)
+  useEffect(() => {
+    if (inline) return;
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (!isMobileScreen()) return;
+
+      isPopStateNavigatingRef.current = true;
+      const state = event.state;
+
+      if (!state || state.modal !== "cart") {
+        // Back from Step 1 -> Close cart
+        cartHistoryDepthRef.current = 0;
+        if (isCartOpenRef.current) {
+          setStep(1);
+          if (onClose) {
+            onClose();
+          } else {
+            setIsCartOpen(false);
+          }
+        }
+      } else if (state.modal === "cart") {
+        // Step 1 <-> Step 2 or Forward into cart
+        const targetStep = state.step === 2 ? 2 : 1;
+        cartHistoryDepthRef.current = targetStep;
+        setStep(targetStep);
+        if (!isCartOpenRef.current) {
+          setIsCartOpen(true);
+        }
+      }
+
+      setTimeout(() => {
+        isPopStateNavigatingRef.current = false;
+      }, 50);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [inline, isMobileScreen, onClose, setIsCartOpen]);
+
+  const handleGoToStep = useCallback((targetStep: 1 | 2) => {
+    if (targetStep === 2) {
+      if (!inline && isMobileScreen() && typeof window !== "undefined") {
+        if (window.history.state?.modal !== "cart" || window.history.state?.step !== 2) {
+          window.history.pushState({ modal: "cart", step: 2 }, "", window.location.href);
+        }
+        cartHistoryDepthRef.current = 2;
+      }
+      setStep(2);
+    } else {
+      setStep(1);
+      if (
+        !inline &&
+        isMobileScreen() &&
+        typeof window !== "undefined" &&
+        window.history.state?.modal === "cart" &&
+        window.history.state?.step === 2
+      ) {
+        cartHistoryDepthRef.current = 1;
+        window.history.back();
+      }
+    }
+  }, [inline, isMobileScreen]);
+
+  const handleCloseDrawer = useCallback(() => {
+    if (
+      !inline &&
+      isMobileScreen() &&
+      typeof window !== "undefined" &&
+      window.history.state?.modal === "cart" &&
+      cartHistoryDepthRef.current > 0
+    ) {
+      const depth = cartHistoryDepthRef.current;
+      cartHistoryDepthRef.current = 0;
+      window.history.go(-depth);
+    }
+    setStep(1);
+    if (onClose) {
+      onClose();
+    } else {
+      setIsCartOpen(false);
+    }
+  }, [inline, isMobileScreen, onClose, setIsCartOpen]);
 
   useEffect(() => {
     getAvailableVouchers().then(setAvailableVouchers).catch(() => setAvailableVouchers([]));
@@ -532,13 +666,13 @@ export default function MobileCartFlow({
       const d = new Date(refDate);
       d.setDate(d.getDate() + i);
       const iso = toISODateString(d);
-      let label = formatVietnameseDate(d);
-      if (i === 0) label = `${t("date_today")} (${label})`;
-      else if (i === 1) label = `${t("date_tomorrow")} (${label})`;
+      let label = formatVietnameseDate(d, locale);
+      if (i === 0) label = t("date_today", { date: label });
+      else if (i === 1) label = t("date_tomorrow", { date: label });
       dates.push({ iso, label });
     }
     return dates;
-  }, [operatingStatus, deliveryType, t]);
+  }, [operatingStatus, deliveryType, locale, t]);
 
   const availableTimeSlots = useMemo(() => {
     const refDate = getVietnamDate();
@@ -2202,9 +2336,8 @@ export default function MobileCartFlow({
             {!inline && (
               <button
                 onClick={async () => {
-                  setStep(1);
                   await handleCancelPendingOrder();
-                  onClose?.();
+                  handleCloseDrawer();
                 }}
                 className="text-gray-400 hover:text-primary transition-colors text-2xl font-bold cursor-pointer"
               >
@@ -2217,8 +2350,7 @@ export default function MobileCartFlow({
             phone={phone}
             onSuccess={() => {
               setPendingOrder(null);
-              setStep(1);
-              onClose?.();
+              handleCloseDrawer();
             }}
             onCancel={handleCancelPendingOrder}
           />
@@ -2246,7 +2378,7 @@ export default function MobileCartFlow({
               {step === 2 && (
                 <button
                   type="button"
-                  onClick={() => setStep(1)}
+                  onClick={() => handleGoToStep(1)}
                   className="text-primary hover:text-secondary text-2xl font-bold flex items-center cursor-pointer"
                   aria-label={t("title")}
                 >
@@ -2257,10 +2389,7 @@ export default function MobileCartFlow({
             </div>
             {!inline && (
               <button
-                onClick={() => {
-                  setStep(1);
-                  onClose?.();
-                }}
+                onClick={handleCloseDrawer}
                 className="text-gray-400 hover:text-primary transition-colors text-2xl font-bold cursor-pointer"
                 aria-label={tCommon("close")}
               >
@@ -2283,7 +2412,15 @@ export default function MobileCartFlow({
                     {/* Điều hướng sang trang /product và đóng giỏ hàng khi người dùng bấm tiếp tục mua sắm */}
                     <Link
                       href="/product"
-                      onClick={onClose}
+                      onClick={() => {
+                        cartHistoryDepthRef.current = 0;
+                        setStep(1);
+                        if (onClose) {
+                          onClose();
+                        } else {
+                          setIsCartOpen(false);
+                        }
+                      }}
                       className="inline-block text-sm font-semibold text-secondary hover:underline"
                     >
                       {t("continue_shopping")}
@@ -2731,7 +2868,7 @@ export default function MobileCartFlow({
                     )}
                     <button
                       type="button"
-                      onClick={() => setStep(2)}
+                      onClick={() => handleGoToStep(2)}
                       disabled={isOutOfStockOverall}
                       className={`w-full font-bold rounded-full py-4 text-center transition-all font-display title-2 ${isOutOfStockOverall
                         ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
@@ -3476,7 +3613,10 @@ export default function MobileCartFlow({
                             <svg className="size-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span>{t("select_delivery_time", { hours: (operatingStatus.deliveryOpen || "10:00") + " - " + (operatingStatus.deliveryClose || "23:00") })}</span>
+                            <span>{t("select_delivery_time", {
+                              range: (operatingStatus.deliveryOpen || "10:00") + " - " + (operatingStatus.deliveryClose || "23:00"),
+                              hours: (operatingStatus.deliveryOpen || "10:00") + " - " + (operatingStatus.deliveryClose || "23:00")
+                            })}</span>
                           </label>
                           <div className="relative">
                             <select
