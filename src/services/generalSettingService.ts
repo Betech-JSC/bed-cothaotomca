@@ -27,6 +27,10 @@ export interface GeneralSettingsResponse {
 export async function getGeneralSettings(lang?: string): Promise<GeneralSettings> {
   const params = lang ? { lang } : undefined;
   const json = await getSingleApi<GeneralSettings>('general-settings', { params, revalidate: 60 });
-  return json.data;
+  const data = json?.data;
+  if (!data || Array.isArray(data) || typeof data !== 'object') {
+    return null as unknown as GeneralSettings;
+  }
+  return data;
 }
 

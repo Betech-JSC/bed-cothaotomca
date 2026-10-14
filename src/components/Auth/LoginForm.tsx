@@ -279,7 +279,7 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
                 href="/forgot-password"
                 className="text-xs text-secondary hover:underline"
               >
-                Quên mật khẩu?
+                {tAuth("forgot_password_question")}
               </Link>
             </div>
             <div className="relative">
@@ -353,11 +353,10 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
         <button
           type="submit"
           disabled={loading}
-          className={`w-full btn font-bold h-[44px] rounded-full transition-all duration-300 text-sm sm:text-base mt-1 ${
-            loading
+          className={`w-full btn font-bold h-[44px] rounded-full transition-all duration-300 text-sm sm:text-base mt-1 ${loading
               ? "bg-gray-200! text-gray-400! shadow-none! cursor-not-allowed"
               : "btn-secondary text-white shadow-md shadow-secondary/20 hover:shadow-lg cursor-pointer"
-          } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
+            } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
         >
           {loading ? "..." : t("button")}
         </button>
@@ -457,11 +456,10 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
               <button
                 type="submit"
                 disabled={otpLoading || otpCode.trim().length !== 6 || !pendingEmail.trim()}
-                className={`w-full btn font-bold h-[44px] rounded-full transition-all duration-300 text-sm sm:text-base ${
-                  otpLoading || otpCode.trim().length !== 6 || !pendingEmail.trim()
+                className={`w-full btn font-bold h-[44px] rounded-full transition-all duration-300 text-sm sm:text-base ${otpLoading || otpCode.trim().length !== 6 || !pendingEmail.trim()
                     ? "bg-gray-200! text-gray-400! shadow-none! cursor-not-allowed"
                     : "btn-secondary text-white shadow-md shadow-secondary/20 hover:shadow-lg cursor-pointer"
-                } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
+                  } disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed`}
               >
                 {otpLoading ? tAuth("activating") : tAuth("confirm_activation")}
               </button>
@@ -472,11 +470,10 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
                   type="button"
                   onClick={handleResendActivation}
                   disabled={resendCountdown > 0 || otpLoading || !pendingEmail.trim()}
-                  className={`font-bold transition-all ${
-                    resendCountdown > 0 || !pendingEmail.trim()
+                  className={`font-bold transition-all ${resendCountdown > 0 || !pendingEmail.trim()
                       ? "text-gray-400 cursor-not-allowed"
                       : "text-secondary hover:underline cursor-pointer"
-                  }`}
+                    }`}
                 >
                   {resendCountdown > 0 ? tAuth("resend_in", { seconds: resendCountdown }) : tAuth("resend_otp")}
                 </button>

@@ -587,7 +587,11 @@ export const getProductBySlug = async (
       ...restOptions,
       params,
     });
-    return response.data ? normalizeProductDetail(response.data) : null;
+    const raw = response?.data;
+    if (!raw || Array.isArray(raw) || typeof raw !== "object" || (!raw.id && !raw.name && !raw.slug)) {
+      return null;
+    }
+    return normalizeProductDetail(raw);
   } catch (error) {
     console.warn(`Product slug API failed for ${slug}:`, error);
     return null;

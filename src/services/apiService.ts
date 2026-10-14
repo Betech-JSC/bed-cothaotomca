@@ -118,7 +118,14 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
       throw new Error(`Failed to fetch API: ${key} - Status: ${response.status}`);
     }
 
-    return response.json();
+    const json = await response.json();
+    if (!json || typeof json !== 'object') {
+      return { data: [] };
+    }
+    return {
+      ...json,
+      data: Array.isArray(json.data) ? json.data : [],
+    };
   } catch (error) {
     console.error(`Error in getApi(${key}):`, error);
     // Trả về mảng trống thay vì throw để không sập trang
@@ -152,7 +159,11 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
       throw new Error(`Failed to fetch API: ${key} - Status: ${response.status}`);
     }
 
-    return response.json();
+    const json = await response.json();
+    if (!json || typeof json !== 'object' || Array.isArray(json.data)) {
+      return { ...(json && typeof json === 'object' ? json : {}), data: null as any };
+    }
+    return json;
   } catch (error) {
     console.error(`Error in getSingleApi(${key}):`, error);
     return { data: null as any };

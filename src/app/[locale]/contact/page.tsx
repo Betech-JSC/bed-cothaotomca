@@ -63,10 +63,10 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title: meta.seo_title || undefined,
-      description: meta.seo_description || undefined,
+      title,
+      description,
       url: canonicalUrl,
-      images: meta.og_image ? [meta.og_image] : undefined,
+      images: ogImage ? [ogImage] : undefined,
       type: 'website',
     },
   };

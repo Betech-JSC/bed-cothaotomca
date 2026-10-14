@@ -4,7 +4,7 @@ import SocialShare from "@/components/SocialShare";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { getBlogDetail, getBlogs, Blog, BlogTranslation, BlogCategoryTranslation } from "@/services/blogService";
-import { getTranslation, formatDate, formatRichTextContent, slugify } from "@/lib/format";
+import { getTranslation, formatDate, formatRichTextContent, slugify, formatImageUrl } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
@@ -13,27 +13,33 @@ import BlogTableOfContents from "@/components/Blog/BlogTableOfContents";
 
 export const revalidate = 60; // ISR: revalidate mỗi 60 giây
 
-async function fetchBlog(slug: string, locale: string) {
+function isValidBlog(data: any): data is Blog {
+  return Boolean(data && !Array.isArray(data) && typeof data === "object" && (data.id || data.slug || data.title));
+}
+
+async function fetchBlog(slug: string, locale: string): Promise<Blog | null> {
   // 1. Try fetching directly with current locale
   let blogResponse = await getBlogDetail(slug, { lang: locale }).catch(() => null);
 
   // 2. If not found and locale is not 'vi', try with lang='vi' (using the same slug)
-  if (!blogResponse?.data && locale !== 'vi') {
+  if (!isValidBlog(blogResponse?.data) && locale !== 'vi') {
     const viResponse = await getBlogDetail(slug, { lang: 'vi' }).catch(() => null);
-    if (viResponse?.data) {
+    if (isValidBlog(viResponse?.data)) {
       const reFetched = await getBlogDetail(viResponse.data.slug, { lang: locale }).catch(() => null);
-      blogResponse = reFetched?.data ? reFetched : viResponse;
+      blogResponse = isValidBlog(reFetched?.data) ? reFetched : viResponse;
     }
   }
 
   // 3. Fallback: search in list for matched slug/id
-  if (!blogResponse?.data && locale !== 'vi') {
+  if (!isValidBlog(blogResponse?.data) && locale !== 'vi') {
     const listResponse = await getBlogs({ lang: locale, per_page: 100 }).catch(() => null);
-    const matchedBlog = listResponse?.data?.find((b: any) => b.slug === slug);
+    const listData = Array.isArray(listResponse?.data) ? listResponse.data : [];
+    const matchedBlog = listData.find((b: any) => b.slug === slug);
 
     if (matchedBlog) {
       const viListResponse = await getBlogs({ lang: 'vi', per_page: 100 }).catch(() => null);
-      const viMatchedBlog = viListResponse?.data?.find((b: any) => b.id === matchedBlog.id);
+      const viListData = Array.isArray(viListResponse?.data) ? viListResponse.data : [];
+      const viMatchedBlog = viListData.find((b: any) => b.id === matchedBlog.id);
 
       if (viMatchedBlog) {
         blogResponse = await getBlogDetail(viMatchedBlog.slug, { lang: locale }).catch(() => null);
@@ -41,7 +47,7 @@ async function fetchBlog(slug: string, locale: string) {
     }
   }
 
-  return (blogResponse?.data as any) as Blog;
+  return isValidBlog(blogResponse?.data) ? (blogResponse!.data as any as Blog) : null;
 }
 
 export async function generateMetadata({
@@ -164,7 +170,7 @@ export default async function BlogDetailsPage({
 
     return {
       image: {
-        url: itemTranslation?.thumbnail || item.thumbnail || "/cover.jpg",
+        url: formatImageUrl(itemTranslation?.thumbnail || item.thumbnail) || "/cover.jpg",
         alt: title,
       },
       title: title,
@@ -213,7 +219,7 @@ export default async function BlogDetailsPage({
 
           <div className="rounded-3xl relative aspect-w-2 aspect-h-1 overflow-hidden">
             <Image
-              src={translation?.thumbnail || blog.thumbnail || "/cover.jpg"}
+              src={formatImageUrl(translation?.thumbnail || blog.thumbnail) || "/cover.jpg"}
               alt={blogTitle}
               className="w-full h-full object-cover"
               fill

@@ -63,10 +63,22 @@ export async function generateMetadata({
   if (image && !image.startsWith('http')) image = `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`
 
   const favicon = seo?.favicon || seo?.favicon_url || '/favicon.ico'
-  const keywords = (seo?.seo_keywords || seo?.keywords) ? (seo.seo_keywords || seo.keywords).split(',').map((k: string) => k.trim()) : undefined
+  const rawKeywords = isEn
+    ? (seo?.seo_keywords_en || seo?.keywords_en || seo?.seo_keywords || seo?.keywords)
+    : (seo?.seo_keywords || seo?.keywords);
+  const keywords = typeof rawKeywords === 'string' && rawKeywords.trim()
+    ? rawKeywords.split(',').map((k: string) => k.trim()).filter(Boolean)
+    : undefined;
+
+  let metadataBase: URL;
+  try {
+    metadataBase = new URL(baseUrl);
+  } catch {
+    metadataBase = new URL('https://cothaotomca.vn');
+  }
 
   return {
-    metadataBase: new URL(baseUrl),
+    metadataBase,
     title: {
       template: `%s`,
       default: title,

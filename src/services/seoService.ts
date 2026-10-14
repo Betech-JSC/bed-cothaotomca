@@ -50,7 +50,11 @@ export interface SeoSettingsResponse {
 export async function getSeoSettings(lang?: string): Promise<SeoSettings> {
   const params = lang ? { lang } : undefined;
   const json = await getSingleApi<SeoSettings>('seo-settings', { params, revalidate: 60 });
-  return json.data as SeoSettings;
+  const data = json?.data;
+  if (!data || Array.isArray(data) || typeof data !== 'object') {
+    return null as unknown as SeoSettings;
+  }
+  return data as SeoSettings;
 }
 
 /**
@@ -60,7 +64,11 @@ export async function getMetaPage(identifier: string, lang?: string): Promise<Me
   try {
     const params = lang ? { lang } : undefined;
     const json = await getSingleApi<MetaPage>(`meta-pages/${identifier}`, { params, revalidate: 60 });
-    return (json?.data as MetaPage) || null;
+    const data = json?.data;
+    if (!data || Array.isArray(data) || typeof data !== 'object') {
+      return null;
+    }
+    return data as MetaPage;
   } catch (e) {
     return null;
   }

@@ -15,7 +15,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug } = await params;
   const policiesResult = await getPolicies({ lang: locale }).catch(() => null);
-  const policies = policiesResult?.data || [];
+  const policies = Array.isArray(policiesResult?.data) ? policiesResult.data : [];
 
   const getTranslationData = (item: any, currentLocale: string) => {
     if (!item?.translations) return item;
@@ -94,8 +94,8 @@ export default async function PolicyPage({
 }) {
   const { locale, slug } = await params;
 
-  const policiesResult = await getPolicies({ lang: locale });
-  const policies = policiesResult.data;
+  const policiesResult = await getPolicies({ lang: locale }).catch(() => ({ data: [] }));
+  const policies = Array.isArray(policiesResult?.data) ? policiesResult.data : [];
 
   const getTranslation = (item: any, currentLocale: string) => {
     if (!item?.translations) return item;
