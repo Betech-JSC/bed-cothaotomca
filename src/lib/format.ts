@@ -2,16 +2,9 @@ export function formatDate(date: Date | string | number, locale: string = 'vi') 
   const d = new Date(date);
   if (isNaN(d.getTime())) return '';
 
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    day: '2-digit',
-    month: 'numeric',
-    year: 'numeric',
-  });
-  const parts = formatter.formatToParts(d);
-  const day = (parts.find(p => p.type === 'day')?.value || '01').padStart(2, '0');
-  const monthNum = parseInt(parts.find(p => p.type === 'month')?.value || '1', 10);
-  const year = parts.find(p => p.type === 'year')?.value || String(d.getFullYear());
+  const day = d.getUTCDate().toString().padStart(2, '0');
+  const monthNum = d.getUTCMonth() + 1;
+  const year = d.getUTCFullYear();
 
   if (locale === 'vi') {
     const month = monthNum.toString().padStart(2, '0');
