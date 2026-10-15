@@ -25,9 +25,13 @@ export async function generateMetadata({
   const isEn = locale === 'en';
   const meta = await getMetaPage('contact', locale).catch(() => null);
 
-  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
+  const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('localhost:3000'))
+    ? process.env.NEXT_PUBLIC_BASE_URL
+    : 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
-  const canonicalUrl = (isEn && meta?.canonical_url_en) || meta?.canonical_url || `${baseUrl}/${locale}/contact`;
+  const viUrl = `${baseUrl}/lien-he`;
+  const enUrl = `${baseUrl}/en/contact`;
+  const canonicalUrl = isEn ? enUrl : viUrl;
 
   const defaultTitle = isEn
     ? 'Contact Us | Co Thao Tom Ca'
@@ -58,8 +62,9 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/contact`,
-        en: `${baseUrl}/en/contact`,
+        vi: viUrl,
+        en: enUrl,
+        'x-default': viUrl,
       },
     },
     openGraph: {

@@ -647,11 +647,15 @@ export default function MobileCartFlow({
   // Pending order (bank transfer QR)
   const [pendingOrder, setPendingOrder] = useState<OrderInitiated | null>(null);
 
-  // Safety net: nếu route chuyển sang trang auth hoặc /order-success thì đảm bảo đóng drawer
+  // Safety net: đóng drawer ở /order-success, hoặc khi route THỰC SỰ chuyển sang trang auth (không đóng khi đang ở sẵn trang đăng nhập và mở giỏ hàng)
+  const prevPathnameRef = useRef(pathname);
   useEffect(() => {
+    const hasPathnameChanged = prevPathnameRef.current !== pathname;
+    prevPathnameRef.current = pathname;
+
     const isAuthPage = pathname?.includes("signin") || pathname?.includes("login") || pathname?.includes("dang-nhap");
     const isOrderSuccess = pathname === "/order-success" || pathname?.includes("order-success") || pathname?.includes("dat-hang-thanh-cong");
-    if (isAuthPage || isOrderSuccess) {
+    if (isOrderSuccess || (isAuthPage && hasPathnameChanged)) {
       if (pendingOrder) setPendingOrder(null);
       if (step !== 1) setStep(1);
       onClose?.();
@@ -744,7 +748,7 @@ export default function MobileCartFlow({
             { value: "delivery", label: t("delivery_home") },
             { value: "pickup", label: t("delivery_pickup") },
           ],
-          default_shipping_fee: "50000",
+          default_shipping_fee: "30000",
           branches: branches && branches.length > 0
             ? branches.map(b => ({
               id: b.id,
@@ -1076,7 +1080,7 @@ export default function MobileCartFlow({
       });
   }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, appliedShippingVoucher, config?.branches, cartCampaignG1]);
 
-  const defaultShippingFee = parseFloat(config?.default_shipping_fee || "50000") || 50000;
+  const defaultShippingFee = parseFloat(config?.default_shipping_fee || "30000") || 30000;
   const shippingFee = (cartItems.length === 0 || deliveryType !== "delivery")
     ? 0
     : (isFreeship ? 0 : (hasCalculatedFee ? calculatedFee : (calculatedFee || defaultShippingFee)));
@@ -2632,7 +2636,11 @@ export default function MobileCartFlow({
                           <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-secondary/20 flex-shrink-0">
                             <Image
                               src={formatImageUrl(selectedOrderGiftItem.image)}
-                              alt={selectedOrderGiftItem.product_name}
+                              alt={
+                                locale === "en" && selectedOrderGiftItem.product_name_en
+                                  ? selectedOrderGiftItem.product_name_en
+                                  : selectedOrderGiftItem.product_name
+                              }
                               fill
                               className="object-cover"
                               unoptimized
@@ -2645,7 +2653,24 @@ export default function MobileCartFlow({
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start gap-2">
-                            <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">{selectedOrderGiftItem.product_name}</p>
+                            <div>
+                              <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">
+                                {locale === "en" && selectedOrderGiftItem.product_name_en
+                                  ? selectedOrderGiftItem.product_name_en
+                                  : selectedOrderGiftItem.product_name}
+                              </p>
+                              {(() => {
+                                const giftVar =
+                                  locale === "en" && selectedOrderGiftItem.variant_name_en
+                                    ? selectedOrderGiftItem.variant_name_en
+                                    : selectedOrderGiftItem.variant_name;
+                                return giftVar && !isDefaultVariant(giftVar) ? (
+                                  <p className="text-[11px] text-gray-500 font-medium truncate">
+                                    {cleanVariantName(giftVar)}
+                                  </p>
+                                ) : null;
+                              })()}
+                            </div>
                             <span className="body-2 text-secondary font-bold whitespace-nowrap">
                               {selectedOrderGiftItem.campaign_price === 0 ? "0đ" : formatPrice(selectedOrderGiftItem.campaign_price)}
                             </span>
@@ -2679,7 +2704,7 @@ export default function MobileCartFlow({
                           <div className="relative size-12 rounded-lg overflow-hidden bg-white border border-primary/20 flex-shrink-0">
                             <Image
                               src={formatImageUrl(item.image)}
-                              alt={item.product_name}
+                              alt={locale === "en" && item.product_name_en ? item.product_name_en : item.product_name}
                               fill
                               className="object-cover"
                               unoptimized
@@ -2692,9 +2717,22 @@ export default function MobileCartFlow({
                         )}
                         <div className="flex-1 min-w-0 space-y-1">
                           <div className="flex justify-between items-start gap-2">
-                            <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">
-                              {item.product_name}
-                            </p>
+                            <div>
+                              <p className="body-2 text-gray-900 font-bold font-display line-clamp-1">
+                                {locale === "en" && item.product_name_en ? item.product_name_en : item.product_name}
+                              </p>
+                              {(() => {
+                                const giftVar =
+                                  locale === "en" && item.variant_name_en
+                                    ? item.variant_name_en
+                                    : item.variant_name;
+                                return giftVar && !isDefaultVariant(giftVar) ? (
+                                  <p className="text-[11px] text-gray-500 font-medium truncate">
+                                    {cleanVariantName(giftVar)}
+                                  </p>
+                                ) : null;
+                              })()}
+                            </div>
                             <div className="text-right shrink-0">
                               {item.original_price > 0 && (
                                 <span className="text-[10px] text-gray-400 line-through block">
@@ -2735,23 +2773,36 @@ export default function MobileCartFlow({
                 )}
               </div>
 
-              {cartItems.length > 0 && (
+              {isLoaded !== false && cartItems.length > 0 && (
                 <>
                   {/* Shopee-style Voucher Ticket Bar */}
-                  <div className="space-y-2">
-                    <VoucherTicketBar
-                      appliedVoucher={appliedVoucher}
-                      appliedShippingVoucher={appliedShippingVoucher}
-                      activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : (cartCampaignG1?.name || eligibleOrderGiftPromo?.name || eligibleBuyXGetYPromos[0]?.name || eligibleOrderDiscountPromo?.name)}
-                      memberTierName={memberTier.name}
-                      memberDiscountAmount={memberDiscount}
-                      memberDiscountPercent={memberTier.discountPercent}
-                      isMemberApplied={memberDiscount > 0 && !isMemberExcludedByPromotions}
-                      onClick={() => setIsVoucherModalOpen(true)}
-                      onRemove={handleRemovePromotionFromBar}
-                    />
-                    {voucherError && <p className="text-sm text-red-600 font-semibold mt-1 px-2">{voucherError}</p>}
-                  </div>
+                  {subtotal > 0 && (
+                    <div className="space-y-2">
+                      <VoucherTicketBar
+                        appliedVoucher={appliedVoucher}
+                        appliedShippingVoucher={appliedShippingVoucher}
+                        activeCampaignName={
+                          appliedVoucher?.canCombineWithPromotions === false
+                            ? undefined
+                            : (() => {
+                                const p: any =
+                                  cartCampaignG1 ||
+                                  eligibleOrderGiftPromo ||
+                                  eligibleBuyXGetYPromos[0] ||
+                                  eligibleOrderDiscountPromo;
+                                return p ? (locale === "en" && p.name_en ? p.name_en : p.name) : undefined;
+                              })()
+                        }
+                        memberTierName={memberTier.name}
+                        memberDiscountAmount={memberDiscount}
+                        memberDiscountPercent={memberTier.discountPercent}
+                        isMemberApplied={memberDiscount > 0 && !isMemberExcludedByPromotions}
+                        onClick={() => setIsVoucherModalOpen(true)}
+                        onRemove={handleRemovePromotionFromBar}
+                      />
+                      {voucherError && <p className="text-sm text-red-600 font-semibold mt-1 px-2">{voucherError}</p>}
+                    </div>
+                  )}
 
                   {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}
                   {deliveryType !== "pickup" && (deliveryType as string) !== "takeaway" && shippingSettings?.is_min_amount_enabled && subtotal > 0 && (
@@ -2920,7 +2971,9 @@ export default function MobileCartFlow({
                     {/* 6) Tổng thanh toán */}
                     <div className="flex justify-between items-center text-base pt-2 border-t border-gray-100">
                       <span className="text-gray-900 font-bold">{t("total")}</span>
-                      <span className="text-secondary font-bold font-display text-lg">{formatOrderPrice(total)}</span>
+                      <span className="text-secondary font-bold font-display text-lg">
+                        {formatOrderPrice(total)}
+                      </span>
                     </div>
                   </div>
 
@@ -3156,7 +3209,11 @@ export default function MobileCartFlow({
                 <div className="flex justify-between items-center border-t border-gray-200/80 pt-3 gap-2">
                   <span className="text-gray-900 font-bold text-sm flex-1 min-w-0">{t("total")}</span>
                   <span className="text-xl font-display text-secondary font-extrabold shrink-0 whitespace-nowrap text-right tracking-tight">
-                    {formatOrderPrice(total)}
+                    {isLoaded === false ? (
+                      <span data-testid="mobile-total-skeleton" className="inline-block h-7 w-28 bg-gray-200 rounded animate-pulse align-middle" />
+                    ) : (
+                      formatOrderPrice(total)
+                    )}
                   </span>
                 </div>
               </div>
@@ -3242,7 +3299,6 @@ export default function MobileCartFlow({
                 <div className="space-y-3">
                   <label className="text-base font-serif font-semibold leading-[150%] tracking-[0.04em] text-primary block">
                     {t("email_label")}
-                    <RequiredMark />
                   </label>
                   <input
                     type="email"
@@ -3883,7 +3939,12 @@ export default function MobileCartFlow({
           isOpen={isOrderGiftModalOpen}
           onClose={() => setIsOrderGiftModalOpen(false)}
           title={t("order_gift_tag")}
-          subtitle={t("campaign_subtitle", { name: eligibleOrderGiftPromo.name })}
+          subtitle={t("campaign_subtitle", {
+            name:
+              locale === "en" && eligibleOrderGiftPromo.name_en
+                ? eligibleOrderGiftPromo.name_en
+                : eligibleOrderGiftPromo.name,
+          })}
           items={getBuyXGetYGiftOnlyItems(eligibleOrderGiftPromo)}
           selectedId={selectedOrderGiftId}
           onSelect={(item) => {
@@ -3900,7 +3961,12 @@ export default function MobileCartFlow({
             isOpen={!!selectedBuyXGetYPromoForModal}
             onClose={() => setSelectedBuyXGetYPromoForModal(null)}
             title={t("combo_tag")}
-            subtitle={t("campaign_subtitle", { name: selectedBuyXGetYPromoForModal.name })}
+            subtitle={t("campaign_subtitle", {
+              name:
+                locale === "en" && selectedBuyXGetYPromoForModal.name_en
+                  ? selectedBuyXGetYPromoForModal.name_en
+                  : selectedBuyXGetYPromoForModal.name,
+            })}
             items={giftOnlyItems}
             selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || giftOnlyItems.find((i) => i.is_available !== false)?.id || null}
             onSelect={(item) => {

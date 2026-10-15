@@ -4,10 +4,20 @@ import SocialShare from "@/components/SocialShare";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { getBlogDetail, getBlogs, Blog, BlogTranslation, BlogCategoryTranslation } from "@/services/blogService";
-import { getTranslation, formatDate, formatRichTextContent, slugify, formatImageUrl } from "@/lib/format";
+import {
+  getTranslation,
+  formatDate,
+  formatRichTextContent,
+  slugify,
+  formatImageUrl,
+  localizeBlogItem,
+  filterAndLocalizeBlogs,
+  cleanBlogSlugSegment,
+} from "@/lib/format";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
+import AlternateLinksUpdater from "@/components/SEO/AlternateLinksUpdater";
 import SectionRelatedPosts from "@/components/Blog/SectionRelatedPosts";
 import BlogTableOfContents from "@/components/Blog/BlogTableOfContents";
 
@@ -34,7 +44,7 @@ async function fetchBlog(slug: string, locale: string): Promise<Blog | null> {
   if (!isValidBlog(blogResponse?.data) && locale !== 'vi') {
     const listResponse = await getBlogs({ lang: locale, per_page: 100 }).catch(() => null);
     const listData = Array.isArray(listResponse?.data) ? listResponse.data : [];
-    const matchedBlog = listData.find((b: any) => b.slug === slug);
+    const matchedBlog = listData.find((b: any) => b.slug === slug || b.slug_en === slug || b.slug_vi === slug);
 
     if (matchedBlog) {
       const viListResponse = await getBlogs({ lang: 'vi', per_page: 100 }).catch(() => null);
@@ -47,7 +57,46 @@ async function fetchBlog(slug: string, locale: string): Promise<Blog | null> {
     }
   }
 
-  return isValidBlog(blogResponse?.data) ? (blogResponse!.data as any as Blog) : null;
+  if (!isValidBlog(blogResponse?.data)) return null;
+  return localizeBlogItem(blogResponse!.data as any as Blog, locale);
+}
+
+function resolveBlogAlternateSlugs(blog: any, locale: string, currentCategory: string, currentSlug: string) {
+  const isEn = locale === 'en';
+  const altSlugs = blog?.alternate_slugs;
+
+  const rawViCatSlug =
+    altSlugs?.vi?.category_slug ||
+    blog?.category?.slug_vi ||
+    blog?.category?.original_slug ||
+    (!isEn ? blog?.category?.slug : '') ||
+    'tin-tuc';
+  const viCatSlug = cleanBlogSlugSegment(rawViCatSlug) || 'tin-tuc';
+
+  const rawEnCatSlug =
+    altSlugs?.en?.category_slug ||
+    blog?.category?.slug_en ||
+    (isEn ? (blog?.category?.slug || currentCategory) : '') ||
+    'news';
+  const cleanedEnCat = cleanBlogSlugSegment(rawEnCatSlug) || 'news';
+  const enCatSlug = cleanedEnCat === 'blog' ? 'news' : cleanedEnCat;
+
+  const rawViBlogSlug =
+    (typeof altSlugs?.vi === 'string' ? altSlugs.vi : altSlugs?.vi?.slug) ||
+    blog?.slug_vi ||
+    blog?.original_slug ||
+    (!isEn ? blog?.slug : '') ||
+    currentSlug;
+  const viBlogSlug = cleanBlogSlugSegment(rawViBlogSlug) || cleanBlogSlugSegment(currentSlug) || currentSlug;
+
+  const rawEnBlogSlug =
+    (typeof altSlugs?.en === 'string' ? altSlugs.en : altSlugs?.en?.slug) ||
+    blog?.slug_en ||
+    (isEn ? blog?.slug : '') ||
+    viBlogSlug;
+  const enBlogSlug = cleanBlogSlugSegment(rawEnBlogSlug) || viBlogSlug;
+
+  return { viCatSlug, enCatSlug, viBlogSlug, enBlogSlug };
 }
 
 export async function generateMetadata({
@@ -63,61 +112,23 @@ export async function generateMetadata({
 
   const translation = getTranslation<BlogTranslation>(blog.translations, locale);
   const isEn = locale === 'en';
-  const blogTitle = (isEn ? translation?.title : null) || blog.title || translation?.title || "";
-  const blogDescription = (isEn ? translation?.description : null) || blog.description || translation?.description || "";
+  const blogTitle = (isEn ? (blog.title || translation?.title) : (translation?.title || blog.title)) || "";
+  const blogDescription = (isEn ? (blog.description || translation?.description) : (translation?.description || blog.description)) || "";
 
-  // Ưu tiên SEO từ bản dịch -> Tên theo ngôn ngữ -> Fallback root
-  const seoTitle = translation?.seo_title || (isEn ? (blogTitle || blog.seo_title || blog.meta_title) : (blog.seo_title || blog.meta_title || blogTitle));
-  const seoDescription = translation?.seo_description || (isEn ? (blogDescription || blog.seo_description || blog.meta_description) : (blog.seo_description || blog.meta_description || blogDescription));
+  const seoTitle = isEn
+    ? (blog.seo_title || blogTitle || translation?.seo_title || blog.meta_title)
+    : (translation?.seo_title || blog.seo_title || blog.meta_title || blogTitle);
+  const seoDescription = isEn
+    ? (blog.seo_description || blogDescription || translation?.seo_description || blog.meta_description)
+    : (translation?.seo_description || blog.seo_description || blog.meta_description || blogDescription);
   const seoKeywords = translation?.seo_keywords || blog.seo_keywords || blog.meta_keywords || "";
 
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
-  const viTrans = getTranslation<BlogTranslation>(blog.translations, 'vi');
-  const enTrans = getTranslation<BlogTranslation>(blog.translations, 'en');
-  const viCatTrans = getTranslation<BlogCategoryTranslation>(blog.category?.translations, 'vi');
-  const enCatTrans = getTranslation<BlogCategoryTranslation>(blog.category?.translations, 'en');
+  const { viCatSlug, enCatSlug, viBlogSlug, enBlogSlug } = resolveBlogAlternateSlugs(blog, locale, category, slug);
 
-  const altSlugs = (blog as any).alternate_slugs;
-  let matchedViBlog: any = null;
-  let matchedEnBlog: any = null;
-
-  if (isEn && !altSlugs?.vi?.slug && blog.id) {
-    const viBlogsRes = await getBlogs({ lang: 'vi', per_page: 100 }).catch(() => null);
-    matchedViBlog = (viBlogsRes?.data || []).find((b: any) => Number(b.id) === Number(blog.id));
-  } else if (!isEn && !altSlugs?.en?.slug && !(enTrans as any)?.slug && !enTrans?.title && blog.id) {
-    const enBlogsRes = await getBlogs({ lang: 'en', per_page: 100 }).catch(() => null);
-    matchedEnBlog = (enBlogsRes?.data || []).find((b: any) => Number(b.id) === Number(blog.id));
-  }
-
-  const viCatSlug = altSlugs?.vi?.category_slug
-    || matchedViBlog?.category?.slug
-    || blog.category?.slug
-    || slugify(viCatTrans?.title || matchedViBlog?.category?.title || blog.category?.title || 'tin-tuc')
-    || 'tin-tuc';
-  const rawEnCatSlug = altSlugs?.en?.category_slug
-    || (enCatTrans as any)?.slug
-    || slugify(enCatTrans?.title || matchedEnBlog?.category?.title || '')
-    || (isEn ? category : '')
-    || 'news';
-  const enCatSlug = rawEnCatSlug === 'blog' ? 'news' : rawEnCatSlug;
-
-  const viBlogSlug = altSlugs?.vi?.slug
-    || matchedViBlog?.slug
-    || (viTrans as any)?.slug
-    || (!isEn ? blog.slug : '')
-    || slugify(viTrans?.title || matchedViBlog?.title || blog.title || '')
-    || slug;
-  const enBlogSlug = altSlugs?.en?.slug
-    || (enTrans as any)?.slug
-    || (matchedEnBlog?.slug && matchedEnBlog.slug !== viBlogSlug ? matchedEnBlog.slug : '')
-    || (isEn ? blog.slug : '')
-    || slugify(enTrans?.title || matchedEnBlog?.title || '')
-    || viBlogSlug;
-
-  const customCanonical = translation?.canonical_url || blog.canonical_url;
-  const canonicalUrl = customCanonical || (isEn
-    ? `${baseUrl}/en/blog/${enCatSlug}/${enBlogSlug}`
-    : `${baseUrl}/tin-tuc/${viCatSlug}/${viBlogSlug}`);
+  const viUrl = `${baseUrl}/tin-tuc/${viCatSlug}/${viBlogSlug}`;
+  const enUrl = `${baseUrl}/en/blog/${enCatSlug}/${enBlogSlug}`;
+  const canonicalUrl = isEn ? enUrl : viUrl;
   const customOgImage = translation?.og_image || blog.og_image;
   const blogImage = customOgImage || translation?.thumbnail || blog.thumbnail || "/cover.jpg";
   const customRobots = translation?.meta_robots || blog.meta_robots || undefined;
@@ -130,8 +141,9 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/tin-tuc/${viCatSlug}/${viBlogSlug}`,
-        en: `${baseUrl}/en/blog/${enCatSlug}/${enBlogSlug}`,
+        vi: viUrl,
+        en: enUrl,
+        'x-default': viUrl,
       },
     },
     openGraph: {
@@ -173,10 +185,13 @@ export default async function BlogDetailsPage({
   const translation = getTranslation<BlogTranslation>(blog.translations, locale);
   const catTranslation = getTranslation<BlogCategoryTranslation>(blog.category?.translations, locale);
 
-  const blogTitle = translation?.title || blog.title || "";
-  const blogDescription = translation?.description || blog.description || "";
-  const blogContent = formatRichTextContent(translation?.content || blog.content || "");
-  const categoryName = catTranslation?.title || blog.category?.title || t('blog.category');
+  const blogTitle = locale === 'en' ? (blog.title || translation?.title || "") : (translation?.title || blog.title || "");
+  const blogDescription = locale === 'en' ? (blog.description || translation?.description || "") : (translation?.description || blog.description || "");
+  const rawHtmlContent = locale === 'en' ? (blog.content || translation?.content || "") : (translation?.content || blog.content || "");
+  const blogContent = formatRichTextContent(rawHtmlContent);
+  const categoryName = locale === 'en'
+    ? (blog.category?.title || catTranslation?.title || t('blog.category'))
+    : (catTranslation?.title || blog.category?.title || t('blog.category'));
 
   const breadcrumbs = [
     {
@@ -206,13 +221,15 @@ export default async function BlogDetailsPage({
     }
   }
 
-  const relatedPostsDisplay = relatedBlogsData.slice(0, 6).map((item: Blog) => {
+  const relatedPostsDisplay = filterAndLocalizeBlogs(relatedBlogsData, locale).slice(0, 6).map((item: Blog) => {
     const itemTranslation = getTranslation<BlogTranslation>(item.translations, locale);
     const itemCatTranslation = getTranslation<BlogCategoryTranslation>(item.category?.translations, locale);
-    const title = itemTranslation?.title || item.title;
-    const catName = itemCatTranslation?.title || item.category?.title || categoryName;
+    const title = locale === 'en' ? (item.title || itemTranslation?.title) : (itemTranslation?.title || item.title);
+    const catName = locale === 'en'
+      ? (item.category?.title || itemCatTranslation?.title || categoryName)
+      : (itemCatTranslation?.title || item.category?.title || categoryName);
     const rawCatSlug = locale === 'en'
-      ? (slugify(catName) || item.category?.slug || 'news')
+      ? (item.category?.slug || slugify(catName) || 'news')
       : (item.category?.slug || slugify(catName) || 'tin-tuc');
     const finalCatSlug = (locale === 'en' && rawCatSlug === 'blog') ? 'news' : rawCatSlug;
 
@@ -233,15 +250,27 @@ export default async function BlogDetailsPage({
 
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
   const cleanCategory = locale === 'en' && category === 'blog' ? 'news' : category;
+  const { viCatSlug, enCatSlug, viBlogSlug, enBlogSlug } = resolveBlogAlternateSlugs(blog, locale, category, slug);
+  const alternateLinks = {
+    vi: {
+      pathname: "/blog/category/[category]/[slug]",
+      params: { category: viCatSlug, slug: viBlogSlug },
+    },
+    en: {
+      pathname: "/blog/category/[category]/[slug]",
+      params: { category: enCatSlug, slug: enBlogSlug },
+    },
+  };
 
   return (
     <main>
+      <AlternateLinksUpdater links={alternateLinks} />
       <JsonLd
         type="Article"
         data={blog}
         url={locale === 'en'
-          ? `${baseUrl}/en/blog/${cleanCategory}/${slug}`
-          : `${baseUrl}/tin-tuc/${cleanCategory}/${slug}`}
+          ? `${baseUrl}/en/blog/${enCatSlug}/${enBlogSlug}`
+          : `${baseUrl}/tin-tuc/${viCatSlug}/${viBlogSlug}`}
       />
       <section className="min-h-screen w-full md:py-12 py-8 xl:py-16">
         <div className="container md:space-y-8 space-y-6 xl:space-y-8">

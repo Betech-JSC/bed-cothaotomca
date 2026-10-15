@@ -13,7 +13,7 @@ import JsonLd from "@/components/SEO/JsonLd";
 import AlternateLinksUpdater from "@/components/SEO/AlternateLinksUpdater";
 import type { AlternateLinksMap } from "@/contexts/AlternateLinksContext";
 
-import { getTranslation, slugify, formatImageUrl } from "@/lib/format";
+import { getTranslation, slugify, formatImageUrl, hasVietnameseDiacritics } from "@/lib/format";
 import { getProductLocalizedSlugs } from "@/lib/productHelper";
 export const revalidate = 60; // ISR: revalidate mỗi 60 giây
 
@@ -30,22 +30,19 @@ export async function generateMetadata(
   const translation = getTranslation<Translation>(product.translations, locale);
   const isEn = locale === 'en';
   const productName = (isEn ? (translation?.custom_name || translation?.name) : (translation?.custom_name || product.custom_name || translation?.name || product.name)) || product.custom_name || product.name || "";
-  const rawProductDescription = (isEn ? translation?.description : null) || product.description || translation?.description || "";
-  const productDescription = isEn ? rawProductDescription.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá") : rawProductDescription;
+  const productDescription = (isEn ? translation?.description : null) || product.description || translation?.description || "";
 
   // Ưu tiên SEO từ bản dịch -> Tên theo ngôn ngữ -> Fallback root
   const seoTitle = translation?.seo_title || (isEn ? (productName || product.seo_title || product.meta_title) : (product.seo_title || product.meta_title || productName));
-  const rawSeoDescription = translation?.seo_description || (isEn ? (productDescription || product.seo_description || product.meta_description) : (product.seo_description || product.meta_description || productDescription)) || "";
-  const seoDescription = isEn ? rawSeoDescription.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá") : rawSeoDescription;
+  const seoDescription = translation?.seo_description || (isEn ? (productDescription || product.seo_description || product.meta_description) : (product.seo_description || product.meta_description || productDescription)) || "";
   const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
 
   const { viCatSlug, viProductSlug, enCatSlug, enProductSlug } = getProductLocalizedSlugs(product);
 
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
-  const customCanonical = translation?.canonical_url || product.canonical_url;
-  const canonicalUrl = customCanonical || (isEn
-    ? `${baseUrl}/en/product/${enCatSlug}/${enProductSlug}`
-    : `${baseUrl}/san-pham/${viCatSlug}/${viProductSlug}`);
+  const viUrl = `${baseUrl}/san-pham/${viCatSlug}/${viProductSlug}`;
+  const enUrl = `${baseUrl}/en/product/${enCatSlug}/${enProductSlug}`;
+  const canonicalUrl = isEn ? enUrl : viUrl;
   const customOgImage = translation?.og_image || product.og_image;
   const previousImages = (await parent).openGraph?.images || [];
   const productImage = customOgImage || product.image || (previousImages.length > 0 ? (typeof previousImages[0] === 'string' ? previousImages[0] : (previousImages[0] as any).url) : "/cover.jpg");
@@ -59,8 +56,9 @@ export async function generateMetadata(
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/san-pham/${viCatSlug}/${viProductSlug}`,
-        en: `${baseUrl}/en/product/${enCatSlug}/${enProductSlug}`,
+        vi: viUrl,
+        en: enUrl,
+        'x-default': viUrl,
       },
     },
     openGraph: {
@@ -165,9 +163,14 @@ export default async function ProductDetailsPage({
       const rawUrl = img.image || img.url;
       const imgUrl = formatImageUrl(rawUrl);
       if (imgUrl && !galleryImages.some((i) => i.url === imgUrl)) {
+        const rawAlt = img.alt_text || img.title || img.caption || "";
+        const localizedAlt =
+          locale === "en" && (!rawAlt || hasVietnameseDiacritics(rawAlt))
+            ? `${productName} ${idx + 1}`
+            : rawAlt || `${productName} ${idx + 1}`;
         galleryImages.push({
           url: imgUrl,
-          alt: img.alt_text || img.title || img.caption || `${productName} ${idx + 1}`,
+          alt: localizedAlt,
         });
       }
     });
@@ -187,8 +190,7 @@ export default async function ProductDetailsPage({
     galleryImages.push({ url: formatImageUrl(product.image) || "/cover.jpg", alt: productName });
   }
 
-  const rawDescription = (locale === 'en' ? (translation?.description || product.description) : (product.description || translation?.description)) || "";
-  const cleanedDescription = locale === 'en' ? rawDescription.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá") : rawDescription;
+  const cleanedDescription = (locale === 'en' ? (translation?.description || product.description) : (product.description || translation?.description)) || "";
 
   const productData = {
     title: productName,
@@ -363,7 +365,12 @@ export default async function ProductDetailsPage({
 
       category: { title: categoryName, slug: categorySlug },
       image: { url: formatImageUrl(p.image) || "/cover.jpg" },
-      description: translation?.description || p.description,
+      description: (() => {
+        const rawRelDesc = translation?.description || p.description || "";
+        return locale === "en" && typeof rawRelDesc === "string"
+          ? rawRelDesc.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá")
+          : rawRelDesc;
+      })(),
       created_at: p.created_at
     };
   }) || [];
@@ -375,7 +382,7 @@ export default async function ProductDetailsPage({
       <AlternateLinksUpdater links={alternateLinksMap} />
       <JsonLd
         type="Product"
-        data={product}
+        data={{ ...product, name: productName, description: cleanedDescription }}
         url={locale === 'en'
           ? `${baseUrl}/en/product/${enCatSlug}/${enProductSlug}`
           : `${baseUrl}/san-pham/${viCatSlug}/${viProductSlug}`}

@@ -18,19 +18,25 @@ export async function generateMetadata({
     ? "Manage your personal profile, delivery addresses, order history and membership loyalty points at Co Thao Tom Ca"
     : "Quản lý thông tin tài khoản, sổ địa chỉ nhận hàng, lịch sử đơn hàng và điểm tích lũy thành viên tại Bếp Cô Thảo Tôm Cá";
 
+  const viUrl = `${baseUrl}/thong-tin-ca-nhan`;
+  const enUrl = `${baseUrl}/en/profile`;
+  const canonicalUrl = isEn ? enUrl : viUrl;
+
   return {
     title,
     description,
     alternates: {
-      canonical: `${baseUrl}/${locale}/profile`,
+      canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/trang-ca-nhan`,
-        en: `${baseUrl}/en/profile`,
+        vi: viUrl,
+        en: enUrl,
+        "x-default": viUrl,
       },
     },
     openGraph: {
       title,
       description,
+      url: canonicalUrl,
       type: "website",
     },
   };

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
+import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName } from "@/lib/format";
 import { getCartItemTitle, getCartItemVariant } from "@/lib/cartLocalization";
 import { useTranslations } from "next-intl";
 import * as NextIntl from "next-intl";
@@ -30,6 +30,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
   const { user, refreshUser } = useAuth();
   const {
     cartItems,
+    isLoaded,
     updateQuantity,
     removeFromCart,
     subtotal,
@@ -128,7 +129,17 @@ export default function CartPopup({ onClose }: CartPopupProps) {
           </button>
         </div>
 
-        {cartItems.length === 0 ? (
+        {isLoaded === false ? (
+          <div className="py-6 space-y-3 animate-pulse" data-testid="cart-popup-loading-skeleton">
+            <div className="flex gap-3 items-center">
+              <div className="size-16 rounded-xl bg-gray-200 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+              </div>
+            </div>
+          </div>
+        ) : cartItems.length === 0 ? (
           <div className="py-8 text-center space-y-2">
             <p className="body-2 text-gray-500 font-medium">{t("empty")}</p>
             <Link
@@ -257,7 +268,7 @@ export default function CartPopup({ onClose }: CartPopupProps) {
               <div className="flex justify-between items-center">
                 <span className="body-2 text-gray-600 font-semibold">{t("subtotal")}</span>
                 <span className="text-xl font-bold text-secondary font-display">
-                  {formatPrice(subtotal)}
+                  {formatOrderPrice(subtotal)}
                 </span>
               </div>
 

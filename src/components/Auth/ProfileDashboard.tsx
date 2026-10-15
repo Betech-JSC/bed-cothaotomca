@@ -43,6 +43,8 @@ interface OrderItem {
   created_at: string;
   status: string;
   total: string;
+  cancel_reason?: string | null;
+  cancelled_at?: string | null;
   payment_status?: string;
   subtotal?: string;
   discount?: string;
@@ -910,6 +912,21 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                       {/* Expandable Order Details */}
                       {isExpanded && (
                         <div className="border-t border-gray-200/80 pt-4 mt-2 flex flex-col gap-4">
+                          {(order.status === "cancelled" || order.status === "cancel_requested" || order.cancel_reason) && (
+                            <div className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80 text-xs text-rose-900 space-y-1">
+                              <p>
+                                <span className="font-bold">Lý do hủy:</span>{" "}
+                                <span>{order.cancel_reason || "Không có lý do cụ thể"}</span>
+                              </p>
+                              {order.cancelled_at && (
+                                <p className="text-rose-700">
+                                  <span className="font-semibold">Thời gian hủy:</span>{" "}
+                                  <span>{formatVietnamDateTime(order.cancelled_at)}</span>
+                                </p>
+                              )}
+                            </div>
+                          )}
+
                           {/* Items Section */}
                           <div className="space-y-2">
                             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">

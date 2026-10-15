@@ -2,7 +2,7 @@ import { getBlogCategories, getBlogs, Blog } from "@/services/blogService";
 import { getApi } from "@/services/apiService";
 import { HeroBanner } from "@/services/heroBannerService";
 import BlogListPage from "@/components/Blog/BlogListPage";
-import { formatImageUrl } from "@/lib/format";
+import { formatImageUrl, filterAndLocalizeBlogs } from "@/lib/format";
 import { Metadata } from 'next';
 import { getMetaPage, resolveMetaTitle, resolveMetaDescription, resolveMetaKeywords } from '@/services/seoService';
 
@@ -17,9 +17,13 @@ export async function generateMetadata({
   const isEn = locale === 'en';
   const meta = await getMetaPage('blog', locale).catch(() => null);
 
-  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
+  const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('localhost:3000'))
+    ? process.env.NEXT_PUBLIC_BASE_URL
+    : 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
-  const canonicalUrl = (isEn && meta?.canonical_url_en) || meta?.canonical_url || `${baseUrl}/${locale}/blog`;
+  const viUrl = `${baseUrl}/tin-tuc`;
+  const enUrl = `${baseUrl}/en/blog`;
+  const canonicalUrl = isEn ? enUrl : viUrl;
 
   const defaultTitle = isEn
     ? 'News & Culinary Tips | Co Thao Tom Ca'
@@ -50,8 +54,9 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/blog`,
-        en: `${baseUrl}/en/blog`,
+        vi: viUrl,
+        en: enUrl,
+        'x-default': viUrl,
       },
     },
     openGraph: {
@@ -91,11 +96,14 @@ export default async function BlogIndexPage({
     ]);
 
     bannerData = bannerRes;
-    featuredBlogs = featuredRes.data || [];
+    featuredBlogs = filterAndLocalizeBlogs(featuredRes.data || [], locale);
     totalBlogs = Number(gridRes.total ?? featuredRes.total ?? 0);
 
     const featuredIds = new Set(featuredBlogs.map((b: Blog) => b.id));
-    gridBlogs = (gridRes.data || []).filter((b: Blog) => !featuredIds.has(b.id));
+    gridBlogs = filterAndLocalizeBlogs(
+      (gridRes.data || []).filter((b: Blog) => !featuredIds.has(b.id)),
+      locale
+    );
   } else {
     const offset = 14 + (currentPage - 2) * 12;
     const [bannerRes, gridRes] = await Promise.all([
@@ -106,7 +114,7 @@ export default async function BlogIndexPage({
     bannerData = bannerRes;
     featuredBlogs = [];
     totalBlogs = Number(gridRes.total ?? 0);
-    gridBlogs = gridRes.data || [];
+    gridBlogs = filterAndLocalizeBlogs(gridRes.data || [], locale);
   }
 
   const lastPage = totalBlogs <= 14 ? 1 : 1 + Math.ceil((totalBlogs - 14) / 12);

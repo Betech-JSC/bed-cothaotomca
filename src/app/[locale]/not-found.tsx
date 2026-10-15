@@ -1,51 +1,48 @@
-import { getTranslations, getLocale } from 'next-intl/server'
-import { locales as supportedLocales, defaultLocale } from '@/i18n/config'
-import { Link } from '@/i18n/i18n-navigation'
-import { headers } from 'next/headers'
+"use client";
 
-export default async function NotFound({ params }: { params?: Promise<{ locale?: string }> | { locale?: string } }) {
-  let detectedLocale: string | undefined;
+import { useLocale, useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
+import { Link } from "@/i18n/i18n-navigation";
+
+export default function NotFound() {
+  const contextLocale = useLocale();
+  const rawPathname = usePathname() || "";
+  const isEnPath = /^\/en(\/|$)/.test(rawPathname) || (typeof window !== "undefined" && /^\/en(\/|$)/.test(window.location.pathname));
+  const isEn = contextLocale === "en" || isEnPath;
+
+  let title = "404";
+  let description = isEn
+    ? "Page not found. The page you are looking for does not exist."
+    : "Không tìm thấy trang bạn yêu cầu.";
+  let goHome = isEn ? "Back to home" : "Về trang chủ";
+
   try {
-    detectedLocale = await getLocale();
-  } catch {
-    // ignore
-  }
-
-  if (!detectedLocale || detectedLocale === defaultLocale) {
-    try {
-      const resolvedParams = params ? await params : undefined;
-      if (resolvedParams?.locale) {
-        detectedLocale = resolvedParams.locale;
-      } else {
-        const hdrs = await headers();
-        const pathname = hdrs.get('x-pathname') || hdrs.get('x-invoke-path') || hdrs.get('x-matched-path') || hdrs.get('referer') || '';
-        if (/(\/|^)en(\/|$)/.test(pathname)) {
-          detectedLocale = 'en';
-        }
-      }
-    } catch {
-      // ignore
+    const t = useTranslations("errors.404");
+    if (!isEnPath || contextLocale === "en") {
+      title = t("title") || title;
+      description = t("description") || description;
+      goHome = t("go_home") || goHome;
     }
+  } catch {
+    // use fallback strings above
   }
-
-  const locale = detectedLocale || defaultLocale;
-  const useLocale = supportedLocales.includes(locale as any) ? locale : defaultLocale;
-  const t = await getTranslations({ locale: useLocale });
 
   return (
     <main className="min-h-[720px] flex items-center justify-center bg-yellow p-6">
       <div className="container">
         <div className="max-w-xl mx-auto text-center">
-          <h1 className="text-6xl font-extrabold text-primary mb-4">{t('errors.404.title')}</h1>
-          <p className="text-xl text-gray-700 mb-6">{t('errors.404.description')}</p>
+          <h1 className="text-6xl font-extrabold text-primary mb-4">{title}</h1>
+          <p className="text-xl text-gray-700 mb-6">{description}</p>
           <Link
             href="/"
+            locale={isEn ? "en" : "vi"}
             className="inline-block px-6 py-3 bg-secondary text-white font-bold rounded-full hover:bg-secondary/90 transition-all"
           >
-            {t('errors.404.go_home')}
+            {goHome}
           </Link>
         </div>
       </div>
     </main>
-  )
+  );
 }
+

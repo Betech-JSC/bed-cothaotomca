@@ -24,7 +24,7 @@ export async function GET() {
 
   const fullProductsMarkdown = productsList.map((p: any) => `
 ### ${p.name}
-- **Đường dẫn**: ${baseUrl}/san-pham/danh-muc/${p.slug}
+- **Đường dẫn**: ${baseUrl}/san-pham/${p.category?.slug || p.categories?.[0]?.slug || 'san-pham'}/${p.slug}
 - **Giá bán**: ${p.price ? Number(p.price).toLocaleString('vi-VN') + ' VNĐ' : 'Liên hệ'}
 - **Mô tả**: ${p.description ? p.description.replace(/<[^>]*>?/gm, '').trim() : 'Sản phẩm hải sản tươi ngon cao cấp.'}
 `).join('\n');

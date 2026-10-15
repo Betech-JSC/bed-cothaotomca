@@ -39,10 +39,12 @@ const Footer = () => {
   ].some((path) => pathname === path || pathname?.includes(path));
 
   const isShowWave = pathname === "/" || pathname === "/about";
+  const isPolicyPage = pathname?.startsWith("/policy") || pathname?.startsWith("/chinh-sach");
   const noMarginTop = isShowWave || isAuthPage;
+  const footerMarginClass = noMarginTop ? "mt-0" : isPolicyPage ? "mt-4 md:mt-8" : "mt-12 md:mt-20";
 
   return (
-    <footer className={`relative z-10 bg-primary overflow-x-clip pt-16 md:pt-8 xl:pt-16 pb-6 ${noMarginTop ? "mt-0" : "mt-12 md:mt-20"}`}>
+    <footer className={`relative z-10 bg-primary overflow-x-clip pt-16 md:pt-8 xl:pt-16 pb-6 ${footerMarginClass}`}>
       {isShowWave && (
         <div className="hidden lg:block absolute top-0 left-0 w-full -translate-y-[90%] pointer-events-none z-10">
           <img

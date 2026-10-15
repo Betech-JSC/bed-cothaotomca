@@ -1,14 +1,72 @@
 import ProductIndexPage from '@/components/Product/ProductIndexPage'
 import { getApi } from '@/services/apiService'
-import { Product } from '@/services/productService'
+import { Product, getProductBySlugWithFallback } from '@/services/productService'
 import { Category } from '@/services/categoryService'
 import { Ingredient } from '@/services/ingredientService'
 import { HeroBanner } from '@/services/heroBannerService'
 import Banner from '@/components/Banner'
+import AlternateLinksUpdater from '@/components/SEO/AlternateLinksUpdater'
 import { slugify, getTranslation, formatImageUrl } from '@/lib/format'
+import {
+  getProductLocalizedSlugs,
+  getCategoryCandidateSlugs,
+  getIngredientAliases,
+  translateCategorySlug,
+  findCategory,
+} from '@/lib/productHelper'
+import { redirect } from '@/i18n/routing'
 import { Metadata } from 'next'
 
 export const revalidate = 60
+
+function resolveCategoryLocalizedInfo(targetCategory: any, categorySlug: string, locale: string) {
+  const isEn = locale === 'en'
+  const viTrans = getTranslation(targetCategory?.translations, 'vi') as any
+  const enTrans = getTranslation(targetCategory?.translations, 'en') as any
+  const currentTrans = getTranslation(targetCategory?.translations, locale) as any
+
+  const viTitle = targetCategory?.vi_title || viTrans?.title || (!isEn ? targetCategory?.title : '') || ''
+  const enTitle = targetCategory?.en_title || enTrans?.title || (isEn ? targetCategory?.title : '') || ''
+
+  const fallbackCapitalized = categorySlug
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+
+  const displayTitle = targetCategory
+    ? (isEn
+        ? (enTitle || currentTrans?.title || targetCategory.title || fallbackCapitalized)
+        : (viTitle || currentTrans?.title || targetCategory.title || fallbackCapitalized))
+    : fallbackCapitalized
+
+  const viCategorySlug = targetCategory
+    ? (targetCategory.alternate_slugs?.vi?.slug ||
+        targetCategory.original_slug ||
+        targetCategory.slug_vi ||
+        viTrans?.slug ||
+        (!isEn ? targetCategory.slug : '') ||
+        slugify(viTitle) ||
+        translateCategorySlug(categorySlug, 'vi'))
+    : translateCategorySlug(categorySlug, 'vi')
+
+  const enCategorySlug = targetCategory
+    ? (targetCategory.alternate_slugs?.en?.slug ||
+        enTrans?.slug ||
+        targetCategory.slug_en ||
+        slugify(enTitle || (isEn ? targetCategory.title : '')) ||
+        translateCategorySlug(viCategorySlug || categorySlug, 'en') ||
+        slugify(targetCategory.title || '') ||
+        targetCategory.slug)
+    : translateCategorySlug(categorySlug, 'en')
+
+  const canonicalCategorySlug = isEn ? enCategorySlug : viCategorySlug
+
+  return {
+    displayTitle,
+    viCategorySlug,
+    enCategorySlug,
+    canonicalCategorySlug,
+  }
+}
 
 export async function generateMetadata({
   params,
@@ -18,20 +76,17 @@ export async function generateMetadata({
   const { locale, category: categorySlug } = await params
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')
 
-  // Tìm tên category từ API
-  let categoryName = categorySlug.replace(/-/g, ' ')
+  let matched: Category | undefined
   try {
     const categoriesRes = await getApi<Category>('categories', { params: { lang: locale } })
-    const matched = categoriesRes.data?.find((cat: any) => {
-      const t = getTranslation(cat.translations, locale) as any
-      const s = cat.slug || slugify(t?.title || cat.title || '')
-      return s === categorySlug
-    })
-    if (matched) {
-      const t = getTranslation(matched.translations, locale) as any
-      categoryName = t?.title || matched.title || categoryName
-    }
+    matched = findCategory(categoriesRes.data || [], categorySlug, locale)
   } catch {}
+
+  const { displayTitle: categoryName, viCategorySlug, enCategorySlug } = resolveCategoryLocalizedInfo(
+    matched,
+    categorySlug,
+    locale
+  )
 
   const isEn = locale === 'en'
   const titleSuffix = isEn ? 'Products | Co Thao Tom Ca' : 'Sản phẩm | Cô Thảo Tôm Cá'
@@ -39,19 +94,25 @@ export async function generateMetadata({
     ? `Product category ${categoryName} — Co Thao Tom Ca specializes in premium fresh seafood.`
     : `Danh mục sản phẩm ${categoryName} — Cô Thảo Tôm Cá chuyên cung cấp hải sản tươi ngon, chất lượng cao.`
 
+  const viUrl = `${baseUrl}/san-pham/${viCategorySlug}`
+  const enUrl = `${baseUrl}/en/product/${enCategorySlug}`
+  const canonicalUrl = isEn ? enUrl : viUrl
+
   return {
     title: `${categoryName} | ${titleSuffix}`,
     description: descSuffix,
     alternates: {
-      canonical: `${baseUrl}/${locale}/product/${categorySlug}`,
+      canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/product/${categorySlug}`,
-        en: `${baseUrl}/en/product/${categorySlug}`,
+        vi: viUrl,
+        en: enUrl,
+        'x-default': viUrl,
       },
     },
     openGraph: {
       title: `${categoryName} | ${titleSuffix}`,
       description: descSuffix,
+      url: canonicalUrl,
       type: 'website',
     },
   }
@@ -94,40 +155,31 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const categories = categoriesResp.data;
   const ingredients = ingredientsResp.data;
 
-  // Helper to find category by DB slug, alternate_slugs, or translated title slug
-  const findCategory = (categories: Category[], slug: string, lang: string) => {
-    const normalizedTarget = slugify(slug) || slug;
-    return categories.find(cat => {
-      // 1. Direct DB slug or alternate_slugs match
-      if (cat.slug === slug || cat.slug === normalizedTarget) return true;
-      const altSlugs = (cat as any).alternate_slugs;
-      if (altSlugs) {
-        if (altSlugs.en === slug || altSlugs.vi === slug || altSlugs.en?.slug === slug || altSlugs.vi?.slug === slug) {
-          return true;
-        }
-      }
-
-      // 2. Translated title slug match for current language
-      const translation = cat.translations?.find((t: any) => t.locale === lang) ||
-        cat.translations?.find((t: any) => t.locale.startsWith(lang));
-      const title = translation?.title || cat.title || '';
-      if (slugify(title) === slug || slugify(title) === normalizedTarget) return true;
-      if (slugify(cat.title || '') === slug || slugify(cat.title || '') === normalizedTarget) return true;
-
-      // 3. Fallback check across any translation title or slug
-      if (cat.translations?.some((t: any) => t.slug === slug || slugify(t.title) === slug || slugify(t.title) === normalizedTarget)) return true;
-
-      return false;
-    });
-  };
-
   const targetCategory = findCategory(categories, categorySlug, locale);
   const categoryId = targetCategory?.id;
-  // Use canonical DB slug if target category found, fallback to categorySlug
-  const canonicalCategorySlug = targetCategory?.slug || (targetCategory ? slugify(targetCategory.title) : categorySlug);
+  const { viCategorySlug, enCategorySlug, canonicalCategorySlug } = resolveCategoryLocalizedInfo(
+    targetCategory,
+    categorySlug,
+    locale
+  );
 
-  // If category is provided in URL but not found in API, return 0 products
+  // If category is provided in URL but not found in API, check if it's a product slug first
   if (categorySlug && !targetCategory) {
+    const product = await getProductBySlugWithFallback(categorySlug, { revalidate: 60, lang: locale });
+    if (product && product.id) {
+      const { viCatSlug, enCatSlug, viProductSlug, enProductSlug } = getProductLocalizedSlugs(product);
+      redirect({
+        href: {
+          pathname: '/product/[category]/[slug]',
+          params: {
+            category: locale === 'en' ? enCatSlug : viCatSlug,
+            slug: locale === 'en' ? enProductSlug : viProductSlug,
+          },
+        },
+        locale: locale as any,
+      });
+    }
+
     return (
       <main>
         <Banner banner={{
@@ -149,12 +201,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   if (selectedIngredientsSlugs.length === 0) {
     // Fetch products using canonical DB category slug or category ID
+    const dbCategorySlug = (targetCategory as any)?.original_slug || targetCategory?.slug || canonicalCategorySlug;
     const productsData = await getApi<Product>('products', {
       params: {
         lang: locale,
         per_page: 12,
         page: page,
-        ...(categoryId ? { category_id: categoryId } : { category_slug: canonicalCategorySlug }),
+        ...(categoryId ? { category_id: categoryId } : { category_slug: dbCategorySlug }),
         ingredients: ''
       }
     }).catch(() => ({ data: [], last_page: 1, current_page: 1, total: 0 }));
@@ -162,21 +215,17 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     productsResp = productsData;
   } else {
     // Map ingredient slugs to IDs for the products API call
-    const ingredientIds = selectedIngredientsSlugs
-      .map(slug => {
-        const ing = ingredients.find(ing => {
-          const translation = ing.translations?.find((t: any) => t.locale === locale) ||
-            ing.translations?.find((t: any) => t.locale.startsWith(locale))
-          const name = translation?.name || ing.name
-          if (slugify(name) === slug) return true
-          if (slugify(ing.name) === slug) return true
-          if (ing.translations?.some((t: any) => slugify(t.name) === slug)) return true
-          return false
-        })
-        return ing?.id
-      })
-      .filter(Boolean)
-      .join(',')
+    const ingredientIds = Array.from(
+      new Set(
+        selectedIngredientsSlugs
+          .map(slug => {
+            const normSlug = slugify(slug) || slug;
+            const ing = ingredients.find(item => getIngredientAliases(item).includes(normSlug));
+            return ing?.id;
+          })
+          .filter(Boolean)
+      )
+    ).join(',')
 
     const { getProductCatalog } = await import('@/services/productService');
     const fullCatalog = await getProductCatalog(locale);
@@ -191,28 +240,16 @@ export default async function CategoryPage({ params, searchParams }: Props) {
           return true;
         }
         const productCat = p.categories && p.categories.length > 0 ? p.categories[0] : p.category;
-        const catTrans = productCat?.translations?.find((t: any) => t.locale === locale) ||
-                         productCat?.translations?.find((t: any) => t.locale?.startsWith(locale));
-        const catTitle = catTrans?.title || productCat?.title || '';
-        const pCatSlug = productCat?.slug || slugify(catTitle);
-        
         const allSlugs = p.categories && p.categories.length > 0
-          ? p.categories.flatMap(cat => {
-              const trans = cat.translations?.find((t: any) => t.locale === locale) ||
-                            cat.translations?.find((t: any) => t.locale?.startsWith(locale));
-              const title = trans?.title || cat.title || '';
-              const slugs: string[] = [];
-              if (cat.slug) slugs.push(cat.slug);
-              if (title) slugs.push(slugify(title));
-              if (cat.title) slugs.push(slugify(cat.title));
-              const alt = (cat as any).alternate_slugs;
-              if (alt?.en) slugs.push(typeof alt.en === 'string' ? alt.en : alt.en.slug);
-              if (alt?.vi) slugs.push(typeof alt.vi === 'string' ? alt.vi : alt.vi.slug);
-              return slugs.filter(Boolean);
-            })
-          : [pCatSlug, slugify(catTitle)].filter(Boolean);
+          ? p.categories.flatMap(cat => getCategoryCandidateSlugs(cat))
+          : getCategoryCandidateSlugs(productCat);
         
-        return allSlugs.includes(canonicalCategorySlug) || allSlugs.includes(categorySlug);
+        return (
+          allSlugs.includes(canonicalCategorySlug) ||
+          allSlugs.includes(categorySlug) ||
+          allSlugs.includes(viCategorySlug) ||
+          allSlugs.includes(enCategorySlug)
+        );
       });
     }
     if (ingredientIds) {
@@ -251,6 +288,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <main>
+      <AlternateLinksUpdater
+        alternateLinks={{
+          vi: `/san-pham/${viCategorySlug}`,
+          en: `/en/product/${enCategorySlug}`,
+        }}
+      />
       <Banner banner={banner} />
       <ProductIndexPage
         category={canonicalCategorySlug}

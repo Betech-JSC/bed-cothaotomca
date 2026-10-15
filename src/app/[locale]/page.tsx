@@ -15,7 +15,7 @@ import { getBanners, type Banner } from '@/services/bannerService';
 import HomePromotionPopup from '@/components/Home/HomePromotionPopup';
 import { Product } from '@/services/productService';
 import { Category } from '@/services/categoryService';
-import { slugify, formatImageUrl } from '@/lib/format';
+import { slugify, formatImageUrl, filterAndLocalizeBlogs } from '@/lib/format';
 import { getBlogs, Blog } from '@/services/blogService';
 import AnimateOnScroll from "@/components/Animated/animated-appear";
 import { Metadata } from 'next';
@@ -32,9 +32,13 @@ export async function generateMetadata({
   const isEn = locale === 'en';
   const meta = await getMetaPage('home', locale).catch(() => null);
 
-  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
+  const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('localhost:3000'))
+    ? process.env.NEXT_PUBLIC_BASE_URL
+    : 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
-  const canonicalUrl = (isEn && meta?.canonical_url_en) || meta?.canonical_url || `${baseUrl}/${locale}`;
+  const viUrl = `${baseUrl}`;
+  const enUrl = `${baseUrl}/en`;
+  const canonicalUrl = isEn ? enUrl : viUrl;
 
   const defaultTitle = isEn
     ? 'Co Thao Tom Ca | Premium Seafood & Specialties'
@@ -65,8 +69,9 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi`,
-        en: `${baseUrl}/en`,
+        vi: viUrl,
+        en: enUrl,
+        'x-default': viUrl,
       },
     },
     openGraph: {
@@ -196,12 +201,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     };
   });
 
-  const postsDisplay = blogsData.data.map((item) => {
+  const postsDisplay = filterAndLocalizeBlogs(blogsData.data, locale).map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
     const catTranslation = getTranslation(item.category?.translations, locale) as any;
-    const title = translation?.title || item.title;
-    const categoryName = catTranslation?.title || item.category?.title || t('blog.category');
-    let catSlug = slugify(categoryName) || item.category?.slug || (locale === 'en' ? 'news' : 'tin-tuc');
+    const title = (locale === 'en' ? item.title : (translation?.title || item.title)) || item.title;
+    const categoryName = (locale === 'en' ? item.category?.title : (catTranslation?.title || item.category?.title)) || t('blog.category');
+    let catSlug = item.category?.slug || slugify(categoryName) || (locale === 'en' ? 'news' : 'tin-tuc');
     if (locale === 'en' && catSlug === 'blog') {
       catSlug = 'news';
     }
@@ -240,8 +245,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     <main>
       <HomePromotionPopup banner={popupBanner} />
       <SectionHero items={sliderHero} />
-      <section className="md:py-20 py-[50px] xl:py-[100px] relative overflow-hidden">
-        <div className="absolute top-6 left-0 max-w-[280px] md:max-w-[320px] xl:max-w-[420px] w-full h-[120px] md:h-[100px] xl:h-[130px] pointer-events-none">
+      <section className="py-[50px] md:pt-28 md:pb-20 xl:py-[100px] relative overflow-hidden">
+        <div className="absolute top-2 md:top-3 xl:top-6 left-0 max-w-[200px] md:max-w-[220px] lg:max-w-[260px] xl:max-w-[420px] w-full h-[76px] md:h-[72px] lg:h-[85px] xl:h-[130px] pointer-events-none">
           <AnimateOnScroll animate="slideleft" delay={0} className="w-full h-full">
             <Image
               src="/images/home/image-fish.png"
@@ -311,15 +316,15 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             className="object-cover w-full h-full md:hidden"
           />
         </div>
-        <div className="absolute md:top-12 top-[100px] xl:top-[100px] left-0 w-full">
+        <div className="absolute top-[100px] md:top-5 lg:top-10 xl:top-[100px] left-0 w-full">
           <div className="container">
             <AnimateOnScroll animate="slideup">
               {locale == 'vi' ? (
-                <h2 className="display-2 max-md:text-[36px] text-center text-primary">
+                <h2 className="display-2 max-md:text-[36px] md:text-[28px] lg:text-[36px] xl:text-[48px] md:leading-tight text-center text-primary">
                   <span>{t('home.section-5.title.text1')}</span>{' '}<span className="text-secondary">{t('home.section-5.title.text2')}</span><span className="hidden md:inline"> </span><br className="md:hidden" /><span>{t('home.section-5.title.text3')}</span>
                 </h2>
               ) : (
-                <h2 className="display-2 max-md:text-[36px] text-center text-primary">
+                <h2 className="display-2 max-md:text-[36px] md:text-[28px] lg:text-[36px] xl:text-[48px] md:leading-tight text-center text-primary">
                   <span className="text-secondary">{t('home.section-5.title.text1')}</span>{t('home.section-5.title.text2')}<span className="text-secondary">{t('home.section-5.title.text3')}</span>{t('home.section-5.title.text4')}
                 </h2>
               )}

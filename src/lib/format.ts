@@ -1,10 +1,34 @@
 export function formatDate(date: Date | string | number, locale: string = 'vi') {
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
+  if (date === null || date === undefined || date === '') return '';
 
-  const day = d.getUTCDate().toString().padStart(2, '0');
-  const monthNum = d.getUTCMonth() + 1;
-  const year = d.getUTCFullYear();
+  let dayNum: number | null = null;
+  let monthNum: number | null = null;
+  let yearNum: number | null = null;
+
+  if (typeof date === 'string') {
+    const vnMatch = date.trim().match(/^(\d{1,2})\s*(?:tháng|Tháng)\s*(\d{1,2})[,\s]+(\d{4})$/i);
+    const slashMatch = date.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (vnMatch) {
+      dayNum = parseInt(vnMatch[1], 10);
+      monthNum = parseInt(vnMatch[2], 10);
+      yearNum = parseInt(vnMatch[3], 10);
+    } else if (slashMatch) {
+      dayNum = parseInt(slashMatch[1], 10);
+      monthNum = parseInt(slashMatch[2], 10);
+      yearNum = parseInt(slashMatch[3], 10);
+    }
+  }
+
+  if (dayNum === null || monthNum === null || yearNum === null) {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    dayNum = d.getUTCDate();
+    monthNum = d.getUTCMonth() + 1;
+    yearNum = d.getUTCFullYear();
+  }
+
+  const day = dayNum.toString().padStart(2, '0');
+  const year = yearNum;
 
   if (locale === 'vi') {
     const month = monthNum.toString().padStart(2, '0');
@@ -260,4 +284,249 @@ export function isCodPayment(order: any): boolean {
   const method = (order.payment?.method || order.payment_method || "").toUpperCase();
   return method === "COD" || method === "CASH";
 }
+
+const VIETNAMESE_CHAR_REGEX =
+  /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]/;
+
+export function hasVietnameseDiacritics(text?: string | null): boolean {
+  if (!text) return false;
+  return VIETNAMESE_CHAR_REGEX.test(text);
+}
+
+export function sanitizeHtmlVietnameseAttributes(html?: string | null): string {
+  if (!html) return "";
+  return html.replace(/\b(title|alt|data-caption)="([^"]*)"/gi, (match, attr, val) => {
+    if (hasVietnameseDiacritics(val)) {
+      return `${attr}=""`;
+    }
+    return match;
+  });
+}
+
+const POLICY_BILINGUAL_SLUGS: Record<string, string> = {
+  "chinh-sach-giao-hang": "delivery-policy",
+  "chinh-sach-van-chuyen": "shipping-policy",
+  "chinh-sach-doi-tra": "return-refund-policy",
+  "chinh-sach-doi-tra-hang": "return-refund-policy",
+  "chinh-sach-bao-mat": "privacy-policy",
+  "chinh-sach-bao-mat-thong-tin": "privacy-policy",
+  "chinh-sach-thanh-toan": "payment-policy",
+  "chinh-sach-kiem-hang": "inspection-policy",
+  "dieu-khoan-dich-vu": "terms-of-service",
+  "dieu-khoan-su-dung": "terms-of-use",
+};
+
+const POLICY_EN_TO_VI_SLUGS: Record<string, string> = Object.entries(POLICY_BILINGUAL_SLUGS).reduce(
+  (acc, [vi, en]) => {
+    if (!acc[en]) acc[en] = vi;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+export function cleanBlogSlugSegment(raw?: string | null): string {
+  if (!raw) return "";
+  return String(raw)
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/^(?:vi|en)\/blog\/category\/[^/]+\//i, "")
+    .replace(/^(?:vi|en)\/blog\/blog\//i, "")
+    .replace(/^(?:vi|en)\/(?:blog|tin-tuc)\//i, "")
+    .replace(/^blog\/category\/[^/]+\//i, "")
+    .replace(/^blog\/blog\//i, "")
+    .replace(/^(?:blog|tin-tuc)\//i, "")
+    .replace(/^\/+|\/+$/g, "");
+}
+
+export function localizeBlogItem<T extends Record<string, any>>(blog: T, locale: string = "vi"): T {
+  if (!blog) return blog;
+  const cloned: any = { ...blog };
+  const translations: any[] = Array.isArray(cloned.translations) ? cloned.translations : [];
+  const viTrans = translations.find((t) => t?.locale === "vi" || t?.locale?.startsWith("vi"));
+  const enTrans = translations.find((t) => t?.locale === "en" || t?.locale?.startsWith("en"));
+
+  const altVi = typeof cloned.alternate_slugs?.vi === "string"
+    ? cloned.alternate_slugs.vi
+    : cloned.alternate_slugs?.vi?.slug;
+  const altEn = typeof cloned.alternate_slugs?.en === "string"
+    ? cloned.alternate_slugs.en
+    : cloned.alternate_slugs?.en?.slug;
+
+  const rawSlugVi =
+    cloned.slug_vi ||
+    cloned.original_slug ||
+    viTrans?.slug ||
+    altVi ||
+    (locale !== "en" ? cloned.slug : "") ||
+    cloned.slug ||
+    "";
+  const slugVi = cleanBlogSlugSegment(rawSlugVi) || rawSlugVi;
+
+  const rawSlugEn =
+    cloned.slug_en ||
+    enTrans?.slug ||
+    altEn ||
+    (locale === "en" && cloned.slug && !hasVietnameseDiacritics(cloned.slug) ? cloned.slug : "") ||
+    slugify(enTrans?.title || cloned.title_en || cloned.en_title || "") ||
+    slugVi;
+  const slugEn = cleanBlogSlugSegment(rawSlugEn) || slugVi;
+
+  cloned.slug_vi = slugVi;
+  cloned.slug_en = slugEn;
+  cloned.alternate_slugs = {
+    vi: slugVi,
+    en: slugEn,
+  };
+
+  if (cloned.category && typeof cloned.category === "object") {
+    const catClone = { ...cloned.category };
+    const catTrans: any[] = Array.isArray(catClone.translations) ? catClone.translations : [];
+    const catVi = catTrans.find((t) => t?.locale === "vi" || t?.locale?.startsWith("vi"));
+    const catEn = catTrans.find((t) => t?.locale === "en" || t?.locale?.startsWith("en"));
+
+    const rawCatSlugVi =
+      catClone.slug_vi ||
+      catClone.original_slug ||
+      catVi?.slug ||
+      slugify(catVi?.title || catClone.vi_title || (locale !== "en" ? catClone.title : "") || "") ||
+      "tin-tuc";
+    const catSlugVi = cleanBlogSlugSegment(rawCatSlugVi) || "tin-tuc";
+
+    const rawCatSlugEn =
+      catClone.slug_en ||
+      catEn?.slug ||
+      slugify(catEn?.title || catClone.en_title || catClone.title_en || (locale === "en" ? catClone.title : "") || "") ||
+      "news";
+    const cleanedCatSlugEn = cleanBlogSlugSegment(rawCatSlugEn) || "news";
+
+    catClone.slug_vi = catSlugVi;
+    catClone.slug_en = cleanedCatSlugEn === "blog" ? "news" : cleanedCatSlugEn;
+    if (locale === "en") {
+      catClone.title = catEn?.title || catClone.en_title || catClone.title_en || catClone.title;
+      catClone.slug = catClone.slug_en;
+    } else {
+      catClone.title = catVi?.title || catClone.vi_title || catClone.title;
+      catClone.slug = catClone.slug_vi;
+    }
+    cloned.category = catClone;
+  }
+
+  if (locale === "en") {
+    cloned.slug = slugEn || cloned.slug;
+    cloned.title = enTrans?.title || cloned.title_en || cloned.en_title || cloned.title;
+    cloned.excerpt = enTrans?.excerpt || enTrans?.description || cloned.excerpt_en || cloned.en_excerpt || cloned.excerpt;
+    cloned.description = enTrans?.description || enTrans?.excerpt || cloned.description_en || cloned.en_description || cloned.description;
+    cloned.content = enTrans?.content || cloned.content_en || cloned.en_content || cloned.content;
+    cloned.seo_title = enTrans?.seo_title || cloned.seo_title_en || cloned.seo_title;
+    cloned.seo_description = enTrans?.seo_description || cloned.seo_description_en || cloned.seo_description;
+    if (typeof cloned.content === "string") {
+      cloned.content = sanitizeHtmlVietnameseAttributes(cloned.content);
+    }
+  } else {
+    cloned.slug = slugVi || cloned.slug;
+    cloned.title = viTrans?.title || cloned.title_vi || cloned.vi_title || cloned.title;
+  }
+
+  return cloned as T;
+}
+
+export function filterAndLocalizeBlogs<T extends Record<string, any>>(
+  blogs: T[] | undefined | null,
+  locale: string = "vi"
+): T[] {
+  if (!Array.isArray(blogs)) return [];
+  const localized = blogs.map((b) => localizeBlogItem(b, locale));
+  if (locale !== "en") return localized;
+  return localized.filter((b) => !hasVietnameseDiacritics(b.title));
+}
+
+export function localizePolicyItem<T extends Record<string, any>>(policy: T, locale: string = "vi"): T {
+  if (!policy) return policy;
+  const cloned: any = { ...policy };
+  const translations: any[] = Array.isArray(cloned.translations) ? cloned.translations : [];
+  const viTrans = translations.find((t) => t?.locale === "vi" || t?.locale?.startsWith("vi"));
+  const enTrans = translations.find((t) => t?.locale === "en" || t?.locale?.startsWith("en"));
+
+  const altVi = typeof cloned.alternate_slugs?.vi === "string"
+    ? cloned.alternate_slugs.vi
+    : cloned.alternate_slugs?.vi?.slug;
+  const altEn = typeof cloned.alternate_slugs?.en === "string"
+    ? cloned.alternate_slugs.en
+    : cloned.alternate_slugs?.en?.slug;
+
+  const rawViTitle = viTrans?.title || cloned.vi_title || cloned.title_vi || (locale !== "en" ? cloned.title : "") || "";
+  const rawEnTitle = enTrans?.title || cloned.en_title || cloned.title_en || (locale === "en" && !hasVietnameseDiacritics(cloned.title) ? cloned.title : "") || "";
+
+  const candidateSlugVi =
+    cloned.slug_vi ||
+    cloned.original_slug ||
+    viTrans?.slug ||
+    altVi ||
+    (locale !== "en" ? cloned.slug : "") ||
+    slugify(rawViTitle) ||
+    POLICY_EN_TO_VI_SLUGS[cloned.slug || ""] ||
+    cloned.slug ||
+    "";
+  const slugVi = POLICY_EN_TO_VI_SLUGS[candidateSlugVi] || candidateSlugVi;
+
+  const candidateSlugEn =
+    (cloned.slug_en && cloned.slug_en !== slugVi ? cloned.slug_en : "") ||
+    enTrans?.slug ||
+    (altEn && altEn !== slugVi ? altEn : "") ||
+    (locale === "en" && cloned.slug && cloned.slug !== slugVi && !hasVietnameseDiacritics(cloned.slug) ? cloned.slug : "") ||
+    slugify(rawEnTitle) ||
+    POLICY_BILINGUAL_SLUGS[slugVi] ||
+    cloned.slug_en ||
+    altEn ||
+    slugVi;
+  const slugEn = POLICY_BILINGUAL_SLUGS[candidateSlugEn] || candidateSlugEn;
+
+  cloned.slug_vi = slugVi;
+  cloned.slug_en = slugEn;
+  cloned.alternate_slugs = {
+    vi: slugVi,
+    en: slugEn,
+  };
+
+  if (locale === "en") {
+    cloned.slug = slugEn || cloned.slug;
+    cloned.title = rawEnTitle || cloned.title;
+    cloned.content = enTrans?.content || cloned.content_en || cloned.en_content || cloned.content;
+    cloned.seo_title = enTrans?.seo_title || cloned.seo_title_en || cloned.seo_title;
+    cloned.seo_description = enTrans?.seo_description || cloned.seo_description_en || cloned.seo_description;
+    if (typeof cloned.content === "string") {
+      cloned.content = sanitizeHtmlVietnameseAttributes(cloned.content);
+    }
+  } else {
+    cloned.slug = slugVi || cloned.slug;
+    if (rawViTitle) {
+      cloned.title = rawViTitle;
+    }
+  }
+
+  return cloned as T;
+}
+
+export function matchPolicyBySlug<T extends Record<string, any>>(
+  policies: T[],
+  targetSlug: string
+): T | undefined {
+  if (!Array.isArray(policies) || !targetSlug) return undefined;
+  return policies.find((p) => {
+    const transSlugs = Array.isArray(p.translations)
+      ? p.translations.map((t: any) => t?.slug).filter(Boolean)
+      : [];
+    return (
+      p.slug === targetSlug ||
+      p.slug_en === targetSlug ||
+      p.slug_vi === targetSlug ||
+      p.original_slug === targetSlug ||
+      p.alternate_slugs?.en === targetSlug ||
+      p.alternate_slugs?.vi === targetSlug ||
+      transSlugs.includes(targetSlug)
+    );
+  });
+}
+
+
 

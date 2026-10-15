@@ -8,7 +8,7 @@ import SectionSliderPost from '@/components/Common/SectionSliderPost';
 import Cart from '@/components/Icons/Cart';
 import { Link } from '@/i18n/i18n-navigation';
 import { getBlogs } from '@/services/blogService';
-import { slugify, formatImageUrl } from '@/lib/format';
+import { slugify, formatImageUrl, filterAndLocalizeBlogs } from '@/lib/format';
 import AnimateOnScroll from '@/components/Animated/animated-appear';
 import { Metadata } from 'next';
 import { getMetaPage, resolveMetaTitle, resolveMetaDescription, resolveMetaKeywords } from '@/services/seoService';
@@ -28,14 +28,9 @@ export async function generateMetadata({
     ? process.env.NEXT_PUBLIC_BASE_URL
     : 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
-
-  let canonicalUrl = (isEn && meta?.canonical_url_en) || meta?.canonical_url;
-  if (canonicalUrl && canonicalUrl.includes('localhost:3000')) {
-    canonicalUrl = canonicalUrl.replace(/https?:\/\/localhost:3000/g, baseUrl);
-  }
-  if (!canonicalUrl) {
-    canonicalUrl = `${baseUrl}/${locale}/about`;
-  }
+  const viUrl = `${baseUrl}/ve-chung-toi`;
+  const enUrl = `${baseUrl}/en/about`;
+  const canonicalUrl = isEn ? enUrl : viUrl;
 
   let ogImage = (isEn && meta?.og_image_en) || meta?.og_image;
   if (ogImage && ogImage.includes('localhost:3000')) {
@@ -69,8 +64,9 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/about`,
-        en: `${baseUrl}/en/about`,
+        vi: viUrl,
+        en: enUrl,
+        'x-default': viUrl,
       },
     },
     openGraph: {
@@ -162,11 +158,15 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
     };
   });
 
-  const postsDisplay = blogsData.data.map((item) => {
+  const postsDisplay = filterAndLocalizeBlogs(blogsData.data, locale).map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
     const catTranslation = getTranslation(item.category?.translations, locale) as any;
-    const title = translation?.title || item.title;
-    const categoryName = catTranslation?.title || item.category?.title || t('blog.category');
+    const title = (locale === 'en' ? item.title : (translation?.title || item.title)) || item.title;
+    const categoryName = (locale === 'en' ? item.category?.title : (catTranslation?.title || item.category?.title)) || t('blog.category');
+    let catSlug = item.category?.slug || slugify(categoryName) || (locale === 'en' ? 'news' : 'tin-tuc');
+    if (locale === 'en' && catSlug === 'blog') {
+      catSlug = 'news';
+    }
 
     return {
       image: {
@@ -177,7 +177,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       slug: item.slug,
       category: {
         title: categoryName,
-        slug: slugify(categoryName),
+        slug: catSlug,
       },
       created_at: item.created_at,
     };

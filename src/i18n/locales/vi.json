@@ -809,6 +809,7 @@
   "errors": {
     "404": {
       "title": "404",
+      "subtitle": "Không tìm thấy trang",
       "description": "Không tìm thấy trang này.",
       "go_home": "Về trang chủ"
     },

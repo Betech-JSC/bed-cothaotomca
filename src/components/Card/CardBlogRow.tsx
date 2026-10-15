@@ -30,12 +30,18 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
   React.useEffect(() => {
     setHasError(false);
   }, [item.image?.url]);
+
+  const rawCatSlug = (item.category?.slug || '').replace(/^\/+|\/+$/g, '').replace(/^(blog\/)+/i, '');
+  const categorySlug = locale === 'en'
+    ? (!rawCatSlug || rawCatSlug === 'blog' ? 'news' : rawCatSlug)
+    : (rawCatSlug || 'tin-tuc');
+  const postSlug = (item.slug || '').replace(/^\/+|\/+$/g, '').replace(/^(blog\/)+/i, '');
   
   return (
     <article className="group flex md:flex-row flex-col md:items-center gap-3 md:gap-3">
       {/* Image */}
       <div className="relative block max-w-full md:max-w-[175px] w-full md:flex-shrink-0">
-        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} aria-label={item.title}>
+        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: categorySlug, slug: postSlug } }} aria-label={item.title}>
           <div className="aspect-w-7 aspect-h-5 relative overflow-hidden rounded-[12px] md:rounded-[8px]">
             <Image
               src={hasError ? '/cover.jpg' : imageSrc}
@@ -50,7 +56,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
         <div className="absolute bottom-2 left-2 w-max">
           <div className="flex md:hidden items-center space-x-2 bg-secondary text-yellow rounded-full py-1.5 px-3 w-max">
             <Link
-              href={{ pathname: '/blog/category/[category]', params: { category: item.category.slug } }}
+              href={{ pathname: '/blog/category/[category]', params: { category: categorySlug } }}
               className="label-2 font-semibold lg:hover:underline"
             >
               {item.category.title}
@@ -66,7 +72,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
       <div className="md:space-y-2">
         <div className="hidden md:flex items-center space-x-1 bg-secondary text-yellow rounded-full py-1.5 px-3 w-max">
           <Link
-            href={{ pathname: '/blog/category/[category]', params: { category: item.category.slug } }}
+            href={{ pathname: '/blog/category/[category]', params: { category: categorySlug } }}
             className="label-2 font-semibold lg:hover:underline"
           >
             {item.category.title}
@@ -77,7 +83,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item }) => {
           </span>
         </div>
 
-        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block">
+        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: categorySlug, slug: postSlug } }} className="block">
           <h3 className="title-2 text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2 md:line-clamp-3">
             {item.title}
           </h3>

@@ -137,12 +137,16 @@ export default function OrderSuccessClient({
       );
       setCancelSuccessMsg(res.message || t("cancel_success"));
       if (res.data) {
-        setOrder(res.data);
+        setOrder({
+          ...res.data,
+          cancel_reason: res.data.cancel_reason || cancelReason.trim() || undefined,
+        });
       } else {
         setOrder((prev: any) => ({
           ...prev,
           status: "cancelled",
           cancelled_at: new Date().toISOString(),
+          cancel_reason: cancelReason.trim() || prev?.cancel_reason,
           can_cancel: false,
         }));
       }
@@ -314,6 +318,12 @@ export default function OrderSuccessClient({
             <p className="text-xs text-gray-600">
               {t("cancelled_at")}{" "}
               <strong className="text-gray-800 font-semibold">{formatVietnamDateTime(order.cancelled_at)}</strong>
+            </p>
+          )}
+          {order.cancel_reason && (
+            <p className="text-xs text-gray-600">
+              Lý do hủy:{" "}
+              <strong className="text-gray-800 font-semibold">{order.cancel_reason}</strong>
             </p>
           )}
         </div>

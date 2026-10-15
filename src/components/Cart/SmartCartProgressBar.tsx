@@ -54,6 +54,7 @@ export default function SmartCartProgressBar({
   const t = useTranslations("progress_bar");
 
   const milestone = useMemo(() => {
+    if (!subtotal || subtotal <= 0) return null;
     const freeshipMin =
       shippingSettings?.is_min_amount_enabled && Number(shippingSettings.min_order_amount) > 0
         ? Number(shippingSettings.min_order_amount)

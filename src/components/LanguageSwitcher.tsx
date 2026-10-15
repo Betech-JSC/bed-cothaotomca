@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { useAlternateLinks, type AlternateLinksMap } from "@/contexts/AlternateLinksContext";
+import { translateCategorySlug, translateIngredientSlug } from "@/lib/productHelper";
 
 export default function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
@@ -47,6 +48,20 @@ export default function LanguageSwitcher() {
       search.forEach((val, key) => {
         searchObj[key] = val;
       });
+      if (searchObj.ingredients) {
+        const rawList = searchObj.ingredients
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const translatedList = Array.from(
+          new Set(rawList.map((s) => translateIngredientSlug(s, targetLocale)).filter(Boolean))
+        );
+        if (translatedList.length > 0) {
+          searchObj.ingredients = translatedList.join(",");
+        } else {
+          delete searchObj.ingredients;
+        }
+      }
       if (Object.keys(searchObj).length > 0) {
         query = searchObj;
       }
@@ -54,9 +69,12 @@ export default function LanguageSwitcher() {
 
     // Loại bỏ locale ra khỏi params nếu có
     const { locale: _localeParam, ...cleanParams } = (params || {}) as Record<string, any>;
+    if (pathname === "/product/[category]" && cleanParams.category) {
+      cleanParams.category = translateCategorySlug(String(cleanParams.category), targetLocale);
+    }
     const hasParams = Object.keys(cleanParams).length > 0;
 
-    // Nếu trang hiện tại có cấu hình alternate slug cho targetLocale (ví dụ trang chi tiết sản phẩm)
+    // Nếu trang hiện tại có cấu hình alternate slug cho targetLocale (ví dụ trang chi tiết sản phẩm hoặc danh mục)
     const targetAlternate = alternateLinks?.[targetLocale];
 
     // Kiểm tra tính hợp lệ của alternateLinks với route hiện tại:
@@ -72,7 +90,15 @@ export default function LanguageSwitcher() {
       (alternateLinks.vi?.slug && alternateLinks.vi.slug.includes(currentSlug)) ||
       (currentSlug && alternateLinks.vi?.slug && currentSlug.includes(alternateLinks.vi.slug));
 
-    if (targetAlternate && isPathnameMatch && isSlugMatch) {
+    const rawCategoryParam = (params as any)?.category ? String((params as any).category) : undefined;
+    const isCategoryMatch = !rawCategoryParam ||
+      (!alternateLinks?.vi?.category && !alternateLinks?.en?.category) ||
+      rawCategoryParam === alternateLinks.vi?.category ||
+      rawCategoryParam === alternateLinks.en?.category ||
+      cleanParams.category === alternateLinks.vi?.category ||
+      cleanParams.category === alternateLinks.en?.category;
+
+    if (targetAlternate && isPathnameMatch && isSlugMatch && isCategoryMatch) {
       // Đảm bảo khi sản phẩm chưa có slug EN riêng thì dùng slug VI an toàn, không bị rỗng hoặc mất slug
       const fallbackSlug = targetLocale === "en"
         ? (alternateLinks?.vi?.slug || currentSlug)
@@ -80,8 +106,8 @@ export default function LanguageSwitcher() {
       const safeSlug = targetAlternate.slug?.trim() || fallbackSlug || currentSlug;
 
       const fallbackCategory = targetLocale === "en"
-        ? (alternateLinks?.vi?.category || cleanParams.category)
-        : (alternateLinks?.en?.category || cleanParams.category);
+        ? (alternateLinks?.vi?.category ? translateCategorySlug(alternateLinks.vi.category, "en") : cleanParams.category)
+        : (alternateLinks?.en?.category ? translateCategorySlug(alternateLinks.en.category, "vi") : cleanParams.category);
       const safeCategory = targetAlternate.category?.trim() || fallbackCategory || cleanParams.category;
 
       const targetParams = {
@@ -91,19 +117,39 @@ export default function LanguageSwitcher() {
         ...(safeSlug ? { slug: safeSlug } : {}),
       };
       const targetPathname = targetAlternate.pathname || pathname;
-      router.replace(
-        // @ts-expect-error -- dynamic route params and pathname match the target route
-        { pathname: targetPathname, params: targetParams, query },
-        { locale: targetLocale, scroll: false }
-      );
+      try {
+        router.replace(
+          // @ts-expect-error -- dynamic route params and pathname match the target route
+          { pathname: targetPathname, params: targetParams, query },
+          { locale: targetLocale, scroll: false }
+        );
+      } catch {
+        router.replace("/", { locale: targetLocale, scroll: false });
+      }
       return;
     }
 
-    router.replace(
-      // @ts-expect-error -- dynamic route params and pathname match the current route
-      hasParams || query ? { pathname, params: cleanParams, query } : pathname,
-      { locale: targetLocale, scroll: false }
-    );
+    // Guard against catch-all 404 route (/...rest) or dynamic templates missing required params
+    const requiredMatches = pathname ? Array.from(pathname.matchAll(/\[(?:\.\.\.)?([^\]]+)\]/g)).map((m) => m[1]) : [];
+    const hasMissingDynamicParams =
+      !pathname ||
+      pathname.includes("[...rest]") ||
+      requiredMatches.some((paramKey) => cleanParams[paramKey] === undefined || cleanParams[paramKey] === "");
+
+    if (hasMissingDynamicParams) {
+      router.replace("/", { locale: targetLocale, scroll: false });
+      return;
+    }
+
+    try {
+      router.replace(
+        // @ts-expect-error -- dynamic route params and pathname match the current route
+        hasParams || query ? { pathname, params: cleanParams, query } : pathname,
+        { locale: targetLocale, scroll: false }
+      );
+    } catch {
+      router.replace("/", { locale: targetLocale, scroll: false });
+    }
   };
 
   return (

@@ -18,19 +18,25 @@ export async function generateMetadata({
     ? "Create a Co Thao Tom Ca account to enjoy member discounts, track orders and earn points"
     : "Đăng ký tài khoản Bếp Cô Thảo Tôm Cá để nhận ưu đãi thành viên, theo dõi đơn hàng và tích lũy điểm thưởng");
 
+  const viUrl = `${baseUrl}/dang-ky`;
+  const enUrl = `${baseUrl}/en/signup`;
+  const canonicalUrl = isEn ? enUrl : viUrl;
+
   return {
     title,
     description,
     alternates: {
-      canonical: `${baseUrl}/${locale}/signup`,
+      canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/dang-ky`,
-        en: `${baseUrl}/en/signup`,
+        vi: viUrl,
+        en: enUrl,
+        "x-default": viUrl,
       },
     },
     openGraph: {
       title,
       description,
+      url: canonicalUrl,
       type: "website",
     },
   };
@@ -49,7 +55,7 @@ export default async function SignUpPage({
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/bg-login.jpg"
-          alt="Bữa ăn hải sản ấm cúng"
+          alt={locale === "en" ? "Co Thao Seafood" : "Bữa ăn hải sản ấm cúng"}
           fill
           className="object-cover object-center"
           priority

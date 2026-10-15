@@ -120,7 +120,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   
   // Parallelize layout configuration and message loading
   const [messages, settings, branches, seo] = await Promise.all([
-    getMessages(),
+    getMessages({ locale }),
     getGeneralSettings(locale).catch(() => null),
     getBranches(locale).catch(() => []),
     getSeoSettings(locale).catch(() => null),

@@ -1,12 +1,26 @@
 import Breadcrumb from "@/components/Common/Breadcrumb";
 import PolicyNav from "@/components/Policy/PolicyNav";
-import { Link } from "@/i18n/routing";
 import { getPolicies } from "@/services/policyService";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
-import { formatRichTextContent } from "@/lib/format";
+import AlternateLinksUpdater from "@/components/SEO/AlternateLinksUpdater";
+import {
+  formatRichTextContent,
+  localizePolicyItem,
+  matchPolicyBySlug,
+} from "@/lib/format";
 
 export const revalidate = 120; // ISR: revalidate mỗi 2 phút
+
+function processAndLocalizePolicies(rawPolicies: any[], locale: string) {
+  return rawPolicies.map((p) => localizePolicyItem(p, locale));
+}
+
+function resolveCurrentPolicy(processedPolicies: any[], slug: string, _locale: string) {
+  const matched = matchPolicyBySlug(processedPolicies, slug);
+  if (matched) return matched;
+  return processedPolicies[0];
+}
 
 export async function generateMetadata({
   params
@@ -17,16 +31,8 @@ export async function generateMetadata({
   const policiesResult = await getPolicies({ lang: locale }).catch(() => null);
   const policies = Array.isArray(policiesResult?.data) ? policiesResult.data : [];
 
-  const getTranslationData = (item: any, currentLocale: string) => {
-    if (!item?.translations) return item;
-    const translation = item.translations.find((t: any) => t.locale === currentLocale) ||
-      item.translations.find((t: any) => t.locale.startsWith(currentLocale)) ||
-      item.translations[0];
-    return { ...item, ...translation };
-  };
-
-  const processedPolicies = policies.map(p => getTranslationData(p, locale));
-  const currentPolicy = processedPolicies.find((p) => p.slug === slug) || processedPolicies[0];
+  const processedPolicies = processAndLocalizePolicies(policies, locale);
+  const currentPolicy = resolveCurrentPolicy(processedPolicies, slug, locale);
 
   if (!currentPolicy) {
     return {};
@@ -37,7 +43,7 @@ export async function generateMetadata({
   const description = currentPolicy.seo_description || currentPolicy.meta_description || "";
 
   const seoTitle = isEn
-    ? (title || currentPolicy.seo_title || currentPolicy.meta_title)
+    ? (currentPolicy.seo_title || title || currentPolicy.meta_title)
     : (currentPolicy.seo_title || currentPolicy.meta_title || title);
   const seoDescription = currentPolicy.seo_description || currentPolicy.meta_description || description;
   const seoKeywords = currentPolicy.seo_keywords || currentPolicy.meta_keywords || "";
@@ -47,13 +53,11 @@ export async function generateMetadata({
     : 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
 
-  let canonicalUrl = currentPolicy.canonical_url;
-  if (canonicalUrl && canonicalUrl.includes('localhost:3000')) {
-    canonicalUrl = canonicalUrl.replace(/https?:\/\/localhost:3000/g, baseUrl);
-  }
-  if (!canonicalUrl) {
-    canonicalUrl = `${baseUrl}/${locale}/policy/${slug}`;
-  }
+  const slugVi = currentPolicy.slug_vi || slug;
+  const slugEn = currentPolicy.slug_en || slug;
+  const viUrl = `${baseUrl}/chinh-sach/${slugVi}`;
+  const enUrl = `${baseUrl}/en/policy/${slugEn}`;
+  const canonicalUrl = isEn ? enUrl : viUrl;
 
   let policyImage = currentPolicy.og_image || currentPolicy.image || "/cover.jpg";
   if (policyImage && policyImage.includes('localhost:3000')) {
@@ -69,8 +73,9 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/policy/${slug}`,
-        en: `${baseUrl}/en/policy/${slug}`,
+        vi: viUrl,
+        en: enUrl,
+        'x-default': viUrl,
       },
     },
     openGraph: {
@@ -99,22 +104,15 @@ export default async function PolicyPage({
   const policiesResult = await getPolicies({ lang: locale }).catch(() => ({ data: [] }));
   const policies = Array.isArray(policiesResult?.data) ? policiesResult.data : [];
 
-  const getTranslation = (item: any, currentLocale: string) => {
-    if (!item?.translations) return item;
-    const translation = item.translations.find((t: any) => t.locale === currentLocale) ||
-      item.translations.find((t: any) => t.locale.startsWith(currentLocale)) ||
-      item.translations[0];
-    return { ...item, ...translation };
-  };
-
-  const processedPolicies = policies.map(p => getTranslation(p, locale));
-
-  const currentPolicy = processedPolicies.find((p) => p.slug === slug) || processedPolicies[0];
+  const processedPolicies = processAndLocalizePolicies(policies, locale);
+  const currentPolicy = resolveCurrentPolicy(processedPolicies, slug, locale);
 
   if (!currentPolicy) {
     return (
       <div className="container py-20 text-center">
-        <h1 className="display-4 text-primary">Không tìm thấy nội dung</h1>
+        <h1 className="display-4 text-primary">
+          {locale === "en" ? "Content not found" : "Không tìm thấy nội dung"}
+        </h1>
       </div>
     );
   }
@@ -128,12 +126,26 @@ export default async function PolicyPage({
     : 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
 
+  const slugVi = currentPolicy.slug_vi || slug;
+  const slugEn = currentPolicy.slug_en || slug;
+  const alternateLinks = {
+    vi: {
+      pathname: "/policy/[slug]",
+      params: { slug: slugVi },
+    },
+    en: {
+      pathname: "/policy/[slug]",
+      params: { slug: slugEn },
+    },
+  };
+
   return (
-    <main className="md:py-16 py-12 xl:pt-20 xl:pb-[112px]">
+    <main className="md:py-12 py-8 xl:pt-16 xl:pb-12">
+      <AlternateLinksUpdater links={alternateLinks} />
       <JsonLd
         type="Article"
         data={currentPolicy}
-        url={`${baseUrl}/${locale}/policy/${slug}`}
+        url={locale === 'en' ? `${baseUrl}/en/policy/${slugEn}` : `${baseUrl}/chinh-sach/${slugVi}`}
       />
       <div className="container space-y-3">
         <Breadcrumb breadcrumbs={breadcrumbs} />
@@ -142,7 +154,7 @@ export default async function PolicyPage({
           <aside className="col-span-full lg:col-span-4">
             <PolicyNav
               policies={processedPolicies.map(p => ({ id: p.id, slug: p.slug, title: p.title || p.name }))}
-              currentSlug={slug}
+              currentSlug={currentPolicy.slug || slug}
             />
           </aside>
 

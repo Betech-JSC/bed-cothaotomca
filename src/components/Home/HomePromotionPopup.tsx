@@ -6,17 +6,47 @@ import NextLink from "next/link";
 import { formatImageUrl } from "@/lib/format";
 import Close from "@/components/Icons/Close";
 import type { Banner } from "@/types/banner";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 
 interface HomePromotionPopupProps {
   banner: Banner | null;
 }
 
-const VIETNAMESE_REGEX = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+export const POPUP_DISMISSED_SESSION_KEY = "home_promo_popup_dismissed_v1";
+
+export function localizePopupBanner(
+  banner: Banner | null,
+  locale: string,
+  fallbackTitle = "Special Offer"
+): { title: string; description: string; alt: string } {
+  if (!banner) return { title: "", description: "", alt: fallbackTitle };
+  const trans = banner.translations?.find((t) => t.locale === locale || t.locale?.startsWith(locale));
+  const b = banner as Record<string, any>;
+  const rawTitle = (
+    locale === "en"
+      ? (trans?.title || b.title_en || b.en_title || banner.title || "")
+      : (trans?.title || banner.title || "")
+  ).trim();
+  const rawDesc = (
+    locale === "en"
+      ? (trans?.description || b.description_en || b.en_description || banner.description || "")
+      : (trans?.description || banner.description || "")
+  ).trim();
+
+  return { title: rawTitle, description: rawDesc, alt: rawTitle || fallbackTitle };
+}
 
 export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) {
   const t = useTranslations("home_popup");
-  const locale = useLocale();
+  let locale = "vi";
+  try {
+    if (typeof (NextIntl as any).useLocale === "function") {
+      locale = (NextIntl as any).useLocale() || "vi";
+    }
+  } catch {
+    locale = "vi";
+  }
   const [isOpen, setIsOpen] = useState(false);
   const [doNotShowAgain, setDoNotShowAgain] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -37,7 +67,9 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
     if (!banner) return;
 
     try {
-      const sessionDismissed = sessionStorage.getItem(sessionKey);
+      const sessionDismissed =
+        sessionStorage.getItem(sessionKey) ||
+        sessionStorage.getItem(POPUP_DISMISSED_SESSION_KEY) === "true";
       if (sessionDismissed) {
         return;
       }
@@ -55,6 +87,12 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
     }
 
     const timer = setTimeout(() => {
+      try {
+        sessionStorage.setItem(sessionKey, "1");
+        sessionStorage.setItem(POPUP_DISMISSED_SESSION_KEY, "true");
+      } catch (err) {
+        console.warn("Could not save popup session state to sessionStorage:", err);
+      }
       setIsOpen(true);
     }, 1200);
 
@@ -65,6 +103,7 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
   const handleClose = useCallback(() => {
     try {
       sessionStorage.setItem(sessionKey, "1");
+      sessionStorage.setItem(POPUP_DISMISSED_SESSION_KEY, "true");
     } catch (err) {
       console.warn("Could not save popup session state to sessionStorage:", err);
     }
@@ -107,6 +146,12 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
     return null;
   }
 
+  const { title: displayTitle, description: displayDescription } = localizePopupBanner(
+    banner,
+    locale,
+    t("special_offer") || "Special Offer"
+  );
+
   const bannerImage = formatImageUrl(banner.image || banner.image_mobile) || "/cover.jpg";
   const rawLink = banner.link?.trim() || "";
   const hasLink = Boolean(rawLink);
@@ -124,17 +169,19 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
 
   const isExternalLink = resolvedLink.startsWith("http://") || resolvedLink.startsWith("https://");
 
-  const rawButtonText = banner.button_text?.trim();
-  const ctaText =
-    rawButtonText && !(locale === "en" && (VIETNAMESE_REGEX.test(rawButtonText) || rawButtonText.toLowerCase() === "xem ngay"))
-      ? rawButtonText
-      : t("view_now") || (locale === "en" ? "Explore Now" : "Xem ngay");
+  const trans = banner.translations?.find((tr) => tr.locale === locale || tr.locale?.startsWith(locale));
+  const rawButtonText = (
+    locale === "en"
+      ? (trans?.button_text || (banner as any).button_text_en || banner.button_text || "")
+      : (trans?.button_text || banner.button_text || "")
+  ).trim();
+  const ctaText = rawButtonText || t("view_now") || (locale === "en" ? "Explore Now" : "Xem ngay");
 
   const imageContent = (
     <div className="relative w-full aspect-video aspect-[16/9] overflow-hidden bg-[#F1EEDF]">
       <Image
         src={bannerImage}
-        alt={banner.title || (locale === "en" ? "Promotion" : "Khuyến mãi")}
+        alt={displayTitle || (locale === "en" ? "Promotion" : "Khuyến mãi")}
         fill
         priority
         sizes="(max-width: 640px) 88vw, 480px"
@@ -193,7 +240,7 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
           type="button"
           onClick={handleClose}
           className="absolute top-3 right-3 z-20 size-9 sm:size-10 rounded-full bg-white/90 sm:bg-white text-gray-500 hover:text-primary hover:bg-[#F1EEDF] transition-all flex items-center justify-center shadow-md cursor-pointer border border-[#EFF1F5]"
-          aria-label={t("close") || "Đóng"}
+          aria-label={t("close") || (locale === "en" ? "Close" : "Đóng")}
         >
           <Close className="size-5 text-gray-600 hover:text-primary transition-colors" />
         </button>
@@ -206,18 +253,18 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
 
         {/* Content Area */}
         <div className="p-4 sm:p-5 flex flex-col gap-3 bg-white text-[#111322]">
-          {banner.title && (
+          {displayTitle && (
             <h3
               id="home-promotion-title"
               className="font-display font-bold text-lg sm:text-xl text-primary leading-tight text-center"
             >
-              {banner.title}
+              {displayTitle}
             </h3>
           )}
 
-          {banner.description && (
+          {displayDescription && (
             <p className="font-sans text-xs sm:text-sm text-[#111322]/80 text-center line-clamp-3 leading-relaxed">
-              {banner.description}
+              {displayDescription}
             </p>
           )}
 
@@ -241,7 +288,7 @@ export default function HomePromotionPopup({ banner }: HomePromotionPopupProps) 
                 className="size-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer accent-primary"
               />
               <span className="font-sans font-medium">
-                {t("do_not_show_today") || "Không hiển thị lại hôm nay"}
+                {t("do_not_show_today") || (locale === "en" ? "Don't show again today" : "Không hiển thị lại hôm nay")}
               </span>
             </label>
           </div>

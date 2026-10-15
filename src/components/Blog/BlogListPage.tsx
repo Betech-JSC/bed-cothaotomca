@@ -8,7 +8,7 @@ import { Blog, BlogCategory } from "@/services/blogService";
 import { HeroBanner } from "@/services/heroBannerService";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "@/i18n/routing";
-import { slugify } from "@/lib/format";
+import { slugify, filterAndLocalizeBlogs, hasVietnameseDiacritics } from "@/lib/format";
 import Chevron from "@/components/Icons/Chevron";
 import AnimateOnScroll from '../Animated/animated-appear';
 
@@ -55,13 +55,17 @@ export default function BlogListPage({
   const transformBlog = (blog: Blog) => {
     const translation = getTranslation(blog.translations, locale) as any;
     const catTranslation = getTranslation(blog.category?.translations, locale) as any;
-    const categoryName = catTranslation?.title || blog.category?.title || (locale === "en" ? "News" : "Tin tức");
-    const rawCatSlug = slugify(categoryName) || blog.category?.slug || (locale === "en" ? "news" : "tin-tuc");
+    const title = locale === "en" ? (blog.title || translation?.title) : (translation?.title || blog.title);
+    const categoryName =
+      locale === "en"
+        ? (blog.category?.title || catTranslation?.title || "News")
+        : (catTranslation?.title || blog.category?.title || "Tin tức");
+    const rawCatSlug = blog.category?.slug || slugify(categoryName) || (locale === "en" ? "news" : "tin-tuc");
     const catSlug = locale === "en" && rawCatSlug === "blog" ? "news" : rawCatSlug;
 
     return {
       id: blog.id,
-      title: translation?.title || blog.title,
+      title,
       slug: blog.slug,
       category: {
         title: categoryName,
@@ -69,25 +73,42 @@ export default function BlogListPage({
       },
       image: {
         url: blog.thumbnail,
-        alt: translation?.title || blog.title,
+        alt: title,
       },
       created_at: blog.created_at,
     };
   };
 
-  const featuredBlogsDisplay = useMemo(() => featuredBlogs.map(transformBlog), [featuredBlogs, locale]);
-  
-  const allBlogsDisplay = useMemo(() => {
-    return allBlogs.map(transformBlog);
-  }, [allBlogs, locale]);
+  const featuredBlogsDisplay = useMemo(
+    () => filterAndLocalizeBlogs(featuredBlogs, locale).map(transformBlog),
+    [featuredBlogs, locale]
+  );
+
+  const allBlogsDisplay = useMemo(
+    () => filterAndLocalizeBlogs(allBlogs, locale).map(transformBlog),
+    [allBlogs, locale]
+  );
 
   const categoriesDisplay = useMemo(() => {
+    const catFallbackMap: Record<string, string> = {
+      "hai-san-tuoi-song": "Fresh Seafood",
+      "bi-quyet": "Secrets",
+      "meo-hay": "Useful Tips",
+      "am-thuc": "Cuisine",
+      "tin-tuc": "News",
+    };
     return categories.map(cat => {
       const translation = getTranslation(cat.translations, locale) as any;
-      const rawSlug = slugify(translation?.title || cat.title || (locale === "en" ? "news" : "danh-muc"));
+      const rawTitle = translation?.title || cat.title || (locale === "en" ? "Category" : "Danh mục");
+      const baseSlug = (cat as any).slug_vi || (cat as any).original_slug || cat.slug || slugify(cat.title || "");
+      const finalTitle =
+        locale === "en" && hasVietnameseDiacritics(rawTitle) && catFallbackMap[baseSlug]
+          ? catFallbackMap[baseSlug]
+          : rawTitle;
+      const rawSlug = slugify(finalTitle || (locale === "en" ? "news" : "danh-muc"));
       return {
         id: cat.id,
-        name: translation?.title || cat.title || (locale === "en" ? "Category" : "Danh mục"),
+        name: finalTitle,
         slug: locale === "en" && rawSlug === "blog" ? "news" : rawSlug,
       };
     });

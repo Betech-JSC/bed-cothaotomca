@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname } from "@/i18n/routing";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 import CouponModal from "./CouponModal";
 import { getAvailableVouchers, PublicVoucherItem, getShippingSettings, ShippingSettings } from "@/services/orderService";
 import { getActiveCampaigns, PublicCampaignItem } from "@/services/campaignService";
@@ -10,7 +11,14 @@ import { useCart } from "@/contexts/CartContext";
 
 export default function FloatingVoucherButton() {
   const t = useTranslations("voucher");
-  const locale = useLocale();
+  let locale = "vi";
+  try {
+    if (typeof (NextIntl as any).useLocale === "function") {
+      locale = (NextIntl as any).useLocale() || "vi";
+    }
+  } catch {
+    locale = "vi";
+  }
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [vouchers, setVouchers] = useState<PublicVoucherItem[]>([]);

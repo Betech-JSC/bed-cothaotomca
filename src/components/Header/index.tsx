@@ -46,6 +46,7 @@ const Header = () => {
   const hotlineClean = hotline.replace(/[^0-9+]/g, "");
   const { isCartOpen, setIsCartOpen, totalItems } = useCart();
   const toggleCart = () => setIsCartOpen(!isCartOpen);
+  const handleCloseCart = useCallback(() => setIsCartOpen(false), [setIsCartOpen]);
 
   const [categories, setCategories] = useState<{ id: number; title: string; slug: string }[]>([]);
 
@@ -57,7 +58,7 @@ const Header = () => {
           setCategories(
             data.data.map((c: any) => {
               const catTitle = c.title || "";
-              const slug = locale === 'vi' ? (c.slug || slugify(catTitle)) : (c.slug ? slugify(c.slug) : slugify(catTitle));
+              const slug = locale === 'vi' ? (c.original_slug || c.slug || slugify(catTitle)) : (slugify(catTitle) || c.slug);
               return {
                 id: c.id,
                 title: catTitle,
@@ -314,7 +315,7 @@ const Header = () => {
                 </div>
                 <span className="text-[1rem] font-display font-bold whitespace-nowrap">{t("button.order-now")}</span>
               </button>
-              <CartPopup onClose={() => setIsCartOpen(false)} />
+              <CartPopup onClose={handleCloseCart} />
             </li>
           </ul>
         </nav>
@@ -515,6 +516,7 @@ const MobileMenu = ({
     setIsCartOpen(!isCartOpen);
     onClose();
   };
+  const handleCloseCart = useCallback(() => setIsCartOpen(false), [setIsCartOpen]);
 
   useEffect(() => {
     if (!open) setOpenSection(null);
@@ -549,7 +551,7 @@ const MobileMenu = ({
                 </span>
               )}
             </button>
-            <MobileCartFlow onClose={() => setIsCartOpen(false)} />
+            <MobileCartFlow onClose={handleCloseCart} />
           </div>
 
           {/* 3. Account Profile */}

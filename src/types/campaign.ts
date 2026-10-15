@@ -77,7 +77,13 @@ export interface CampaignSettings {
 export interface ActivePromotion {
   id: number;
   name: string;
+  name_en?: string | null;
   description?: string | null;
+  description_en?: string | null;
+  special_note?: string | null;
+  special_note_en?: string | null;
+  terms?: string | null;
+  terms_en?: string | null;
   banner?: string | null;
   promotion_type: PromotionType;
   min_order_value: number;
@@ -97,11 +103,14 @@ export interface ActivePromotion {
 export interface PublicCampaignItem {
   id: number | string;
   name: string;
+  name_en?: string | null;
   code?: string;
   status?: boolean;
-  special_note?: string;
-  description?: string;
-  banner?: string;
+  special_note?: string | null;
+  special_note_en?: string | null;
+  description?: string | null;
+  description_en?: string | null;
+  banner?: string | null;
   promotion_type?: PromotionType;
   discount_type?: DiscountType;
   discount_value?: number;
@@ -115,7 +124,8 @@ export interface PublicCampaignItem {
   items?: PromotionGiftItem[];
   applicable_product_ids?: number[];
   applicable_variant_ids?: number[];
-  terms?: string;
+  terms?: string | null;
+  terms_en?: string | null;
   start_at?: string | null;
   end_at?: string | null;
 }
@@ -353,8 +363,14 @@ export function mergeCampaignObjects(baseObj: any, enrichObj: any): any {
         : typeof enrichObj?.id === "number"
           ? enrichObj.id
           : parseInt(String(enrichObj?.id), 10) || 0,
-    name: baseObj?.name || enrichObj?.name,
-    description: baseObj?.description || enrichObj?.description || null,
+    name: enrichObj?.name || baseObj?.name,
+    name_en: enrichObj?.name_en || baseObj?.name_en || null,
+    description: enrichObj?.description || baseObj?.description || null,
+    description_en: enrichObj?.description_en || baseObj?.description_en || null,
+    special_note: enrichObj?.special_note || baseObj?.special_note || null,
+    special_note_en: enrichObj?.special_note_en || baseObj?.special_note_en || null,
+    terms: enrichObj?.terms || baseObj?.terms || null,
+    terms_en: enrichObj?.terms_en || baseObj?.terms_en || null,
     banner: baseObj?.banner || enrichObj?.banner || null,
     promotion_type: baseObj?.promotion_type || enrichObj?.promotion_type,
     min_order_value: baseObj?.min_order_value || enrichObj?.min_order_value || 0,

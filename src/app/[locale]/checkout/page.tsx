@@ -88,7 +88,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
     slug
       ? getProductBySlugWithFallback(slug, { lang: locale, revalidate: 0 })
       : Promise.resolve(null),
-    getCheckoutConfig().catch((err) => {
+    getCheckoutConfig(undefined, locale).catch((err) => {
       console.error("❌ [CheckoutPage] Failed to fetch checkout config from backend API:", err);
       return defaultConfig;
     }),

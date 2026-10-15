@@ -31,13 +31,19 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
   React.useEffect(() => {
     setHasError(false);
   }, [item.image?.url]);
+
+  const rawCatSlug = (item.category?.slug || '').replace(/^\/+|\/+$/g, '').replace(/^(blog\/)+/i, '');
+  const categorySlug = locale === 'en'
+    ? (!rawCatSlug || rawCatSlug === 'blog' ? 'news' : rawCatSlug)
+    : (rawCatSlug || 'tin-tuc');
+  const postSlug = (item.slug || '').replace(/^\/+|\/+$/g, '').replace(/^(blog\/)+/i, '');
   
   return (
     <article className="group space-y-3 md:space-y-4 lg:space-y-6">
       {/* Image */}
       <div className="relative">
         <Link
-          href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }}
+          href={{ pathname: '/blog/category/[category]/[slug]', params: { category: categorySlug, slug: postSlug } }}
           className="block"
           aria-label={item.title}
         >
@@ -55,7 +61,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
         <div className="absolute bottom-2 left-2 w-max">
           <div className="flex items-center space-x-1 bg-secondary text-yellow rounded-full py-1.5 px-3">
             <Link
-              href={{ pathname: '/blog/category/[category]', params: { category: item.category.slug } }}
+              href={{ pathname: '/blog/category/[category]', params: { category: categorySlug } }}
               className="label-2 font-semibold lg:hover:underline"
             >
               {item.category.title}
@@ -69,7 +75,7 @@ const CardBlog: React.FC<CardBlogProps> = ({ item, isHot }) => {
       </div>
 
       <div>
-        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: item.category.slug, slug: item.slug } }} className="block">
+        <Link href={{ pathname: '/blog/category/[category]/[slug]', params: { category: categorySlug, slug: postSlug } }} className="block">
           <h3 className={`${isHot ? "title-1 max-md:text-[18px]" : "title-2"} text-primary lg:group-hover:text-secondary duration-300 ease-in-out line-clamp-2`}>
             {item.title}
           </h3>

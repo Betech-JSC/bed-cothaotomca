@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 import { useState, useEffect, useRef } from "react";
 import { Link, useRouter } from "@/i18n/i18n-navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +15,14 @@ import {
 const RegisterForm = () => {
   const t = useTranslations("signup");
   const tAuth = useTranslations("auth");
-  const locale = useLocale();
+  let locale = "vi";
+  try {
+    if (typeof (NextIntl as any).useLocale === "function") {
+      locale = (NextIntl as any).useLocale() || "vi";
+    }
+  } catch {
+    locale = "vi";
+  }
   const { register, loginWithGoogle, loginWithToken } = useAuth();
   const router = useRouter();
 
@@ -166,7 +174,8 @@ const RegisterForm = () => {
         initializeGoogle();
       };
       document.body.appendChild(script);
-    } else if ((window as any).google) {
+    }
+    if ((window as any).google) {
       initializeGoogle();
     }
   }, [loading, isActivating, loginWithGoogle, router, locale]);
@@ -561,6 +570,7 @@ const RegisterForm = () => {
         <div className="space-y-1 text-left">
           <label className="text-sm text-primary font-semibold block">
             {t("name")}
+            <span className="text-red-600 font-bold ml-1 select-none" aria-hidden="true">*</span>
           </label>
           <input
             type="text"
@@ -577,6 +587,7 @@ const RegisterForm = () => {
         <div className="space-y-1 text-left">
           <label className="text-sm text-primary font-semibold block">
             {t("email")}
+            <span className="text-red-600 font-bold ml-1 select-none" aria-hidden="true">*</span>
           </label>
           <input
             type="email"
@@ -626,6 +637,7 @@ const RegisterForm = () => {
         <div className="space-y-1 text-left">
           <label className="text-sm text-primary font-semibold block">
             {t("phone")}
+            <span className="text-red-600 font-bold ml-1 select-none" aria-hidden="true">*</span>
           </label>
           <input
             type="tel"
@@ -675,6 +687,7 @@ const RegisterForm = () => {
         <div className="space-y-1 text-left relative">
           <label className="text-sm text-primary font-semibold block">
             {t("password")}
+            <span className="text-red-600 font-bold ml-1 select-none" aria-hidden="true">*</span>
           </label>
           <div className="relative">
             <input

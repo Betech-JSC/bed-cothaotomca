@@ -13,12 +13,17 @@ export default function JsonLd({ type, data, url }: JsonLdProps) {
   };
 
   switch (type) {
-    case 'Product':
+    case 'Product': {
+      const rawDesc = data.description || data.shortDescription || data.name || '';
+      const cleanDesc =
+        typeof rawDesc === 'string'
+          ? rawDesc.replace(/\bat Bếp\b/gi, 'at Cô Thảo Tôm Cá')
+          : rawDesc;
       schemaBase = {
         ...schemaBase,
         name: data.name,
         image: data.images ? data.images.map((img: any) => img.image) : [data.image],
-        description: data.description || data.shortDescription || data.name,
+        description: cleanDesc,
         sku: data.code || data.id?.toString(),
         brand: {
           '@type': 'Brand',
@@ -38,6 +43,7 @@ export default function JsonLd({ type, data, url }: JsonLdProps) {
         },
       };
       break;
+    }
 
     case 'Article':
       schemaBase = {

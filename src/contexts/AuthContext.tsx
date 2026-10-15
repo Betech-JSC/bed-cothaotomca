@@ -24,32 +24,39 @@ export interface MemberTierInfo {
   celebrationTier?: "gold" | "diamond" | null;
 }
 
-export function getMemberTier(userOrPoints: StorefrontUser | number = 0): MemberTierInfo {
+export function getMemberTier(userOrPoints: StorefrontUser | number = 0, locale: string = "vi"): MemberTierInfo {
+  const isEn = locale === "en";
   if (typeof userOrPoints === "object" && userOrPoints !== null) {
     const tierStatus = userOrPoints.tier_status;
     if (tierStatus?.is_upgrade_celebration) {
       const isDiamond = tierStatus.celebration_tier === "diamond" || tierStatus.tier === "diamond";
+      const pct = tierStatus.discount_percent || (isDiamond ? 15 : 10);
       return {
         tier: isDiamond ? "diamond" : "gold",
         name: isDiamond ? "DIAMOND" : "GOLD",
-        discountPercent: tierStatus.discount_percent || (isDiamond ? 15 : 10),
-        label: isDiamond ? "Mừng lên hạng DIAMOND (-15%)" : "Mừng lên hạng GOLD (-10%)",
+        discountPercent: pct,
+        label: isEn
+          ? (isDiamond ? `DIAMOND Tier Upgrade Offer (-${pct}%)` : `GOLD Tier Upgrade Offer (-${pct}%)`)
+          : (isDiamond ? "Mừng lên hạng DIAMOND (-15%)" : "Mừng lên hạng GOLD (-10%)"),
         isUpgradeCelebration: true,
         celebrationTier: isDiamond ? "diamond" : "gold",
       };
     }
     if (tierStatus?.has_benefit) {
       const isDiamond = tierStatus.tier === "diamond";
+      const pct = tierStatus.discount_percent || (isDiamond ? 8 : 5);
       return {
         tier: isDiamond ? "diamond" : "gold",
         name: isDiamond ? "DIAMOND" : "GOLD",
-        discountPercent: tierStatus.discount_percent || (isDiamond ? 8 : 5),
-        label: isDiamond ? "Ưu đãi thành viên DIAMOND (-8%)" : "Ưu đãi thành viên GOLD (-5%)",
+        discountPercent: pct,
+        label: isEn
+          ? (isDiamond ? `DIAMOND Member Privilege (-${pct}%)` : `GOLD Member Privilege (-${pct}%)`)
+          : (isDiamond ? "Ưu đãi thành viên DIAMOND (-8%)" : "Ưu đãi thành viên GOLD (-5%)"),
         isUpgradeCelebration: false,
         celebrationTier: null,
       };
     }
-    return getMemberTier(userOrPoints.points || 0);
+    return getMemberTier(userOrPoints.points || 0, locale);
   }
 
   const points = typeof userOrPoints === "number" ? userOrPoints : 0;
@@ -58,7 +65,7 @@ export function getMemberTier(userOrPoints: StorefrontUser | number = 0): Member
       tier: "diamond",
       name: "DIAMOND",
       discountPercent: 8,
-      label: "Ưu đãi thành viên DIAMOND (-8%)",
+      label: isEn ? "DIAMOND Member Privilege (-8%)" : "Ưu đãi thành viên DIAMOND (-8%)",
       isUpgradeCelebration: false,
       celebrationTier: null,
     };
@@ -68,7 +75,7 @@ export function getMemberTier(userOrPoints: StorefrontUser | number = 0): Member
       tier: "gold",
       name: "GOLD",
       discountPercent: 5,
-      label: "Ưu đãi thành viên GOLD (-5%)",
+      label: isEn ? "GOLD Member Privilege (-5%)" : "Ưu đãi thành viên GOLD (-5%)",
       isUpgradeCelebration: false,
       celebrationTier: null,
     };

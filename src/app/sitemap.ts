@@ -1,10 +1,10 @@
 import { MetadataRoute } from 'next';
 import { getProducts } from '@/services/productService';
 import { getCategories } from '@/services/categoryService';
-import { getBlogs } from '@/services/blogService';
+import { getBlogs, getBlogCategories } from '@/services/blogService';
 import { getPolicies } from '@/services/policyService';
-import { slugify } from '@/lib/format';
-import { getProductLocalizedSlugs } from '@/lib/productHelper';
+import { slugify, localizePolicyItem, filterAndLocalizeBlogs, cleanBlogSlugSegment } from '@/lib/format';
+import { getProductLocalizedSlugs, translateCategorySlug } from '@/lib/productHelper';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -27,6 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { vi: '/chinh-sach', en: '/policy', priority: 0.8 },
     { vi: '/dang-nhap', en: '/signin', priority: 0.5 },
     { vi: '/dang-ky', en: '/signup', priority: 0.5 },
+    { vi: '/thong-tin-ca-nhan', en: '/profile', priority: 0.5 },
     { vi: '/tra-cuu-don-hang', en: '/order-lookup', priority: 0.6 },
   ];
 
@@ -43,12 +44,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         languages: {
           vi: viUrl,
           en: enUrl,
+          'x-default': viUrl,
         },
       },
     }));
   });
 
-  // 2. Dynamic products
+  // 2. Dynamic product categories & products
   const productRoutes: MetadataRoute.Sitemap = [];
   try {
     const [viProductsRes, enProductsRes, viCatsRes, enCatsRes] = await Promise.all([
@@ -81,6 +83,41 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
 
+    if (viCatsRes?.data) {
+      viCatsRes.data.forEach((viCat: any) => {
+        const enCat = viCat?.id ? enCatsById.get(Number(viCat.id)) : null;
+        const enTrans = (enCat?.translations || viCat?.translations || []).find((t: any) => t.locale === 'en');
+        const viCatSlug = viCat?.alternate_slugs?.vi?.slug || viCat?.slug || slugify(viCat?.title || '');
+        if (!viCatSlug) return;
+        const enCatSlug =
+          viCat?.alternate_slugs?.en?.slug ||
+          enCat?.alternate_slugs?.en?.slug ||
+          (enTrans as any)?.slug ||
+          slugify(enTrans?.title || enCat?.title || '') ||
+          (enCat?.slug && enCat.slug !== viCatSlug ? enCat.slug : '') ||
+          translateCategorySlug(viCatSlug, 'en') ||
+          viCatSlug;
+
+        const viCatUrl = buildUrl('vi', `/san-pham/${viCatSlug}`);
+        const enCatUrl = buildUrl('en', `/product/${enCatSlug}`);
+        locales.forEach((locale) => {
+          productRoutes.push({
+            url: locale === 'vi' ? viCatUrl : enCatUrl,
+            lastModified: new Date(),
+            changeFrequency: 'weekly' as const,
+            priority: 0.75,
+            alternates: {
+              languages: {
+                vi: viCatUrl,
+                en: enCatUrl,
+                'x-default': viCatUrl,
+              },
+            },
+          });
+        });
+      });
+    }
+
     if (viProductsRes?.data) {
       viProductsRes.data.forEach((product: any) => {
         const enProduct = enProductsById.get(Number(product.id));
@@ -98,8 +135,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         const viCatSlug = product?.alternate_slugs?.vi?.category_slug
           || viCatObj?.slug
           || baseSlugs.viCatSlug
+          || translateCategorySlug(rawCatSlug, 'vi')
           || 'san-pham';
         const viProductSlug = product?.alternate_slugs?.vi?.slug
+          || product?.slug_vi
           || product?.slug
           || baseSlugs.viProductSlug;
 
@@ -110,11 +149,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           || slugify(enCatTrans?.title || enCatObj?.title || '')
           || (enCatObj?.slug && enCatObj.slug !== viCatSlug ? enCatObj.slug : '')
           || (baseSlugs.enCatSlug && baseSlugs.enCatSlug !== viCatSlug ? baseSlugs.enCatSlug : '')
+          || translateCategorySlug(viCatSlug, 'en')
           || slugify(enProduct?.category?.title || '')
           || baseSlugs.enCatSlug
           || 'product';
         const enProductSlug = product?.alternate_slugs?.en?.slug
           || enProduct?.alternate_slugs?.en?.slug
+          || product?.slug_en
+          || enProduct?.slug_en
           || (enProduct?.slug && enProduct.slug !== viProductSlug ? enProduct.slug : '')
           || slugify(enProduct?.custom_name || enProduct?.name || '')
           || baseSlugs.enProductSlug
@@ -137,6 +179,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               languages: {
                 vi: viUrl,
                 en: enUrl,
+                'x-default': viUrl,
               },
             },
           });
@@ -147,13 +190,56 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Error fetching products for sitemap:', error);
   }
 
-  // 3. Dynamic blogs
+  // 3. Dynamic blog categories & blogs
   const blogRoutes: MetadataRoute.Sitemap = [];
   try {
-    const [blogsRes, enBlogsRes] = await Promise.all([
+    const [blogsRes, enBlogsRes, viBlogCatsRes, enBlogCatsRes] = await Promise.all([
       getBlogs({ per_page: 500, lang: 'vi' }),
       getBlogs({ per_page: 500, lang: 'en' }).catch(() => null),
+      getBlogCategories({ lang: 'vi' }).catch(() => null),
+      getBlogCategories({ lang: 'en' }).catch(() => null),
     ]);
+
+    const enBlogCatsById = new Map<number, any>();
+    if (enBlogCatsRes?.data) {
+      enBlogCatsRes.data.forEach((c: any) => {
+        if (c?.id) enBlogCatsById.set(Number(c.id), c);
+      });
+    }
+
+    if (viBlogCatsRes?.data) {
+      viBlogCatsRes.data.forEach((viCat: any) => {
+        const enCat = viCat?.id ? enBlogCatsById.get(Number(viCat.id)) : null;
+        const viTrans = (viCat?.translations || []).find((t: any) => t.locale === 'vi');
+        const enTrans = (enCat?.translations || viCat?.translations || []).find((t: any) => t.locale === 'en');
+        const viCatSlug = cleanBlogSlugSegment(viCat?.slug || slugify(viTrans?.title || viCat?.title || '')) || 'tin-tuc';
+        const rawEnCatSlug = cleanBlogSlugSegment(
+          (enTrans as any)?.slug ||
+          slugify(enTrans?.title || enCat?.title || '') ||
+          enCat?.slug ||
+          'news'
+        ) || 'news';
+        const enCatSlug = rawEnCatSlug === 'blog' ? 'news' : rawEnCatSlug;
+
+        const viCatUrl = buildUrl('vi', `/tin-tuc/${viCatSlug}`);
+        const enCatUrl = buildUrl('en', `/blog/${enCatSlug}`);
+        locales.forEach((locale) => {
+          blogRoutes.push({
+            url: locale === 'vi' ? viCatUrl : enCatUrl,
+            lastModified: new Date(),
+            changeFrequency: 'weekly' as const,
+            priority: 0.65,
+            alternates: {
+              languages: {
+                vi: viCatUrl,
+                en: enCatUrl,
+                'x-default': viCatUrl,
+              },
+            },
+          });
+        });
+      });
+    }
 
     const enBlogsById = new Map<number, any>();
     if (enBlogsRes?.data) {
@@ -162,55 +248,58 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
 
-    if (blogsRes?.data) {
-      blogsRes.data.forEach((blog: any) => {
-        const enBlog = enBlogsById.get(Number(blog.id));
-        const viTrans = (blog.translations || []).find((t: any) => t.locale === 'vi');
-        const enTrans = (blog.translations || []).find((t: any) => t.locale === 'en')
-          || (enBlog?.translations || []).find((t: any) => t.locale === 'en');
+    const localizedViBlogs = filterAndLocalizeBlogs(blogsRes?.data || [], 'vi');
+    const localizedEnBlogs = filterAndLocalizeBlogs(enBlogsRes?.data || [], 'en');
+    const localizedEnById = new Map<number, any>();
+    localizedEnBlogs.forEach((b: any) => {
+      if (b?.id) localizedEnById.set(Number(b.id), b);
+    });
 
-        const viCategory = blog.category;
-        const enCategory = enBlog?.category || blog.category;
-        const viCatTrans = (viCategory?.translations || []).find((t: any) => t.locale === 'vi');
-        const enCatTrans = (viCategory?.translations || []).find((t: any) => t.locale === 'en')
-          || (enCategory?.translations || []).find((t: any) => t.locale === 'en');
+    localizedViBlogs.forEach((blog: any) => {
+      const enBlog = localizedEnById.get(Number(blog.id)) || enBlogsById.get(Number(blog.id));
+      const viCatSlug = cleanBlogSlugSegment(blog.category_slug_vi || blog.category?.slug || 'tin-tuc') || 'tin-tuc';
+      const rawEnCatSlug = cleanBlogSlugSegment(
+        blog.category_slug_en ||
+        enBlog?.category_slug_en ||
+        enBlog?.category?.slug ||
+        'news'
+      ) || 'news';
+      const enCatSlug = rawEnCatSlug === 'blog' ? 'news' : rawEnCatSlug;
 
-        const viCatSlug = viCategory?.slug || slugify(viCatTrans?.title || viCategory?.title || 'tin-tuc') || 'tin-tuc';
-        const rawEnCatSlug = (enCatTrans as any)?.slug
-          || slugify(enCatTrans?.title || enCategory?.title || '')
-          || enCategory?.slug
-          || 'news';
-        const enCatSlug = rawEnCatSlug === 'blog' ? 'news' : rawEnCatSlug;
+      const viBlogSlug = cleanBlogSlugSegment(blog.slug_vi || blog.slug || slugify(blog.title || ''));
+      const enBlogSlug = cleanBlogSlugSegment(
+        blog.slug_en ||
+        enBlog?.slug_en ||
+        (enBlog?.slug && enBlog.slug !== viBlogSlug ? enBlog.slug : '') ||
+        slugify(enBlog?.title || '') ||
+        viBlogSlug
+      );
 
-        const viBlogSlug = (viTrans as any)?.slug || blog.slug || slugify(viTrans?.title || blog.title || '');
-        const enBlogSlug = (enTrans as any)?.slug
-          || (enBlog?.slug && enBlog.slug !== viBlogSlug ? enBlog.slug : '')
-          || slugify(enTrans?.title || enBlog?.title || '')
-          || viBlogSlug;
+      if (!viBlogSlug) return;
 
-        const viUrl = buildUrl('vi', `/tin-tuc/${viCatSlug}/${viBlogSlug}`);
-        const enUrl = buildUrl('en', `/blog/${enCatSlug}/${enBlogSlug}`);
+      const viUrl = buildUrl('vi', `/tin-tuc/${viCatSlug}/${viBlogSlug}`);
+      const enUrl = buildUrl('en', `/blog/${enCatSlug}/${enBlogSlug || viBlogSlug}`);
 
-        const lastModified = blog.updated_at
-          ? new Date(blog.updated_at)
-          : (blog.created_at ? new Date(blog.created_at) : new Date());
+      const lastModified = blog.updated_at
+        ? new Date(blog.updated_at)
+        : (blog.created_at ? new Date(blog.created_at) : new Date());
 
-        locales.forEach((locale) => {
-          blogRoutes.push({
-            url: locale === 'vi' ? viUrl : enUrl,
-            lastModified,
-            changeFrequency: 'weekly' as const,
-            priority: 0.6,
-            alternates: {
-              languages: {
-                vi: viUrl,
-                en: enUrl,
-              },
+      locales.forEach((locale) => {
+        blogRoutes.push({
+          url: locale === 'vi' ? viUrl : enUrl,
+          lastModified,
+          changeFrequency: 'weekly' as const,
+          priority: 0.6,
+          alternates: {
+            languages: {
+              vi: viUrl,
+              en: enUrl,
+              'x-default': viUrl,
             },
-          });
+          },
         });
       });
-    }
+    });
   } catch (error) {
     console.error('Error fetching blogs for sitemap:', error);
   }
@@ -218,14 +307,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 4. Dynamic policies
   const policyRoutes: MetadataRoute.Sitemap = [];
   try {
-    const policiesRes = await getPolicies();
-    if (policiesRes?.data) {
-      policiesRes.data.forEach((policy: any) => {
-        const viTrans = (policy.translations || []).find((t: any) => t.locale === 'vi');
-        const enTrans = (policy.translations || []).find((t: any) => t.locale === 'en');
+    const [viPoliciesRes, enPoliciesRes] = await Promise.all([
+      getPolicies({ lang: 'vi' }),
+      getPolicies({ lang: 'en' }).catch(() => null),
+    ]);
 
-        const viSlug = (viTrans as any)?.slug || policy.slug || slugify(viTrans?.title || policy.title || '');
-        const enSlug = (enTrans as any)?.slug || slugify(enTrans?.title || '') || policy.slug || '';
+    const enPoliciesById = new Map<number, any>();
+    if (enPoliciesRes?.data) {
+      enPoliciesRes.data.forEach((p: any) => {
+        if (p?.id) enPoliciesById.set(Number(p.id), p);
+      });
+    }
+
+    if (viPoliciesRes?.data) {
+      viPoliciesRes.data.forEach((policy: any) => {
+        const enPolicyRaw = policy?.id ? enPoliciesById.get(Number(policy.id)) : null;
+        const localizedVi = localizePolicyItem(policy, 'vi');
+        const localizedEn = localizePolicyItem(enPolicyRaw || policy, 'en');
+
+        const viSlug = localizedVi?.slug_vi || localizedVi?.slug || policy.slug || slugify(policy.title || '');
+        const enSlug =
+          localizedVi?.slug_en ||
+          localizedEn?.slug_en ||
+          (localizedEn?.slug && localizedEn.slug !== viSlug ? localizedEn.slug : '') ||
+          viSlug;
+
+        if (!viSlug) return;
 
         const viUrl = buildUrl('vi', `/chinh-sach/${viSlug}`);
         const enUrl = buildUrl('en', `/policy/${enSlug}`);
@@ -244,6 +351,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
               languages: {
                 vi: viUrl,
                 en: enUrl,
+                'x-default': viUrl,
               },
             },
           });
@@ -256,3 +364,4 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [...staticRoutes, ...productRoutes, ...blogRoutes, ...policyRoutes];
 }
+

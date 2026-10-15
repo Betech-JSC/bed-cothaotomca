@@ -83,7 +83,7 @@ export const routing = defineRouting({
       en: '/register',
     },
     '/profile': {
-      vi: '/trang-ca-nhan',
+      vi: '/thong-tin-ca-nhan',
       en: '/profile',
     },
     '/forgot-password': {

@@ -3,11 +3,68 @@ import { getApi } from "@/services/apiService";
 import { HeroBanner } from "@/services/heroBannerService";
 import BlogListPage from "@/components/Blog/BlogListPage";
 import { notFound } from "next/navigation";
-import { slugify, getTranslation, formatImageUrl } from "@/lib/format";
+import { slugify, getTranslation, formatImageUrl, cleanBlogSlugSegment, filterAndLocalizeBlogs } from "@/lib/format";
 import { redirect } from "@/i18n/routing";
 import { Metadata } from "next";
+import AlternateLinksUpdater from "@/components/SEO/AlternateLinksUpdater";
 
 export const revalidate = 60
+
+const BLOG_CAT_VI_TO_EN: Record<string, string> = {
+  "hai-san-tuoi-song": "fresh-seafood",
+  "bi-quyet": "secrets",
+  "meo-hay": "useful-tips",
+  "am-thuc": "cuisine",
+  "tin-tuc": "news",
+};
+
+const BLOG_CAT_EN_TO_VI: Record<string, string> = Object.entries(BLOG_CAT_VI_TO_EN).reduce(
+  (acc, [vi, en]) => {
+    acc[en] = vi;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+function resolveBlogCategorySlugs(matched: any, rawCategorySlug: string, locale: string) {
+  const isEn = locale === 'en';
+  const cleanedSlug = cleanBlogSlugSegment(rawCategorySlug) || (isEn ? 'news' : 'tin-tuc');
+  const viTrans = getTranslation(matched?.translations, 'vi') as any;
+  const enTrans = getTranslation(matched?.translations, 'en') as any;
+  const curTrans = getTranslation(matched?.translations, locale) as any;
+
+  const fallbackName = (cleanedSlug === 'blog' ? 'news' : cleanedSlug)
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const categoryName = matched
+    ? (curTrans?.title || matched.title || fallbackName)
+    : fallbackName;
+
+  const rawViCatSlug = matched
+    ? (matched.slug_vi ||
+        matched.original_slug ||
+        viTrans?.slug ||
+        (!isEn ? matched.slug : '') ||
+        slugify(viTrans?.title || (!isEn ? matched.title : '') || '') ||
+        BLOG_CAT_EN_TO_VI[cleanedSlug] ||
+        cleanedSlug)
+    : (BLOG_CAT_EN_TO_VI[cleanedSlug] || (cleanedSlug === 'blog' || cleanedSlug === 'news' ? 'tin-tuc' : cleanedSlug));
+  const viCatSlug = cleanBlogSlugSegment(rawViCatSlug) || 'tin-tuc';
+
+  const rawEnCatSlug = matched
+    ? (matched.slug_en ||
+        enTrans?.slug ||
+        slugify(enTrans?.title || (isEn ? matched.title : '') || '') ||
+        BLOG_CAT_VI_TO_EN[viCatSlug] ||
+        (isEn ? matched.slug : '') ||
+        cleanedSlug)
+    : (BLOG_CAT_VI_TO_EN[viCatSlug] || cleanedSlug || 'news');
+  const cleanedEnCat = cleanBlogSlugSegment(rawEnCatSlug) || 'news';
+  const enCatSlug = cleanedEnCat === 'blog' ? 'news' : cleanedEnCat;
+
+  return { categoryName, viCatSlug, enCatSlug };
+}
 
 export async function generateMetadata({
   params,
@@ -17,19 +74,23 @@ export async function generateMetadata({
   const { locale, category: categorySlug } = await params
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '')
 
-  let categoryName = categorySlug.replace(/-/g, ' ')
+  let matched: any = undefined
   try {
     const categoriesRes = await getBlogCategories({ lang: locale })
-    const matched = (categoriesRes.data || []).find((cat: any) => {
+    const cleanedTarget = cleanBlogSlugSegment(categorySlug)
+    matched = (categoriesRes.data || []).find((cat: any) => {
       const t = getTranslation(cat.translations, locale) as any
       const s = cat.slug || slugify(t?.title || cat.title || '')
-      return s === categorySlug
+      return (
+        s === categorySlug ||
+        s === cleanedTarget ||
+        cat.slug === categorySlug ||
+        cat.translations?.some((tr: any) => tr?.slug === categorySlug || slugify(tr?.title || '') === cleanedTarget)
+      )
     })
-    if (matched) {
-      const t = getTranslation(matched.translations, locale) as any
-      categoryName = t?.title || matched.title || categoryName
-    }
   } catch {}
+
+  const { categoryName, viCatSlug, enCatSlug } = resolveBlogCategorySlugs(matched, categorySlug, locale)
 
   const isEn = locale === 'en'
   const titleSuffix = isEn ? 'Blog & News | Co Thao Tom Ca' : 'Tin tức | Cô Thảo Tôm Cá'
@@ -37,19 +98,25 @@ export async function generateMetadata({
     ? `Articles about ${categoryName} — Co Thao Tom Ca shares tips, insights and recipes.`
     : `Tin tức về ${categoryName} — Cô Thảo Tôm Cá chia sẻ kiến thức, mẹo hay và thông tin hữu ích.`
 
+  const viUrl = `${baseUrl}/tin-tuc/${viCatSlug}`
+  const enUrl = `${baseUrl}/en/blog/${enCatSlug}`
+  const canonicalUrl = isEn ? enUrl : viUrl
+
   return {
     title: `${categoryName} | ${titleSuffix}`,
     description: descSuffix,
     alternates: {
-      canonical: `${baseUrl}/${locale}/blog/category/${categorySlug}`,
+      canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/blog/category/${categorySlug}`,
-        en: `${baseUrl}/en/blog/category/${categorySlug}`,
+        vi: viUrl,
+        en: enUrl,
+        'x-default': viUrl,
       },
     },
     openGraph: {
       title: `${categoryName} | ${titleSuffix}`,
       description: descSuffix,
+      url: canonicalUrl,
       type: 'website',
     },
   }
@@ -89,8 +156,8 @@ export default async function BlogCategoryPage({
 
     // If found via another language, redirect to the correct localized slug
     if (currentCategory) {
-      const translation = getTranslation(currentCategory.translations, locale) as any;
-      const correctSlug = currentCategory.slug || slugify(translation?.title || currentCategory.title || "danh-muc");
+      const { viCatSlug, enCatSlug } = resolveBlogCategorySlugs(currentCategory, categorySlug, locale);
+      const correctSlug = locale === 'en' ? enCatSlug : viCatSlug;
       
       // Use localized redirect with guard condition to prevent infinite redirect loops
       if (correctSlug && correctSlug.trim() !== categorySlug) {
@@ -109,6 +176,7 @@ export default async function BlogCategoryPage({
     notFound();
   }
 
+  const { viCatSlug, enCatSlug } = resolveBlogCategorySlugs(currentCategory, categorySlug, locale);
   const activeCategoryId = currentCategory.id.toString();
 
   let featuredBlogs: Blog[] = [];
@@ -124,11 +192,14 @@ export default async function BlogCategoryPage({
     ]);
 
     bannerData = bannerRes;
-    featuredBlogs = featuredRes.data || [];
+    featuredBlogs = filterAndLocalizeBlogs(featuredRes.data || [], locale);
     totalBlogs = Number(gridRes.total ?? featuredRes.total ?? 0);
 
     const featuredIds = new Set(featuredBlogs.map(b => b.id));
-    gridBlogs = (gridRes.data || []).filter((b: Blog) => !featuredIds.has(b.id));
+    gridBlogs = filterAndLocalizeBlogs(
+      (gridRes.data || []).filter((b: Blog) => !featuredIds.has(b.id)),
+      locale
+    );
   } else {
     const offset = 14 + (currentPage - 2) * 12;
     const [bannerRes, gridRes] = await Promise.all([
@@ -139,7 +210,7 @@ export default async function BlogCategoryPage({
     bannerData = bannerRes;
     featuredBlogs = [];
     totalBlogs = Number(gridRes.total ?? 0);
-    gridBlogs = gridRes.data || [];
+    gridBlogs = filterAndLocalizeBlogs(gridRes.data || [], locale);
   }
 
   const lastPage = totalBlogs <= 14 ? 1 : 1 + Math.ceil((totalBlogs - 14) / 12);
@@ -157,19 +228,33 @@ export default async function BlogCategoryPage({
   };
 
   return (
-    <BlogListPage
-      locale={locale}
-      banner={banner}
-      categories={categories}
-      featuredBlogs={featuredBlogs}
-      allBlogs={gridBlogs}
-      pagination={{
-        currentPage,
-        lastPage,
-        total: totalBlogs,
-      }}
-      currentCategoryId={activeCategoryId}
-      currentCategorySlug={categorySlug}
-    />
+    <>
+      <AlternateLinksUpdater
+        links={{
+          vi: {
+            pathname: "/blog/category/[category]",
+            params: { category: viCatSlug },
+          },
+          en: {
+            pathname: "/blog/category/[category]",
+            params: { category: enCatSlug },
+          },
+        }}
+      />
+      <BlogListPage
+        locale={locale}
+        banner={banner}
+        categories={categories}
+        featuredBlogs={featuredBlogs}
+        allBlogs={gridBlogs}
+        pagination={{
+          currentPage,
+          lastPage,
+          total: totalBlogs,
+        }}
+        currentCategoryId={activeCategoryId}
+        currentCategorySlug={locale === 'en' ? enCatSlug : viCatSlug}
+      />
+    </>
   );
 }

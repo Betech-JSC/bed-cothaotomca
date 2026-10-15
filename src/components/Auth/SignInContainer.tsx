@@ -7,6 +7,7 @@ import Image from "next/image";
 import AnimateOnScroll from "@/components/Animated/animated-appear";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "@/i18n/i18n-navigation";
+import { useLocale } from "next-intl";
 import { getSafeRedirectPath } from "@/lib/safeRedirect";
 
 // `redirect` là pathname nội bộ động (đã qua getSafeRedirectPath) nên cần ép kiểu
@@ -15,6 +16,7 @@ type RouterHref = Parameters<ReturnType<typeof useRouter>["push"]>[0];
 
 const SignInContainer = () => {
   const { user, loading } = useAuth();
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTarget = getSafeRedirectPath(searchParams?.get("redirect")) as RouterHref;
@@ -31,7 +33,7 @@ const SignInContainer = () => {
 
   if (loading || user) {
     return (
-      <div className="w-full min-h-[90vh] bg-yellow flex items-center justify-center">
+      <div className="w-full min-h-[calc(100vh-6.5rem)] bg-yellow flex items-center justify-center">
         <div className="animate-pulse text-primary font-bold text-lg">Loading...</div>
       </div>
     );
@@ -44,7 +46,7 @@ const SignInContainer = () => {
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/bg-login.jpg"
-          alt="Bữa ăn hải sản ấm cúng"
+          alt={locale === "en" ? "Co Thao Seafood" : "Bữa ăn hải sản ấm cúng"}
           fill
           className="object-cover object-center"
           priority

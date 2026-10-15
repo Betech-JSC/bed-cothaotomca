@@ -20,9 +20,13 @@ export async function generateMetadata({
   const isEn = locale === 'en';
   const meta = await getMetaPage('product', locale).catch(() => null);
 
-  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn';
+  const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('localhost:3000'))
+    ? process.env.NEXT_PUBLIC_BASE_URL
+    : 'https://cothaotomca.vn';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
-  const canonicalUrl = (isEn && meta?.canonical_url_en) || meta?.canonical_url || `${baseUrl}/${locale}/product`;
+  const viUrl = `${baseUrl}/san-pham`;
+  const enUrl = `${baseUrl}/en/product`;
+  const canonicalUrl = isEn ? enUrl : viUrl;
 
   const defaultTitle = isEn
     ? 'Products | Co Thao Tom Ca'
@@ -53,8 +57,9 @@ export async function generateMetadata({
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/product`,
-        en: `${baseUrl}/en/product`,
+        vi: viUrl,
+        en: enUrl,
+        'x-default': viUrl,
       },
     },
     openGraph: {
@@ -118,28 +123,19 @@ export default async function ProductPage({ params, searchParams }: Props) {
     ]);
 
     // Find IDs for ingredients to filter via API with robust multi-locale translation logic
-    const findIngredientId = (ingredients: Ingredient[], slug: string, lang: string) => {
-      return ingredients.find(ing => {
-        // 1. Match translated name slug
-        const translation = ing.translations?.find((t: any) => t.locale === lang) ||
-                            ing.translations?.find((t: any) => t.locale.startsWith(lang))
-        const name = translation?.name || ing.name
-        if (slugify(name) === slug) return true
-
-        // 2. Match raw ingredient name slug
-        if (slugify(ing.name) === slug) return true
-
-        // 3. Fallback match across any translation
-        if (ing.translations?.some((t: any) => slugify(t.name) === slug)) return true
-
-        return false
-      })?.id
+    const { getIngredientAliases } = await import('@/lib/productHelper');
+    const findIngredientId = (ingredients: Ingredient[], slug: string) => {
+      const normSlug = slugify(slug) || slug;
+      return ingredients.find(ing => getIngredientAliases(ing).includes(normSlug))?.id;
     }
 
-    const ingredientIds = selectedIngredients
-      .map(slug => findIngredientId(ingredientsData.data, slug, locale))
-      .filter(Boolean)
-      .join(',')
+    const ingredientIds = Array.from(
+      new Set(
+        selectedIngredients
+          .map(slug => findIngredientId(ingredientsData.data, slug))
+          .filter(Boolean)
+      )
+    ).join(',')
 
     const { getProductCatalog } = await import('@/services/productService');
     const fullCatalog = await getProductCatalog(locale);

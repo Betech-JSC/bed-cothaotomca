@@ -23,7 +23,7 @@ export async function GET() {
   }
 
   const productMarkdown = productsList.length > 0
-    ? productsList.map((p: any) => `- [${p.name}](${baseUrl}/san-pham/danh-muc/${p.slug}): ${p.description ? p.description.substring(0, 100).replace(/\n/g, ' ') + '...' : 'Sản phẩm tươi ngon cao cấp'}`).join('\n')
+    ? productsList.map((p: any) => `- [${p.name}](${baseUrl}/san-pham/${p.category?.slug || p.categories?.[0]?.slug || 'san-pham'}/${p.slug}): ${p.description ? p.description.substring(0, 100).replace(/\n/g, ' ') + '...' : 'Sản phẩm tươi ngon cao cấp'}`).join('\n')
     : '- [Cá Hồi Ngâm Tương Hàn Quốc](' + baseUrl + '/san-pham)\n- [Tôm Hùm & Hải Sản Tươi Live](' + baseUrl + '/san-pham)';
 
   const blogMarkdown = blogsList.length > 0

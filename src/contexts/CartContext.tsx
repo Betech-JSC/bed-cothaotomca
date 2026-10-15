@@ -132,6 +132,7 @@ export function checkItemOutOfStock(item: CartItem, cache: any[]): boolean {
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const cartItemsRef = React.useRef<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -143,13 +144,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
           const validItems = parsed.filter(
-            (item) => item && item.productId && typeof item.productId === "number"
+            (item) => item && item.productId !== undefined && item.productId !== null && !Number.isNaN(Number(item.productId))
           );
+          cartItemsRef.current = validItems;
           setCartItems(validItems);
           if (validItems.length !== parsed.length) {
             localStorage.setItem("cothaotomca_cart", JSON.stringify(validItems));
           }
         } else {
+          cartItemsRef.current = [];
           setCartItems([]);
         }
       }
@@ -162,6 +165,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   // Save cart to localStorage whenever it changes
   useEffect(() => {
     if (!isLoaded) return;
+    cartItemsRef.current = cartItems;
     try {
       localStorage.setItem("cothaotomca_cart", JSON.stringify(cartItems));
     } catch (e) {
@@ -364,29 +368,76 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addToCart = (item: Omit<CartItem, "quantity">, quantity = 1) => {
     const isOutOfStock = checkItemOutOfStock(item as CartItem, productsCache) || Boolean((item as any).isOutOfStock);
-    setCartItems((prev) => {
+    const computeNext = (prev: CartItem[]) => {
       const existing = prev.find((i) => i.id === item.id);
-      if (existing) {
-        return prev.map((i) =>
-          i.id === item.id ? { ...i, ...item, quantity: i.quantity + quantity, isOutOfStock } : i
-        );
-      }
-      return [...prev, { ...item, quantity, isOutOfStock }];
+      return existing
+        ? prev.map((i) =>
+            i.id === item.id ? { ...i, ...item, quantity: i.quantity + quantity, isOutOfStock } : i
+          )
+        : [...prev, { ...item, quantity, isOutOfStock }];
+    };
+    const syncNext = computeNext(cartItemsRef.current);
+    cartItemsRef.current = syncNext;
+    try {
+      if (typeof window !== "undefined") localStorage.setItem("cothaotomca_cart", JSON.stringify(syncNext));
+    } catch {}
+    setCartItems((prev) => {
+      const next = computeNext(prev);
+      cartItemsRef.current = next;
+      try {
+        if (typeof window !== "undefined") localStorage.setItem("cothaotomca_cart", JSON.stringify(next));
+      } catch {}
+      return next;
     });
   };
 
   const updateQuantity = (id: string, quantity: number) => {
-    setCartItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, quantity: Math.max(1, quantity) } : i))
-    );
+    const computeNext = (prev: CartItem[]) =>
+      prev.map((i) => (i.id === id ? { ...i, quantity: Math.max(1, quantity) } : i));
+    const syncNext = computeNext(cartItemsRef.current);
+    cartItemsRef.current = syncNext;
+    try {
+      if (typeof window !== "undefined") localStorage.setItem("cothaotomca_cart", JSON.stringify(syncNext));
+    } catch {}
+    setCartItems((prev) => {
+      const next = computeNext(prev);
+      cartItemsRef.current = next;
+      try {
+        if (typeof window !== "undefined") localStorage.setItem("cothaotomca_cart", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   };
 
   const removeFromCart = (id: string) => {
-    setCartItems((prev) => prev.filter((i) => i.id !== id));
+    const computeNext = (prev: CartItem[]) => prev.filter((i) => i.id !== id);
+    const syncNext = computeNext(cartItemsRef.current);
+    cartItemsRef.current = syncNext;
+    try {
+      if (typeof window !== "undefined") localStorage.setItem("cothaotomca_cart", JSON.stringify(syncNext));
+    } catch {}
+    setCartItems((prev) => {
+      const next = computeNext(prev);
+      cartItemsRef.current = next;
+      try {
+        if (typeof window !== "undefined") localStorage.setItem("cothaotomca_cart", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   };
 
   const clearCart = () => {
-    setCartItems([]);
+    cartItemsRef.current = [];
+    try {
+      if (typeof window !== "undefined") localStorage.setItem("cothaotomca_cart", "[]");
+    } catch {}
+    setCartItems(() => {
+      cartItemsRef.current = [];
+      try {
+        if (typeof window !== "undefined") localStorage.setItem("cothaotomca_cart", "[]");
+      } catch {}
+      return [];
+    });
   };
 
   const restoreCampaignItemsToOriginalPrice = (blockedProductIds?: number[]) => {
@@ -395,7 +446,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         ? new Set(blockedProductIds.map((id) => Number(id)).filter((id) => id > 0))
         : null;
 
-    setCartItems((prev) =>
+    const computeNext = (prev: CartItem[]) =>
       prev.map((item) => {
         const isDiscounted = Boolean(item.originalPrice && item.originalPrice > item.unitPrice);
         if (!isDiscounted) return item;
@@ -427,8 +478,22 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           originalPrice: restoredPrice,
           excludeCampaignPrice: true,
         };
-      })
-    );
+      });
+
+    const syncNext = computeNext(cartItemsRef.current);
+    cartItemsRef.current = syncNext;
+    try {
+      if (typeof window !== "undefined") localStorage.setItem("cothaotomca_cart", JSON.stringify(syncNext));
+    } catch {}
+
+    setCartItems((prev) => {
+      const next = computeNext(prev);
+      cartItemsRef.current = next;
+      try {
+        if (typeof window !== "undefined") localStorage.setItem("cothaotomca_cart", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   };
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);

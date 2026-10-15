@@ -67,7 +67,21 @@ yarn-error.log*
 
 config.bat
 
-# Local IDE settings
+# Local IDE & AI plugin settings
 .vscode/
+.claude/
+.cursor/
+.codex/
+.gemini/
+.kiro/
+.windsurf/
+.aider*
+.continue/
+.roo/
+.cline/
+graphify-out/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
 e2e/evidence/
 scratch/

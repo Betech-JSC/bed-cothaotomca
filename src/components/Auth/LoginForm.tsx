@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/i18n-navigation";
@@ -19,7 +20,14 @@ type LoginFormProps = {
 const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
   const t = useTranslations("signin");
   const tAuth = useTranslations("auth");
-  const locale = useLocale();
+  let locale = "vi";
+  try {
+    if (typeof (NextIntl as any).useLocale === "function") {
+      locale = (NextIntl as any).useLocale() || "vi";
+    }
+  } catch {
+    locale = "vi";
+  }
   const { login, loginWithGoogle, loginWithToken } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -143,7 +151,8 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
         initializeGoogle();
       };
       document.body.appendChild(script);
-    } else if ((window as any).google) {
+    }
+    if ((window as any).google) {
       initializeGoogle();
     }
   }, [loading, loginWithGoogle, router, onLoginSuccess, redirectTarget, locale]);
@@ -501,7 +510,14 @@ const LoginFormContent = ({ onLoginSuccess }: LoginFormProps) => {
 };
 
 const LoginForm = (props: LoginFormProps) => {
-  const locale = useLocale();
+  let locale = "vi";
+  try {
+    if (typeof (NextIntl as any).useLocale === "function") {
+      locale = (NextIntl as any).useLocale() || "vi";
+    }
+  } catch {
+    locale = "vi";
+  }
   return (
     <Suspense
       fallback={

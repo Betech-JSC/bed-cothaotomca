@@ -1,13 +1,18 @@
 import React from "react";
 import Image from "next/image";
-import { formatPrice, formatImageUrl } from "@/lib/format";
-import { useTranslations } from "next-intl";
+import { formatPrice, formatImageUrl, isDefaultVariant, cleanVariantName } from "@/lib/format";
+import { useTranslations, useLocale } from "next-intl";
 
 export interface GiftItem {
   id: number;
   product_id: number;
   product_code?: string;
   product_name: string;
+  product_name_en?: string | null;
+  product_name_vi?: string | null;
+  variant_name?: string | null;
+  variant_name_en?: string | null;
+  variant_name_vi?: string | null;
   original_price: number;
   campaign_price: number;
   image?: string;
@@ -37,6 +42,12 @@ export default function GiftSelectorModal({
   onSelect,
 }: GiftSelectorModalProps) {
   const t = useTranslations("gift_selector");
+  let locale = "vi";
+  try {
+    locale = useLocale() || "vi";
+  } catch {
+    locale = "vi";
+  }
   const modalTitle = title || t("default_title");
 
   if (!isOpen) return null;
@@ -90,6 +101,10 @@ export default function GiftSelectorModal({
               const isSelected = selectedId === item.id;
               const isFree = item.campaign_price === 0;
               const isDisabled = item.is_available === false || item.disabled === true;
+              const displayProductName =
+                locale === "en" && item.product_name_en ? item.product_name_en : item.product_name;
+              const displayVariantName =
+                locale === "en" && item.variant_name_en ? item.variant_name_en : item.variant_name;
 
               return (
                 <div
@@ -127,7 +142,7 @@ export default function GiftSelectorModal({
                     {item.image ? (
                       <Image
                         src={formatImageUrl(item.image) || "/cover.jpg"}
-                        alt={item.product_name}
+                        alt={displayProductName}
                         fill
                         className="object-cover"
                         unoptimized
@@ -147,8 +162,13 @@ export default function GiftSelectorModal({
                         isDisabled ? "text-gray-500" : isSelected ? "text-secondary" : "text-primary"
                       }`}
                     >
-                      {item.product_name}
+                      {displayProductName}
                     </h4>
+                    {displayVariantName && !isDefaultVariant(displayVariantName) && (
+                      <p className="body-3 font-sans text-gray-500 line-clamp-1">
+                        {cleanVariantName(displayVariantName)}
+                      </p>
+                    )}
 
                     <div className="flex items-center gap-2 mt-0.5">
                       {item.original_price > 0 && (

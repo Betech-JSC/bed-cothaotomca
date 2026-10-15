@@ -3520,7 +3520,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     <div className="relative size-14 2xl:size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-secondary/20">
                       <Image
                         src={formatImageUrl(selectedOrderGiftItem.image)}
-                        alt={selectedOrderGiftItem.product_name}
+                        alt={
+                          locale === "en" && selectedOrderGiftItem.product_name_en
+                            ? selectedOrderGiftItem.product_name_en
+                            : selectedOrderGiftItem.product_name
+                        }
                         fill
                         className="object-cover"
                         unoptimized
@@ -3533,9 +3537,24 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   )}
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex justify-between items-start gap-2">
-                      <p className="title-3 font-display text-gray-900 font-bold line-clamp-2">
-                        {selectedOrderGiftItem.product_name}
-                      </p>
+                      <div>
+                        <p className="title-3 font-display text-gray-900 font-bold line-clamp-2">
+                          {locale === "en" && selectedOrderGiftItem.product_name_en
+                            ? selectedOrderGiftItem.product_name_en
+                            : selectedOrderGiftItem.product_name}
+                        </p>
+                        {(() => {
+                          const giftVar =
+                            locale === "en" && selectedOrderGiftItem.variant_name_en
+                              ? selectedOrderGiftItem.variant_name_en
+                              : selectedOrderGiftItem.variant_name;
+                          return giftVar && !isDefaultVariant(giftVar) ? (
+                            <p className="text-xs text-gray-500 font-medium truncate">
+                              {cleanVariantName(giftVar)}
+                            </p>
+                          ) : null;
+                        })()}
+                      </div>
                       <div className="text-right shrink-0">
                         {selectedOrderGiftItem.original_price > 0 && (
                           <span className="text-xs text-gray-400 line-through block">
@@ -3575,7 +3594,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     <div className="relative size-14 2xl:size-16 flex-shrink-0 rounded-[10px] overflow-hidden bg-white border border-primary/20">
                       <Image
                         src={formatImageUrl(item.image)}
-                        alt={item.product_name}
+                        alt={locale === "en" && item.product_name_en ? item.product_name_en : item.product_name}
                         fill
                         className="object-cover"
                         unoptimized
@@ -3588,9 +3607,22 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                   )}
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex justify-between items-start gap-2">
-                      <p className="title-3 font-display text-gray-900 font-bold line-clamp-2">
-                        {item.product_name}
-                      </p>
+                      <div>
+                        <p className="title-3 font-display text-gray-900 font-bold line-clamp-2">
+                          {locale === "en" && item.product_name_en ? item.product_name_en : item.product_name}
+                        </p>
+                        {(() => {
+                          const giftVar =
+                            locale === "en" && item.variant_name_en
+                              ? item.variant_name_en
+                              : item.variant_name;
+                          return giftVar && !isDefaultVariant(giftVar) ? (
+                            <p className="text-xs text-gray-500 font-medium truncate">
+                              {cleanVariantName(giftVar)}
+                            </p>
+                          ) : null;
+                        })()}
+                      </div>
                       <div className="text-right shrink-0">
                         {item.original_price > 0 && (
                           <span className="text-xs text-gray-400 line-through block">
@@ -3626,78 +3658,91 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
 
             {/* Shopee-style Voucher Ticket Bar */}
-            <div className="border-t border-gray-100 pt-4 space-y-2">
-              <VoucherTicketBar
-                appliedVoucher={appliedVoucher}
-                appliedShippingVoucher={appliedShippingVoucher}
-                activeCampaignName={appliedVoucher?.canCombineWithPromotions === false ? undefined : (cartCampaignG1?.name || eligibleOrderGiftPromo?.name || eligibleBuyXGetYPromos[0]?.name || eligibleOrderDiscountPromo?.name)}
-                memberTierName={memberTier.name}
-                memberDiscountAmount={memberDiscount}
-                memberDiscountPercent={memberTier.discountPercent}
-                isMemberApplied={memberDiscount > 0 && !isMemberExcludedByPromotions}
-                onClick={() => setIsVoucherModalOpen(true)}
-                onRemove={handleRemovePromotionFromBar}
-              />
-              {/* Direct voucher input for fast entry & compatibility */}
-              <div className="hidden" data-testid="direct-voucher-input-wrapper">
-                <input
-                  type="text"
-                  value={voucherCode}
-                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (!appliedVoucher && !validatingVoucher && voucherCode.trim()) {
-                        handleApplyVoucher();
-                      }
-                    }
-                  }}
-                  readOnly={Boolean(appliedVoucher || appliedShippingVoucher)}
-                  disabled={validatingVoucher}
-                  placeholder={t("voucher_input_placeholder")}
+            {(!isCartCheckout || (isLoaded !== false && cartItems.length > 0)) && subtotal > 0 && (
+              <div className="border-t border-gray-100 pt-4 space-y-2">
+                <VoucherTicketBar
+                  appliedVoucher={appliedVoucher}
+                  appliedShippingVoucher={appliedShippingVoucher}
+                  activeCampaignName={
+                    appliedVoucher?.canCombineWithPromotions === false
+                      ? undefined
+                      : (() => {
+                          const p: any =
+                            cartCampaignG1 ||
+                            eligibleOrderGiftPromo ||
+                            eligibleBuyXGetYPromos[0] ||
+                            eligibleOrderDiscountPromo;
+                          return p ? (locale === "en" && p.name_en ? p.name_en : p.name) : undefined;
+                        })()
+                  }
+                  memberTierName={memberTier.name}
+                  memberDiscountAmount={memberDiscount}
+                  memberDiscountPercent={memberTier.discountPercent}
+                  isMemberApplied={memberDiscount > 0 && !isMemberExcludedByPromotions}
+                  onClick={() => setIsVoucherModalOpen(true)}
+                  onRemove={handleRemovePromotionFromBar}
                 />
-                {appliedVoucher || appliedShippingVoucher ? (
-                  <button
-                    type="button"
-                    onClick={handleRemoveVoucher}
-                    className="bg-red-50 text-red-600 hover:bg-red-100 font-bold"
-                  >
-                    {t("remove_voucher")}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleApplyVoucher()}
-                    disabled={validatingVoucher || !voucherCode.trim()}
-                    className="bg-primary hover:bg-primary/95 text-white font-bold"
-                  >
-                    {validatingVoucher ? t("checking_voucher") : t("apply_voucher")}
-                  </button>
-                )}
-                {voucherSuccess && <span>{voucherSuccess}</span>}
-              </div>
-              {voucherError && (
-                <p className="text-xs text-red-600 font-semibold px-2">{voucherError}</p>
-              )}
-              {bestDealNotice && (
-                <p className="text-xs text-secondary font-semibold px-2">{bestDealNotice}</p>
-              )}
-              {appliedVoucher && promotionMatrixVoucherNotice && (
-                <div className="text-xs text-secondary font-semibold px-2 space-y-0.5 animate-fade-in">
-                  <p className="flex items-center gap-1.5">
-                    <span>{promotionMatrixVoucherNotice}</span>
-                  </p>
-                  {appliedVoucher?.prereqPrice ? (
-                    <p className="text-[11px] text-gray-500 font-normal">
-                      {t("voucher_prereq_note", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })}
-                    </p>
-                  ) : null}
+                {/* Direct voucher input for fast entry & compatibility */}
+                <div className="hidden" data-testid="direct-voucher-input-wrapper">
+                  <input
+                    type="text"
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (!appliedVoucher && !validatingVoucher && voucherCode.trim()) {
+                          handleApplyVoucher();
+                        }
+                      }
+                    }}
+                    readOnly={Boolean(appliedVoucher || appliedShippingVoucher)}
+                    disabled={validatingVoucher}
+                    placeholder={t("voucher_input_placeholder")}
+                  />
+                  {appliedVoucher || appliedShippingVoucher ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveVoucher}
+                      className="bg-red-50 text-red-600 hover:bg-red-100 font-bold"
+                    >
+                      {t("remove_voucher")}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleApplyVoucher()}
+                      disabled={validatingVoucher || !voucherCode.trim()}
+                      className="bg-primary hover:bg-primary/95 text-white font-bold"
+                    >
+                      {validatingVoucher ? t("checking_voucher") : t("apply_voucher")}
+                    </button>
+                  )}
+                  {voucherSuccess && <span>{voucherSuccess}</span>}
                 </div>
-              )}
-            </div>
+                {voucherError && (
+                  <p className="text-xs text-red-600 font-semibold px-2">{voucherError}</p>
+                )}
+                {bestDealNotice && (
+                  <p className="text-xs text-secondary font-semibold px-2">{bestDealNotice}</p>
+                )}
+                {appliedVoucher && promotionMatrixVoucherNotice && (
+                  <div className="text-xs text-secondary font-semibold px-2 space-y-0.5 animate-fade-in">
+                    <p className="flex items-center gap-1.5">
+                      <span>{promotionMatrixVoucherNotice}</span>
+                    </p>
+                    {appliedVoucher?.prereqPrice ? (
+                      <p className="text-[11px] text-gray-500 font-normal">
+                        {t("voucher_prereq_note", { amount: appliedVoucher.prereqPrice.toLocaleString("vi-VN") })}
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Smart Cart Progress Bar (Thanh tiến độ thông minh) */}
-            {deliveryType !== "pickup" && (deliveryType as string) !== "takeaway" && shippingSettings?.is_min_amount_enabled && subtotal > 0 && (
+            {(!isCartCheckout || (isLoaded !== false && cartItems.length > 0)) && deliveryType !== "pickup" && (deliveryType as string) !== "takeaway" && shippingSettings?.is_min_amount_enabled && subtotal > 0 && (
               <SmartCartProgressBar
                 subtotal={subtotal}
                 shippingSettings={shippingSettings}
@@ -3887,7 +3932,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               <div className="flex justify-between items-center border-t border-gray-200/80 pt-3 gap-2">
                 <span className="text-gray-900 font-bold text-sm 2xl:text-base flex-1 min-w-0">{t("total")}</span>
                 <span className="text-xl 2xl:text-2xl font-display text-secondary font-extrabold shrink-0 whitespace-nowrap text-right tracking-tight">
-                  {formatOrderPrice(total)}
+                  {isCartCheckout && isLoaded === false ? (
+                    <span data-testid="checkout-total-skeleton" className="inline-block h-7 w-28 bg-gray-200 rounded animate-pulse align-middle" />
+                  ) : (
+                    formatOrderPrice(total)
+                  )}
                 </span>
               </div>
             </div>
@@ -4011,7 +4060,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           isOpen={isOrderGiftModalOpen}
           onClose={() => setIsOrderGiftModalOpen(false)}
           title={t("order_gift_tag")}
-          subtitle={t("campaign_subtitle", { name: eligibleOrderGiftPromo.name })}
+          subtitle={t("campaign_subtitle", {
+            name:
+              locale === "en" && eligibleOrderGiftPromo.name_en
+                ? eligibleOrderGiftPromo.name_en
+                : eligibleOrderGiftPromo.name,
+          })}
           items={getBuyXGetYGiftOnlyItems(eligibleOrderGiftPromo)}
           selectedId={selectedOrderGiftId}
           onSelect={(item) => {
@@ -4028,7 +4082,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             isOpen={!!selectedBuyXGetYPromoForModal}
             onClose={() => setSelectedBuyXGetYPromoForModal(null)}
             title={t("combo_tag")}
-            subtitle={t("campaign_subtitle", { name: selectedBuyXGetYPromoForModal.name })}
+            subtitle={t("campaign_subtitle", {
+              name:
+                locale === "en" && selectedBuyXGetYPromoForModal.name_en
+                  ? selectedBuyXGetYPromoForModal.name_en
+                  : selectedBuyXGetYPromoForModal.name,
+            })}
             items={giftOnlyItems}
             selectedId={selectedBuyXGetYMap[selectedBuyXGetYPromoForModal.id] || giftOnlyItems.find((i) => i.is_available !== false)?.id || null}
             onSelect={(item) => {

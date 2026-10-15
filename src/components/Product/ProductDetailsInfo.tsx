@@ -35,8 +35,8 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
 
     addToCart({
       id: `${productData.checkout.slug}-${selectedSize.title}`,
-      productId: selectedSize.id ?? productData.checkout.productId,
-      productCode: selectedSize.code ?? productData.checkout.productCode,
+      productId: Number(selectedSize.id ?? productData.checkout.productId),
+      productCode: selectedSize.code || productData.checkout.productCode,
       slug: productData.checkout.slug,
       categorySlug: productData.checkout.categorySlug,
       title: productData.title,

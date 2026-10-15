@@ -599,8 +599,11 @@ export interface ShippingSettings {
   default_shipping_fee: number;
   unconfigured_area_action: string;
   card_title?: string | null;
+  card_title_en?: string | null;
   card_badge?: string | null;
+  card_badge_en?: string | null;
   card_description?: string | null;
+  card_description_en?: string | null;
   card_banner?: string | null;
 }
 
@@ -615,25 +618,9 @@ export async function getShippingSettings(locale: string = "vi"): Promise<Shippi
     const json = await res.json();
     const data = json.data as ShippingSettings;
     if (data && locale === "en") {
-      const viRegex = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]|Giảm|Đơn từ|Mã chương trình|phí vận chuyển|Áp dụng/i;
-      const isUntranslatedVi = (str?: string | null) => !str || viRegex.test(str);
-      const minAmount = Number(data.min_order_amount || 400000);
-      const discountVal = Number(data.shipping_discount_value || 20000);
-      const minK = Math.round(minAmount / 1000);
-      const discountK = Math.round(discountVal / 1000);
-
-      if (data.card_title && isUntranslatedVi(data.card_title)) {
-        data.card_title =
-          data.shipping_discount_type === "free"
-            ? `Free Shipping For Orders From ${minK}K`
-            : `${discountK}K Off Shipping For Orders From ${minK}K`;
-      }
-      if (isUntranslatedVi(data.card_badge)) {
-        data.card_badge = "Applicable to all eligible orders";
-      }
-      if (isUntranslatedVi(data.card_description)) {
-        data.card_description = `- Program code: K026-001\n- Offer: Direct ${discountVal.toLocaleString("en-US")} VND discount on shipping fee.\n- Condition: Applicable for orders from ${minAmount.toLocaleString("en-US")} VND.`;
-      }
+      if (data.card_title_en) data.card_title = data.card_title_en;
+      if (data.card_badge_en) data.card_badge = data.card_badge_en;
+      if (data.card_description_en) data.card_description = data.card_description_en;
     }
     return data;
   } catch (err: unknown) {
@@ -645,8 +632,11 @@ export async function getShippingSettings(locale: string = "vi"): Promise<Shippi
 
 export interface LoyaltyTierCardInfo {
   title?: string;
+  title_en?: string;
   badge?: string;
+  badge_en?: string;
   description?: string;
+  description_en?: string;
   banner?: string;
   banner_url?: string;
   discount_percent?: number;
@@ -661,13 +651,19 @@ export interface LoyaltySettings {
   gold_upgrade_discount_percent: number;
   diamond_upgrade_discount_percent: number;
   gold_card_title?: string;
+  gold_card_title_en?: string;
   gold_card_badge?: string;
+  gold_card_badge_en?: string;
   gold_card_description?: string;
+  gold_card_description_en?: string;
   gold_card_banner?: string;
   gold_card_banner_url?: string;
   diamond_card_title?: string;
+  diamond_card_title_en?: string;
   diamond_card_badge?: string;
+  diamond_card_badge_en?: string;
   diamond_card_description?: string;
+  diamond_card_description_en?: string;
   diamond_card_banner?: string;
   diamond_card_banner_url?: string;
   gold_card?: LoyaltyTierCardInfo;
@@ -698,10 +694,19 @@ export async function getLoyaltySettings(locale: string = "vi"): Promise<Loyalty
 
     const json = await res.json();
     if (json && json.success && json.data) {
+      const data = { ...json.data };
+      if (locale === "en") {
+        if (data.gold_card_title_en) data.gold_card_title = data.gold_card_title_en;
+        if (data.gold_card_badge_en) data.gold_card_badge = data.gold_card_badge_en;
+        if (data.gold_card_description_en) data.gold_card_description = data.gold_card_description_en;
+        if (data.diamond_card_title_en) data.diamond_card_title = data.diamond_card_title_en;
+        if (data.diamond_card_badge_en) data.diamond_card_badge = data.diamond_card_badge_en;
+        if (data.diamond_card_description_en) data.diamond_card_description = data.diamond_card_description_en;
+      }
       return {
         ...DEFAULT_LOYALTY_SETTINGS,
-        ...json.data,
-        can_combine_with_promotions: Boolean(json.data.can_combine_with_promotions),
+        ...data,
+        can_combine_with_promotions: Boolean(data.can_combine_with_promotions),
       };
     }
     return DEFAULT_LOYALTY_SETTINGS;
