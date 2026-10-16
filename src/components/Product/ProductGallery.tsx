@@ -78,12 +78,13 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title }) =
   return (
     <div className="w-full space-y-4">
       {/* 1. Khung Ảnh Chính (Main Image View) với Slider Track trượt mượt mà */}
-      <div
-        className="relative w-full aspect-square rounded-[20px] md:rounded-[24px] overflow-hidden border border-gray-200/90 bg-white shadow-sm select-none group"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
+      <div className="relative w-full">
+        <div
+          className="relative w-full aspect-square rounded-[20px] md:rounded-[24px] overflow-hidden border border-gray-200/90 bg-white shadow-sm select-none group"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
         {/* Slider Track (Băng trượt ảnh mượt bằng GPU hardware acceleration) */}
         <div
           className="flex w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] will-change-transform"
@@ -105,14 +106,22 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title }) =
           ))}
         </div>
 
-        {/* Nút điều hướng bấm qua lại */}
+          {/* Badge đếm số lượng ảnh */}
+          {safeImages.length > 1 && (
+            <div className="absolute bottom-3 right-3 md:bottom-4 md:right-4 z-10 px-2.5 py-1 rounded-full bg-primary/80 text-yellow text-xs font-medium tracking-wide backdrop-blur-md shadow-sm pointer-events-none">
+              {activeIndex + 1} / {safeImages.length}
+            </div>
+          )}
+        </div>
+
+        {/* Nút điều hướng bấm qua lại nằm ngay trên đường rìa (viền) trái/phải của khung ảnh */}
         {safeImages.length > 1 && (
           <>
             <button
               type="button"
               onClick={handlePrev}
               aria-label={isEn ? 'Previous image' : 'Ảnh trước'}
-              className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 z-10 size-10 md:size-12 rounded-full bg-white/95 text-primary border border-gray-200/80 shadow-md backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-primary hover:text-yellow hover:border-primary active:scale-90 cursor-pointer focus:outline-none opacity-90 hover:opacity-100"
+              className="absolute -left-3 sm:-left-4 md:-left-5 lg:-left-5 xl:-left-6 top-1/2 -translate-y-1/2 z-10 size-9 sm:size-10 md:size-11 lg:size-11 xl:size-12 rounded-full bg-white/95 text-primary border border-gray-200/80 shadow-md backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-primary hover:text-yellow hover:border-primary active:scale-90 cursor-pointer focus:outline-none opacity-95 hover:opacity-100"
             >
               <div className="rotate-90">
                 <Chevron />
@@ -123,17 +132,12 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ images = [], title }) =
               type="button"
               onClick={handleNext}
               aria-label={isEn ? 'Next image' : 'Ảnh tiếp theo'}
-              className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 z-10 size-10 md:size-12 rounded-full bg-white/95 text-primary border border-gray-200/80 shadow-md backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-primary hover:text-yellow hover:border-primary active:scale-90 cursor-pointer focus:outline-none opacity-90 hover:opacity-100"
+              className="absolute -right-3 sm:-right-4 md:-right-5 lg:-right-5 xl:-right-6 top-1/2 -translate-y-1/2 z-10 size-9 sm:size-10 md:size-11 lg:size-11 xl:size-12 rounded-full bg-white/95 text-primary border border-gray-200/80 shadow-md backdrop-blur-sm flex items-center justify-center transition-all duration-300 hover:bg-primary hover:text-yellow hover:border-primary active:scale-90 cursor-pointer focus:outline-none opacity-95 hover:opacity-100"
             >
               <div className="-rotate-90">
                 <Chevron />
               </div>
             </button>
-
-            {/* Badge đếm số lượng ảnh */}
-            <div className="absolute bottom-3 right-3 md:bottom-4 md:right-4 z-10 px-2.5 py-1 rounded-full bg-primary/80 text-yellow text-xs font-medium tracking-wide backdrop-blur-md shadow-sm pointer-events-none">
-              {activeIndex + 1} / {safeImages.length}
-            </div>
           </>
         )}
       </div>

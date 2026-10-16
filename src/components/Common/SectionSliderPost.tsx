@@ -65,13 +65,13 @@ const SectionSliderPost: React.FC<SectionSliderPostProps> = ({ items, classCusto
               </SwiperSlide>
             ))}
 
-            {/* Custom Navigation Buttons */}
-            <button aria-label={t("common.previous") || "Trước"} className="swiper-btn-prev absolute left-2 xl:left-4 top-[117px] z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
+            {/* Căn tâm dọc theo đúng khung ảnh (bù trừ chiều cao tiêu đề bên dưới) và tách nút ra ngoài mép ảnh */}
+            <button aria-label={t("common.previous") || "Trước"} className="swiper-btn-prev absolute left-2 sm:left-3 md:-left-6 lg:-left-9 xl:-left-14 2xl:-left-16 top-[calc(50%-20px)] md:top-[calc(50%-22px)] lg:top-[calc(50%-26px)] -translate-y-1/2 z-10 size-10 md:size-11 lg:size-12 xl:size-[52px] rounded-full bg-white shadow-lg flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
               <div>
                 <Arrow />
               </div>
             </button>
-            <button aria-label={t("common.next") || "Tiếp theo"} className="swiper-btn-next absolute right-2 xl:right-4 top-[117px] z-10 size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
+            <button aria-label={t("common.next") || "Tiếp theo"} className="swiper-btn-next absolute right-2 sm:right-3 md:-right-6 lg:-right-9 xl:-right-14 2xl:-right-16 top-[calc(50%-20px)] md:top-[calc(50%-22px)] lg:top-[calc(50%-26px)] -translate-y-1/2 z-10 size-10 md:size-11 lg:size-12 xl:size-[52px] rounded-full bg-white shadow-lg flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
               <div className="-rotate-180">
                 <Arrow />
               </div>
