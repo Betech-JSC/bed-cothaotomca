@@ -23,32 +23,31 @@ vi.mock("@/components/Card/CardProduct", () => ({ default: ({ item }: any) => <d
 vi.mock("@/components/Card/CardBlog", () => ({ default: ({ item }: any) => <div>{item.title}</div> }));
 
 describe("Carousel Navigation Position & Responsive", () => {
-  it("centers SectionHotProduct navigation buttons vertically and hugs cards across breakpoints", () => {
+  it("centers SectionHotProduct navigation buttons vertically, hides on mobile, and keeps 16px gap from scale-90 cards", () => {
     const items = [{ id: 1, title: "SP 1" }, { id: 2, title: "SP 2" }];
     const { container } = render(<SectionHotProduct products={items} />);
     const prevBtn = container.querySelector(".swiper-btn-prev") as HTMLElement;
     const nextBtn = container.querySelector(".swiper-btn-next") as HTMLElement;
+    expect(prevBtn.className).toContain("hidden");
+    expect(prevBtn.className).toContain("md:flex");
     expect(prevBtn.className).toContain("top-1/2");
-    expect(prevBtn.className).toContain("-translate-y-1/2");
-    expect(prevBtn.className).toContain("flex");
-    expect(prevBtn.className).not.toContain("top-[117px]");
-    expect(prevBtn.className).not.toContain("hidden");
-    expect(nextBtn.className).toContain("top-1/2");
-    expect(nextBtn.className).toContain("-translate-y-1/2");
+    expect(prevBtn.className).toContain("2xl:-left-[50px]");
+    expect(nextBtn.className).toContain("hidden");
+    expect(nextBtn.className).toContain("2xl:-right-[50px]");
   });
 
-  it("centers SectionSliderPost navigation buttons on image box and moves them outside cards on lg/xl+", () => {
+  it("centers SectionSliderPost navigation buttons on image box, hides on mobile, and keeps 16px subject gap", () => {
     const posts = [{ title: "Post 1", slug: "p1" }, { title: "Post 2", slug: "p2" }];
     const { container } = render(<SectionSliderPost items={posts} />);
     const prevBtn = container.querySelector(".swiper-btn-prev") as HTMLElement;
     const nextBtn = container.querySelector(".swiper-btn-next") as HTMLElement;
-    expect(prevBtn.className).toContain("top-[calc(50%-20px)]");
+    expect(prevBtn.className).toContain("hidden");
+    expect(prevBtn.className).toContain("md:flex");
+    expect(prevBtn.className).toContain("md:top-[calc(50%-22px)]");
     expect(prevBtn.className).toContain("lg:top-[calc(50%-26px)]");
-    expect(prevBtn.className).toContain("-translate-y-1/2");
-    expect(prevBtn.className).toContain("xl:-left-14");
-    expect(nextBtn.className).toContain("lg:top-[calc(50%-26px)]");
-    expect(nextBtn.className).toContain("-translate-y-1/2");
-    expect(nextBtn.className).toContain("xl:-right-14");
+    expect(prevBtn.className).toContain("2xl:-left-[68px]");
+    expect(nextBtn.className).toContain("hidden");
+    expect(nextBtn.className).toContain("2xl:-right-[68px]");
   });
 
   it("places ProductGallery navigation buttons on the outer edge of the main image frame without clipping", () => {
@@ -66,20 +65,20 @@ describe("Carousel Navigation Position & Responsive", () => {
     expect(prevBtn.parentElement?.className).not.toContain("overflow-hidden");
   });
 
-  it("centers SliderProductRelated navigation buttons vertically and positions them on the outer edge", () => {
+  it("centers SliderProductRelated navigation buttons vertically, hides on mobile, and keeps 16px subject gap", () => {
     const items = [{ id: 1, title: "SP 1" }, { id: 2, title: "SP 2" }];
     const { container } = render(<SliderProductRelated products={items} />);
     const prevBtn = container.querySelector(".swiper-btn-prev") as HTMLElement;
     const nextBtn = container.querySelector(".swiper-btn-next") as HTMLElement;
+    expect(prevBtn.className).toContain("hidden");
+    expect(prevBtn.className).toContain("md:flex");
     expect(prevBtn.className).toContain("top-1/2");
-    expect(prevBtn.className).toContain("-translate-y-1/2");
-    expect(prevBtn.className).toContain("xl:-left-14");
-    expect(prevBtn.className).not.toContain("top-[117px]");
-    expect(nextBtn.className).toContain("top-1/2");
-    expect(nextBtn.className).toContain("xl:-right-14");
+    expect(prevBtn.className).toContain("2xl:-left-[68px]");
+    expect(nextBtn.className).toContain("hidden");
+    expect(nextBtn.className).toContain("2xl:-right-[68px]");
   });
 
-  it("centers SectionRelatedPosts navigation buttons on the image box and positions them on the outer edge", () => {
+  it("centers SectionRelatedPosts navigation buttons on the image box, hides on mobile, and keeps 16px subject gap", () => {
     const items = [
       { image: { url: "/1.jpg" }, title: "B1", slug: "b1", category: { title: "C", slug: "c" } },
       { image: { url: "/2.jpg" }, title: "B2", slug: "b2", category: { title: "C", slug: "c" } },
@@ -87,10 +86,11 @@ describe("Carousel Navigation Position & Responsive", () => {
     const { container } = render(<SectionRelatedPosts items={items} />);
     const prevBtn = container.querySelector(".swiper-related-btn-prev") as HTMLElement;
     const nextBtn = container.querySelector(".swiper-related-btn-next") as HTMLElement;
-    expect(prevBtn.className).toContain("top-[calc(50%-20px)]");
-    expect(prevBtn.className).toContain("-translate-y-1/2");
-    expect(prevBtn.className).toContain("xl:-left-14");
-    expect(prevBtn.className).not.toContain("top-[100px]");
-    expect(nextBtn.className).toContain("xl:-right-14");
+    expect(prevBtn.className).toContain("hidden");
+    expect(prevBtn.className).toContain("md:flex");
+    expect(prevBtn.className).toContain("md:top-[calc(50%-22px)]");
+    expect(prevBtn.className).toContain("2xl:-left-[68px]");
+    expect(nextBtn.className).toContain("hidden");
+    expect(nextBtn.className).toContain("2xl:-right-[68px]");
   });
 });

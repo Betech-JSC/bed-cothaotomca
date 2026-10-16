@@ -77,13 +77,13 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
                 </SwiperSlide>
               ))}
 
-              {/* Căn giữa dọc (top-1/2 -translate-y-1/2) và thu sát ngang vì slide hai bên đã scale-90 */}
-              <button aria-label={t("common.previous") || "Trước"} className="swiper-btn-prev absolute left-2 sm:left-3 md:left-0 lg:-left-1 xl:-left-2 2xl:-left-4 top-1/2 -translate-y-1/2 z-10 size-10 md:size-11 lg:size-12 xl:size-[3.25rem] rounded-full bg-white shadow-lg flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
+              {/* Ẩn dưới mobile để user tự lướt; từ md+ căn giữa dọc và cách thẻ scale-90 đúng 16px */}
+              <button aria-label={t("common.previous") || "Trước"} className="swiper-btn-prev absolute md:-left-5 lg:-left-9 xl:-left-[46px] 2xl:-left-[50px] top-1/2 -translate-y-1/2 z-10 md:size-10 lg:size-11 xl:size-12 2xl:size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
                 <div>
                   <Arrow />
                 </div>
               </button>
-              <button aria-label={t("common.next") || "Tiếp theo"} className="swiper-btn-next absolute right-2 sm:right-3 md:right-0 lg:-right-1 xl:-right-2 2xl:-right-4 top-1/2 -translate-y-1/2 z-10 size-10 md:size-11 lg:size-12 xl:size-[3.25rem] rounded-full bg-white shadow-lg flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
+              <button aria-label={t("common.next") || "Tiếp theo"} className="swiper-btn-next absolute md:-right-5 lg:-right-9 xl:-right-[46px] 2xl:-right-[50px] top-1/2 -translate-y-1/2 z-10 md:size-10 lg:size-11 xl:size-12 2xl:size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
                 <div className="-rotate-180">
                   <Arrow />
                 </div>

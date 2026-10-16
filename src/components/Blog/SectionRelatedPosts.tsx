@@ -112,10 +112,10 @@ const SectionRelatedPosts: React.FC<SectionRelatedPostsProps> = ({ items }) => {
                 </SwiperSlide>
               ))}
 
-              {/* Căn tâm dọc theo đúng khung ảnh và đặt nút ở rìa ngoài đồng bộ từ Mobile đến PC */}
+              {/* Ẩn dưới mobile để user tự lướt; từ md+ căn tâm khung ảnh và cách chủ thể 16px / lề ngoài 44px */}
               <button
                 aria-label={t('common.previous') || 'Trước'}
-                className="swiper-related-btn-prev absolute -left-2 sm:-left-3 md:-left-6 lg:-left-9 xl:-left-14 2xl:-left-16 top-[calc(50%-20px)] md:top-[calc(50%-22px)] lg:top-[calc(50%-24px)] -translate-y-1/2 z-10 size-10 md:size-11 lg:size-12 xl:size-[52px] rounded-full bg-white shadow-lg flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
+                className="swiper-related-btn-prev absolute md:-left-6 lg:-left-9 xl:-left-[60px] 2xl:-left-[68px] md:top-[calc(50%-22px)] lg:top-[calc(50%-24px)] -translate-y-1/2 z-10 md:size-10 lg:size-10 xl:size-11 2xl:size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
               >
                 <div>
                   <Arrow />
@@ -123,7 +123,7 @@ const SectionRelatedPosts: React.FC<SectionRelatedPostsProps> = ({ items }) => {
               </button>
               <button
                 aria-label={t('common.next') || 'Tiếp theo'}
-                className="swiper-related-btn-next absolute -right-2 sm:-right-3 md:-right-6 lg:-right-9 xl:-right-14 2xl:-right-16 top-[calc(50%-20px)] md:top-[calc(50%-22px)] lg:top-[calc(50%-24px)] -translate-y-1/2 z-10 size-10 md:size-11 lg:size-12 xl:size-[52px] rounded-full bg-white shadow-lg flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
+                className="swiper-related-btn-next absolute md:-right-6 lg:-right-9 xl:-right-[60px] 2xl:-right-[68px] md:top-[calc(50%-22px)] lg:top-[calc(50%-24px)] -translate-y-1/2 z-10 md:size-10 lg:size-10 xl:size-11 2xl:size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
               >
                 <div className="-rotate-180">
                   <Arrow />
