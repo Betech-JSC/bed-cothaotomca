@@ -1,0 +1,170 @@
+name: Deploy Frontend (Staging - Zero Downtime)
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging-fe
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup SSH Key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Sync NEXT_PUBLIC_* Environment Variables from VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          FALLBACK_BASE_URL: ${{ secrets.NEXT_PUBLIC_BASE_URL || vars.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn' }}
+          FALLBACK_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || vars.NEXT_PUBLIC_API_URL || 'https://cms.cothaotomca.vn/api/v1' }}
+        run: |
+          set -e
+          rm -f .env.production
+          touch .env.production
+
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "cd /var/www/bed-cothaotomca && grep -h '^NEXT_PUBLIC_' .env .env.local 2>/dev/null || true" > .env.production
+
+          if ! grep -q '^NEXT_PUBLIC_BASE_URL=' .env.production; then
+            echo "NEXT_PUBLIC_BASE_URL=${FALLBACK_BASE_URL}" >> .env.production
+          fi
+
+          if ! grep -q '^NEXT_PUBLIC_API_URL=' .env.production; then
+            echo "NEXT_PUBLIC_API_URL=${FALLBACK_API_URL}" >> .env.production
+          fi
+
+          echo "Synced NEXT_PUBLIC_* variable keys into .env.production:"
+          cut -d= -f1 .env.production
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Next.js Application
+        run: |
+          npm run build
+          if [ ! -f ".next/BUILD_ID" ]; then
+            echo "❌ Error: .next/BUILD_ID was not found after build!"
+            exit 1
+          fi
+          echo "✅ Build verified. BUILD_ID: $(cat .next/BUILD_ID)"
+
+      - name: Package .next Build Output
+        run: tar -czf build.tar.gz .next
+
+      - name: Upload build.tar.gz to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+        run: |
+          scp -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 -P "$VPS_PORT" \
+            build.tar.gz "$VPS_USER@$VPS_HOST:/var/www/bed-cothaotomca/build.tar.gz"
+
+      - name: Atomic Swap, PM2 Reload, Auto Health-Check & Auto-Rollback
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/id_ed25519 -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" 'bash -se' << 'EOF'
+          set -e
+
+          export PATH="$PATH:/usr/local/bin"
+          if [ -s "$HOME/.nvm/nvm.sh" ]; then
+            . "$HOME/.nvm/nvm.sh"
+          fi
+
+          cd /var/www/bed-cothaotomca
+
+          PREV_COMMIT=$(git rev-parse HEAD)
+          PREV_LOCK_HASH=$(sha256sum package-lock.json 2>/dev/null | awk '{print $1}' || true)
+          echo "📌 Previous commit: $PREV_COMMIT"
+
+          git fetch origin staging && git reset --hard origin/staging
+
+          NEW_LOCK_HASH=$(sha256sum package-lock.json 2>/dev/null | awk '{print $1}' || true)
+          LOCK_CHANGED=0
+          if [ "$PREV_LOCK_HASH" != "$NEW_LOCK_HASH" ]; then
+            echo "📦 package-lock.json changed. Running npm ci --omit=dev..."
+            LOCK_CHANGED=1
+            npm ci --omit=dev --no-audit --no-fund
+          else
+            echo "📦 package-lock.json unchanged. Skipping npm ci."
+          fi
+
+          echo "📂 Extracting build.tar.gz into .next_new..."
+          rm -rf .next_new && mkdir -p .next_new && tar -xzf build.tar.gz --strip-components=1 -C .next_new && rm -f build.tar.gz
+
+          echo "🔗 Merging static chunks from previous build to prevent ChunkLoadError..."
+          if [ -d ".next/static" ]; then cp -rn .next/static/* .next_new/static/ 2>/dev/null || true; fi
+
+          echo "⚡ Performing Atomic Swap..."
+          rm -rf .next_old
+          if [ -d ".next" ]; then mv .next .next_old; fi
+          mv .next_new .next
+
+          echo "🚀 Reloading PM2 cluster (Zero-Downtime)..."
+          pm2 reload cothaotomca-fe --update-env || pm2 start ecosystem.config.js
+
+          echo "🩺 Starting Auto Health-Check (5 attempts, 2s interval)..."
+          HEALTHY=0
+          for i in 1 2 3 4 5; do
+            sleep 2
+            RESPONSE=$(curl -sL -w "\n%{http_code}" http://127.0.0.1:3000 || true)
+            HTTP_CODE=$(printf '%s\n' "$RESPONSE" | tail -n 1)
+            HTML_BODY=$(printf '%s\n' "$RESPONSE" | sed '$d')
+
+            if [ "$HTTP_CODE" = "200" ] && ! printf '%s\n' "$HTML_BODY" | grep -q "Application error: a client-side exception"; then
+              echo "✅ Health-Check PASSED on attempt $i (HTTP $HTTP_CODE)."
+              HEALTHY=1
+              break
+            fi
+
+            echo "⚠️ Attempt $i/5 failed (HTTP $HTTP_CODE). Retrying..."
+          done
+
+          if [ "$HEALTHY" -ne 1 ]; then
+            echo "❌ Health-Check FAILED after 5 attempts! Initiating Auto-Rollback to $PREV_COMMIT..."
+            git reset --hard "$PREV_COMMIT"
+
+            if [ "$LOCK_CHANGED" -eq 1 ]; then
+              echo "🔄 Restoring production node_modules for previous package-lock.json..."
+              npm ci --omit=dev --no-audit --no-fund
+            fi
+
+            if [ -d ".next_old" ]; then rm -rf .next && mv .next_old .next; fi
+
+            pm2 reload cothaotomca-fe --update-env
+            echo "✅ Auto-Rollback completed successfully. Previous version ($PREV_COMMIT) has been restored."
+            exit 1
+          fi
+
+          echo "🎉 Deployment completed with Zero-Downtime!"
+          EOF

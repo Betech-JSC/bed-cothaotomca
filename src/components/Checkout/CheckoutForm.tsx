@@ -746,125 +746,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
   }, [publicCampaignsLoaded, selectedCampaignIds, allPromotionsList, subtotal, originalSubtotal, checkoutCartItems]);
 
-  // Campaign G1 trong giỏ hàng (nhận diện theo configState.active_promotions và mức giá đơn hàng)
-  const cartCampaignG1 = useMemo(() => {
-    if (!allPromotionsList || allPromotionsList.length === 0) return null;
-    const checkAmount = originalSubtotal > 0 ? originalSubtotal : subtotal;
-    const discountedItems = isCartCheckout
-      ? cartItems.filter((it) => it.originalPrice && it.originalPrice > it.unitPrice)
-      : order && order.originalPrice && order.originalPrice > order.unitPrice
-        ? [order]
-        : [];
-    const activeSamePricePromos = !isBestDealVoucherApplied && discountedItems.length > 0
-      ? allPromotionsList.filter((p) => {
-          if (p.promotion_type !== "same_price_discount" || !p.items || p.items.length === 0) return false;
-          return p.items.some((pi) =>
-            discountedItems.some(
-              (di) =>
-                (pi.product_id && Number(pi.product_id) === Number(di.productId)) ||
-                (pi.kiotviet_id && Number(pi.kiotviet_id) === Number(di.productId)) ||
-                (pi.product_code && di.productCode && String(pi.product_code) === String(di.productCode))
-            )
-          );
-        })
-      : [];
-    const selectedPromos = allPromotionsList.filter((p) =>
-      selectedCampaignIds.some((id) => String(id) === String(p.id))
-    );
-    const promos = [
-      ...selectedPromos,
-      ...activeSamePricePromos.filter((sp) => !selectedPromos.some((p) => String(p.id) === String(sp.id))),
-    ];
-    if (promos.length === 0) return null;
-
-    const noFreeshipPromo = promos.find(
-      (p) => p.can_combine_with_freeship === false && (p.min_order_value || 0) <= checkAmount
-    );
-    if (noFreeshipPromo) return noFreeshipPromo;
-
-    const orderDiscountPromo = promos.find(
-      (p) => p.promotion_type === "order_discount" && checkAmount >= (p.min_order_value || 0)
-    );
-    if (orderDiscountPromo) return orderDiscountPromo;
-
-    return (
-      promos.find(
-        (p) => (p.min_order_value || 0) <= checkAmount
-      ) || null
-    );
-  }, [allPromotionsList, originalSubtotal, subtotal, selectedCampaignIds, isCartCheckout, cartItems, order, isBestDealVoucherApplied]);
-
-  // Ma trận Khuyến mãi & Giảm giá (Promotion Matrix 6 Cases)
-  const promotionMatrixVoucherNotice = useMemo(() => {
-    if (!appliedVoucher) return null;
-
-    // Case 6: G1 chặn ship, khách add G2 [promo: false, ship: true]
-    if (
-      cartCampaignG1 &&
-      cartCampaignG1.can_combine_with_freeship === false &&
-      appliedVoucher.canCombineWithPromotions === false &&
-      appliedVoucher.canCombineWithFreeship !== false
-    ) {
-      return t("promo_voucher_no_combine_ship_restored", { code: appliedVoucher.code });
-    }
-
-    // Case 4: G1 active + G2 [promo: false, ship: false]
-    if (
-      cartCampaignG1 &&
-      appliedVoucher.canCombineWithPromotions === false &&
-      appliedVoucher.canCombineWithFreeship === false
-    ) {
-      return t("promo_voucher_no_combine", { code: appliedVoucher.code });
-    }
-
-    // Case 2: G1 active + G2 [promo: false]
-    if (cartCampaignG1 && appliedVoucher.canCombineWithPromotions === false) {
-      return t("promo_voucher_prioritized", { code: appliedVoucher.code });
-    }
-
-    return null;
-  }, [appliedVoucher, cartCampaignG1, t]);
-
-  const promotionMatrixShippingNotice = useMemo(() => {
-    // Case 4: Mã G2 cấm cả promo & ship
-    if (
-      appliedVoucher &&
-      !appliedVoucher.isFreeship &&
-      appliedVoucher.canCombineWithPromotions === false &&
-      appliedVoucher.canCombineWithFreeship === false
-    ) {
-      return t("promo_voucher_no_ship_discount", { code: appliedVoucher.code });
-    }
-
-    // Case 3: Mã G2 cấm giảm phí ship
-    if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false) {
-      return t("promo_voucher_no_ship_program", { code: appliedVoucher.code });
-    }
-
-    // Case 5: Campaign G1 can_combine_with_freeship = false, chưa add G2 (hoặc G2 không override)
-    if (
-      cartCampaignG1 &&
-      cartCampaignG1.can_combine_with_freeship === false &&
-      (!appliedVoucher || appliedVoucher.canCombineWithPromotions !== false)
-    ) {
-      return t("promo_campaign_no_ship_program", { name: cartCampaignG1.name });
-    }
-
-    return null;
-  }, [appliedVoucher, cartCampaignG1, t]);
-
-  const isFreeshipBlocked = useMemo(() => {
-    const isG1BlockingFreeship = Boolean(
-      cartCampaignG1 &&
-      cartCampaignG1.can_combine_with_freeship === false &&
-      !(appliedVoucher && appliedVoucher.canCombineWithPromotions === false && appliedVoucher.canCombineWithFreeship !== false)
-    );
-    const isG2BlockingFreeship = Boolean(
-      appliedVoucher && appliedVoucher.canCombineWithFreeship === false
-    );
-    return isG1BlockingFreeship || isG2BlockingFreeship;
-  }, [cartCampaignG1, appliedVoucher]);
-
   // 1. ORDER DISCOUNT PROMOTION (Giảm giá theo giá trị đơn - chỉ kích hoạt khi nằm trong selectedCampaignIds)
   const eligibleOrderDiscountPromo = useMemo(() => {
     if (isBestDealVoucherApplied) return null;
@@ -1029,26 +910,217 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       .filter((x): x is { promo: ActivePromotion; item: PromotionGiftItem; tag: string; giftItems: PromotionGiftItem[] } => Boolean(x && x.item));
   }, [eligibleBuyXGetYPromos, selectedBuyXGetYMap, locale]);
 
+  // 4. SAME PRICE DISCOUNT PROMOTIONS (Đồng giá / Giảm giá trực tiếp trên món - khớp cả product_variant_id nếu có)
+  const activeSamePricePromos = useMemo(() => {
+    if (isBestDealVoucherApplied || !allPromotionsList || allPromotionsList.length === 0) return [];
+    const discountedItems = isCartCheckout
+      ? cartItems.filter((it) => it.originalPrice && it.originalPrice > it.unitPrice)
+      : order && order.originalPrice && order.originalPrice > order.unitPrice
+        ? [order]
+        : [];
+    if (discountedItems.length === 0) return [];
+    return allPromotionsList.filter((p) => {
+      if (p.promotion_type !== "same_price_discount" || !p.items || p.items.length === 0) return false;
+      return p.items.some((pi) =>
+        discountedItems.some((di) => {
+          const productMatched =
+            (pi.product_id && (
+              Number(pi.product_id) === Number(di.productId) ||
+              (di.product_id && Number(pi.product_id) === Number(di.product_id)) ||
+              (di.parentProductId && Number(pi.product_id) === Number(di.parentProductId)) ||
+              (di.db_id && Number(pi.product_id) === Number(di.db_id)) ||
+              (di.product_db_id && Number(pi.product_id) === Number(di.product_db_id))
+            )) ||
+            (pi.kiotviet_id && (
+              Number(pi.kiotviet_id) === Number(di.productId) ||
+              (di.kiotviet_id && Number(pi.kiotviet_id) === Number(di.kiotviet_id))
+            )) ||
+            (pi.product_code && di.productCode && String(pi.product_code) === String(di.productCode));
+          if (!productMatched) return false;
+          if (pi.product_variant_id != null && Number(pi.product_variant_id) > 0) {
+            const piVarId = Number(pi.product_variant_id);
+            const diVarId = Number(di.variantId ?? di.product_variant_id ?? di.variant_id ?? di.variant_db_id ?? 0);
+            if (diVarId > 0) {
+              const varIdMatched =
+                diVarId === piVarId ||
+                (Array.isArray(pi.variant_db_ids) && pi.variant_db_ids.some((id) => Number(id) === diVarId)) ||
+                (Array.isArray(pi.variant_kiotviet_ids) && pi.variant_kiotviet_ids.some((id) => Number(id) === diVarId));
+              if (!varIdMatched) return false;
+            } else if (pi.variant_name && di.variant) {
+              if (String(pi.variant_name).trim().toLowerCase() !== String(di.variant).trim().toLowerCase()) return false;
+            } else {
+              return false;
+            }
+          }
+          if (pi.campaign_price != null && Number(pi.campaign_price) > 0 && di.unitPrice > Number(pi.campaign_price)) {
+            return false;
+          }
+          return Boolean(di.originalPrice && di.originalPrice > di.unitPrice);
+        })
+      );
+    });
+  }, [allPromotionsList, isBestDealVoucherApplied, isCartCheckout, cartItems, order]);
+
+  // Campaign G1 trong giỏ hàng (nhận diện theo các chương trình thực sự đủ điều kiện và đang áp dụng ưu đãi)
+  const cartCampaignG1 = useMemo(() => {
+    if (isBestDealVoucherApplied || !allPromotionsList || allPromotionsList.length === 0) return null;
+    const checkAmount = originalSubtotal > 0 ? originalSubtotal : subtotal;
+    const selectedPromos = allPromotionsList.filter((p) => {
+      if (!selectedCampaignIds.some((id) => String(id) === String(p.id))) return false;
+      const isEligible = evaluateCampaignEligibility(p, {
+        subtotal,
+        originalSubtotal,
+        cartItems: checkoutCartItems,
+        isBrowseMode: false,
+      }).eligible;
+      if (!isEligible) return false;
+      if (p.promotion_type === "order_gift_discount") {
+        return selectedOrderGiftItem !== null && Boolean(eligibleOrderGiftPromo && String(eligibleOrderGiftPromo.id) === String(p.id));
+      }
+      if (p.promotion_type === "buy_x_get_y") {
+        return activeBuyXGetYItems.length > 0 && activeBuyXGetYItems.some((x) => String(x.promo.id) === String(p.id));
+      }
+      if (p.promotion_type === "order_discount") {
+        return autoOrderDiscountAmount > 0 && Boolean(eligibleOrderDiscountPromo && String(eligibleOrderDiscountPromo.id) === String(p.id));
+      }
+      if (p.promotion_type === "same_price_discount") {
+        return activeSamePricePromos.some((sp) => String(sp.id) === String(p.id));
+      }
+      return true;
+    });
+    const promos = [
+      ...selectedPromos,
+      ...activeSamePricePromos.filter((sp) => !selectedPromos.some((p) => String(p.id) === String(sp.id))),
+    ];
+    if (promos.length === 0) return null;
+
+    const noFreeshipPromo = promos.find(
+      (p) => p.can_combine_with_freeship === false && (p.min_order_value || 0) <= checkAmount
+    );
+    if (noFreeshipPromo) return noFreeshipPromo;
+
+    const orderDiscountPromo = promos.find(
+      (p) => p.promotion_type === "order_discount" && checkAmount >= (p.min_order_value || 0)
+    );
+    if (orderDiscountPromo) return orderDiscountPromo;
+
+    return (
+      promos.find(
+        (p) => (p.min_order_value || 0) <= checkAmount
+      ) || null
+    );
+  }, [
+    allPromotionsList,
+    originalSubtotal,
+    subtotal,
+    selectedCampaignIds,
+    checkoutCartItems,
+    isBestDealVoucherApplied,
+    activeSamePricePromos,
+    selectedOrderGiftItem,
+    eligibleOrderGiftPromo,
+    activeBuyXGetYItems,
+    autoOrderDiscountAmount,
+    eligibleOrderDiscountPromo,
+  ]);
+
+  // Ma trận Khuyến mãi & Giảm giá (Promotion Matrix 6 Cases)
+  const promotionMatrixVoucherNotice = useMemo(() => {
+    if (!appliedVoucher) return null;
+
+    // Case 6: G1 chặn ship, khách add G2 [promo: false, ship: true]
+    if (
+      cartCampaignG1 &&
+      cartCampaignG1.can_combine_with_freeship === false &&
+      appliedVoucher.canCombineWithPromotions === false &&
+      appliedVoucher.canCombineWithFreeship !== false
+    ) {
+      return t("promo_voucher_no_combine_ship_restored", { code: appliedVoucher.code });
+    }
+
+    // Case 4: G1 active + G2 [promo: false, ship: false]
+    if (
+      cartCampaignG1 &&
+      appliedVoucher.canCombineWithPromotions === false &&
+      appliedVoucher.canCombineWithFreeship === false
+    ) {
+      return t("promo_voucher_no_combine", { code: appliedVoucher.code });
+    }
+
+    // Case 2: G1 active + G2 [promo: false]
+    if (cartCampaignG1 && appliedVoucher.canCombineWithPromotions === false) {
+      return t("promo_voucher_prioritized", { code: appliedVoucher.code });
+    }
+
+    return null;
+  }, [appliedVoucher, cartCampaignG1, t]);
+
+  const promotionMatrixShippingNotice = useMemo(() => {
+    // Case 4: Mã G2 cấm cả promo & ship
+    if (
+      appliedVoucher &&
+      !appliedVoucher.isFreeship &&
+      appliedVoucher.canCombineWithPromotions === false &&
+      appliedVoucher.canCombineWithFreeship === false
+    ) {
+      return t("promo_voucher_no_ship_discount", { code: appliedVoucher.code });
+    }
+
+    // Case 3: Mã G2 cấm giảm phí ship
+    if (appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.canCombineWithFreeship === false) {
+      return t("promo_voucher_no_ship_program", { code: appliedVoucher.code });
+    }
+
+    // Case 5: Campaign G1 can_combine_with_freeship = false, chưa add G2 (hoặc G2 không override)
+    if (
+      cartCampaignG1 &&
+      cartCampaignG1.can_combine_with_freeship === false &&
+      (!appliedVoucher || appliedVoucher.canCombineWithPromotions !== false)
+    ) {
+      return t("promo_campaign_no_ship_program", { name: cartCampaignG1.name });
+    }
+
+    return null;
+  }, [appliedVoucher, cartCampaignG1, t]);
+
+  const isFreeshipBlocked = useMemo(() => {
+    const isG1BlockingFreeship = Boolean(
+      cartCampaignG1 &&
+      cartCampaignG1.can_combine_with_freeship === false &&
+      !(appliedVoucher && appliedVoucher.canCombineWithPromotions === false && appliedVoucher.canCombineWithFreeship !== false)
+    );
+    const isG2BlockingFreeship = Boolean(
+      appliedVoucher && appliedVoucher.canCombineWithFreeship === false
+    );
+    return isG1BlockingFreeship || isG2BlockingFreeship;
+  }, [cartCampaignG1, appliedVoucher]);
+
   const appliedCartPromotions = useMemo(() => {
     const list: ActivePromotion[] = [];
-    if (eligibleOrderDiscountPromo) {
+    if (eligibleOrderDiscountPromo && autoOrderDiscountAmount > 0) {
       list.push(eligibleOrderDiscountPromo);
     }
     if (eligibleOrderGiftPromo && selectedOrderGiftItem) {
       list.push(eligibleOrderGiftPromo);
     }
-    eligibleBuyXGetYPromos.forEach((p) => {
-      list.push(p);
-    });
+    if (activeBuyXGetYItems.length > 0) {
+      eligibleBuyXGetYPromos.forEach((p) => {
+        if (activeBuyXGetYItems.some((x) => String(x.promo.id) === String(p.id))) {
+          list.push(p);
+        }
+      });
+    }
     if (cartCampaignG1 && !list.some((p) => String(p.id) === String(cartCampaignG1.id))) {
       list.push(cartCampaignG1);
     }
     return list;
   }, [
     eligibleOrderDiscountPromo,
+    autoOrderDiscountAmount,
     eligibleOrderGiftPromo,
     selectedOrderGiftItem,
     eligibleBuyXGetYPromos,
+    activeBuyXGetYItems,
     cartCampaignG1,
   ]);
 
@@ -1453,26 +1525,22 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     if (canCombineLoyaltyWithPromotions) return false;
     if (appliedVoucher && appliedVoucher.canCombineWithPromotions === false) return true;
     if (appliedShippingVoucher && appliedShippingVoucher.canCombineWithPromotions === false) return true;
-
-    const activePromos = (allPromotionsList || []).filter((c) =>
-      selectedCampaignIds.some((id) => String(id) === String(c.id))
-    );
-    if (activePromos.some((c) => c.can_combine_with_promotions === false)) return true;
-    if (cartCampaignG1 && cartCampaignG1.can_combine_with_promotions === false) return true;
-    if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.can_combine_with_promotions === false) return true;
-    if (eligibleOrderDiscountPromo && eligibleOrderDiscountPromo.can_combine_with_promotions === false) return true;
-    if (eligibleBuyXGetYPromos.some((p) => p.can_combine_with_promotions === false)) return true;
+    if (activeSamePricePromos.some((p) => p.can_combine_with_promotions === false)) return true;
+    if (eligibleOrderDiscountPromo && autoOrderDiscountAmount > 0 && eligibleOrderDiscountPromo.can_combine_with_promotions === false) return true;
+    if (eligibleOrderGiftPromo && selectedOrderGiftItem !== null && eligibleOrderGiftPromo.can_combine_with_promotions === false) return true;
+    if (activeBuyXGetYItems.length > 0 && eligibleBuyXGetYPromos.some((p) => p.can_combine_with_promotions === false)) return true;
 
     return false;
   }, [
     canCombineLoyaltyWithPromotions,
     appliedVoucher,
     appliedShippingVoucher,
-    allPromotionsList,
-    selectedCampaignIds,
-    cartCampaignG1,
-    eligibleOrderGiftPromo,
+    activeSamePricePromos,
     eligibleOrderDiscountPromo,
+    autoOrderDiscountAmount,
+    eligibleOrderGiftPromo,
+    selectedOrderGiftItem,
+    activeBuyXGetYItems,
     eligibleBuyXGetYPromos,
   ]);
 
@@ -2190,26 +2258,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
 
     const activeSamePriceCampaignIds = !isBestDealVoucherApplied
-      ? (allPromotionsList || [])
-          .filter((p) => {
-            if (p.promotion_type !== "same_price_discount") return false;
-            const discountedItems = isCartCheckout
-              ? cartItems.filter((it) => it.originalPrice && it.originalPrice > it.unitPrice)
-              : order && order.originalPrice && order.originalPrice > order.unitPrice
-                ? [order]
-                : [];
-            if (discountedItems.length === 0) return false;
-            if (!p.items || p.items.length === 0) return false;
-            return p.items.some((pi) =>
-              discountedItems.some(
-                (di) =>
-                  (pi.product_id && Number(pi.product_id) === Number(di.productId)) ||
-                  (pi.kiotviet_id && Number(pi.kiotviet_id) === Number(di.productId)) ||
-                  (pi.product_code && di.productCode && String(pi.product_code) === String(di.productCode))
-              )
-            );
-          })
-          .map((p) => Number(p.id))
+      ? activeSamePricePromos.map((p) => Number(p.id))
       : [];
 
     const appliedCampaignIds = !isBestDealVoucherApplied
@@ -2217,7 +2266,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           new Set(
             [
               ...appliedCartPromotions.map((p) => Number(p.id)),
-              ...selectedCampaignIds.map((id) => Number(id)),
               ...activeSamePriceCampaignIds,
             ].filter((id) => Number.isFinite(id) && id > 0)
           )
@@ -2259,7 +2307,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 : item.unitPrice,
               original_price: item.originalPrice ?? undefined,
               discount: 0,
-              note: undefined,
+              note: (item as any).note?.trim() || undefined,
             })),
             ...(selectedOrderGiftItem
               ? [

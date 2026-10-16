@@ -37,6 +37,7 @@ const config = {
         lg: "2.5rem",      // 40px cho laptop
         xl: "2rem",        // 32px cho laptop lớn
         "2xl": "2.5rem",   // 40px cho màn hình 1440px
+        "3xl": "4rem",   // 40px cho màn hình 1440px
       },
     },
     extend: {
