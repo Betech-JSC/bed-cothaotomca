@@ -160,11 +160,11 @@ export default function LanguageSwitcher() {
           type="button"
           onClick={() => handleSwitchLocale("vi")}
           className={`relative size-6 shrink-0 cursor-pointer overflow-hidden rounded-full border-[1.5px] ${locale === "vi" ? "border-white" : "border-transparent"}`}
-          aria-label="Chuyển sang tiếng Việt"
+          aria-label={locale === "en" ? "Switch to Vietnamese" : "Chuyển sang tiếng Việt"}
         >
           <Image
             src="/images/flag-vn.jpg"
-            alt="Chuyển sang tiếng Việt"
+            alt={locale === "en" ? "Switch to Vietnamese" : "Chuyển sang tiếng Việt"}
             fill
             className="h-full w-full object-cover"
           />

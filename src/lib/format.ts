@@ -417,8 +417,16 @@ export function localizeBlogItem<T extends Record<string, any>>(blog: T, locale:
     cloned.excerpt = enTrans?.excerpt || enTrans?.description || cloned.excerpt_en || cloned.en_excerpt || cloned.excerpt;
     cloned.description = enTrans?.description || enTrans?.excerpt || cloned.description_en || cloned.en_description || cloned.description;
     cloned.content = enTrans?.content || cloned.content_en || cloned.en_content || cloned.content;
-    cloned.seo_title = enTrans?.seo_title || cloned.seo_title_en || cloned.seo_title;
-    cloned.seo_description = enTrans?.seo_description || cloned.seo_description_en || cloned.seo_description;
+    const rawEnBlogSeoTitle =
+      enTrans?.seo_title ||
+      cloned.seo_title_en ||
+      (typeof cloned.seo_title === "string" && !hasVietnameseDiacritics(cloned.seo_title) ? cloned.seo_title : "");
+    const rawEnBlogSeoDesc =
+      enTrans?.seo_description ||
+      cloned.seo_description_en ||
+      (typeof cloned.seo_description === "string" && !hasVietnameseDiacritics(cloned.seo_description) ? cloned.seo_description : "");
+    cloned.seo_title = rawEnBlogSeoTitle || cloned.title;
+    cloned.seo_description = rawEnBlogSeoDesc || (typeof cloned.description === "string" && !hasVietnameseDiacritics(cloned.description) ? cloned.description : "");
     if (typeof cloned.content === "string") {
       cloned.content = sanitizeHtmlVietnameseAttributes(cloned.content);
     }
@@ -492,8 +500,24 @@ export function localizePolicyItem<T extends Record<string, any>>(policy: T, loc
     cloned.slug = slugEn || cloned.slug;
     cloned.title = rawEnTitle || cloned.title;
     cloned.content = enTrans?.content || cloned.content_en || cloned.en_content || cloned.content;
-    cloned.seo_title = enTrans?.seo_title || cloned.seo_title_en || cloned.seo_title;
-    cloned.seo_description = enTrans?.seo_description || cloned.seo_description_en || cloned.seo_description;
+    const rawEnSeoTitle =
+      enTrans?.seo_title ||
+      cloned.seo_title_en ||
+      cloned.en_seo_title ||
+      (typeof cloned.seo_title === "string" && !hasVietnameseDiacritics(cloned.seo_title) ? cloned.seo_title : "");
+    const rawEnSeoDesc =
+      enTrans?.seo_description ||
+      cloned.seo_description_en ||
+      cloned.en_seo_description ||
+      (typeof cloned.seo_description === "string" && !hasVietnameseDiacritics(cloned.seo_description) ? cloned.seo_description : "");
+    cloned.seo_title = rawEnSeoTitle || cloned.title;
+    cloned.seo_description = rawEnSeoDesc;
+    if (typeof cloned.meta_title === "string" && hasVietnameseDiacritics(cloned.meta_title)) {
+      cloned.meta_title = cloned.title;
+    }
+    if (typeof cloned.meta_description === "string" && hasVietnameseDiacritics(cloned.meta_description)) {
+      cloned.meta_description = "";
+    }
     if (typeof cloned.content === "string") {
       cloned.content = sanitizeHtmlVietnameseAttributes(cloned.content);
     }

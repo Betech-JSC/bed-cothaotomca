@@ -12,6 +12,7 @@ import { Category } from '@/services/categoryService'
 import { Ingredient } from '@/services/ingredientService'
 import { slugify, formatImageUrl } from '@/lib/format'
 import {
+  getProductLocalizedSlugs,
   getCategoryCandidateSlugs,
   getIngredientAliases,
   translateIngredientSlug,
@@ -201,9 +202,10 @@ export default function ProductIndexPage({
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || productCategory?.title || "";
     const categoryId = productCategory?.id?.toString() || "";
-    const categorySlug = locale === 'vi'
-      ? ((productCategory as any)?.original_slug || productCategory?.slug || slugify(categoryName))
-      : (slugify((productCategory as any)?.en_title || categoryName || productCategory?.slug || "") || productCategory?.slug);
+    const { viCatSlug, viProductSlug, enCatSlug, enProductSlug } = getProductLocalizedSlugs(p);
+    const categorySlug = locale === 'en'
+      ? (enCatSlug || slugify((productCategory as any)?.en_title || categoryName || productCategory?.slug || "") || productCategory?.slug)
+      : (viCatSlug || (productCategory as any)?.original_slug || productCategory?.slug || slugify(categoryName));
     
     const allCategoryIds = Array.from(new Set([
       ...(p?.categories?.map(c => c?.id?.toString()).filter(Boolean) || []),
@@ -228,7 +230,9 @@ export default function ProductIndexPage({
 
     const allCategorySlugs = Array.from(new Set(rawCatSlugs));
 
-    const productSlug = p?.slug || slugify(name);
+    const productSlug = locale === 'en'
+      ? (enProductSlug || p?.slug || slugify(name))
+      : (viProductSlug || p?.slug || slugify(name));
     const rawDesc = translation?.description || p?.description || "";
     const cleanedDesc = locale === 'en' && typeof rawDesc === 'string'
       ? rawDesc.replace(/\bat Bếp\b/gi, 'at Cô Thảo Tôm Cá')

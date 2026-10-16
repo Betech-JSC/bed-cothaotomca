@@ -6,6 +6,7 @@ import JsonLd from "@/components/SEO/JsonLd";
 import AlternateLinksUpdater from "@/components/SEO/AlternateLinksUpdater";
 import {
   formatRichTextContent,
+  hasVietnameseDiacritics,
   localizePolicyItem,
   matchPolicyBySlug,
 } from "@/lib/format";
@@ -42,11 +43,18 @@ export async function generateMetadata({
   const title = currentPolicy.title || currentPolicy.name || "";
   const description = currentPolicy.seo_description || currentPolicy.meta_description || "";
 
+  const enSeoTitleCandidate = [currentPolicy.seo_title, currentPolicy.meta_title, title].find(
+    (v) => typeof v === "string" && v.trim().length > 0 && !hasVietnameseDiacritics(v)
+  );
   const seoTitle = isEn
-    ? (currentPolicy.seo_title || title || currentPolicy.meta_title)
+    ? (enSeoTitleCandidate || title)
     : (currentPolicy.seo_title || currentPolicy.meta_title || title);
-  const seoDescription = currentPolicy.seo_description || currentPolicy.meta_description || description;
-  const seoKeywords = currentPolicy.seo_keywords || currentPolicy.meta_keywords || "";
+  const rawSeoDesc = currentPolicy.seo_description || currentPolicy.meta_description || description;
+  const seoDescription = isEn && hasVietnameseDiacritics(rawSeoDesc)
+    ? (title ? `${title} | Co Thao Tom Ca` : "")
+    : (rawSeoDesc || (isEn && title ? `${title} | Co Thao Tom Ca` : ""));
+  const rawSeoKeywords = currentPolicy.seo_keywords || currentPolicy.meta_keywords || "";
+  const seoKeywords = isEn && hasVietnameseDiacritics(rawSeoKeywords) ? "" : rawSeoKeywords;
 
   const rawBaseUrl = (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('localhost:3000'))
     ? process.env.NEXT_PUBLIC_BASE_URL

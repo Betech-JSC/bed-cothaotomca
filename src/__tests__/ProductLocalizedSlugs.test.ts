@@ -71,4 +71,33 @@ describe('getProductLocalizedSlugs', () => {
     expect(slugs.enCatSlug).toBe('vi-cat-slug');
     expect(slugs.enProductSlug).toBe('vi-product-slug');
   });
+
+  it('should support string alternate_slugs from /api/v1/products list endpoint for 100% sitemap/canonical/card parity', () => {
+    const listProduct = {
+      id: 4,
+      slug: 'set-com-ca-hoi-ngam-tuong-co-thao',
+      slug_vi: 'set-com-ca-hoi-ngam-tuong-co-thao',
+      slug_en: 'marinated-salmon-rice-set',
+      alternate_slugs: {
+        vi: 'set-com-ca-hoi-ngam-tuong-co-thao',
+        en: 'marinated-salmon-rice-set',
+      },
+      category: {
+        id: 5,
+        title: 'Salmon',
+        vi_title: 'Cá hồi',
+        en_title: 'Salmon',
+        slug: 'salmon',
+        original_slug: 'ca-hoi',
+      },
+    };
+
+    const slugs = getProductLocalizedSlugs(listProduct);
+    expect(slugs).toEqual({
+      viCatSlug: 'ca-hoi',
+      viProductSlug: 'set-com-ca-hoi-ngam-tuong-co-thao',
+      enCatSlug: 'salmon',
+      enProductSlug: 'marinated-salmon-rice-set',
+    });
+  });
 });

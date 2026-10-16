@@ -206,6 +206,8 @@ describe("fix-en-localization-and-ui-bugs (Dynamic Backend Localization)", () =>
         id: 2,
         slug: "chinh-sach-doi-tra",
         title: "Chính Sách Đổi Trả",
+        seo_title: "Chính sách khiếu nại và đổi trả | Cô Thảo Tôm Cá",
+        seo_description: "Chính sách đổi trả hàng tại Cô Thảo Tôm Cá",
         content: "<p>Nội dung đổi trả tiếng Việt</p>",
         translations: [
           {
@@ -222,11 +224,103 @@ describe("fix-en-localization-and-ui-bugs (Dynamic Backend Localization)", () =>
     const matched = matchPolicyBySlug(localized, "return-refund-policy");
     expect(matched).toBeDefined();
     expect(matched?.title).toBe("Return & Refund Policy");
+    expect(matched?.seo_title).toBe("Return & Refund Policy");
+    expect(matched?.seo_description).toBe("");
     expect(matched?.slug).toBe("return-refund-policy");
     expect(matched?.alternate_slugs).toEqual({
       vi: "chinh-sach-doi-tra",
       en: "return-refund-policy",
     });
     expect(matched?.content).toContain("1-for-1 replacement");
+  });
+
+  it("[STT 9] PolicyPage generateMetadata outputs English title even when BE unsets translations and leaves Vietnamese seo_title", async () => {
+    const originalFetch = global.fetch;
+    global.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: 2,
+              slug: "return-refund-policy",
+              slug_vi: "chinh-sach-doi-tra",
+              slug_en: "return-refund-policy",
+              title: "Return & Refund Policy",
+              vi_title: "Chính Sách Đổi Trả",
+              en_title: "Return & Refund Policy",
+              seo_title: "Chính sách khiếu nại và đổi trả | Cô Thảo Tôm Cá",
+              seo_description: "Chính sách khiếu nại và đổi trả tại Cô Thảo Tôm Cá",
+              content: "<p>1-for-1 replacement within 2 hours</p>",
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )) as any;
+
+    try {
+      const { generateMetadata } = await import("@/app/[locale]/policy/[slug]/page");
+      const meta = await generateMetadata({
+        params: Promise.resolve({ locale: "en", slug: "return-refund-policy" }),
+      });
+      expect(meta.title).toBe("Return & Refund Policy");
+      expect((meta.openGraph as any)?.title).toBe("Return & Refund Policy");
+      expect(meta.description).toBe("Return & Refund Policy | Co Thao Tom Ca");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("[STT 10] ProductDetailsPage generateMetadata replaces 'at Bếp' with 'at Cô Thảo Tôm Cá' on EN locale", async () => {
+    const originalFetch = global.fetch;
+    global.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          data: {
+            id: 88,
+            slug: "ikura-salmon-roe",
+            slug_vi: "trung-ca-hoi-ikura",
+            slug_en: "ikura-salmon-roe",
+            name: "Ikura Salmon Roe",
+            custom_name: "Ikura Salmon Roe",
+            description:
+              "Japanese Ikura salmon roe at Bếp boasts plump, glossy orange pearls bursting with umami.",
+            seo_description:
+              "Japanese Ikura salmon roe at Bếp boasts plump, glossy orange pearls bursting with umami.",
+            category: { id: 1, title: "Other Seafood", slug: "other-seafood" },
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )) as any;
+
+    try {
+      const { generateMetadata } = await import("@/app/[locale]/product/[category]/[slug]/page");
+      const meta = await generateMetadata(
+        { params: Promise.resolve({ locale: "en", category: "other-seafood", slug: "ikura-salmon-roe" }) },
+        Promise.resolve({} as any) as any
+      );
+      expect(meta.description).toContain("at Cô Thảo Tôm Cá boasts");
+      expect(meta.description).not.toContain("at Bếp");
+      expect((meta.openGraph as any)?.description).toContain("at Cô Thảo Tôm Cá boasts");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("[STT 13] ensures all homepage and demo category/banner images are strictly under 300 KB", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const maxBytes = 300 * 1024;
+
+    const homeDir = path.resolve(process.cwd(), "public/images/home");
+    for (const file of fs.readdirSync(homeDir)) {
+      const stat = fs.statSync(path.join(homeDir, file));
+      expect(stat.size, `${file} exceeds 300 KB`).toBeLessThan(maxBytes);
+    }
+
+    const demoDir = path.resolve(process.cwd(), "public/images/demo");
+    for (const file of fs.readdirSync(demoDir)) {
+      const stat = fs.statSync(path.join(demoDir, file));
+      expect(stat.size, `${file} exceeds 300 KB`).toBeLessThan(maxBytes);
+    }
   });
 });

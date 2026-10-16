@@ -8,7 +8,7 @@ import SectionSliderPost from '@/components/Common/SectionSliderPost';
 import Cart from '@/components/Icons/Cart';
 import { Link } from '@/i18n/i18n-navigation';
 import { getBlogs } from '@/services/blogService';
-import { slugify, formatImageUrl, filterAndLocalizeBlogs } from '@/lib/format';
+import { slugify, formatImageUrl, filterAndLocalizeBlogs, hasVietnameseDiacritics } from '@/lib/format';
 import AnimateOnScroll from '@/components/Animated/animated-appear';
 import { Metadata } from 'next';
 import { getMetaPage, resolveMetaTitle, resolveMetaDescription, resolveMetaKeywords } from '@/services/seoService';
@@ -95,14 +95,18 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   };
 
   const introBanner = bannerData.data[0];
+  const rawIntroAlt = introBanner?.title || "banner about";
+  const introAlt = locale === 'en' && hasVietnameseDiacritics(rawIntroAlt)
+    ? "About Co Thao Tom Ca"
+    : rawIntroAlt;
   const banner = {
     image: {
       url: formatImageUrl(introBanner?.image) || "/images/demo/banner-about.jpg",
-      alt: introBanner?.title || "banner about",
+      alt: introAlt,
     },
     image_mobile: {
       url: formatImageUrl(introBanner?.image_mobile) || formatImageUrl(introBanner?.image) || "/images/demo/banner-about.jpg",
-      alt: introBanner?.title || "banner about",
+      alt: introAlt,
     },
   };
 
@@ -144,16 +148,20 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
   const sliders = slideData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
+    const rawSlideTitle = translation?.title || item.title || "";
+    const slideAlt = locale === 'en' && hasVietnameseDiacritics(rawSlideTitle)
+      ? "Co Thao Tom Ca"
+      : (rawSlideTitle || "Co Thao Tom Ca");
     return {
       image: {
         url: formatImageUrl(item.image) || "/cover.jpg",
-        alt: translation?.title || item.title || ""
+        alt: slideAlt
       },
       image_mobile: {
         url: formatImageUrl(item.image_mobile) || formatImageUrl(item.image) || "/cover.jpg",
-        alt: translation?.title || item.image_mobile?.alt || item.title || ""
+        alt: slideAlt
       },
-      title: translation?.title || item.title || "",
+      title: slideAlt,
       description: translation?.description || item.description || "",
     };
   });
@@ -219,7 +227,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
                 <AnimateOnScroll animate="card-animate" delay={300} className="relative rounded-[24px] aspect-w-8 aspect-h-7 md:aspect-w-6 md:aspect-h-5 overflow-hidden">
                   <Image
                     src="/images/about/image-about.jpg"
-                    alt="Quy trình chế biến Cô Thảo Tôm Cá"
+                    alt={locale === 'en' ? "Processing workflow at Co Thao Tom Ca" : "Quy trình chế biến Cô Thảo Tôm Cá"}
                     fill
                     className="object-cover w-full h-full"
                   />

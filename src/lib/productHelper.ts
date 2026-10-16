@@ -36,13 +36,17 @@ export function getProductLocalizedSlugs(product: any) {
 
   if (product?.alternate_slugs) {
     const alt = product.alternate_slugs;
-    const resolvedViCatSlug = alt.vi?.category_slug || fallbackViCatSlug;
-    const resolvedViProductSlug = alt.vi?.slug || fallbackViProductSlug;
+    const altViSlug = typeof alt.vi === "string" ? alt.vi : alt.vi?.slug;
+    const altEnSlug = typeof alt.en === "string" ? alt.en : alt.en?.slug;
+    const altViCatSlug = typeof alt.vi === "object" ? alt.vi?.category_slug : undefined;
+    const altEnCatSlug = typeof alt.en === "object" ? alt.en?.category_slug : undefined;
+    const resolvedViCatSlug = altViCatSlug || fallbackViCatSlug;
+    const resolvedViProductSlug = altViSlug || fallbackViProductSlug;
     return {
       viCatSlug: resolvedViCatSlug,
       viProductSlug: resolvedViProductSlug,
       enCatSlug:
-        alt.en?.category_slug ||
+        altEnCatSlug ||
         (enCatTrans as any)?.slug ||
         cat?.slug_en ||
         slugify(enCatTrans?.title || cat?.en_title || "") ||
@@ -50,7 +54,7 @@ export function getProductLocalizedSlugs(product: any) {
         resolvedViCatSlug ||
         "product",
       enProductSlug:
-        alt.en?.slug ||
+        altEnSlug ||
         (enProdTrans as any)?.slug ||
         product?.slug_en ||
         slugify(enProdTrans?.custom_name || enProdTrans?.name || product?.custom_name_en || product?.name_en || "") ||

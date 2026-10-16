@@ -84,7 +84,7 @@ export default function GiftSelectorModal({
             onClick={onClose}
             type="button"
             className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-gray-400 hover:text-primary hover:bg-gray-100 border border-gray-200 text-lg transition-colors cursor-pointer"
-            aria-label="Đóng"
+            aria-label={locale === "en" ? "Close" : "Đóng"}
           >
             &times;
           </button>

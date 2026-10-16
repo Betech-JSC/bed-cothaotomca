@@ -15,7 +15,8 @@ import { getBanners, type Banner } from '@/services/bannerService';
 import HomePromotionPopup from '@/components/Home/HomePromotionPopup';
 import { Product } from '@/services/productService';
 import { Category } from '@/services/categoryService';
-import { slugify, formatImageUrl, filterAndLocalizeBlogs } from '@/lib/format';
+import { slugify, formatImageUrl, filterAndLocalizeBlogs, hasVietnameseDiacritics } from '@/lib/format';
+import { getProductLocalizedSlugs } from '@/lib/productHelper';
 import { getBlogs, Blog } from '@/services/blogService';
 import AnimateOnScroll from "@/components/Animated/animated-appear";
 import { Metadata } from 'next';
@@ -110,19 +111,21 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   const sliderHero = heroBannersData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
-    const rawTitle = translation?.title || item.title || "Cô Thảo Tôm Cá";
+    const rawTitle = translation?.title || (locale === 'en' ? (item as any).title_en || (item as any).en_title : '') || item.title || (locale === 'en' ? "Co Thao Tom Ca Banner" : "Cô Thảo Tôm Cá");
     const title =
-      locale === 'en' && !translation?.title && item.title === 'Banner Trang chủ'
-        ? 'Cô Thảo Tôm Cá Banner'
+      locale === 'en' && (hasVietnameseDiacritics(rawTitle) || item.title === 'Banner Trang chủ')
+        ? 'Co Thao Tom Ca - Fresh Seafood Banner'
         : rawTitle;
+    const rawDesktopAlt = translation?.title || item.image?.alt || title;
+    const rawMobileAlt = translation?.title || item.image_mobile?.alt || title;
     return {
       image: {
         url: formatImageUrl(item.image) || "/cover.jpg",
-        alt: translation?.title || item.image?.alt || title
+        alt: locale === 'en' && hasVietnameseDiacritics(rawDesktopAlt) ? title : rawDesktopAlt
       },
       image_mobile: {
         url: formatImageUrl(item.image_mobile) || formatImageUrl(item.image) || "/cover.jpg",
-        alt: translation?.title || item.image_mobile?.alt || title
+        alt: locale === 'en' && hasVietnameseDiacritics(rawMobileAlt) ? title : rawMobileAlt
       },
       title: title,
     };
@@ -139,9 +142,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
     const catTranslation = getTranslation(productCategory?.translations, locale) as any;
     const categoryName = catTranslation?.title || productCategory?.title || (locale === 'en' ? 'All' : 'Tất cả');
-    const categorySlug = locale === 'vi'
-      ? (productCategory?.slug || slugify(categoryName))
-      : (slugify(categoryName || productCategory?.slug || "") || productCategory?.slug);
+    const { viCatSlug, viProductSlug, enCatSlug, enProductSlug } = getProductLocalizedSlugs(item);
+    const categorySlug = locale === 'en'
+      ? (enCatSlug || slugify(categoryName || productCategory?.slug || "") || productCategory?.slug)
+      : (viCatSlug || productCategory?.slug || slugify(categoryName));
+    const productSlug = locale === 'en'
+      ? (enProductSlug || item.slug || slugify(name))
+      : (viProductSlug || item.slug || slugify(name));
 
     const rawDesc = translation?.description || item.description;
     const cleanedDesc =
@@ -153,7 +160,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       id: item.id,
       title: name,
       custom_name: item.custom_name,
-      slug: item.slug || slugify(name),
+      slug: productSlug,
       price: parseFloat(item.price as string),
       campaign_price: (item as any)?.campaign_price,
       original_price: (item as any)?.original_price,
@@ -187,16 +194,20 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   const sliders = sliderBannersData.data.map((item) => {
     const translation = getTranslation(item.translations, locale) as any;
+    const rawSlideTitle = translation?.title || (locale === 'en' ? (item as any).title_en || (item as any).en_title : '') || item.title || "";
+    const slideAlt = locale === 'en' && hasVietnameseDiacritics(rawSlideTitle)
+      ? "Co Thao Tom Ca"
+      : (rawSlideTitle || (locale === 'en' ? "Co Thao Tom Ca" : ""));
     return {
       image: {
         url: formatImageUrl(item.image) || "/cover.jpg",
-        alt: translation?.title || item.title || ""
+        alt: slideAlt
       },
       image_mobile: {
         url: formatImageUrl(item.image_mobile) || formatImageUrl(item.image) || "/cover.jpg",
-        alt: translation?.title || item.image_mobile?.alt || translation?.title || item.title || ""
+        alt: slideAlt
       },
-      title: translation?.title || item.title || "",
+      title: slideAlt,
       description: translation?.description || item.description || "",
     };
   });

@@ -163,7 +163,7 @@ export default function BlogTableOfContents() {
               <button
                 type="button"
                 onClick={handleClose}
-                aria-label="Đóng"
+                aria-label={t('toc_title') === 'Table of Contents' ? 'Close' : 'Đóng'}
                 className="size-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200 active:scale-90 transition-transform cursor-pointer"
               >
                 ✕

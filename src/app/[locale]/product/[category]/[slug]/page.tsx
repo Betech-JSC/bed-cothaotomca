@@ -30,11 +30,17 @@ export async function generateMetadata(
   const translation = getTranslation<Translation>(product.translations, locale);
   const isEn = locale === 'en';
   const productName = (isEn ? (translation?.custom_name || translation?.name) : (translation?.custom_name || product.custom_name || translation?.name || product.name)) || product.custom_name || product.name || "";
-  const productDescription = (isEn ? translation?.description : null) || product.description || translation?.description || "";
+  const rawProductDescription = (isEn ? translation?.description : null) || product.description || translation?.description || "";
+  const productDescription = isEn && typeof rawProductDescription === "string"
+    ? rawProductDescription.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá")
+    : rawProductDescription;
 
   // Ưu tiên SEO từ bản dịch -> Tên theo ngôn ngữ -> Fallback root
   const seoTitle = translation?.seo_title || (isEn ? (productName || product.seo_title || product.meta_title) : (product.seo_title || product.meta_title || productName));
-  const seoDescription = translation?.seo_description || (isEn ? (productDescription || product.seo_description || product.meta_description) : (product.seo_description || product.meta_description || productDescription)) || "";
+  const rawSeoDescription = translation?.seo_description || (isEn ? (productDescription || product.seo_description || product.meta_description) : (product.seo_description || product.meta_description || productDescription)) || "";
+  const seoDescription = isEn && typeof rawSeoDescription === "string"
+    ? rawSeoDescription.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá")
+    : rawSeoDescription;
   const seoKeywords = translation?.seo_keywords || product.seo_keywords || product.meta_keywords || "";
 
   const { viCatSlug, viProductSlug, enCatSlug, enProductSlug } = getProductLocalizedSlugs(product);
@@ -190,7 +196,10 @@ export default async function ProductDetailsPage({
     galleryImages.push({ url: formatImageUrl(product.image) || "/cover.jpg", alt: productName });
   }
 
-  const cleanedDescription = (locale === 'en' ? (translation?.description || product.description) : (product.description || translation?.description)) || "";
+  const rawMainDescription = (locale === 'en' ? (translation?.description || product.description) : (product.description || translation?.description)) || "";
+  const cleanedDescription = locale === 'en' && typeof rawMainDescription === 'string'
+    ? rawMainDescription.replace(/\bat Bếp\b/gi, "at Cô Thảo Tôm Cá")
+    : rawMainDescription;
 
   const productData = {
     title: productName,
@@ -202,7 +211,7 @@ export default async function ProductDetailsPage({
     variant_type: product.variant_type,
     image: {
       url: formatImageUrl(product.image) || galleryImages[0]?.url || "/cover.jpg",
-      alt: productName || product.name || "Cô Thảo Tôm Cá",
+      alt: productName || product.name || (locale === "en" ? "Co Thao Tom Ca" : "Cô Thảo Tôm Cá"),
     },
     images: galleryImages,
     sizes: product.variants && product.variants.length > 0
@@ -348,12 +357,15 @@ export default async function ProductDetailsPage({
 
     const relatedCategory = p.categories && p.categories.length > 0 ? p.categories[0] : p.category;
     const catTranslation = getTranslation(relatedCategory?.translations, locale) as any;
-    const categoryName = catTranslation?.title || relatedCategory?.title || "Sản phẩm";
+    const categoryName = catTranslation?.title || relatedCategory?.title || (locale === "en" ? "Products" : "Sản phẩm");
 
-    const productSlug = p.slug || slugify(name);
-    const categorySlug = locale === 'vi' 
-      ? (relatedCategory?.slug || slugify(categoryName))
-      : (slugify(categoryName || relatedCategory?.slug || "") || relatedCategory?.slug);
+    const { viCatSlug: relViCat, viProductSlug: relViSlug, enCatSlug: relEnCat, enProductSlug: relEnSlug } = getProductLocalizedSlugs(p);
+    const productSlug = locale === 'en'
+      ? (relEnSlug || p.slug || slugify(name))
+      : (relViSlug || p.slug || slugify(name));
+    const categorySlug = locale === 'en'
+      ? (relEnCat || slugify(categoryName || relatedCategory?.slug || "") || relatedCategory?.slug)
+      : (relViCat || relatedCategory?.slug || slugify(categoryName));
 
     return {
       id: p.id,
@@ -364,7 +376,7 @@ export default async function ProductDetailsPage({
       variants: p.variants,
 
       category: { title: categoryName, slug: categorySlug },
-      image: { url: formatImageUrl(p.image) || "/cover.jpg" },
+      image: { url: formatImageUrl(p.image) || "/cover.jpg", alt: name },
       description: (() => {
         const rawRelDesc = translation?.description || p.description || "";
         return locale === "en" && typeof rawRelDesc === "string"
