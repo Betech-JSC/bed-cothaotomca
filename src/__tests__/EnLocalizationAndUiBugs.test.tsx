@@ -53,7 +53,9 @@ describe("fix-en-localization-and-ui-bugs (Dynamic Backend Localization)", () =>
     expect(viBanner.title).toBe("Ưu đãi đặc biệt từ Bếp Cô Thảo");
   });
 
-  it("[STT 5] formats dates as 'DD Month YYYY' on EN locale including pre-formatted Vietnamese date strings", () => {
+  it("[STT 5] formats dates as 'DD Month YYYY' on EN locale in Asia/Ho_Chi_Minh timezone including pre-formatted Vietnamese date strings", () => {
+    expect(formatDate("2026-08-09T17:07:19.000000Z", "en")).toBe("10 August 2026");
+    expect(formatDate("2026-08-09T17:07:19.000000Z", "vi")).toBe("10/08/2026");
     expect(formatDate("2026-08-09T00:00:00Z", "en")).toBe("09 August 2026");
     expect(formatDate("09 Tháng 08, 2026", "en")).toBe("09 August 2026");
     expect(formatDate("09/08/2026", "en")).toBe("09 August 2026");

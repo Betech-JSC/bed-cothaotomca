@@ -2,16 +2,19 @@ import { describe, it, expect } from "vitest";
 import { formatDate, formatVietnamDateTime, isCodPayment } from "@/lib/format";
 
 describe("formatDate", () => {
-  it("formats CMS blog timestamps as DD Month YYYY with capitalized month for all 12 months in English", () => {
-    expect(formatDate("2026-08-09T17:07:19.000000Z", "en")).toBe("09 August 2026");
-    expect(formatDate("2026-08-09T17:07:19.000000Z", "vi")).toBe("09/08/2026");
+  it("formats CMS blog timestamps in Asia/Ho_Chi_Minh (GMT+7) as DD Month YYYY with capitalized month for all 12 months in English", () => {
+    // 2026-08-09T17:07:19.000000Z UTC is 2026-08-10 00:07:19 in Vietnam (GMT+7)
+    expect(formatDate("2026-08-09T17:07:19.000000Z", "en")).toBe("10 August 2026");
+    expect(formatDate("2026-08-09T17:07:19.000000Z", "vi")).toBe("10/08/2026");
+    expect(formatDate("2026-08-10", "en")).toBe("10 August 2026");
+    expect(formatDate("2026-08-10", "vi")).toBe("10/08/2026");
     const expectedMonths = [
       "January", "February", "March", "April", "May", "June",
       "July", "August", "September", "October", "November", "December",
     ];
     expectedMonths.forEach((m, idx) => {
       const mm = String(idx + 1).padStart(2, "0");
-      expect(formatDate(`2026-${mm}-09T17:07:19.000000Z`, "en")).toBe(`09 ${m} 2026`);
+      expect(formatDate(`2026-${mm}-09T17:07:19.000000Z`, "en")).toBe(`10 ${m} 2026`);
     });
   });
 });

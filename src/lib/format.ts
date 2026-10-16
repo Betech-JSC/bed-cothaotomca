@@ -6,8 +6,12 @@ export function formatDate(date: Date | string | number, locale: string = 'vi') 
   let yearNum: number | null = null;
 
   if (typeof date === 'string') {
-    const vnMatch = date.trim().match(/^(\d{1,2})\s*(?:tháng|Tháng)\s*(\d{1,2})[,\s]+(\d{4})$/i);
-    const slashMatch = date.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const trimmed = date.trim();
+    const vnMatch = trimmed.match(/^(\d{1,2})\s*(?:tháng|Tháng)\s*(\d{1,2})[,\s]+(\d{4})$/i);
+    const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const naiveIsoMatch = trimmed.match(
+      /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]\d{1,2}:\d{1,2}(?::\d{1,2}(?:\.\d+)?)?)?$/
+    );
     if (vnMatch) {
       dayNum = parseInt(vnMatch[1], 10);
       monthNum = parseInt(vnMatch[2], 10);
@@ -16,15 +20,26 @@ export function formatDate(date: Date | string | number, locale: string = 'vi') 
       dayNum = parseInt(slashMatch[1], 10);
       monthNum = parseInt(slashMatch[2], 10);
       yearNum = parseInt(slashMatch[3], 10);
+    } else if (naiveIsoMatch) {
+      yearNum = parseInt(naiveIsoMatch[1], 10);
+      monthNum = parseInt(naiveIsoMatch[2], 10);
+      dayNum = parseInt(naiveIsoMatch[3], 10);
     }
   }
 
   if (dayNum === null || monthNum === null || yearNum === null) {
     const d = new Date(date);
     if (isNaN(d.getTime())) return '';
-    dayNum = d.getUTCDate();
-    monthNum = d.getUTCMonth() + 1;
-    yearNum = d.getUTCFullYear();
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d);
+    const getPart = (type: string) => parts.find((p) => p.type === type)?.value || '';
+    dayNum = parseInt(getPart('day'), 10);
+    monthNum = parseInt(getPart('month'), 10);
+    yearNum = parseInt(getPart('year'), 10);
   }
 
   const day = dayNum.toString().padStart(2, '0');
