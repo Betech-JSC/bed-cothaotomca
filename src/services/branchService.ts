@@ -3,7 +3,10 @@ import { ApiKey, getApi, ApiResponse } from './apiService';
 export interface Branch {
   id: number;
   sort_order?: number;
-  title: string;
+  name?: string | null;
+  name_vi?: string | null;
+  name_en?: string | null;
+  title?: string;
   address: string;
   address_link: string | null;
   phone: string | null;
@@ -17,7 +20,10 @@ export const DEFAULT_FALLBACK_BRANCHES: Branch[] = [
   {
     id: 1,
     sort_order: 1,
-    title: "Chi nhánh 1",
+    name: "Chi nhánh Trần Đình Xu (Q.1)",
+    name_vi: "Chi nhánh Trần Đình Xu (Q.1)",
+    name_en: "Tran Dinh Xu Branch (Dist. 1)",
+    title: "Chi nhánh Trần Đình Xu (Q.1)",
     address: "42/2 Trần Đình Xu, Phường Cầu Ông Lãnh, Quận 1, TP. Hồ Chí Minh",
     address_link: "https://maps.google.com",
     phone: "024.9999.7122",
@@ -29,7 +35,10 @@ export const DEFAULT_FALLBACK_BRANCHES: Branch[] = [
   {
     id: 2,
     sort_order: 2,
-    title: "Chi nhánh 2",
+    name: "Chi nhánh Tân Bình",
+    name_vi: "Chi nhánh Tân Bình",
+    name_en: "Tan Binh Branch",
+    title: "Chi nhánh Tân Bình",
     address: "39 Thân Nhân Trung, Phường 13, Quận Tân Bình, TP. Hồ Chí Minh",
     address_link: "https://maps.google.com",
     phone: "024.9999.7122",

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   formatBranchDisplayName,
+  getBranchTitle,
   identifyBrandBranch,
   BRAND_BRANCHES,
 } from "@/lib/branchHelper";
@@ -114,6 +115,63 @@ describe("BranchHelper - formatBranchDisplayName (STT 9)", () => {
     it("returns empty string on null or undefined branch", () => {
       expect(formatBranchDisplayName(null)).toBe("");
       expect(formatBranchDisplayName(undefined)).toBe("");
+    });
+  });
+
+  describe("5. getBranchTitle (CMS Branch Name + Bilingual Fallback)", () => {
+    it("returns CMS Vietnamese name when locale is vi", () => {
+      const branch = {
+        id: 1,
+        name: "Chi nhánh Trần Đình Xu (Q.1)",
+        name_vi: "Chi nhánh Trần Đình Xu (Q.1)",
+        name_en: null,
+      };
+      expect(getBranchTitle(branch, "vi", "Chi nhánh 1")).toBe("Chi nhánh Trần Đình Xu (Q.1)");
+    });
+
+    it("returns explicit CMS name_en when provided for locale en", () => {
+      const branch = {
+        id: 1,
+        name: "Custom English Branch",
+        name_vi: "Chi nhánh Trần Đình Xu (Q.1)",
+        name_en: "Tran Dinh Xu Flagship (Dist. 1)",
+      };
+      expect(getBranchTitle(branch, "en", "Branch 1")).toBe("Tran Dinh Xu Flagship (Dist. 1)");
+    });
+
+    it("falls back to BrandBranchProfile nameEn when CMS name_en is null or still Vietnamese", () => {
+      const branchNullEn = {
+        id: 1,
+        name: "Chi nhánh Trần Đình Xu (Q.1)",
+        name_vi: "Chi nhánh Trần Đình Xu (Q.1)",
+        name_en: null,
+        address: "42/2 Tran Dinh Xu Street, Co Giang Ward, District 1",
+      };
+      expect(getBranchTitle(branchNullEn, "en", "Branch 1")).toBe("Tran Dinh Xu Branch (Dist. 1)");
+
+      const branchUntranslatedEn = {
+        id: 1,
+        name: "Chi nhánh Trần Đình Xu (Q.1)",
+        name_vi: "Chi nhánh Trần Đình Xu (Q.1)",
+        name_en: "Chi nhánh Trần Đình Xu (Q.1)",
+        en_title: "Chi nhánh Trần Đình Xu (Q.1)",
+        address: "42/2 Trần Đình Xu, Phường Cầu Ông Lãnh (Q.1 cũ), TP. Hồ Chí Minh",
+      };
+      expect(getBranchTitle(branchUntranslatedEn, "en", "Branch 1")).toBe("Tran Dinh Xu Branch (Dist. 1)");
+    });
+
+    it("resolves BrandBranchProfile nameVi when title is generic like 'Chi nhánh 1' in locale vi", () => {
+      const genericBranch = {
+        id: 1,
+        title: "Chi nhánh 1",
+        address: "42/2 Trần Đình Xu, Phường Cầu Ông Lãnh, Quận 1, TP. Hồ Chí Minh",
+      };
+      expect(getBranchTitle(genericBranch, "vi", "Chi nhánh 1")).toBe("Chi nhánh Trần Đình Xu (Q.1)");
+    });
+
+    it("returns fallback when branch has no name or title", () => {
+      expect(getBranchTitle({ id: 99, name: "", title: "" }, "vi", "Chi nhánh 1")).toBe("Chi nhánh 1");
+      expect(getBranchTitle(null, "en", "Branch 1")).toBe("Branch 1");
     });
   });
 });

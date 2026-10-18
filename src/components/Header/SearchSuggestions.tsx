@@ -38,6 +38,7 @@ export default function SearchSuggestions({
 
   // Highlight matching text in name/title
   const highlightMatch = (text: string, query: string) => {
+    if (!text) return "";
     if (!query.trim()) return text;
     const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
     const parts = text.split(regex);

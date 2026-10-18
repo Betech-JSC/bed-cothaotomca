@@ -27,6 +27,7 @@ tsconfig.tsbuildinfo
 
 /out/
 /playwright-mcp
+.playwright-mcp/
 
 
 # production

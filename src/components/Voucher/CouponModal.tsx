@@ -1101,6 +1101,8 @@ export default function CouponModal({
   }, [loyaltySettingsProp, locale]);
 
   const canCombineWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
+  const canCombineLoyaltyWithPromotions = canCombineWithPromotions;
+  const canCombineLoyaltyWithFreeship = Boolean(loyaltySettings?.can_combine_with_freeship);
 
   const [isMemberCardSelected, setIsMemberCardSelected] = useState<boolean>(
     isMemberCardSelectedProp !== undefined ? isMemberCardSelectedProp : true
@@ -1191,7 +1193,7 @@ export default function CouponModal({
     const tierName = isDiamond ? "Diamond" : "Gold";
     const bullet1 = t("member_terms_bullet_tier", { tier: tierName });
     const bullet2 = t("member_terms_bullet_discount", { percent: discountPercent });
-    const bullet3 = canCombineWithPromotions
+    const bullet3 = canCombineLoyaltyWithPromotions
       ? t("member_terms_bullet_combinable")
       : t("member_terms_bullet_non_combinable");
     const bullet4 = t("member_terms_bullet_activation");
@@ -1204,11 +1206,11 @@ export default function CouponModal({
       start_at: null,
       end_at: null,
       promotion_type: "order_discount",
-      can_combine_with_promotions: canCombineWithPromotions,
-      can_combine_with_freeship: true,
+      can_combine_with_promotions: canCombineLoyaltyWithPromotions,
+      can_combine_with_freeship: canCombineLoyaltyWithFreeship,
       terms: `${bullet1}\n${bullet2}\n${bullet3}\n${bullet4}`,
     };
-  }, [memberCardTitle, memberCardDescription, memberCardBanner, canCombineWithPromotions, isDiamond, discountPercent, t]);
+  }, [memberCardTitle, memberCardDescription, memberCardBanner, canCombineLoyaltyWithPromotions, canCombineLoyaltyWithFreeship, isDiamond, discountPercent, t]);
 
   const hasMemberBenefit = useMemo(() => {
     if (isBrowseMode) return false;
@@ -1441,6 +1443,9 @@ export default function CouponModal({
     }
   }, [shippingSettings]);
 
+  const canCombineShippingWithPromotions = Boolean(shippingSettingsState?.can_combine_with_promotions);
+  const canCombineShippingWithFreeship = Boolean(shippingSettingsState?.can_combine_with_freeship);
+
   // Virtual campaign item for shipping discount card (FB-04)
   const shippingPromotionItem: PublicCampaignItem | null = useMemo(() => {
     const resolvedTitle =
@@ -1465,10 +1470,12 @@ export default function CouponModal({
         end_at: null,
         special_note: resolvedBadge,
         description: resolvedDescription,
+        can_combine_with_promotions: canCombineShippingWithPromotions,
+        can_combine_with_freeship: canCombineShippingWithFreeship,
       };
     }
     return null;
-  }, [shippingSettingsState, locale]);
+  }, [shippingSettingsState, locale, canCombineShippingWithPromotions, canCombineShippingWithFreeship]);
 
   // Combined campaigns list (deep-merge matching activePromotions & public campaigns)
   const allCampaigns = useMemo(() => {
@@ -1510,8 +1517,12 @@ export default function CouponModal({
     });
   }, [activePromotions, subtotal]);
 
+  const activeSamePriceCartPromos = useMemo(() => {
+    return activeCartPromos.filter((p) => p.promotion_type === "same_price_discount");
+  }, [activeCartPromos]);
+
   const hasCampaignWithNoFreeship = useMemo(() => {
-    return activeCartPromos.some((p) => p.can_combine_with_freeship === false);
+    return activeCartPromos.some((p) => !Boolean(p.can_combine_with_freeship));
   }, [activeCartPromos]);
 
   // Check eligibility for each voucher
@@ -1538,7 +1549,7 @@ export default function CouponModal({
         };
       }
 
-      // 0.05 System partial shipping discount check: Đang áp dụng chương trình giảm phí vận chuyển của hệ thống
+      // 0.05 System partial shipping discount check (Pair M11: Shipping Voucher <-> ShippingSetting)
       const isAutoShippingDiscount = Boolean(
         !orderIsAutoFreeship &&
         (isAutoShippingDiscountActive ||
@@ -1548,7 +1559,11 @@ export default function CouponModal({
           subtotal >= Number(shippingSettingsState.min_order_amount)))
       );
 
-      if (isAutoShippingDiscount && isFreeship) {
+      if (
+        isAutoShippingDiscount &&
+        isFreeship &&
+        !(Boolean(v.can_combine_with_freeship) && canCombineShippingWithFreeship)
+      ) {
         return {
           eligible: false,
           reason: t("system_shipping_discount_active"),
@@ -1597,7 +1612,7 @@ export default function CouponModal({
         }
       }
 
-      // 2. Freeship combined with active campaign check
+      // 2. Freeship combined with active campaign check (M4)
       if (isFreeship && hasCampaignWithNoFreeship) {
         return {
           eligible: false,
@@ -1606,9 +1621,6 @@ export default function CouponModal({
       }
 
       // 3. Minimum spend check
-      // For voucher G2 with can_combine_with_promotions === false:
-      // Minimum spend threshold (prereq_price) is compared against originalSubtotal (price before G1 campaign discount).
-      // Voucher G2 is NOT marked ineligible simply because the cart has an active Campaign G1!
       const minSpend = Number(v.prereq_price || 0);
       const effectiveSpend =
         v.can_combine_with_promotions === false && originalSubtotal !== undefined && originalSubtotal > 0
@@ -1639,10 +1651,12 @@ export default function CouponModal({
       isAutoShippingDiscountActive,
       shippingFeeDiscount,
       shippingSettingsState,
+      canCombineShippingWithFreeship,
       canCombineWithFreeship,
       hasCampaignWithNoFreeship,
       subtotal,
       originalSubtotal,
+      locale,
       t,
     ]
   );
@@ -1652,6 +1666,15 @@ export default function CouponModal({
       selectedCampaignIds.some((id) => String(id) === String(c.id))
     );
   }, [allCampaigns, selectedCampaignIds]);
+
+  const effectiveSelectedCampaigns = useMemo(() => {
+    return [
+      ...selectedCampaignItems,
+      ...activeSamePriceCartPromos.filter(
+        (sp) => !selectedCampaignItems.some((c) => String(c.id) === String(sp.id))
+      ),
+    ];
+  }, [selectedCampaignItems, activeSamePriceCartPromos]);
 
   const eligibleCampaigns = useMemo(() => {
     return allCampaigns.filter(
@@ -1678,18 +1701,38 @@ export default function CouponModal({
     return allVouchers.filter((v) => selectedCodes.some((code) => code.toUpperCase() === v.code.toUpperCase()));
   }, [allVouchers, selectedCodes]);
 
+  const doesVoucherConflictWithMember = useCallback(
+    (v: PublicVoucherItem): boolean => {
+      if (isShipVoucher(v)) {
+        // Pair M9: Loyalty (canCombineLoyaltyWithFreeship) <-> Shipping Voucher (can_combine_with_promotions)
+        return !(canCombineLoyaltyWithFreeship && Boolean(v.can_combine_with_promotions));
+      }
+      // Pair M6: Loyalty (canCombineLoyaltyWithPromotions) <-> Food Voucher (can_combine_with_promotions)
+      return !(canCombineLoyaltyWithPromotions && Boolean(v.can_combine_with_promotions));
+    },
+    [canCombineLoyaltyWithPromotions, canCombineLoyaltyWithFreeship]
+  );
+
+  const doesCampaignConflictWithMember = useCallback(
+    (c: { can_combine_with_promotions?: boolean }): boolean => {
+      // Pair M3: Loyalty (canCombineLoyaltyWithPromotions) <-> Campaign (can_combine_with_promotions)
+      return !(canCombineLoyaltyWithPromotions && Boolean(c.can_combine_with_promotions));
+    },
+    [canCombineLoyaltyWithPromotions]
+  );
+
   const hasSelectedExclusiveVoucher = useMemo(() => {
-    return selectedVoucherItems.some((v) => v.can_combine_with_promotions === false);
-  }, [selectedVoucherItems]);
+    return selectedVoucherItems.some(doesVoucherConflictWithMember);
+  }, [selectedVoucherItems, doesVoucherConflictWithMember]);
 
   const hasSelectedExclusiveCampaign = useMemo(() => {
-    return selectedCampaignItems.some((c) => c.can_combine_with_promotions === false);
-  }, [selectedCampaignItems]);
+    return effectiveSelectedCampaigns.some(doesCampaignConflictWithMember);
+  }, [effectiveSelectedCampaigns, doesCampaignConflictWithMember]);
 
   const isMemberCardLocked = useMemo(() => {
-    if (isBrowseMode || canCombineWithPromotions) return false;
+    if (isBrowseMode) return false;
     return hasSelectedExclusiveVoucher || hasSelectedExclusiveCampaign;
-  }, [isBrowseMode, canCombineWithPromotions, hasSelectedExclusiveVoucher, hasSelectedExclusiveCampaign]);
+  }, [isBrowseMode, hasSelectedExclusiveVoucher, hasSelectedExclusiveCampaign]);
 
   const memberCardLockReason = useMemo(() => {
     if (!isMemberCardLocked) return "";
@@ -1702,7 +1745,7 @@ export default function CouponModal({
     return "";
   }, [isMemberCardLocked, hasSelectedExclusiveVoucher, hasSelectedExclusiveCampaign, t]);
 
-  // Xác định điều kiện khóa thẻ Trợ giá ship tự động (shipping-promotion-card)
+  // Xác định điều kiện khóa thẻ Trợ giá ship tự động (shipping-promotion-card) theo ma trận 2 chiều (M5, M8, M10, M11)
   const isShippingPromotionLocked = useMemo(() => {
     // 1. Khóa khi CheckoutForm / MobileCartFlow báo freeship bị chặn
     if (isFreeshipBlocked) return true;
@@ -1710,55 +1753,128 @@ export default function CouponModal({
     // 2. Khóa khi prop canCombineWithFreeship === false từ voucher ở checkout
     if (canCombineWithFreeship === false) return true;
 
-    // 3. Khóa khi có bất kỳ campaign nào đang được chọn trong modal có can_combine_with_freeship === false
-    const hasLockedSelectedCampaign = selectedCampaignItems.some(
-      (c) => c.can_combine_with_freeship === false
+    const shipPromoFlag =
+      shippingSettingsState?.can_combine_with_promotions !== undefined
+        ? canCombineShippingWithPromotions
+        : true;
+    const shipFreeshipFlag =
+      shippingSettingsState?.can_combine_with_freeship !== undefined
+        ? canCombineShippingWithFreeship
+        : true;
+
+    // 3. Pair M5: Campaign (can_combine_with_freeship) <-> ShippingSetting (can_combine_with_promotions)
+    const hasLockedSelectedCampaign = effectiveSelectedCampaigns.some(
+      (c) => !(Boolean(c.can_combine_with_freeship) && shipPromoFlag)
     );
     if (hasLockedSelectedCampaign) return true;
 
-    // 4. Khóa khi có bất kỳ activeCartPromos nào (Quà tặng, Combo, Buy X Get Y) có can_combine_with_freeship === false
+    // 4. Pair M5 trên activeCartPromos
     const hasLockedActiveCartPromo = activeCartPromos.some(
-      (p) => p.can_combine_with_freeship === false
+      (p) => !(Boolean(p.can_combine_with_freeship) && shipPromoFlag)
     );
     if (hasLockedActiveCartPromo) return true;
 
-    // 5. Khóa khi appliedCampaignIds có campaign cấm freeship
-    if (appliedCampaignIds && appliedCampaignIds.length > 0) {
+    // 5. Pair M5 khi appliedCampaignIds có campaign không kết hợp được với ShippingSetting
+    if (appliedCampaignIds && appliedCampaignIds.length > 0 && selectedCampaignIds.length > 0) {
       const hasAppliedLockedCampaign = allCampaigns.some(
-        (c) => appliedCampaignIds.some((id) => String(id) === String(c.id)) && c.can_combine_with_freeship === false
+        (c) =>
+          selectedCampaignIds.some((id) => String(id) === String(c.id)) &&
+          !(Boolean(c.can_combine_with_freeship) && shipPromoFlag)
       );
       if (hasAppliedLockedCampaign) return true;
     }
 
-    // 6. Khóa khi có bất kỳ voucher nào đang được chọn trong modal có can_combine_with_freeship === false
-    const hasLockedSelectedVoucher = selectedVoucherItems.some(
-      (v) => v.can_combine_with_freeship === false
-    );
+    // 6. Pair M8 (Food Voucher <-> ShippingSetting) & Pair M11 (Shipping Voucher <-> ShippingSetting)
+    const hasLockedSelectedVoucher = selectedVoucherItems.some((v) => {
+      if (isShipVoucher(v)) {
+        return !(Boolean(v.can_combine_with_freeship) && shipFreeshipFlag);
+      }
+      return !(Boolean(v.can_combine_with_freeship) && shipPromoFlag);
+    });
     if (hasLockedSelectedVoucher) return true;
+
+    // 7. Pair M10: Loyalty (canCombineLoyaltyWithFreeship) <-> ShippingSetting (can_combine_with_promotions)
+    if (
+      !isBrowseMode &&
+      hasMemberBenefit &&
+      isMemberCardSelected &&
+      !isMemberCardLocked &&
+      loyaltySettings?.can_combine_with_freeship !== undefined &&
+      !(canCombineLoyaltyWithFreeship && shipPromoFlag)
+    ) {
+      return true;
+    }
 
     return false;
   }, [
     isFreeshipBlocked,
     canCombineWithFreeship,
-    selectedCampaignItems,
+    shippingSettingsState,
+    canCombineShippingWithPromotions,
+    canCombineShippingWithFreeship,
+    effectiveSelectedCampaigns,
     activeCartPromos,
     appliedCampaignIds,
+    selectedCampaignIds,
     allCampaigns,
     selectedVoucherItems,
+    isBrowseMode,
+    hasMemberBenefit,
+    isMemberCardSelected,
+    isMemberCardLocked,
+    loyaltySettings,
+    canCombineLoyaltyWithFreeship,
   ]);
 
   const shippingPromotionLockReason = useMemo(() => {
     if (!isShippingPromotionLocked) return "";
 
-    const hasLockedSelectedVoucher = selectedVoucherItems.some(
-      (v) => v.can_combine_with_freeship === false
-    );
-    if (hasLockedSelectedVoucher) {
+    const shipPromoFlag =
+      shippingSettingsState?.can_combine_with_promotions !== undefined
+        ? canCombineShippingWithPromotions
+        : true;
+    const shipFreeshipFlag =
+      shippingSettingsState?.can_combine_with_freeship !== undefined
+        ? canCombineShippingWithFreeship
+        : true;
+
+    const hasLockedSelectedVoucher = selectedVoucherItems.some((v) => {
+      if (isShipVoucher(v)) {
+        return !(Boolean(v.can_combine_with_freeship) && shipFreeshipFlag);
+      }
+      return !(Boolean(v.can_combine_with_freeship) && shipPromoFlag);
+    });
+    if (hasLockedSelectedVoucher || canCombineWithFreeship === false) {
       return t("order_voucher_no_freeship");
     }
 
+    if (
+      !isBrowseMode &&
+      hasMemberBenefit &&
+      isMemberCardSelected &&
+      !isMemberCardLocked &&
+      loyaltySettings?.can_combine_with_freeship !== undefined &&
+      !(canCombineLoyaltyWithFreeship && shipPromoFlag)
+    ) {
+      return t("mutex_member_tier");
+    }
+
     return t("campaign_no_freeship");
-  }, [isShippingPromotionLocked, selectedVoucherItems, t]);
+  }, [
+    isShippingPromotionLocked,
+    shippingSettingsState,
+    canCombineShippingWithPromotions,
+    canCombineShippingWithFreeship,
+    selectedVoucherItems,
+    canCombineWithFreeship,
+    isBrowseMode,
+    hasMemberBenefit,
+    isMemberCardSelected,
+    isMemberCardLocked,
+    loyaltySettings,
+    canCombineLoyaltyWithFreeship,
+    t,
+  ]);
 
   const shippingMinOrderAmount = useMemo(() => {
     if (shippingSettingsState?.is_min_amount_enabled) {
@@ -1768,8 +1884,8 @@ export default function CouponModal({
   }, [shippingSettingsState]);
 
   const effectiveShippingSubtotal = useMemo(() => {
-    return Math.max(subtotal, originalSubtotal || 0);
-  }, [subtotal, originalSubtotal]);
+    return subtotal;
+  }, [subtotal]);
 
   const isShippingPromotionEligible = useMemo(() => {
     if (shippingMinOrderAmount > 0) {
@@ -1796,13 +1912,12 @@ export default function CouponModal({
         return { locked: false };
       }
 
-      // Khóa campaign không áp dụng đồng thời với ưu đãi thành viên Gold/Diamond
+      // Pair M3: Campaign (can_combine_with_promotions) <-> Loyalty (canCombineLoyaltyWithPromotions)
       if (
-        !canCombineWithPromotions &&
         hasMemberBenefit &&
         isMemberCardSelected &&
         !isMemberCardLocked &&
-        camp.can_combine_with_promotions === false
+        !(canCombineLoyaltyWithPromotions && Boolean(camp.can_combine_with_promotions))
       ) {
         return {
           locked: true,
@@ -1811,12 +1926,15 @@ export default function CouponModal({
         };
       }
 
-      // 1. Kiểm tra khóa lẫn nhau giữa các Campaign (Mutex Lock)
-      if (selectedCampaignItems.length > 0) {
-        const hasNonCombinableCampaign = selectedCampaignItems.some(
-          (c) => c.can_combine_with_promotions === false
+      // 1. Pair M1: Kiểm tra khóa lẫn nhau 2 chiều giữa các Campaign (bao gồm cả same_price_discount)
+      const otherActiveCampaigns = effectiveSelectedCampaigns.filter(
+        (c) => String(c.id) !== String(camp.id)
+      );
+      if (otherActiveCampaigns.length > 0) {
+        const hasNonCombinablePair = otherActiveCampaigns.some(
+          (c) => !(Boolean(c.can_combine_with_promotions) && Boolean(camp.can_combine_with_promotions))
         );
-        if (hasNonCombinableCampaign || camp.can_combine_with_promotions === false) {
+        if (hasNonCombinablePair) {
           return {
             locked: true,
             reason: t("campaign_mutex_locked"),
@@ -1824,10 +1942,10 @@ export default function CouponModal({
         }
       }
 
-      // 2. Kiểm tra khóa chéo với Voucher món ăn đang chọn
+      // 2. Pair M2: Kiểm tra khóa chéo 2 chiều với Voucher món ăn đang chọn
       const selectedFoodVoucher = selectedVoucherItems.find(isFoodVoucher);
       if (selectedFoodVoucher) {
-        if (selectedFoodVoucher.can_combine_with_promotions === false || camp.can_combine_with_promotions === false) {
+        if (!(Boolean(selectedFoodVoucher.can_combine_with_promotions) && Boolean(camp.can_combine_with_promotions))) {
           return {
             locked: true,
             reason: t("campaign_voucher_locked"),
@@ -1835,16 +1953,16 @@ export default function CouponModal({
         }
       }
 
-      // 3. Kiểm tra khóa chéo với Voucher Freeship đang chọn
+      // 3. Pair M4: Kiểm tra khóa chéo 2 chiều với Voucher Freeship đang chọn
       const selectedShipVoucher = selectedVoucherItems.find(isShipVoucher);
       if (selectedShipVoucher) {
-        if (selectedShipVoucher.can_combine_with_promotions === false) {
+        if (!Boolean(selectedShipVoucher.can_combine_with_promotions)) {
           return {
             locked: true,
             reason: t("campaign_mutex_locked"),
           };
         }
-        if (camp.can_combine_with_freeship === false) {
+        if (!Boolean(camp.can_combine_with_freeship)) {
           return {
             locked: true,
             reason: t("campaign_freeship_locked"),
@@ -1854,7 +1972,17 @@ export default function CouponModal({
 
       return { locked: false };
     },
-    [isBrowseMode, selectedCampaignIds, selectedCampaignItems, selectedVoucherItems, hasMemberBenefit, isMemberCardSelected, isMemberCardLocked, canCombineWithPromotions, t]
+    [
+      isBrowseMode,
+      selectedCampaignIds,
+      effectiveSelectedCampaigns,
+      selectedVoucherItems,
+      hasMemberBenefit,
+      isMemberCardSelected,
+      isMemberCardLocked,
+      canCombineLoyaltyWithPromotions,
+      t,
+    ]
   );
 
   const checkCampaignRealtimeLock = checkCampaignMutexLock;
@@ -1865,36 +1993,49 @@ export default function CouponModal({
       const isSelected = selectedCodes.some((c) => c.toUpperCase() === v.code.toUpperCase());
       if (isSelected) return { locked: false };
 
-      // Khóa voucher không áp dụng đồng thời với ưu đãi thành viên Gold/Diamond
-      if (
-        !canCombineWithPromotions &&
-        hasMemberBenefit &&
-        isMemberCardSelected &&
-        !isMemberCardLocked &&
-        v.can_combine_with_promotions === false
-      ) {
-        return {
-          locked: true,
-          reason: t("mutex_member_tier"),
-          reasonCode: "MUTEX_MEMBER_TIER",
-        };
-      }
-
       const isShip = isShipVoucher(v);
       const isFood = isFoodVoucher(v);
+
+      // Pair M6 (Food Voucher <-> Loyalty) & Pair M9 (Shipping Voucher <-> Loyalty)
+      if (hasMemberBenefit && isMemberCardSelected && !isMemberCardLocked) {
+        if (isFood && !(canCombineLoyaltyWithPromotions && Boolean(v.can_combine_with_promotions))) {
+          return {
+            locked: true,
+            reason: t("mutex_member_tier"),
+            reasonCode: "MUTEX_MEMBER_TIER",
+          };
+        }
+        const memberFreeshipFlag =
+          loyaltySettings?.can_combine_with_freeship !== undefined
+            ? canCombineLoyaltyWithFreeship
+            : canCombineLoyaltyWithPromotions;
+        if (isShip && !(memberFreeshipFlag && Boolean(v.can_combine_with_promotions))) {
+          return {
+            locked: true,
+            reason: t("mutex_member_tier"),
+            reasonCode: "MUTEX_MEMBER_TIER",
+          };
+        }
+      }
+
       const selectedFood = selectedVoucherItems.find(isFoodVoucher);
       const selectedShip = selectedVoucherItems.find(isShipVoucher);
-      const hasNonCombinableCampaign = selectedCampaignItems.some((c) => c.can_combine_with_promotions === false);
-      const hasCampaignWithNoFreeship = selectedCampaignItems.some((c) => c.can_combine_with_freeship === false);
 
       if (isFood) {
         if (selectedFood && selectedFood.code.toUpperCase() !== v.code.toUpperCase()) {
           return { locked: true, reason: t("mutex_selected_promotions") };
         }
-        if (selectedShip && (selectedShip.can_combine_with_promotions === false || v.can_combine_with_freeship === false)) {
+        // Pair M7: Food Voucher (can_combine_with_freeship) <-> Shipping Voucher (can_combine_with_promotions)
+        if (selectedShip && !(Boolean(v.can_combine_with_freeship) && Boolean(selectedShip.can_combine_with_promotions))) {
           return { locked: true, reason: t("mutex_selected_promotions") };
         }
-        if (hasNonCombinableCampaign) {
+        // Pair M2: Campaign (can_combine_with_promotions) <-> Food Voucher (can_combine_with_promotions)
+        if (
+          effectiveSelectedCampaigns.length > 0 &&
+          effectiveSelectedCampaigns.some(
+            (c) => !(Boolean(c.can_combine_with_promotions) && Boolean(v.can_combine_with_promotions))
+          )
+        ) {
           return { locked: true, reason: t("campaign_mutex_locked") };
         }
       }
@@ -1903,17 +2044,47 @@ export default function CouponModal({
         if (selectedShip && selectedShip.code.toUpperCase() !== v.code.toUpperCase()) {
           return { locked: true, reason: t("mutex_selected_promotions") };
         }
-        if (selectedFood && (selectedFood.can_combine_with_freeship === false || v.can_combine_with_promotions === false)) {
-          return { locked: true, reason: t("mutex_selected_promotions") };
+        // Pair M7: Food Voucher (can_combine_with_freeship) <-> Shipping Voucher (can_combine_with_promotions)
+        if (selectedFood && !(Boolean(selectedFood.can_combine_with_freeship) && Boolean(v.can_combine_with_promotions))) {
+          return {
+            locked: true,
+            reason: !Boolean(selectedFood.can_combine_with_freeship)
+              ? t("order_voucher_no_freeship")
+              : t("mutex_selected_promotions"),
+          };
         }
-        if (hasCampaignWithNoFreeship) {
-          return { locked: true, reason: t("campaign_no_freeship") };
+        // Pair M4: Campaign (can_combine_with_freeship) <-> Shipping Voucher (can_combine_with_promotions)
+        if (
+          effectiveSelectedCampaigns.length > 0 &&
+          effectiveSelectedCampaigns.some(
+            (c) => !(Boolean(c.can_combine_with_freeship) && Boolean(v.can_combine_with_promotions))
+          )
+        ) {
+          const blockedByCampNoFreeship = effectiveSelectedCampaigns.some(
+            (c) => !Boolean(c.can_combine_with_freeship)
+          );
+          return {
+            locked: true,
+            reason: blockedByCampNoFreeship ? t("campaign_no_freeship") : t("campaign_mutex_locked"),
+          };
         }
       }
 
       return { locked: false };
     },
-    [isBrowseMode, selectedCodes, selectedVoucherItems, selectedCampaignItems, hasMemberBenefit, isMemberCardSelected, isMemberCardLocked, canCombineWithPromotions, t]
+    [
+      isBrowseMode,
+      selectedCodes,
+      selectedVoucherItems,
+      effectiveSelectedCampaigns,
+      hasMemberBenefit,
+      isMemberCardSelected,
+      isMemberCardLocked,
+      loyaltySettings,
+      canCombineLoyaltyWithPromotions,
+      canCombineLoyaltyWithFreeship,
+      t,
+    ]
   );
 
   const handleCopyCode = (code: string) => {
@@ -1978,13 +2149,15 @@ export default function CouponModal({
       if (isSelected) {
         setSelectedCodes((prev) => {
           const nextCodes = prev.filter((c) => c.toUpperCase() !== code.toUpperCase());
-          // Khi khách BỎ CHỌN voucher đó: Thẻ Hội viên Vàng tự động MỞ KHÓA và TỰ ĐỘNG BẬT LẠI (checked)
-          if (!canCombineWithPromotions && targetVoucher.can_combine_with_promotions === false) {
+          // Khi khách BỎ CHỌN voucher đó: Thẻ Hội viên tự động MỞ KHÓA và TỰ ĐỘNG BẬT LẠI (checked) nếu không còn ưu đãi nào xung đột
+          if (doesVoucherConflictWithMember(targetVoucher)) {
             const remainingExclusiveVoucher = allVouchers.some(
-              (v) => nextCodes.some((nc) => nc.toUpperCase() === v.code.toUpperCase()) && v.can_combine_with_promotions === false
+              (v) =>
+                nextCodes.some((nc) => nc.toUpperCase() === v.code.toUpperCase()) &&
+                doesVoucherConflictWithMember(v)
             );
-            const remainingExclusiveCampaign = selectedCampaignItems.some(
-              (c) => c.can_combine_with_promotions === false
+            const remainingExclusiveCampaign = effectiveSelectedCampaigns.some(
+              doesCampaignConflictWithMember
             );
             if (!remainingExclusiveVoucher && !remainingExclusiveCampaign) {
               setIsMemberCardSelected(true);
@@ -2002,14 +2175,15 @@ export default function CouponModal({
       const lockState = checkRealtimeLock(targetVoucher);
       const isLockedOnlyByMember =
         lockState.locked &&
-        (lockState.reason === t("mutex_member_tier") ||
+        (lockState.reasonCode === "MUTEX_MEMBER_TIER" ||
+          lockState.reason === t("mutex_member_tier") ||
           lockState.reason === "Không áp dụng đồng thời với ưu đãi thành viên");
 
       if (lockState.locked && !isLockedOnlyByMember) return;
 
-      // Khi khách BẤM CHỌN một voucher không cộng dồn:
-      // Hệ thống sẽ TỰ ĐỘNG BỎ CHỌN (uncheck) thẻ Hội viên Vàng và khóa thẻ này!
-      if (!canCombineWithPromotions && targetVoucher.can_combine_with_promotions === false) {
+      // Khi khách BẤM CHỌN một voucher không cộng dồn với thẻ Hội viên (M6 / M9):
+      // Hệ thống sẽ TỰ ĐỘNG BỎ CHỌN (uncheck) thẻ Hội viên và khóa thẻ này!
+      if (doesVoucherConflictWithMember(targetVoucher)) {
         setIsMemberCardSelected(false);
         onToggleMemberCard?.(false);
       }
@@ -2029,9 +2203,11 @@ export default function CouponModal({
       checkVoucherEligibility,
       checkRealtimeLock,
       selectedCodes,
-      canCombineWithPromotions,
+      doesVoucherConflictWithMember,
+      doesCampaignConflictWithMember,
       onToggleMemberCard,
-      selectedCampaignItems,
+      effectiveSelectedCampaigns,
+      t,
     ]
   );
 
@@ -2047,12 +2223,14 @@ export default function CouponModal({
       if (isSelected) {
         setSelectedCampaignIds((prev) => {
           const nextIds = prev.filter((cId) => String(cId) !== String(id));
-          if (!canCombineWithPromotions && targetCamp.can_combine_with_promotions === false) {
+          if (doesCampaignConflictWithMember(targetCamp)) {
             const remainingExclusiveCampaign = allCampaigns.some(
-              (c) => nextIds.some((nid) => String(nid) === String(c.id)) && c.can_combine_with_promotions === false
+              (c) =>
+                nextIds.some((nid) => String(nid) === String(c.id)) &&
+                doesCampaignConflictWithMember(c)
             );
             const remainingExclusiveVoucher = selectedVoucherItems.some(
-              (v) => v.can_combine_with_promotions === false
+              doesVoucherConflictWithMember
             );
             if (!remainingExclusiveCampaign && !remainingExclusiveVoucher) {
               setIsMemberCardSelected(true);
@@ -2076,18 +2254,18 @@ export default function CouponModal({
 
       if (lockState.locked && !isLockedOnlyByMember) return;
 
-      if (!canCombineWithPromotions && targetCamp.can_combine_with_promotions === false) {
+      if (doesCampaignConflictWithMember(targetCamp)) {
         setIsMemberCardSelected(false);
         onToggleMemberCard?.(false);
       }
 
       setSelectedCampaignIds((prev) => {
-        if (targetCamp.can_combine_with_promotions === false) {
+        if (!Boolean(targetCamp.can_combine_with_promotions)) {
           return [targetCamp.id];
         }
         let filtered = prev.filter((cId) => {
           const existing = allCampaigns.find((c) => String(c.id) === String(cId));
-          return existing && existing.can_combine_with_promotions !== false;
+          return existing && Boolean(existing.can_combine_with_promotions);
         });
         // Mutex: Khi chọn campaign mới thuộc order_discount, tự động uncheck campaign order_discount đã chọn trước đó
         if (targetCamp.promotion_type === "order_discount") {
@@ -2099,15 +2277,15 @@ export default function CouponModal({
         return [...filtered, targetCamp.id];
       });
 
-      // Auto-clear conflicting exclusive vouchers
+      // Auto-clear conflicting exclusive vouchers (M2 & M4)
       setSelectedCodes((prev) => {
         return prev.filter((c) => {
           const v = allVouchers.find((item) => item.code.toUpperCase() === c.toUpperCase());
           if (!v) return true;
-          if (v.can_combine_with_promotions === false) return false;
-          if (targetCamp.can_combine_with_freeship === false && isShipVoucher(v)) return false;
-          if (targetCamp.can_combine_with_promotions === false) return false;
-          return true;
+          if (isShipVoucher(v)) {
+            return Boolean(targetCamp.can_combine_with_freeship) && Boolean(v.can_combine_with_promotions);
+          }
+          return Boolean(targetCamp.can_combine_with_promotions) && Boolean(v.can_combine_with_promotions);
         });
       });
     },
@@ -2116,10 +2294,12 @@ export default function CouponModal({
       checkCampaignEligibility,
       checkCampaignRealtimeLock,
       selectedCampaignIds,
-      canCombineWithPromotions,
+      doesCampaignConflictWithMember,
+      doesVoucherConflictWithMember,
       onToggleMemberCard,
       allVouchers,
       selectedVoucherItems,
+      t,
     ]
   );
 
@@ -2258,7 +2438,7 @@ export default function CouponModal({
           Number(shippingSettingsState.min_order_amount) > 0 &&
           subtotal >= Number(shippingSettingsState.min_order_amount)))
       );
-      if (isAutoShippingDiscount && isCodeFreeship) {
+      if (isAutoShippingDiscount && isCodeFreeship && !canCombineShippingWithFreeship) {
         setFeedbackNotice(t("system_shipping_discount_active"));
         return;
       }

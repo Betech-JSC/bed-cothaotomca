@@ -1,12 +1,13 @@
 export interface BranchLike {
   id?: number | string;
   code?: string;
-  branchName?: string;
-  name?: string;
-  title?: string;
-  address?: string;
-  name_en?: string;
-  address_en?: string;
+  branchName?: string | null;
+  name?: string | null;
+  name_vi?: string | null;
+  title?: string | null;
+  address?: string | null;
+  name_en?: string | null;
+  address_en?: string | null;
   [key: string]: any;
 }
 
@@ -100,6 +101,8 @@ export function identifyBrandBranch(branch?: BranchLike | null): BrandBranchProf
     branch.branchName,
     branch.title,
     branch.name,
+    branch.name_vi,
+    branch.name_en,
     branch.address,
   ]
     .filter(Boolean)
@@ -157,4 +160,43 @@ export function formatBranchDisplayName(branch?: BranchLike | null, locale: stri
     return `${raw} - ${branch.address}`;
   }
   return raw;
+}
+
+/**
+ * Resolves branch title from CMS with bilingual support and fallback.
+ */
+export function getBranchTitle(
+  branch?: BranchLike | null,
+  locale: string = "vi",
+  fallback: string = ""
+): string {
+  if (!branch) return fallback;
+
+  const isEn = (locale || "vi").toLowerCase().startsWith("en");
+  const rawNameVi = (branch.name_vi || "").trim();
+
+  if (isEn) {
+    const explicitEn = (branch.name_en || branch.en_title || "").trim();
+    if (explicitEn && !/^Chi\s*nhánh/i.test(explicitEn) && (!rawNameVi || explicitEn !== rawNameVi)) {
+      return explicitEn;
+    }
+
+    const rawName = (branch.name || branch.title || "").trim();
+    if (rawName && !/^Chi\s*nhánh/i.test(rawName) && (!rawNameVi || rawName !== rawNameVi)) {
+      return rawName;
+    }
+
+    const matched = identifyBrandBranch(branch);
+    if (matched) return matched.nameEn;
+
+    return explicitEn || rawName || fallback;
+  }
+
+  const rawVi = (branch.name_vi || branch.name || branch.title || "").trim();
+  if (!rawVi || /^Chi\s*nhánh\s*\d+$/i.test(rawVi)) {
+    const matched = identifyBrandBranch(branch);
+    if (matched) return matched.nameVi;
+  }
+
+  return rawVi || fallback;
 }

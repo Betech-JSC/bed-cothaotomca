@@ -6,13 +6,15 @@ import Logo from "../Logo";
 import Hotline from "../Icons/Hotline";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useBranches } from "@/contexts/BranchContext";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Chat from "../Icons/Chat";
 import { formatImageUrl } from "@/lib/format";
+import { getBranchTitle } from "@/lib/branchHelper";
 
 
 const Footer = () => {
   const t = useTranslations();
+  const locale = useLocale();
   const branches = useBranches();
   const [openBranchIndex, setOpenBranchIndex] = useState<number | null>(0);
   const sortedBranches = useMemo(() => {
@@ -106,7 +108,7 @@ const Footer = () => {
                           <span className="inline-flex size-6 items-center justify-center rounded-full bg-secondary text-white text-xs font-bold shrink-0">
                             {indexShowroom + 1}
                           </span>
-                          <span>{t('footer.branch')} {indexShowroom + 1}</span>
+                          <span>{getBranchTitle(itemShowroom, locale, `${t('footer.branch')} ${indexShowroom + 1}`)}</span>
                         </span>
                         <svg
                           className={`size-4 text-white transition-transform duration-300 ${isOpen ? "rotate-180 text-secondary" : ""}`}
@@ -190,7 +192,7 @@ const Footer = () => {
                       />
                     </div>
                     <div className="absolute bottom-0 left-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent text-gray-200 space-y-1 p-3 sm:p-4 w-full">
-                      <div className="title-4 text-white font-bold">{t('footer.branch')} {indexShowroom + 1}</div>
+                      <div className="title-4 text-white font-bold">{getBranchTitle(itemShowroom, locale, `${t('footer.branch')} ${indexShowroom + 1}`)}</div>
                       <div className="body-2 line-clamp-2 break-words text-xs sm:text-sm text-gray-200 lg:group-hover:text-secondary transition-all duration-300 ease-in-out">
                         {itemShowroom.address}
                       </div>

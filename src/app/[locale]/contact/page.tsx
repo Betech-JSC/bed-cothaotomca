@@ -11,6 +11,7 @@ import { getGeneralSettings } from '@/services/generalSettingService';
 import ContactForm from '@/components/Contact/ContactForm';
 import AnimateOnScroll from '@/components/Animated/animated-appear';
 import { getBranches } from '@/services/branchService';
+import { getBranchTitle } from '@/lib/branchHelper';
 import { Metadata } from 'next';
 import { getMetaPage, resolveMetaTitle, resolveMetaDescription, resolveMetaKeywords } from '@/services/seoService';
 
@@ -136,7 +137,7 @@ export default async function ContactPage({
                   <div className="space-y-2">
                     {branches.map((branch, indexShowroom) => (
                       <div key={indexShowroom} className="space-x-1">
-                        <span className="title-4">{t('footer.branch')} {indexShowroom + 1}:</span>
+                        <span className="title-4">{getBranchTitle(branch, locale, `${t('footer.branch')} ${indexShowroom + 1}`)}:</span>
                         <span className="body-1 text-gray-900 lg:hover:text-secondary duration-300 ease-in-out">
                           <a href={branch.address_link || '#'} target="_blank" rel="noopener noreferrer nofollow">
                             {branch.address}

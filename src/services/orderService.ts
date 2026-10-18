@@ -535,6 +535,9 @@ export interface ShippingCalculationResult {
   shipping_fee: number;
   original_fee: number;
   shipping_discount?: number;
+  auto_shipping_discount?: number;
+  shipping_voucher_discount?: number;
+  fee_after_auto_discount?: number;
   shipping_discount_type?: "fixed" | "free";
   shipping_discount_value?: number;
   is_freeship: boolean;
@@ -553,9 +556,15 @@ export async function calculateShippingFee(params: {
   ward_id?: string;
   subtotal: number;
   voucher_code?: string;
+  shipping_voucher_code?: string;
   can_combine_with_freeship?: boolean;
   campaign_id?: number;
+  campaign_ids?: number[];
+  campaign_discount?: number;
   campaign_can_combine_with_freeship?: boolean;
+  member_discount?: number;
+  has_member_discount?: boolean;
+  items?: any[];
 }): Promise<ShippingCalculationResult> {
   try {
     const res = await fetch(`${API_BASE}/shipping/calculate`, {
@@ -580,6 +589,9 @@ export async function calculateShippingFee(params: {
       shipping_fee: 50000,
       original_fee: 50000,
       shipping_discount: 0,
+      auto_shipping_discount: 0,
+      shipping_voucher_discount: 0,
+      fee_after_auto_discount: 50000,
       shipping_discount_type: "free",
       shipping_discount_value: 0,
       is_freeship: false,
@@ -594,6 +606,8 @@ export interface ShippingSettings {
   is_min_amount_enabled: boolean;
   shipping_discount_type?: "fixed" | "free";
   shipping_discount_value?: number;
+  can_combine_with_promotions?: boolean;
+  can_combine_with_freeship?: boolean;
   voucher_codes: string[];
   is_voucher_enabled: boolean;
   default_shipping_fee: number;
@@ -617,10 +631,14 @@ export async function getShippingSettings(locale: string = "vi"): Promise<Shippi
     if (!res.ok) return null;
     const json = await res.json();
     const data = json.data as ShippingSettings;
-    if (data && locale === "en") {
-      if (data.card_title_en) data.card_title = data.card_title_en;
-      if (data.card_badge_en) data.card_badge = data.card_badge_en;
-      if (data.card_description_en) data.card_description = data.card_description_en;
+    if (data) {
+      data.can_combine_with_promotions = Boolean(data.can_combine_with_promotions);
+      data.can_combine_with_freeship = Boolean(data.can_combine_with_freeship);
+      if (locale === "en") {
+        if (data.card_title_en) data.card_title = data.card_title_en;
+        if (data.card_badge_en) data.card_badge = data.card_badge_en;
+        if (data.card_description_en) data.card_description = data.card_description_en;
+      }
     }
     return data;
   } catch (err: unknown) {
@@ -645,6 +663,7 @@ export interface LoyaltyTierCardInfo {
 
 export interface LoyaltySettings {
   can_combine_with_promotions: boolean;
+  can_combine_with_freeship?: boolean;
   is_enabled: boolean;
   gold_discount_percent: number;
   diamond_discount_percent: number;
@@ -672,6 +691,7 @@ export interface LoyaltySettings {
 
 export const DEFAULT_LOYALTY_SETTINGS: LoyaltySettings = {
   can_combine_with_promotions: false,
+  can_combine_with_freeship: false,
   is_enabled: true,
   gold_discount_percent: 5,
   diamond_discount_percent: 8,
@@ -707,6 +727,7 @@ export async function getLoyaltySettings(locale: string = "vi"): Promise<Loyalty
         ...DEFAULT_LOYALTY_SETTINGS,
         ...data,
         can_combine_with_promotions: Boolean(data.can_combine_with_promotions),
+        can_combine_with_freeship: Boolean(data.can_combine_with_freeship),
       };
     }
     return DEFAULT_LOYALTY_SETTINGS;

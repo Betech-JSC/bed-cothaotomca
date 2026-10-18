@@ -54,7 +54,7 @@ const Header = () => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/categories?lang=${locale}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.data) {
+        if (Array.isArray(data?.data)) {
           setCategories(
             data.data.map((c: any) => {
               const catTitle = c.title || "";

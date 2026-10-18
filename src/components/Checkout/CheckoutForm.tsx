@@ -1083,29 +1083,22 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return null;
   }, [appliedVoucher, cartCampaignG1, t]);
 
-  const isFreeshipBlocked = useMemo(() => {
-    const isG1BlockingFreeship = Boolean(
-      cartCampaignG1 &&
-      cartCampaignG1.can_combine_with_freeship === false &&
-      !(appliedVoucher && appliedVoucher.canCombineWithPromotions === false && appliedVoucher.canCombineWithFreeship !== false)
-    );
-    const isG2BlockingFreeship = Boolean(
-      appliedVoucher && appliedVoucher.canCombineWithFreeship === false
-    );
-    return isG1BlockingFreeship || isG2BlockingFreeship;
-  }, [cartCampaignG1, appliedVoucher]);
-
   const appliedCartPromotions = useMemo(() => {
     const list: ActivePromotion[] = [];
-    if (eligibleOrderDiscountPromo && autoOrderDiscountAmount > 0) {
+    activeSamePricePromos.forEach((p) => {
+      if (!list.some((x) => String(x.id) === String(p.id))) {
+        list.push(p);
+      }
+    });
+    if (eligibleOrderDiscountPromo && autoOrderDiscountAmount > 0 && !list.some((x) => String(x.id) === String(eligibleOrderDiscountPromo.id))) {
       list.push(eligibleOrderDiscountPromo);
     }
-    if (eligibleOrderGiftPromo && selectedOrderGiftItem) {
+    if (eligibleOrderGiftPromo && selectedOrderGiftItem && !list.some((x) => String(x.id) === String(eligibleOrderGiftPromo.id))) {
       list.push(eligibleOrderGiftPromo);
     }
     if (activeBuyXGetYItems.length > 0) {
       eligibleBuyXGetYPromos.forEach((p) => {
-        if (activeBuyXGetYItems.some((x) => String(x.promo.id) === String(p.id))) {
+        if (activeBuyXGetYItems.some((x) => String(x.promo.id) === String(p.id)) && !list.some((x) => String(x.id) === String(p.id))) {
           list.push(p);
         }
       });
@@ -1115,6 +1108,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
     return list;
   }, [
+    activeSamePricePromos,
     eligibleOrderDiscountPromo,
     autoOrderDiscountAmount,
     eligibleOrderGiftPromo,
@@ -1155,6 +1149,68 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       .catch(() => { });
   }, [locale]);
 
+  const canCombineLoyaltyWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
+  const canCombineLoyaltyWithFreeship = Boolean(loyaltySettings?.can_combine_with_freeship);
+
+  const isMemberExcludedByPromotions = useMemo(() => {
+    // M6: Food Voucher <-> Loyalty
+    const activeFoodV = appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.discountType !== "freeship" ? appliedVoucher : null;
+    if (activeFoodV && !(Boolean(activeFoodV.canCombineWithPromotions) && canCombineLoyaltyWithPromotions)) {
+      return true;
+    }
+    // M9: Shipping Voucher <-> Loyalty
+    const activeShipV = appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") ? appliedVoucher : null);
+    if (activeShipV && !(Boolean(activeShipV.canCombineWithPromotions) && canCombineLoyaltyWithFreeship)) {
+      return true;
+    }
+    // M3: Campaign (all 4 types) <-> Loyalty
+    if (appliedCartPromotions.some((p) => !(Boolean(p.can_combine_with_promotions) && canCombineLoyaltyWithPromotions))) {
+      return true;
+    }
+
+    return false;
+  }, [
+    canCombineLoyaltyWithPromotions,
+    canCombineLoyaltyWithFreeship,
+    appliedVoucher,
+    appliedShippingVoucher,
+    appliedCartPromotions,
+  ]);
+
+  const isExcludedByVoucher = isMemberExcludedByPromotions;
+
+  const memberDiscount = useMemo(() => {
+    if (!user || !isMemberCardSelected || isMemberExcludedByPromotions) return 0;
+    return calculateMemberDiscount(user, regularPriceSubtotal);
+  }, [user, isMemberCardSelected, isMemberExcludedByPromotions, regularPriceSubtotal]);
+
+  const isFreeshipBlocked = useMemo(() => {
+    const shipPromoFlag = shippingSettings ? Boolean(shippingSettings.can_combine_with_promotions) : true;
+    const activeFoodV = appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.discountType !== "freeship" ? appliedVoucher : null;
+    const effectivePromosForShip = (activeFoodV && activeFoodV.canCombineWithPromotions === false) ? [] : appliedCartPromotions;
+
+    // M5: Campaign <-> ShippingSetting (Auto Ship 400K)
+    const isM5Blocked = effectivePromosForShip.some(
+      (p) => !(Boolean(p.can_combine_with_freeship) && shipPromoFlag)
+    );
+    // M8: Food Voucher <-> ShippingSetting (Auto Ship 400K)
+    const isM8Blocked = Boolean(
+      activeFoodV && !(Boolean(activeFoodV.canCombineWithFreeship) && shipPromoFlag)
+    );
+    // M10: Loyalty <-> ShippingSetting (Auto Ship 400K)
+    const isM10Blocked = Boolean(
+      memberDiscount > 0 && !(canCombineLoyaltyWithFreeship && shipPromoFlag)
+    );
+
+    return isM5Blocked || isM8Blocked || isM10Blocked;
+  }, [
+    shippingSettings,
+    appliedVoucher,
+    appliedCartPromotions,
+    memberDiscount,
+    canCombineLoyaltyWithFreeship,
+  ]);
+
   // Trigger real-time calculation when address, subtotal or voucher changes
   useEffect(() => {
     if (deliveryType !== "delivery" || (isCartCheckout && cartItems.length === 0)) {
@@ -1171,43 +1227,61 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     let isSubscribed = true;
     setCalculatingShipping(true);
 
+    const activeFoodV = appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.discountType !== "freeship" ? appliedVoucher : null;
+    const activeShipV = appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") ? appliedVoucher : null);
+    const effectivePromosForShip = (activeFoodV && activeFoodV.canCombineWithPromotions === false) ? [] : appliedCartPromotions;
+
     calculateShippingFee({
       province: selectedProvince,
       district: selectedDistrict,
       ward: selectedWard,
       ward_id: selectedWardId,
       subtotal,
-      voucher_code: appliedShippingVoucher?.code || appliedVoucher?.code,
-      can_combine_with_freeship: appliedVoucher ? appliedVoucher.canCombineWithFreeship : undefined,
-      campaign_id: appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.id,
-      campaign_can_combine_with_freeship: appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.can_combine_with_freeship,
+      voucher_code: activeFoodV?.code || activeShipV?.code,
+      shipping_voucher_code: activeShipV?.code,
+      can_combine_with_freeship: activeFoodV ? activeFoodV.canCombineWithFreeship : undefined,
+      campaign_id: effectivePromosForShip[0]?.id,
+      campaign_ids: effectivePromosForShip.map((p) => p.id),
+      campaign_can_combine_with_freeship:
+        effectivePromosForShip.length > 0
+          ? effectivePromosForShip.every((p) => Boolean(p.can_combine_with_freeship))
+          : undefined,
+      member_discount: memberDiscount,
+      has_member_discount: memberDiscount > 0,
     })
       .then((res) => {
         if (!isSubscribed) return;
 
-        // Freeship G3 bị chặn khi:
-        // 1. Voucher G2 cấm freeship (Case 3, Case 4)
-        // 2. Hoặc Campaign G1 cấm freeship VÀ Voucher G2 không ghi đè (Case 5)
-        // Lưu ý Case 6: Voucher G2 cấm combo (promo: false) nhưng cho phép freeship (ship: true) -> tạm gỡ G1, G1 không còn chặn ship nữa!
-        const isG1BlockingFreeship = Boolean(
-          cartCampaignG1 &&
-          cartCampaignG1.can_combine_with_freeship === false &&
-          !(appliedVoucher && appliedVoucher.canCombineWithPromotions === false && appliedVoucher.canCombineWithFreeship !== false)
-        );
-        const isG2BlockingFreeship = Boolean(
-          appliedVoucher && appliedVoucher.canCombineWithFreeship === false
-        );
-        const isFreeshipBlocked = isG1BlockingFreeship || isG2BlockingFreeship;
+        const shipFreeshipFlag = shippingSettings ? Boolean(shippingSettings.can_combine_with_freeship) : true;
+        // M11: Shipping Voucher <-> ShippingSetting (Auto Ship 400K)
+        const canStackShipVoucherWithAuto =
+          !activeShipV || (Boolean(activeShipV.canCombineWithFreeship) && shipFreeshipFlag);
 
-        const finalFreeship = isFreeshipBlocked ? false : res.is_freeship;
-        const finalFee = isFreeshipBlocked ? res.original_fee : res.shipping_fee;
-        const finalDiscount = isFreeshipBlocked ? 0 : (res.shipping_discount ?? (res.original_fee > res.shipping_fee ? res.original_fee - res.shipping_fee : 0));
+        const rawAutoDisc =
+          res.auto_shipping_discount !== undefined
+            ? Number(res.auto_shipping_discount)
+            : !activeShipV
+              ? (res.shipping_discount ?? (res.original_fee > res.shipping_fee ? res.original_fee - res.shipping_fee : 0))
+              : 0;
 
-        setShippingFee(finalFee);
+        const autoDisc = isFreeshipBlocked || !canStackShipVoucherWithAuto ? 0 : rawAutoDisc;
+        const feeAfterAuto =
+          isFreeshipBlocked || !canStackShipVoucherWithAuto
+            ? res.original_fee
+            : res.fee_after_auto_discount !== undefined
+              ? Number(res.fee_after_auto_discount)
+              : Math.max(0, res.original_fee - autoDisc);
+
+        const finalFreeship =
+          isFreeshipBlocked || !canStackShipVoucherWithAuto
+            ? false
+            : (feeAfterAuto === 0 && res.original_fee > 0) || Boolean(res.is_freeship && !activeShipV);
+
+        setShippingFee(feeAfterAuto);
         setOriginalFee(res.original_fee);
-        setShippingDiscount(finalDiscount);
+        setShippingDiscount(autoDisc);
         setIsFreeship(finalFreeship);
-        setFreeshipReason(isFreeshipBlocked ? null : (res.freeship_reason || null));
+        setFreeshipReason(isFreeshipBlocked || !canStackShipVoucherWithAuto ? null : (res.freeship_reason || null));
 
         const hasWard = !!selectedWard || !!selectedWardId;
         setIsDeliverable(hasWard ? res.is_deliverable : true);
@@ -1239,7 +1313,23 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return () => {
       isSubscribed = false;
     };
-  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, subtotal, appliedVoucher, appliedShippingVoucher, config.branches, cartCampaignG1, isCartCheckout, cartItems]);
+  }, [
+    deliveryType,
+    selectedProvince,
+    selectedDistrict,
+    selectedWard,
+    selectedWardId,
+    subtotal,
+    appliedVoucher,
+    appliedShippingVoucher,
+    config.branches,
+    appliedCartPromotions,
+    memberDiscount,
+    isFreeshipBlocked,
+    shippingSettings,
+    isCartCheckout,
+    cartItems,
+  ]);
 
   // Store Pickup input & Auto-assigned delivery branch
   const [selectedBranchId, setSelectedBranchId] = useState<number>(() => {
@@ -1519,38 +1609,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   // Member Tier Discount - Tự động áp dụng chiết khấu hạng thành viên / Mừng lên hạng trên các món nguyên giá
   const memberTier = useMemo(() => (user ? getMemberTier(user) : getMemberTier(0)), [user]);
 
-  const canCombineLoyaltyWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
-
-  const isMemberExcludedByPromotions = useMemo(() => {
-    if (canCombineLoyaltyWithPromotions) return false;
-    if (appliedVoucher && appliedVoucher.canCombineWithPromotions === false) return true;
-    if (appliedShippingVoucher && appliedShippingVoucher.canCombineWithPromotions === false) return true;
-    if (activeSamePricePromos.some((p) => p.can_combine_with_promotions === false)) return true;
-    if (eligibleOrderDiscountPromo && autoOrderDiscountAmount > 0 && eligibleOrderDiscountPromo.can_combine_with_promotions === false) return true;
-    if (eligibleOrderGiftPromo && selectedOrderGiftItem !== null && eligibleOrderGiftPromo.can_combine_with_promotions === false) return true;
-    if (activeBuyXGetYItems.length > 0 && eligibleBuyXGetYPromos.some((p) => p.can_combine_with_promotions === false)) return true;
-
-    return false;
-  }, [
-    canCombineLoyaltyWithPromotions,
-    appliedVoucher,
-    appliedShippingVoucher,
-    activeSamePricePromos,
-    eligibleOrderDiscountPromo,
-    autoOrderDiscountAmount,
-    eligibleOrderGiftPromo,
-    selectedOrderGiftItem,
-    activeBuyXGetYItems,
-    eligibleBuyXGetYPromos,
-  ]);
-
-  const isExcludedByVoucher = isMemberExcludedByPromotions;
-
-  const memberDiscount = useMemo(() => {
-    if (!user || !isMemberCardSelected || isMemberExcludedByPromotions) return 0;
-    return calculateMemberDiscount(user, regularPriceSubtotal);
-  }, [user, isMemberCardSelected, isMemberExcludedByPromotions, regularPriceSubtotal]);
-
   const memberDiscountLabel = useMemo(() => {
     if (!user || memberTier.discountPercent <= 0) return "";
     const isDiamond = memberTier.tier === "diamond";
@@ -1581,9 +1639,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     can_combine_with_freeship?: boolean;
     code?: string;
   }): { allowed: boolean; message?: string } => {
-    const activeCampaigns = (allPromotionsList || []).filter((c) =>
-      selectedCampaignIds.some((id) => String(id) === String(c.id))
-    );
+    const activeCampaigns = appliedCartPromotions;
 
     const isShip = Boolean(
       voucherCandidate.discount_type === "freeship" ||
@@ -1593,17 +1649,19 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       (voucherCandidate.code && /^SHIP(\d+|K)?$/i.test(voucherCandidate.code))
     );
 
-    // a) Nếu voucherCandidate.can_combine_with_promotions === false VÀ activeCampaigns.length > 0:
-    if (voucherCandidate.can_combine_with_promotions === false && activeCampaigns.length > 0) {
+    // a) Nếu !Boolean(voucherCandidate.can_combine_with_promotions) VÀ activeCampaigns.length > 0 (M2 / M4):
+    if (!Boolean(voucherCandidate.can_combine_with_promotions) && activeCampaigns.length > 0) {
       return {
         allowed: false,
         message: t("mutex_voucher_blocks_all_promotions"),
       };
     }
 
-    // b) Nếu là Voucher món (!isShip) VÀ có campaign trong activeCampaigns mang can_combine_with_promotions === false:
+    // b) M2: Voucher món (!isShip) <-> Campaign (2 chiều !(Flag_A && Flag_B)):
     if (!isShip) {
-      const blockedCamp = activeCampaigns.find((c) => c.can_combine_with_promotions === false);
+      const blockedCamp = activeCampaigns.find(
+        (c) => !(Boolean(c.can_combine_with_promotions) && Boolean(voucherCandidate.can_combine_with_promotions))
+      );
       if (blockedCamp) {
         return {
           allowed: false,
@@ -1612,9 +1670,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       }
     }
 
-    // c) Nếu là Voucher ship (isShip) VÀ có campaign trong activeCampaigns mang can_combine_with_freeship === false:
+    // c) M4: Voucher ship (isShip) <-> Campaign (2 chiều !(Flag_A && Flag_B)):
     if (isShip) {
-      const blockedCamp = activeCampaigns.find((c) => c.can_combine_with_freeship === false);
+      const blockedCamp = activeCampaigns.find(
+        (c) => !(Boolean(c.can_combine_with_freeship) && Boolean(voucherCandidate.can_combine_with_promotions))
+      );
       if (blockedCamp) {
         return {
           allowed: false,
@@ -1623,13 +1683,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       }
     }
 
-    // d) Nếu là Voucher ship VÀ appliedVoucher (voucher món đang áp) có canCombineWithFreeship === false:
+    // d) M7: Voucher ship (isShip) <-> appliedVoucher (voucher món đang áp) (2 chiều !(Flag_A && Flag_B)):
     if (
       isShip &&
       appliedVoucher &&
       !appliedVoucher.isFreeship &&
       appliedVoucher.discountType !== "freeship" &&
-      appliedVoucher.canCombineWithFreeship === false
+      !(Boolean(appliedVoucher.canCombineWithFreeship) && Boolean(voucherCandidate.can_combine_with_promotions))
     ) {
       return {
         allowed: false,
@@ -1637,8 +1697,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       };
     }
 
-    // e) Nếu là Voucher món có can_combine_with_freeship === false VÀ đang có appliedShippingVoucher:
-    if (!isShip && voucherCandidate.can_combine_with_freeship === false && appliedShippingVoucher) {
+    // e) M7: Voucher món (!isShip) <-> appliedShippingVoucher (2 chiều !(Flag_A && Flag_B)):
+    if (
+      !isShip &&
+      appliedShippingVoucher &&
+      !(Boolean(voucherCandidate.can_combine_with_freeship) && Boolean(appliedShippingVoucher.canCombineWithPromotions))
+    ) {
       return {
         allowed: false,
         message: t("mutex_food_voucher_blocks_ship_voucher"),
@@ -1646,7 +1710,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
 
     return { allowed: true };
-  }, [allPromotionsList, selectedCampaignIds, appliedVoucher, appliedShippingVoucher, t, tVoucher]);
+  }, [appliedCartPromotions, appliedVoucher, appliedShippingVoucher, t, tVoucher]);
 
   const handleApplyVoucher = async (codeOverride?: string, isAuto = false) => {
     const code = (typeof codeOverride === "string" ? codeOverride : voucherCode).trim().toUpperCase();
