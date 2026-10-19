@@ -2,6 +2,7 @@ const withNextIntl = require('next-intl/plugin')('./src/i18n/request.ts');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.BUILD_DIR || '.next',
   poweredByHeader: false,
   typescript: {
     ignoreBuildErrors: true,

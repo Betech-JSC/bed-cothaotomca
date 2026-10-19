@@ -31,11 +31,11 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
         />
       </div>
       <div className="relative">
-        <div className="md:container md:space-y-6 space-y-8 xl:space-y-8">
+        <div className="md:container xl:!max-w-[76rem] md:space-y-6 space-y-8 xl:space-y-8">
           <AnimateOnScroll animate="slideup" delay={300}>
             <h2 className="display-2 max-md:text-[1.75rem] text-center text-primary uppercase">{t('home.section-4.title')}</h2>
           </AnimateOnScroll>
-          <div className="relative swiper-hot-product">
+          <div className="relative swiper-hot-product md:mx-5 lg:mx-6 xl:mx-6 2xl:mx-0">
             <Swiper
               modules={[Navigation]}
               spaceBetween={24}
@@ -78,12 +78,12 @@ const SectionHotProduct: React.FC<SectionHotProductProps> = ({ products }) => {
               ))}
 
               {/* Ẩn dưới mobile để user tự lướt; từ md+ căn giữa dọc và cách thẻ scale-90 đúng 16px */}
-              <button aria-label={t("common.previous") || "Trước"} className="swiper-btn-prev absolute md:-left-5 lg:-left-9 xl:-left-[46px] 2xl:-left-[50px] top-1/2 -translate-y-1/2 z-10 md:size-10 lg:size-11 xl:size-12 2xl:size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
+              <button aria-label={t("common.previous") || "Trước"} className="swiper-btn-prev absolute md:-left-9 lg:-left-11 xl:-left-[46px] 2xl:-left-[50px] top-1/2 -translate-y-1/2 z-10 md:size-10 lg:size-11 xl:size-12 2xl:size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
                 <div>
                   <Arrow />
                 </div>
               </button>
-              <button aria-label={t("common.next") || "Tiếp theo"} className="swiper-btn-next absolute md:-right-5 lg:-right-9 xl:-right-[46px] 2xl:-right-[50px] top-1/2 -translate-y-1/2 z-10 md:size-10 lg:size-11 xl:size-12 2xl:size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
+              <button aria-label={t("common.next") || "Tiếp theo"} className="swiper-btn-next absolute md:-right-9 lg:-right-11 xl:-right-[46px] 2xl:-right-[50px] top-1/2 -translate-y-1/2 z-10 md:size-10 lg:size-11 xl:size-12 2xl:size-[52px] rounded-full bg-white shadow-lg hidden md:flex items-center justify-center text-gray-900 border border-gray-100 transition-all duration-300 lg:hover:bg-primary lg:hover:text-yellow disabled:opacity-0 disabled:pointer-events-none cursor-pointer">
                 <div className="-rotate-180">
                   <Arrow />
                 </div>
