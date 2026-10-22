@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import ScrollRestoration from "@/components/ScrollRestoration";
-import PasswordGate from "@/components/Common/PasswordGate";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { AlternateLinksProvider } from "@/contexts/AlternateLinksContext";
@@ -60,7 +59,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <CartProvider>
         <AlternateLinksProvider>
           <ScrollRestoration />
-          <PasswordGate>{children}</PasswordGate>
+          {children}
         </AlternateLinksProvider>
       </CartProvider>
     </AuthProvider>

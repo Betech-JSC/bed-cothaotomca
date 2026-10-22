@@ -364,11 +364,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             <div className="grid md:grid-cols-2 gap-6 md:gap-8 lg:gap-16 xl:gap-20">
               <div className="space-y-6 md:space-y-6 lg:space-y-12 xl:space-y-16 flex flex-col justify-center">
                 <AnimateOnScroll animate="slideup">
-                  <h2 className="display-3 max-md:text-[28px] md:max-lg:text-[32px] text-yellow uppercase max-md:text-center max-md:w-full max-md:mx-auto">{t('home.section-6.title')}</h2>
+                  <h2 className="display-3 max-md:text-[28px] md:max-lg:text-[26px] text-yellow uppercase max-md:text-center max-md:w-full max-md:mx-auto">{t('home.section-6.title')}</h2>
                 </AnimateOnScroll>
-                <AnimateOnScroll animate="slideup" delay={300} className="relative rounded-[24px] overflow-hidden bg-primary max-w-[568px] w-full">
+                <AnimateOnScroll animate="slideup" delay={300} className="relative rounded-[24px] overflow-hidden bg-primary md:max-w-[568px] w-full">
                   {categoriesDisplay.map((itemCategory, indexCategory) => (
-                    <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-5 md:py-3.5 lg:py-5 xl:py-[27px] px-4 title-2 md:max-lg:text-[16px] text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
+                    <Link href={{ pathname: '/product/[category]', params: { category: itemCategory.slug } }} key={indexCategory} className="py-4 md:py-4 lg:py-6 xl:py-[27px] px-4 title-2 md:max-lg:text-[15px] text-yellow flex items-center justify-between gap-2 lg:hover:bg-secondary duration-300 ease-in-out">
                       <span>{itemCategory.title}</span>
                       <span className="rotate-180"><Arrow /></span>
                     </Link>
