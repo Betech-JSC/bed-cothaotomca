@@ -24,7 +24,7 @@ const SliderProductRelated: React.FC<SliderProductRelatedProps> = ({ products })
             modules={[Navigation]}
             spaceBetween={24}
             slidesPerView={1}
-            loop={products.length > 1}
+            loop={products.length > 4}
             navigation={{
               prevEl: '.swiper-btn-prev',
               nextEl: '.swiper-btn-next',
@@ -37,21 +37,25 @@ const SliderProductRelated: React.FC<SliderProductRelatedProps> = ({ products })
                 slidesPerView: 1.4,
                 spaceBetween: 14,
                 centeredSlides: true,
+                centerInsufficientSlides: false,
               },
               640: {
                 slidesPerView: 2,
                 spaceBetween: 16,
                 centeredSlides: false,
+                centerInsufficientSlides: true,
               },
               1024: {
                 slidesPerView: 3,
                 spaceBetween: 16,
                 centeredSlides: false,
+                centerInsufficientSlides: true,
               },
               1280: {
                 slidesPerView: 4,
                 spaceBetween: 24,
                 centeredSlides: false,
+                centerInsufficientSlides: true,
               },
             }}
             className="!static"
