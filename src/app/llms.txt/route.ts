@@ -37,7 +37,7 @@ export async function GET() {
 ## 📌 Thông Tin Liên Hệ & Hệ Thống Cửa Hàng
 - **Thương hiệu**: Cô Thảo Tôm Cá
 - **Hotline**: 024.9999.7122
-- **Email**: cothaotomca.cskh@gmail.com
+- **Email**: hello@cothaotomca.vn
 - **Website chính thức**: ${baseUrl}
 - **Hệ thống chi nhánh (Takeaway & Delivery)**:
   1. CN1: 42/2 Trần Đình Xu, Phường Cầu Ông Lãnh (Q.1 cũ), TP. Hồ Chí Minh

@@ -44,7 +44,7 @@ export async function GET() {
 ## 📌 Thông Tin Thương Hiệu & Hệ Thống Cửa Hàng
 - **Tên thương hiệu**: Cô Thảo Tôm Cá
 - **Hotline**: 024.9999.7122
-- **Email**: cothaotomca.cskh@gmail.com
+- **Email**: hello@cothaotomca.vn
 - **Mô hình**: Cửa hàng chuyên hải sản tươi sống & thực phẩm ngâm tương Hàn Quốc (Mang đi & Giao tận nơi).
 - **Trang web**: ${baseUrl}
 - **Hệ thống chi nhánh (Takeaway & Delivery)**:
