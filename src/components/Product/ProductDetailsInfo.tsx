@@ -18,7 +18,12 @@ interface ProductDetailsInfoProps {
 const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
   const t = useTranslations();
   const router = useRouter();
-  const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
+  const [selectedSizeIndex, setSelectedSizeIndex] = useState(() => {
+    const idx = productData.sizes.findIndex(
+      (s) => Boolean(s.code && s.code.trim()) && s.status !== 0 && (s as any).status !== false
+    );
+    return idx !== -1 ? idx : 0;
+  });
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
   const { addToCart, setIsCartOpen } = useCart();
@@ -103,12 +108,10 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
                           ? "line-through opacity-40 bg-gray-100 text-gray-400 cursor-not-allowed "
                           : "cursor-pointer "
                       }${
-                        selectedSizeIndex === index
-                          ? isOutOfStockSize
-                            ? "bg-gray-200 text-gray-600 border-2 border-gray-400"
-                            : "bg-primary text-yellow"
-                          : isOutOfStockSize
-                            ? ""
+                        isOutOfStockSize
+                          ? ""
+                          : selectedSizeIndex === index
+                            ? "bg-primary text-yellow"
                             : "bg-white text-gray-900 lg:hover:bg-primary lg:hover:text-yellow"
                       }`}
                       title={isOutOfStockSize ? (t("product.out_of_stock") || "Tạm hết hàng") : undefined}

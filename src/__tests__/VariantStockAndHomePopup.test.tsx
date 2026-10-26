@@ -2,9 +2,23 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { checkItemOutOfStock, type CartItem } from "@/contexts/CartContext";
-import { normalizeProductDetail, mapProductToDetailView, type Product } from "@/services/productService";
+import { normalizeProductDetail, mapProductToDetailView, type Product, type ProductDetailView } from "@/services/productService";
 import HomePromotionPopup from "@/components/Home/HomePromotionPopup";
+import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
+import { formatPrice } from "@/lib/format";
 import type { Banner } from "@/types/banner";
+
+// Mock CartContext while preserving checkItemOutOfStock
+vi.mock("@/contexts/CartContext", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/contexts/CartContext")>();
+  return {
+    ...actual,
+    useCart: () => ({
+      addToCart: vi.fn(),
+      setIsCartOpen: vi.fn(),
+    }),
+  };
+});
 
 // Mock next-intl
 vi.mock("next-intl", () => ({
@@ -15,6 +29,8 @@ vi.mock("next-intl", () => ({
       view_now: "Xem ngay",
       special_offer: "Ưu đãi đặc biệt",
       "product.out_of_stock": "Tạm hết hàng",
+      "button.add_to_cart_short": "Thêm vào giỏ",
+      "button.buy-now": "Mua ngay",
     };
     return dict[key] || key;
   },
@@ -263,5 +279,108 @@ describe("HomePromotionPopup Component", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
 
     vi.useRealTimers();
+  });
+});
+
+describe("ProductDetailsInfo Variant Status (status: 0 vs status: 1)", () => {
+  const createProductDetail = (
+    sizes: ProductDetailView["sizes"]
+  ): ProductDetailView => ({
+    title: "Tôm Càng Xanh Hấp Nước Dừa",
+    description: "<p>Tôm càng xanh tươi sống</p>",
+    variant_type: "size",
+    code: "TOM-CANG",
+    images: [{ url: "/tom-cang.jpg", alt: "Tôm Càng Xanh" }],
+    sizes,
+    infos: [],
+    category: { title: "Tôm", slug: "tom" },
+    checkout: {
+      productId: 300,
+      productCode: "TOM-CANG",
+      slug: "tom-cang-xanh-hap-nuoc-dua",
+      categorySlug: "tom",
+    },
+  });
+
+  it("Scenario 1: disables first out-of-stock variant (status: 0) and auto-selects second in-stock variant (status: 1)", () => {
+    const productData = createProductDetail([
+      {
+        id: 3001,
+        code: "TOM-S",
+        title: "Size S: 4 con",
+        price: 180000,
+        status: 0,
+      },
+      {
+        id: 3002,
+        code: "TOM-M",
+        title: "Size M: 8 con",
+        price: 340000,
+        status: 1,
+      },
+    ]);
+
+    render(<ProductDetailsInfo productData={productData} />);
+
+    const sizeSBtn = screen.getByText("Size S: 4 con").closest("div")!;
+    const sizeMBtn = screen.getByText("Size M: 8 con").closest("div")!;
+
+    // Variant 1 (Size S: 4 con) is crossed out and not clickable
+    expect(sizeSBtn.className).toContain("line-through");
+    expect(sizeSBtn.className).toContain("cursor-not-allowed");
+    expect(sizeSBtn.className).not.toContain("bg-primary text-yellow");
+
+    // Variant 2 (Size M: 8 con) is auto-selected and shows Size M price
+    expect(sizeMBtn.className).toContain("bg-primary text-yellow");
+    expect(screen.getByText(formatPrice(340000))).toBeTruthy();
+    expect(screen.queryByText(formatPrice(180000))).toBeNull();
+
+    // Clicking out-of-stock Variant 1 does NOT switch selection
+    fireEvent.click(sizeSBtn);
+    expect(sizeMBtn.className).toContain("bg-primary text-yellow");
+    expect(screen.getByText(formatPrice(340000))).toBeTruthy();
+
+    // "Thêm vào giỏ" button is visible to buy Size M
+    expect(screen.getByText("Thêm vào giỏ")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Tạm hết hàng" })).toBeNull();
+  });
+
+  it("Scenario 2: disables all variant buttons and shows disabled 'Tạm hết hàng' button when all variants have status: 0", () => {
+    const productData = createProductDetail([
+      {
+        id: 3001,
+        code: "TOM-S",
+        title: "Size S: 4 con",
+        price: 180000,
+        status: 0,
+      },
+      {
+        id: 3002,
+        code: "TOM-M",
+        title: "Size M: 8 con",
+        price: 340000,
+        status: 0,
+      },
+    ]);
+
+    render(<ProductDetailsInfo productData={productData} />);
+
+    const sizeSBtn = screen.getByText("Size S: 4 con").closest("div")!;
+    const sizeMBtn = screen.getByText("Size M: 8 con").closest("div")!;
+
+    // Both variant buttons have disabled styling and neither has active selection class
+    for (const btn of [sizeSBtn, sizeMBtn]) {
+      expect(btn.className).toContain("line-through opacity-40 bg-gray-100 text-gray-400 cursor-not-allowed");
+      expect(btn.className).not.toContain("bg-primary text-yellow");
+    }
+
+    // "Thêm vào giỏ" and "Mua ngay" buttons do not appear
+    expect(screen.queryByText("Thêm vào giỏ")).toBeNull();
+    expect(screen.queryByText("Mua ngay")).toBeNull();
+
+    // "Tạm hết hàng" button is rendered and disabled
+    const outOfStockBtn = screen.getByRole("button", { name: "Tạm hết hàng" }) as HTMLButtonElement;
+    expect(outOfStockBtn).toBeTruthy();
+    expect(outOfStockBtn.disabled).toBe(true);
   });
 });
