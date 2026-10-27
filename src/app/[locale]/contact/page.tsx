@@ -103,7 +103,7 @@ export default async function ContactPage({
   );
 
   const hotline = settings?.hotline?.replace(/\s/g, '') || '';
-  const email = settings?.email;
+  const email = settings?.email || "hello@cothaotomca.vn";
 
   const socials = [
     { icon: <ShareFacebook />, href: settings?.link_facebook },

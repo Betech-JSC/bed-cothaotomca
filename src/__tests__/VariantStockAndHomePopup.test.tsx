@@ -5,7 +5,7 @@ import { checkItemOutOfStock, type CartItem } from "@/contexts/CartContext";
 import { normalizeProductDetail, mapProductToDetailView, type Product, type ProductDetailView } from "@/services/productService";
 import HomePromotionPopup from "@/components/Home/HomePromotionPopup";
 import ProductDetailsInfo from "@/components/Product/ProductDetailsInfo";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatRichTextContent } from "@/lib/format";
 import type { Banner } from "@/types/banner";
 
 // Mock CartContext while preserving checkItemOutOfStock
@@ -382,5 +382,42 @@ describe("ProductDetailsInfo Variant Status (status: 0 vs status: 1)", () => {
     const outOfStockBtn = screen.getByRole("button", { name: "Tạm hết hàng" }) as HTMLButtonElement;
     expect(outOfStockBtn).toBeTruthy();
     expect(outOfStockBtn.disabled).toBe(true);
+  });
+});
+
+describe("formatRichTextContent Typography & Justification Sanitization", () => {
+  it("1. normalizes &nbsp;, &#160;, &#xa0;, and \\u00A0 into regular spaces ' '", () => {
+    const rawHtml = "<p>Tôm&nbsp;càng&#160;xanh&#xa0;hấp\u00A0nước&NBSP;dừa</p>";
+    const result = formatRichTextContent(rawHtml);
+
+    expect(result).toBe("<p>Tôm càng xanh hấp nước dừa</p>");
+    expect(result).not.toMatch(/&nbsp;|&#160;|&#xa0;|\u00A0/i);
+  });
+
+  it("2. removes text-align: justify styles, align='justify', and justify classes on <p>, <h2>, and <li>", () => {
+    const rawHtml = [
+      '<p style="text-align: justify;">Đoạn văn 1</p>',
+      '<h2 align="justify" style="color: red; text-align: justify;">Tiêu đề H2</h2>',
+      '<li class="text-justify ql-align-justify" align=\'justify\'>Mục danh sách 1</li>',
+      '<p class="lead text-justify ql-align-justify font-bold">Đoạn văn 2</p>',
+    ].join("");
+
+    const result = formatRichTextContent(rawHtml);
+
+    expect(result).toContain("<p>Đoạn văn 1</p>");
+    expect(result).toContain('<h2 style="color: red;">Tiêu đề H2</h2>');
+    expect(result).toContain("<li>Mục danh sách 1</li>");
+    expect(result).toContain('<p class="lead font-bold">Đoạn văn 2</p>');
+    expect(result).not.toContain("text-align: justify");
+    expect(result).not.toContain('align="justify"');
+    expect(result).not.toContain("text-justify");
+    expect(result).not.toContain("ql-align-justify");
+  });
+
+  it("3. preserves intentional style='text-align: center;'", () => {
+    const rawHtml = '<p style="text-align: center;">Văn bản căn giữa chủ đích</p>';
+    const result = formatRichTextContent(rawHtml);
+
+    expect(result).toBe('<p style="text-align: center;">Văn bản căn giữa chủ đích</p>');
   });
 });

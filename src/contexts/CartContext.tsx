@@ -1,6 +1,13 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  getCanonicalCartItemKey,
+  isSameCartProductVariant,
+  mergeCartItemPair,
+  mergeDuplicateCartItems,
+  normalizeVariantToken,
+} from "@/lib/cartLocalization";
 
 export interface CartItem {
   id: string; // unique identifier (productId + variant)
@@ -89,20 +96,28 @@ function findProductInCache(item: CartItem, cache: any[]): any {
 
 function findVariantInProduct(item: CartItem, variants: any[]): any {
   if (!variants || variants.length === 0) return undefined;
-  return variants.find(
-    (vObj: any) =>
-      vObj.size === item.variant ||
-      vObj.size_en === item.variant ||
-      (item.variant_vi && (vObj.size === item.variant_vi || vObj.size_en === item.variant_vi)) ||
-      (item.variant_en && (vObj.size_en === item.variant_en || vObj.size === item.variant_en)) ||
-      (item.variantId && (Number(vObj.id) === Number(item.variantId) || Number(vObj.kiotviet_id) === Number(item.variantId))) ||
-      (item.variant_id && (Number(vObj.id) === Number(item.variant_id) || Number(vObj.kiotviet_id) === Number(item.variant_id))) ||
-      (item.product_variant_id && (Number(vObj.id) === Number(item.product_variant_id) || Number(vObj.kiotviet_id) === Number(item.product_variant_id))) ||
-      (item.variant_db_id && Number(vObj.id) === Number(item.variant_db_id)) ||
-      Number(vObj.id) === Number(item.productId) ||
-      Number(vObj.kiotviet_id) === Number(item.productId) ||
-      (item.kiotviet_id && (Number(vObj.id) === Number(item.kiotviet_id) || Number(vObj.kiotviet_id) === Number(item.kiotviet_id))) ||
-      (vObj.code && item.productCode && vObj.code === item.productCode)
+  return (
+    variants.find(
+      (vObj: any) =>
+        (item.variant_db_id && Number(vObj.id) === Number(item.variant_db_id)) ||
+        (item.variantId && Number(vObj.id) === Number(item.variantId)) ||
+        (item.product_variant_id && Number(vObj.id) === Number(item.product_variant_id)) ||
+        (item.variant_id && Number(vObj.id) === Number(item.variant_id)) ||
+        (vObj.code && item.productCode && vObj.code === item.productCode) ||
+        vObj.size === item.variant ||
+        vObj.size_en === item.variant ||
+        (item.variant_vi && (vObj.size === item.variant_vi || vObj.size_en === item.variant_vi)) ||
+        (item.variant_en && (vObj.size_en === item.variant_en || vObj.size === item.variant_en))
+    ) ||
+    variants.find(
+      (vObj: any) =>
+        Number(vObj.id) === Number(item.productId) ||
+        (variants.length === 1 &&
+          (Number(vObj.kiotviet_id) === Number(item.productId) ||
+            (item.kiotviet_id &&
+              (Number(vObj.id) === Number(item.kiotviet_id) ||
+                Number(vObj.kiotviet_id) === Number(item.kiotviet_id)))))
+    )
   );
 }
 
@@ -143,9 +158,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          const validItems = parsed.filter(
+          const rawValidItems = parsed.filter(
             (item) => item && item.productId !== undefined && item.productId !== null && !Number.isNaN(Number(item.productId))
           );
+          const validItems = mergeDuplicateCartItems(rawValidItems);
           cartItemsRef.current = validItems;
           setCartItems(validItems);
           if (validItems.length !== parsed.length) {
@@ -301,22 +317,30 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       const newOrig = origPrice && origPrice > newUnit ? origPrice : newUnit;
 
       // Self-healing for title_vi, variant_vi, title_en, variant_en, product_id, variant_id, parentProductId, db_id, kiotviet_id
+      const isStandardProduct = !p.variants || p.variants.length === 0;
       const viTranslation = p.translations?.find((t: any) => t.locale === "vi");
       const enTranslation = p.translations?.find((t: any) => t.locale === "en");
       const viTitle = p.custom_name || p.name || (viTranslation?.custom_name ?? viTranslation?.name ?? undefined);
       const enTitle = p.name_en || (enTranslation?.custom_name ?? enTranslation?.name ?? undefined);
-      const viVariant = matchedV?.size || (matchedV?.translations?.find((t: any) => t.locale === "vi")?.size ?? undefined);
-      const enVariant = matchedV?.size_en || (matchedV?.translations?.find((t: any) => t.locale === "en")?.size ?? undefined);
+      const viVariant =
+        matchedV?.size ||
+        (matchedV?.translations?.find((t: any) => t.locale === "vi")?.size ??
+          (isStandardProduct && normalizeVariantToken(item.variant) === "__standard__" ? "Tiêu chuẩn" : undefined));
+      const enVariant =
+        matchedV?.size_en ||
+        (matchedV?.translations?.find((t: any) => t.locale === "en")?.size ??
+          (isStandardProduct && normalizeVariantToken(item.variant) === "__standard__" ? "Standard" : undefined));
 
       const nextTitleVi = viTitle || item.title_vi;
       const nextVariantVi = viVariant || item.variant_vi;
       const nextTitleEn = enTitle || item.title_en;
       const nextVariantEn = enVariant || item.variant_en;
+      const nextProductCode = item.productCode || matchedV?.code || p.code || "";
       const nextProductId = item.product_id ?? p.id ?? p.kiotviet_id;
       const nextParentProductId = item.parentProductId ?? p.id;
       const nextDbId = item.db_id ?? p.id;
       const nextProductDbId = item.product_db_id ?? p.id;
-      const nextVariantId = item.variant_id ?? (matchedV?.id || matchedV?.kiotviet_id || item.variantId);
+      const nextVariantId = item.variant_id ?? (matchedV?.id || item.variantId);
       const nextVariantDbId = item.variant_db_id ?? matchedV?.id;
       const nextKiotvietId = item.kiotviet_id ?? (matchedV?.kiotviet_id || p.kiotviet_id);
 
@@ -325,6 +349,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         (viVariant && item.variant_vi !== viVariant) ||
         (enTitle && item.title_en !== enTitle) ||
         (enVariant && item.variant_en !== enVariant) ||
+        (!item.productCode && Boolean(nextProductCode)) ||
         (!item.product_id && nextProductId !== undefined) ||
         (!item.parentProductId && nextParentProductId !== undefined) ||
         (!item.db_id && nextDbId !== undefined) ||
@@ -342,6 +367,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         changed = true;
         return {
           ...item,
+          productCode: nextProductCode,
           unitPrice: newUnit,
           originalPrice: newOrig,
           isOutOfStock: isOut,
@@ -361,20 +387,30 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return item;
     });
 
-    if (changed) {
-      setCartItems(updated);
+    const merged = mergeDuplicateCartItems(updated);
+    const hasMergeChange =
+      merged.length !== cartItems.length ||
+      merged.some((m, idx) => m.id !== cartItems[idx]?.id || m.quantity !== cartItems[idx]?.quantity);
+
+    if (changed || hasMergeChange) {
+      setCartItems(merged);
     }
   }, [isLoaded, productsCache, cartItems]);
 
   const addToCart = (item: Omit<CartItem, "quantity">, quantity = 1) => {
     const isOutOfStock = checkItemOutOfStock(item as CartItem, productsCache) || Boolean((item as any).isOutOfStock);
+    const canonicalId = item.id || getCanonicalCartItemKey(item);
+    const normalizedItem = { ...item, id: canonicalId };
     const computeNext = (prev: CartItem[]) => {
-      const existing = prev.find((i) => i.id === item.id);
+      const deduplicated = mergeDuplicateCartItems(prev);
+      const existing = deduplicated.find((i) => isSameCartProductVariant(i, normalizedItem));
       return existing
-        ? prev.map((i) =>
-            i.id === item.id ? { ...i, ...item, quantity: i.quantity + quantity, isOutOfStock } : i
+        ? deduplicated.map((i) =>
+            isSameCartProductVariant(i, normalizedItem)
+              ? { ...mergeCartItemPair(i, normalizedItem, quantity), isOutOfStock }
+              : i
           )
-        : [...prev, { ...item, quantity, isOutOfStock }];
+        : [...deduplicated, { ...normalizedItem, quantity, isOutOfStock }];
     };
     const syncNext = computeNext(cartItemsRef.current);
     cartItemsRef.current = syncNext;

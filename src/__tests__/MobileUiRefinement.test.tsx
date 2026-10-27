@@ -409,7 +409,7 @@ describe("Mobile UI Refinements: Card, Header Logo, Product Details, and Step 2 
       // Step 2 renders streamlined financial summary
       expect(screen.getByText("Tạm tính")).toBeInTheDocument();
       expect(screen.getByText("Tổng thanh toán")).toBeInTheDocument();
-      expect(screen.getByText(formatPrice(440000))).toBeInTheDocument();
+      expect(screen.getAllByText(formatPrice(440000)).length).toBeGreaterThanOrEqual(1);
     });
 
     it("renders brand price, 32px stepper, number input, and trash icon in Step 1", () => {

@@ -318,9 +318,9 @@ export function mapProductToDetailView(
           const finalPrice = isCamp ? campP : vPriceNum;
           const original_price = isCamp ? baseP : undefined;
 
-          const title_vi = v.size || v.size_en || labels.standard;
+          const title_vi = v.size || v.size_en || "Tiêu chuẩn";
           const size_vi = v.size || title_vi;
-          const title_en = v.size_en || v.size || labels.standard;
+          const title_en = v.size_en || v.size || "Standard";
           return {
             id: v.id,
             kiotviet_id: v.kiotviet_id,
@@ -329,7 +329,7 @@ export function mapProductToDetailView(
             title_vi,
             size_vi,
             title_en,
-            size_en: v.size_en,
+            size_en: v.size_en || title_en,
             price: finalPrice,
             original_price,
             stock: v.stock,
@@ -341,10 +341,10 @@ export function mapProductToDetailView(
           kiotviet_id: product.kiotviet_id,
           code: product.code,
           title: labels.standard,
-          title_vi: labels.standard,
-          size_vi: labels.standard,
-          title_en: labels.standard,
-          size_en: labels.standard,
+          title_vi: "Tiêu chuẩn",
+          size_vi: "Tiêu chuẩn",
+          title_en: "Standard",
+          size_en: "Standard",
           price: prodFinalPrice,
           original_price: isProdCamp ? prodBasePrice : undefined,
           stock: product.stock,

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CartProvider, useCart } from "@/contexts/CartContext";
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
@@ -261,6 +261,96 @@ describe("Fix Cart, Buy Now & Checkout Flow (Group 1)", () => {
       expect(parsed[0].productId).toBe(202);
       expect(parsed[0].unitPrice).toBe(275000);
     });
+
+    it("merges VI and EN additions of the same product + variant in ProductDetailsInfo & CartProvider into 1 row with quantity = 2 and full bilingual fields", () => {
+      let cartApi: ReturnType<typeof useCart> | null = null;
+      function Consumer() {
+        cartApi = useCart();
+        return null;
+      }
+
+      const viProductData: any = {
+        title: "Súp Hải Sản",
+        title_vi: "Súp Hải Sản",
+        title_en: "Seafood Soup",
+        description: "<p>Súp ngon</p>",
+        images: [{ url: "/soup.jpg", alt: "Súp" }],
+        sizes: [
+          {
+            id: 501,
+            code: "SUP-S",
+            title: "Nhỏ",
+            title_vi: "Nhỏ",
+            title_en: "Small",
+            price: 65000,
+            status: 1,
+          },
+        ],
+        checkout: {
+          productId: 500,
+          productCode: "SUP-S",
+          slug: "sup-hai-san",
+          categorySlug: "mon-sup",
+        },
+        infos: [],
+      };
+
+      const enProductData: any = {
+        title: "Seafood Soup",
+        title_vi: "Súp Hải Sản",
+        title_en: "Seafood Soup",
+        description: "<p>Delicious soup</p>",
+        images: [{ url: "/soup.jpg", alt: "Soup" }],
+        sizes: [
+          {
+            id: 501,
+            code: "SUP-S",
+            title: "Small",
+            title_vi: "Nhỏ",
+            title_en: "Small",
+            price: 65000,
+            status: 1,
+          },
+        ],
+        checkout: {
+          productId: 500,
+          productCode: "SUP-S",
+          slug: "seafood-soup",
+          categorySlug: "soups",
+        },
+        infos: [],
+      };
+
+      const { rerender } = render(
+        <CartProvider>
+          <Consumer />
+          <ProductDetailsInfo productData={viProductData} />
+        </CartProvider>
+      );
+
+      // 1. Add on VI storefront
+      mockLocale = "vi";
+      fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
+      expect(cartApi!.cartItems).toHaveLength(1);
+      expect(cartApi!.cartItems[0].quantity).toBe(1);
+
+      // 2. Switch to EN storefront and add the same product + variant
+      mockLocale = "en";
+      rerender(
+        <CartProvider>
+          <Consumer />
+          <ProductDetailsInfo productData={enProductData} />
+        </CartProvider>
+      );
+      fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
+
+      expect(cartApi!.cartItems).toHaveLength(1);
+      expect(cartApi!.cartItems[0].quantity).toBe(2);
+      expect(cartApi!.cartItems[0].title_vi).toBe("Súp Hải Sản");
+      expect(cartApi!.cartItems[0].title_en).toBe("Seafood Soup");
+      expect(cartApi!.cartItems[0].variant_vi).toBe("Nhỏ");
+      expect(cartApi!.cartItems[0].variant_en).toBe("Small");
+    });
   });
 
   describe("2. Empty Cart at Checkout & CartPopup (No 'Liên hệ', Hide Progress Bar & Voucher Bar)", () => {
@@ -427,6 +517,87 @@ describe("Fix Cart, Buy Now & Checkout Flow (Group 1)", () => {
       const { container } = render(<SignInContainer />);
       const wrapper = container.firstElementChild as HTMLElement;
       expect(wrapper.className).toContain("min-h-[calc(100vh-6.5rem)]");
+    });
+  });
+
+  describe("5. Checkout Ward Clear Total Update (Vấn đề 1)", () => {
+    it("updates total to include shippingFee when a ward is selected, and immediately drops total back to subtotal - discounts (effectiveShippingFee = 0) when ward is cleared", async () => {
+      const CheckoutFormModule = await import("@/components/Checkout/CheckoutForm");
+      const CheckoutForm = CheckoutFormModule.default;
+      const orderServiceModule = await import("@/services/orderService");
+
+      const CartContextModule = await import("@/contexts/CartContext");
+      const useCartSpy = vi.spyOn(CartContextModule, "useCart").mockReturnValue({
+        cartItems: [
+          {
+            id: "prod-101-var-1001-code-SP101",
+            productId: 101,
+            productCode: "SP101",
+            slug: "cha-muc-gia-tay",
+            categorySlug: "cha-muc",
+            title: "Chả mực giã tay",
+            imageUrl: "/cover.jpg",
+            variant: "500g",
+            unitPrice: 200000,
+            quantity: 1,
+          },
+        ],
+        isLoaded: true,
+        isCartOpen: false,
+        setIsCartOpen: vi.fn(),
+        addToCart: vi.fn(),
+        updateQuantity: vi.fn(),
+        removeFromCart: vi.fn(),
+        clearCart: vi.fn(),
+        restoreCampaignItemsToOriginalPrice: vi.fn(),
+        totalItems: 1,
+        subtotal: 200000,
+        hasOutOfStockItems: false,
+      });
+
+      render(
+        <CheckoutForm
+          order={null}
+          config={{ branches: [], default_shipping_fee: "50000" } as any}
+        />
+      );
+
+      // Initially no ward selected: effectiveShippingFee = 0, total = 200.000 VNĐ (not 250.000 VNĐ or 230.000 VNĐ)
+      expect(screen.queryByText("230.000 VNĐ")).toBeNull();
+      expect(screen.queryByText("250.000 VNĐ")).toBeNull();
+
+      // Select a ward from WardSelectCombobox (on desktop form)
+      const wardInputs = screen.getAllByPlaceholderText("ward_select_placeholder");
+      const desktopWardInput = wardInputs[wardInputs.length - 1];
+      fireEvent.focus(desktopWardInput);
+      fireEvent.change(desktopWardInput, { target: { value: "An Hội Tây" } });
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/An Hội Tây/i).length).toBeGreaterThan(0);
+      });
+      const options = screen.getAllByText(/An Hội Tây/i);
+      fireEvent.click(options[options.length - 1]);
+
+      // After selecting ward: shippingFee = 30.000 VNĐ -> total = 200.000 + 30.000 = 230.000 VNĐ
+      await waitFor(() => {
+        expect(screen.getAllByText("30.000 VNĐ").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("230.000 VNĐ").length).toBeGreaterThan(0);
+      });
+
+      const calcCallsAfterSelect = vi.mocked(orderServiceModule.calculateShippingFee).mock.calls.length;
+
+      // Clear the ward using the clear button (✕)
+      const clearBtns = screen.getAllByTitle("ward_select_clear");
+      fireEvent.click(clearBtns[clearBtns.length - 1]);
+
+      // Immediately after clearing ward: effectiveShippingFee = 0, total drops back to 200.000 VNĐ (no old shippingFee 30.000 or defaultShippingFee 50.000 added), and calculateShippingFee is NOT called again
+      await waitFor(() => {
+        expect(screen.queryByText("230.000 VNĐ")).toBeNull();
+        expect(screen.queryByText("250.000 VNĐ")).toBeNull();
+      });
+      expect(vi.mocked(orderServiceModule.calculateShippingFee)).toHaveBeenCalledTimes(calcCallsAfterSelect);
+
+      useCartSpy.mockRestore();
     });
   });
 });

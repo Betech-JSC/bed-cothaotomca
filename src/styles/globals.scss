@@ -131,4 +131,17 @@ footer {
     font-size: 16px !important;
     touch-action: manipulation;
   }
+
+  p, li, blockquote, h1, h2, h3, h4, h5, h6 {
+    word-spacing: normal;
+  }
+
+  [style*="text-align: justify"],
+  [style*="text-align:justify"],
+  [align="justify"],
+  .text-justify,
+  .ql-align-justify {
+    text-align: left !important;
+    word-spacing: normal !important;
+  }
 }

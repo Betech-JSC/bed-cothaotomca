@@ -25,6 +25,7 @@ tsconfig.tsbuildinfo
 
 /.next/
 /.next-build/
+/.next-qa/
 
 /out/
 /playwright-mcp

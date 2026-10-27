@@ -1006,13 +1006,20 @@ export default function MobileCartFlow({
   }, [cartCampaignG1, appliedVoucher]);
 
   useEffect(() => {
-    if (deliveryType !== "delivery" || !cartItems || cartItems.length === 0) {
+    if (
+      deliveryType !== "delivery" ||
+      !cartItems ||
+      cartItems.length === 0 ||
+      (!selectedWard && !selectedWardId)
+    ) {
       setCalculatedFee(0);
       setOriginalFee(0);
       setShippingDiscount(0);
       setIsFreeship(false);
+      setFreeshipReason(null);
       setIsDeliverable(true);
       setShippingMessage(null);
+      setAssignedBranchName(null);
       setCalculatingShipping(false);
       setHasCalculatedFee(false);
       return;
@@ -1081,9 +1088,18 @@ export default function MobileCartFlow({
   }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, appliedShippingVoucher, config?.branches, cartCampaignG1]);
 
   const defaultShippingFee = parseFloat(config?.default_shipping_fee || "30000") || 30000;
-  const shippingFee = (cartItems.length === 0 || deliveryType !== "delivery")
-    ? 0
-    : (isFreeship ? 0 : (hasCalculatedFee ? calculatedFee : (calculatedFee || defaultShippingFee)));
+  const hasSelectedWard = Boolean(selectedWard || selectedWardId);
+  const shippingFee =
+    cartItems.length === 0 ||
+    deliveryType !== "delivery" ||
+    !hasSelectedWard ||
+    !isDeliverable
+      ? 0
+      : isFreeship
+        ? 0
+        : hasCalculatedFee
+          ? calculatedFee
+          : calculatedFee || defaultShippingFee;
 
   const { subtotal, shipping } = calcOrderTotal(
     lineItems,
@@ -1195,7 +1211,13 @@ export default function MobileCartFlow({
     return calculateVoucherDiscount(shipVoucher, subtotal, shipping);
   }, [appliedShippingVoucher, appliedVoucher, subtotal, shipping]);
 
-  const effectiveShippingFee = cartItems.length === 0 ? 0 : Math.max(0, shipping - shippingVoucherDiscount);
+  const effectiveShippingFee =
+    cartItems.length === 0 ||
+    deliveryType !== "delivery" ||
+    !hasSelectedWard ||
+    !isDeliverable
+      ? 0
+      : Math.max(0, shipping - shippingVoucherDiscount);
   const voucherDiscount = foodVoucherDiscount + shippingVoucherDiscount;
 
   // Total cart items count (for buy_x_get_y check)
@@ -3511,6 +3533,15 @@ export default function MobileCartFlow({
                               setSelectedDistrict("");
                               setSelectedWard("");
                               setSelectedWardId("");
+                              setCalculatedFee(0);
+                              setOriginalFee(0);
+                              setShippingDiscount(0);
+                              setIsFreeship(false);
+                              setFreeshipReason(null);
+                              setIsDeliverable(true);
+                              setShippingMessage(null);
+                              setAssignedBranchName(null);
+                              setHasCalculatedFee(false);
                             }}
                             className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
                           >
@@ -3542,6 +3573,16 @@ export default function MobileCartFlow({
                             } else {
                               setSelectedWardId("");
                               setSelectedWard("");
+                              setSelectedDistrict("");
+                              setCalculatedFee(0);
+                              setOriginalFee(0);
+                              setShippingDiscount(0);
+                              setIsFreeship(false);
+                              setFreeshipReason(null);
+                              setIsDeliverable(true);
+                              setShippingMessage(null);
+                              setAssignedBranchName(null);
+                              setHasCalculatedFee(false);
                             }
                             if (fieldErrors.ward) {
                               setFieldErrors((prev) => {

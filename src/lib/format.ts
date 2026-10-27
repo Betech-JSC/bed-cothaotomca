@@ -179,6 +179,20 @@ export function formatRichTextContent(content: string | undefined | null): strin
   const backendOrigin = getBackendBaseUrl();
   let processed = content;
 
+  // Chuẩn hóa non-breaking spaces (&nbsp;, &#160;, &#xa0;, \u00A0) thành khoảng trắng thường
+  // và loại bỏ căn đều (justify) để tránh giãn khoảng cách từ bất thường trên mobile
+  processed = processed
+    .replace(/&nbsp;|&#160;|&#xa0;|\u00A0/gi, ' ')
+    .replace(/\s*align=["']justify["']/gi, '')
+    .replace(/\s*style=(["'])([^"']*?)\1/gi, (match, quote, styleContent) => {
+      const cleaned = styleContent.replace(/text-align\s*:\s*justify\s*;?/gi, '').trim();
+      return cleaned ? ` style=${quote}${cleaned}${quote}` : '';
+    })
+    .replace(/\s*class=(["'])([^"']*?)\1/gi, (match, quote, classContent) => {
+      const cleaned = classContent.replace(/\b(?:text-justify|ql-align-justify)\b/gi, '').replace(/\s+/g, ' ').trim();
+      return cleaned ? ` class=${quote}${cleaned}${quote}` : '';
+    });
+
   // Prefix relative image URLs (/storage/uploads/... or /uploads/...) with backendOrigin
   processed = processed.replace(/<img([^>]*?)src="(\/storage\/[^"]*|\/uploads\/[^"]*)"([^>]*?)>/gi, (match, p1, srcPath, p3) => {
     const fullSrc = `${backendOrigin}${srcPath}`;

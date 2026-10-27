@@ -3,6 +3,11 @@ import {
   getCartItemTitle,
   getCartItemVariant,
   healCartItem,
+  normalizeVariantToken,
+  getCanonicalCartItemKey,
+  isSameCartProductVariant,
+  mergeCartItemPair,
+  mergeDuplicateCartItems,
 } from "@/lib/cartLocalization";
 import { checkItemOutOfStock, type CartItem } from "@/contexts/CartContext";
 
@@ -301,6 +306,223 @@ describe("CartLocalization Helpers & Self-Healing", () => {
       };
 
       expect(checkItemOutOfStock(enCartItem, cacheWithOutOfStockVariant)).toBe(true);
+    });
+  });
+
+  describe("5. Cross-Locale Cart Item Identification, Merge & Combo Variant Separation", () => {
+    it("normalizes VI and EN size/standard variant labels into identical tokens", () => {
+      expect(normalizeVariantToken("Tiêu chuẩn")).toBe("__standard__");
+      expect(normalizeVariantToken("Standard")).toBe("__standard__");
+      expect(normalizeVariantToken("")).toBe("__standard__");
+      expect(normalizeVariantToken("Nhỏ")).toBe("__size_s__");
+      expect(normalizeVariantToken("Small")).toBe("__size_s__");
+      expect(normalizeVariantToken("Vừa")).toBe("__size_m__");
+      expect(normalizeVariantToken("Medium")).toBe("__size_m__");
+      expect(normalizeVariantToken("Lớn")).toBe("__size_l__");
+      expect(normalizeVariantToken("Large")).toBe("__size_l__");
+    });
+
+    it("identifies and merges item added in VI ('Nhỏ' / 'Tiêu chuẩn') and then in EN ('Small' / 'Standard') into 1 row with quantity = 2 and full bilingual metadata", () => {
+      // Case A: Size variant "Nhỏ" (VI) vs "Small" (EN) with localized slugs
+      const itemAddedInVi: CartItem = {
+        id: "sup-hai-san-Nhỏ",
+        productId: 501,
+        parentProductId: 500,
+        product_id: 500,
+        variantId: 501,
+        variant_id: 501,
+        productCode: "SUP-S",
+        slug: "sup-hai-san",
+        categorySlug: "mon-sup",
+        title: "Súp Hải Sản",
+        title_vi: "Súp Hải Sản",
+        title_en: "Seafood Soup",
+        imageUrl: "/images/soup.jpg",
+        variant: "Nhỏ",
+        variant_vi: "Nhỏ",
+        variant_en: "Small",
+        unitPrice: 65000,
+        quantity: 1,
+      };
+
+      const itemAddedInEn: CartItem = {
+        id: "seafood-soup-Small",
+        productId: 501,
+        parentProductId: 500,
+        product_id: 500,
+        variantId: 501,
+        variant_id: 501,
+        productCode: "SUP-S",
+        slug: "seafood-soup",
+        categorySlug: "soups",
+        title: "Seafood Soup",
+        title_vi: "Súp Hải Sản",
+        title_en: "Seafood Soup",
+        imageUrl: "/images/soup.jpg",
+        variant: "Small",
+        variant_vi: "Nhỏ",
+        variant_en: "Small",
+        unitPrice: 65000,
+        quantity: 1,
+      };
+
+      expect(isSameCartProductVariant(itemAddedInVi, itemAddedInEn)).toBe(true);
+      expect(getCanonicalCartItemKey(itemAddedInVi)).toBe(getCanonicalCartItemKey(itemAddedInEn));
+
+      const mergedSize = mergeCartItemPair(itemAddedInVi, itemAddedInEn, 1);
+      expect(mergedSize.quantity).toBe(2);
+      expect(mergedSize.title_vi).toBe("Súp Hải Sản");
+      expect(mergedSize.title_en).toBe("Seafood Soup");
+      expect(mergedSize.variant_vi).toBe("Nhỏ");
+      expect(mergedSize.variant_en).toBe("Small");
+
+      // Case B: Standard variant "Tiêu chuẩn" (VI) vs "Standard" (EN) even when one side lacks bilingual fields initially
+      const standardVi: CartItem = {
+        id: "cha-muc-gia-tay-Tiêu chuẩn",
+        productId: 600,
+        productCode: "CM-STD",
+        slug: "cha-muc-gia-tay",
+        categorySlug: "cha-muc",
+        title: "Chả Mực Giã Tay",
+        title_vi: "Chả Mực Giã Tay",
+        imageUrl: "/images/chamuc.jpg",
+        variant: "Tiêu chuẩn",
+        variant_vi: "Tiêu chuẩn",
+        unitPrice: 250000,
+        quantity: 1,
+      };
+
+      const standardEn: CartItem = {
+        id: "hand-pounded-squid-cake-Standard",
+        productId: 600,
+        productCode: "CM-STD",
+        slug: "hand-pounded-squid-cake",
+        categorySlug: "squid-cake",
+        title: "Hand-pounded Squid Cake",
+        title_en: "Hand-pounded Squid Cake",
+        imageUrl: "/images/chamuc.jpg",
+        variant: "Standard",
+        variant_en: "Standard",
+        unitPrice: 250000,
+        quantity: 1,
+      };
+
+      expect(isSameCartProductVariant(standardVi, standardEn)).toBe(true);
+      const mergedStandard = mergeCartItemPair(standardVi, standardEn, 1);
+      expect(mergedStandard.quantity).toBe(2);
+      expect(mergedStandard.title_vi).toBe("Chả Mực Giã Tay");
+      expect(mergedStandard.title_en).toBe("Hand-pounded Squid Cake");
+      expect(mergedStandard.variant_vi).toBe("Tiêu chuẩn");
+      expect(mergedStandard.variant_en).toBe("Standard");
+    });
+
+    it("does NOT merge two different variants of the same Combo product sharing kiotviet_id (e.g. c1 'Cơm trắng' vs c1-lut 'Cơm gạo lứt')", () => {
+      const comboWhiteRice: CartItem = {
+        id: "combo-ca-hoi-Cơm trắng",
+        productId: 999888,
+        parentProductId: 700,
+        product_id: 700,
+        kiotviet_id: 999888,
+        variantId: 7001,
+        variant_id: 7001,
+        productCode: "c1",
+        slug: "combo-ca-hoi",
+        categorySlug: "combo",
+        title: "Combo Cá Hồi",
+        title_vi: "Combo Cá Hồi",
+        title_en: "Salmon Combo",
+        imageUrl: "/images/combo.jpg",
+        variant: "Cơm trắng",
+        variant_vi: "Cơm trắng",
+        variant_en: "White Rice",
+        unitPrice: 145000,
+        quantity: 1,
+      };
+
+      const comboBrownRice: CartItem = {
+        id: "combo-ca-hoi-Cơm gạo lứt",
+        productId: 999888,
+        parentProductId: 700,
+        product_id: 700,
+        kiotviet_id: 999888,
+        variantId: 7002,
+        variant_id: 7002,
+        productCode: "c1-lut",
+        slug: "combo-ca-hoi",
+        categorySlug: "combo",
+        title: "Combo Cá Hồi",
+        title_vi: "Combo Cá Hồi",
+        title_en: "Salmon Combo",
+        imageUrl: "/images/combo.jpg",
+        variant: "Cơm gạo lứt",
+        variant_vi: "Cơm gạo lứt",
+        variant_en: "Brown Rice",
+        unitPrice: 150000,
+        quantity: 1,
+      };
+
+      expect(isSameCartProductVariant(comboWhiteRice, comboBrownRice)).toBe(false);
+
+      // Even if variantId was accidentally set to the shared kiotviet_id on both, different code or variant_vi must prevent merging
+      const comboWhiteSharedVarId: CartItem = {
+        ...comboWhiteRice,
+        variantId: 999888,
+        variant_id: 999888,
+      };
+      const comboBrownSharedVarId: CartItem = {
+        ...comboBrownRice,
+        variantId: 999888,
+        variant_id: 999888,
+      };
+      expect(isSameCartProductVariant(comboWhiteSharedVarId, comboBrownSharedVarId)).toBe(false);
+
+      const deduped = mergeDuplicateCartItems([comboWhiteSharedVarId, comboBrownSharedVarId]);
+      expect(deduped).toHaveLength(2);
+      expect(deduped[0].productCode).toBe("c1");
+      expect(deduped[1].productCode).toBe("c1-lut");
+    });
+
+    it("mergeDuplicateCartItems automatically merges split VI/EN entries from localStorage and sums their quantities", () => {
+      const splitItemsInStorage: CartItem[] = [
+        {
+          id: "tom-su-nuong-Nhỏ",
+          productId: 801,
+          parentProductId: 800,
+          productCode: "TS-S",
+          slug: "tom-su-nuong",
+          categorySlug: "tom",
+          title: "Tôm Sú Nướng",
+          title_vi: "Tôm Sú Nướng",
+          imageUrl: "/images/tom.jpg",
+          variant: "Nhỏ",
+          variant_vi: "Nhỏ",
+          unitPrice: 180000,
+          quantity: 1,
+        },
+        {
+          id: "grilled-tiger-prawn-Small",
+          productId: 801,
+          parentProductId: 800,
+          productCode: "TS-S",
+          slug: "grilled-tiger-prawn",
+          categorySlug: "shrimp",
+          title: "Grilled Tiger Prawn",
+          title_en: "Grilled Tiger Prawn",
+          imageUrl: "/images/tom.jpg",
+          variant: "Small",
+          variant_en: "Small",
+          unitPrice: 180000,
+          quantity: 2,
+        },
+      ];
+
+      const mergedList = mergeDuplicateCartItems(splitItemsInStorage);
+      expect(mergedList).toHaveLength(1);
+      expect(mergedList[0].quantity).toBe(3);
+      expect(mergedList[0].title_vi).toBe("Tôm Sú Nướng");
+      expect(mergedList[0].title_en).toBe("Grilled Tiger Prawn");
+      expect(mergedList[0].variant_vi).toBe("Nhỏ");
+      expect(mergedList[0].variant_en).toBe("Small");
     });
   });
 });

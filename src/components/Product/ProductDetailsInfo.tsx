@@ -10,6 +10,7 @@ import { useRouter } from "@/i18n/routing";
 import type { ProductDetailView } from "@/services/productService";
 
 import { useCart } from "@/contexts/CartContext";
+import { getCanonicalCartItemKey } from "@/lib/cartLocalization";
 
 interface ProductDetailsInfoProps {
   productData: ProductDetailView;
@@ -37,11 +38,29 @@ const ProductDetailsInfo = ({ productData }: ProductDetailsInfoProps) => {
     const titleEn = productData.title_en || productData.name_en;
     const variantVi = selectedSize?.title_vi || selectedSize?.size_vi || selectedSize?.title;
     const variantEn = selectedSize?.title_en || selectedSize?.size_en;
+    const productCode = selectedSize.code || productData.checkout.productCode;
+    const canonicalId = getCanonicalCartItemKey({
+      productId: Number(selectedSize.id ?? productData.checkout.productId),
+      productCode,
+      slug: productData.checkout.slug,
+      variant: selectedSize.title,
+      variant_vi: variantVi,
+      variant_en: variantEn,
+      variantId: selectedSize.id,
+      product_variant_id: selectedSize.id,
+      parentProductId: productData.checkout.productId,
+      parent_product_id: productData.checkout.productId,
+      product_id: productData.checkout.productId,
+      variant_id: selectedSize.id,
+      db_id: productData.checkout.productId,
+      product_db_id: productData.checkout.productId,
+      variant_db_id: selectedSize.id,
+    });
 
     addToCart({
-      id: `${productData.checkout.slug}-${selectedSize.title}`,
+      id: canonicalId || `${productData.checkout.slug}-${selectedSize.title}`,
       productId: Number(selectedSize.id ?? productData.checkout.productId),
-      productCode: selectedSize.code || productData.checkout.productCode,
+      productCode,
       slug: productData.checkout.slug,
       categorySlug: productData.checkout.categorySlug,
       title: productData.title,

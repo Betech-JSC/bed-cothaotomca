@@ -10,14 +10,25 @@
   font-size: 16px;
   outline: none;
   text-align: left;
+  word-spacing: normal;
   word-wrap: break-word;
   color: #1a1a1a;
+
+  [style*="text-align: justify"],
+  [style*="text-align:justify"],
+  [align="justify"],
+  .text-justify,
+  .ql-align-justify {
+    text-align: left !important;
+    word-spacing: normal !important;
+  }
 
   // --- Paragraphs ---
   p {
     margin-top: 0;
     margin-bottom: 1.25rem;
     line-height: 1.8;
+    word-spacing: normal;
   }
 
   p:last-child {
@@ -30,6 +41,7 @@
     margin-bottom: 0.85rem;
     font-weight: 700;
     line-height: 1.35;
+    word-spacing: normal;
     color: #111322;
   }
 
@@ -64,6 +76,7 @@
   li {
     margin-bottom: 0.35rem;
     line-height: 1.7;
+    word-spacing: normal;
 
     p {
       margin-top: 0;
@@ -91,6 +104,7 @@
     padding: 0.5rem 0 0.5rem 1.25rem;
     color: #475569;
     font-style: italic;
+    word-spacing: normal;
     background-color: #f8fafc;
     border-radius: 0 6px 6px 0;
   }
@@ -153,11 +167,12 @@
   // --- Image Alt Hover Badge ---
   .prose-img-hover-wrapper {
     position: relative;
-    display: inline-flex;
+    display: flex;
+    width: fit-content;
     justify-content: center;
     align-items: center;
     max-width: 100%;
-    margin: 0;
+    margin: 1rem auto;
     border-radius: 8px;
     overflow: hidden;
     vertical-align: middle;

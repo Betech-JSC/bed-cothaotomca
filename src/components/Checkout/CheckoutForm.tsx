@@ -7,7 +7,12 @@ import * as NextIntl from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName, formatImageUrl } from "@/lib/format";
-import { getCartItemTitle, getCartItemVariant } from "@/lib/cartLocalization";
+import {
+  getCanonicalCartItemKey,
+  getCartItemTitle,
+  getCartItemVariant,
+  isSameCartProductVariant,
+} from "@/lib/cartLocalization";
 import { getActiveCampaigns, type PublicCampaignItem } from "@/services/campaignService";
 import { mergePromotionsWithPublicCampaigns } from "@/types/campaign";
 import {
@@ -225,12 +230,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   // Sync direct single-product checkout to cart on mobile
   useEffect(() => {
     if (order) {
-      const alreadyInCart = cartItems.some(
-        (item) => item.productId === order.productId && item.variant === order.variant
+      const alreadyInCart = cartItems.some((item) =>
+        isSameCartProductVariant(item, order)
       );
       if (!alreadyInCart) {
+        const canonicalId =
+          getCanonicalCartItemKey(order) || `${order.slug}-${order.variant}`;
         addToCart({
-          id: `${order.slug}-${order.variant}`,
+          id: canonicalId,
           productId: order.productId,
           productCode: order.productCode,
           slug: order.slug,
@@ -436,8 +443,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
   };
 
-  const [shippingFee, setShippingFee] = useState<number>(defaultShippingFee);
-  const [originalFee, setOriginalFee] = useState<number>(defaultShippingFee);
+  const [shippingFee, setShippingFee] = useState<number>(0);
+  const [originalFee, setOriginalFee] = useState<number>(0);
   const [shippingDiscount, setShippingDiscount] = useState<number>(0);
   const [isFreeship, setIsFreeship] = useState<boolean>(false);
   const [freeshipReason, setFreeshipReason] = useState<string | null>(null);
@@ -652,10 +659,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return [];
   }, [isCartCheckout, cartItems, order, quantity, isBestDealVoucherApplied]);
 
+  const hasSelectedWard = Boolean(selectedWard || selectedWardId);
+  const activeShippingFee =
+    deliveryType === "delivery" && hasSelectedWard && isDeliverable ? shippingFee : 0;
+
   const { subtotal, shipping } = calcOrderTotal(
     lineItems,
     deliveryType,
-    shippingFee,
+    activeShippingFee,
     0,
   );
 
@@ -1213,13 +1224,19 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   // Trigger real-time calculation when address, subtotal or voucher changes
   useEffect(() => {
-    if (deliveryType !== "delivery" || (isCartCheckout && cartItems.length === 0)) {
+    if (
+      deliveryType !== "delivery" ||
+      (isCartCheckout && cartItems.length === 0) ||
+      (!selectedWard && !selectedWardId)
+    ) {
       setShippingFee(0);
       setOriginalFee(0);
       setShippingDiscount(0);
       setIsFreeship(false);
+      setFreeshipReason(null);
       setIsDeliverable(true);
       setShippingMessage(null);
+      setAssignedBranchName(null);
       setCalculatingShipping(false);
       return;
     }
@@ -1603,7 +1620,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return calculateVoucherDiscount(shipVoucher, subtotal, shipping);
   }, [appliedShippingVoucher, appliedVoucher, subtotal, shipping]);
 
-  const effectiveShippingFee = (isCartCheckout && cartItems.length === 0) ? 0 : Math.max(0, shipping - shippingVoucherDiscount);
+  const effectiveShippingFee =
+    (isCartCheckout && cartItems.length === 0) ||
+    deliveryType !== "delivery" ||
+    !hasSelectedWard ||
+    !isDeliverable
+      ? 0
+      : Math.max(0, shipping - shippingVoucherDiscount);
   const voucherDiscount = foodVoucherDiscount + shippingVoucherDiscount;
 
   // Member Tier Discount - Tự động áp dụng chiết khấu hạng thành viên / Mừng lên hạng trên các món nguyên giá
@@ -3006,6 +3029,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             setSelectedDistrict("");
                             setSelectedWard("");
                             setSelectedWardId("");
+                            setShippingFee(0);
+                            setOriginalFee(0);
+                            setShippingDiscount(0);
+                            setIsFreeship(false);
+                            setFreeshipReason(null);
+                            setIsDeliverable(true);
+                            setShippingMessage(null);
+                            setAssignedBranchName(null);
                           }}
                           className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif cursor-pointer"
                         >
@@ -3037,6 +3068,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           } else {
                             setSelectedWardId("");
                             setSelectedWard("");
+                            setSelectedDistrict("");
+                            setShippingFee(0);
+                            setOriginalFee(0);
+                            setShippingDiscount(0);
+                            setIsFreeship(false);
+                            setFreeshipReason(null);
+                            setIsDeliverable(true);
+                            setShippingMessage(null);
+                            setAssignedBranchName(null);
                           }
                           if (fieldErrors["delivery.ward"]) {
                             setFieldErrors((prev) => {
