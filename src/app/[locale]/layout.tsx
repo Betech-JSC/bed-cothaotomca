@@ -62,7 +62,6 @@ export async function generateMetadata({
   // Make image absolute when necessary
   if (image && !image.startsWith('http')) image = `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`
 
-  const customFavicon = seo?.favicon || seo?.favicon_url
   const rawKeywords = isEn
     ? (seo?.seo_keywords_en || seo?.keywords_en || seo?.seo_keywords || seo?.keywords)
     : (seo?.seo_keywords || seo?.keywords);
@@ -85,22 +84,16 @@ export async function generateMetadata({
     },
     description,
     keywords,
-    icons: customFavicon
-      ? {
-          icon: customFavicon,
-          shortcut: customFavicon,
-          apple: customFavicon,
-        }
-      : {
-          icon: [
-            { url: '/favicon.ico', sizes: '48x48' },
-            { url: '/icon.svg', type: 'image/svg+xml' },
-            { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
-            { url: '/icon.png', sizes: '512x512', type: 'image/png' },
-          ],
-          shortcut: ['/favicon.ico'],
-          apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
-        },
+    icons: {
+      icon: [
+        { url: '/favicon.ico', sizes: '48x48' },
+        { url: '/icon.svg', type: 'image/svg+xml' },
+        { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+        { url: '/icon.png', sizes: '512x512', type: 'image/png' },
+      ],
+      shortcut: ['/favicon.ico'],
+      apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    },
     openGraph: {
       title,
       description,
