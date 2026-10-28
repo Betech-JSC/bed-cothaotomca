@@ -58,7 +58,7 @@ export const HCMC_WARD_OLD_NAME_MAP: Record<string, string> = {
   "Thới An": "P. Thới An",
   "Trung Mỹ Tây": "P. Trung Mỹ Tây",
   "Tân Thới Hiệp": "P. Tân Thới Hiệp",
-  "An Khánh": "P. An Khánh, P. An Phú, P. Bình An",
+  "An Khánh": "P. Thảo Điền, P. An Khánh, P. An Phú, P. Bình An",
   "Thảo Điền": "P. Thảo Điền",
   "Cát Lái": "P. Cát Lái, P. Thạnh Mỹ Lợi",
   "Bình Chiểu": "P. Bình Chiểu",
@@ -115,26 +115,14 @@ export function cleanAdministrativeUnitName(name: string): string {
  * - Phường Gia Định - Bình Thạnh
  * - Xã Bình Chánh (không lặp lại Quận/Huyện nếu tên trùng nhau)
  */
-export function formatWardLabel(wardName: string, district?: string, _oldWard?: string): string {
+export function formatWardLabel(wardName: string, _district?: string, _oldWard?: string): string {
   if (!wardName) return "";
   const cleanWardName = wardName.trim();
 
   const hasPrefix = cleanWardName.startsWith("Phường") || cleanWardName.startsWith("Xã") || cleanWardName.startsWith("Thị trấn");
   const prefix = hasPrefix ? "" : "Phường ";
 
-  if (!district || !district.trim()) {
-    return `${prefix}${cleanWardName}`;
-  }
-
-  const cleanDistrict = district.trim();
-  const normalizedWard = cleanAdministrativeUnitName(cleanWardName);
-  const normalizedDistrict = cleanAdministrativeUnitName(cleanDistrict);
-
-  if (normalizedWard.toLowerCase() === normalizedDistrict.toLowerCase()) {
-    return `${prefix}${cleanWardName}`;
-  }
-
-  return `${prefix}${cleanWardName} - ${cleanDistrict}`;
+  return `${prefix}${cleanWardName}`;
 }
 
 /**
@@ -264,3 +252,19 @@ export function resolveNewWardName(
   return null;
 }
 
+
+export {
+  validateAddressWardMatch,
+  verifyAddressViaMapApi,
+  HCMC_STREET_DIRECTORY,
+  WARD_CANONICAL_DISTRICTS,
+  normalizeDistrictName,
+  findMatchingWardsFromCatalog,
+} from "@/utils/addressValidation";
+export type {
+  AddressWardConflictType,
+  AddressWardValidationParams,
+  AddressWardValidationResult,
+  WardCatalogEntry,
+  StreetDirectoryEntry,
+} from "@/utils/addressValidation";

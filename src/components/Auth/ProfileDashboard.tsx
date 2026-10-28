@@ -22,7 +22,13 @@ import {
   type AdministrativeProvince,
 } from "@/services/orderService";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
-import { buildDeliveryAddress, cleanDuplicateAddressParts } from "@/data/wardMapping";
+import {
+  buildDeliveryAddress,
+  cleanDuplicateAddressParts,
+  formatWardLabel,
+  validateAddressWardMatch,
+  type WardCatalogEntry,
+} from "@/data/wardMapping";
 import { formatVietnamDateTime, formatImageUrl } from "@/lib/format";
 
 type ProfileDashboardProps = {
@@ -165,6 +171,28 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
   const availableWards = useMemo(() => {
     return currentProvinceData?.wards || [];
   }, [currentProvinceData]);
+
+  const addressWardValidation = useMemo(() => {
+    return validateAddressWardMatch({
+      streetAddress: addressForm.street_address,
+      note: addressForm.notes,
+      selectedWard: addressForm.ward,
+      selectedWardId: addressForm.ward_id,
+      selectedDistrict: addressForm.district,
+      selectedProvince: addressForm.province,
+      availableWards,
+    });
+  }, [addressForm, availableWards]);
+
+  const handleApplySuggestedWardToModal = (suggested: WardCatalogEntry) => {
+    setAddressForm((prev) => ({
+      ...prev,
+      ward: suggested.name,
+      ward_id: suggested.id,
+      district: suggested.district || prev.district,
+    }));
+    setAddressModalError(null);
+  };
 
   // Load addresses on mount and when tab switched
   const fetchAddresses = async () => {
@@ -363,6 +391,10 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     }
     if (!addressForm.ward.trim() || !addressForm.street_address.trim()) {
       setAddressModalError(t("ward_and_street_required"));
+      return;
+    }
+    if (!addressWardValidation.isValid && addressWardValidation.message) {
+      setAddressModalError(addressWardValidation.message);
       return;
     }
 
@@ -1553,13 +1585,58 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                 <input
                   type="text"
                   value={addressForm.street_address}
-                  onChange={(e) =>
-                    setAddressForm((prev) => ({ ...prev, street_address: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    setAddressForm((prev) => ({ ...prev, street_address: e.target.value }));
+                    if (addressModalError) setAddressModalError(null);
+                  }}
                   required
                   placeholder={t("street_address_placeholder")}
-                  className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary h-[40px] text-gray-900"
+                  className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none h-[40px] text-gray-900 ${
+                    !addressWardValidation.isValid
+                      ? "border-secondary"
+                      : "border-gray-300 focus:border-secondary focus:ring-1 focus:ring-secondary"
+                  }`}
                 />
+                {!addressWardValidation.isValid && addressWardValidation.message ? (
+                  <div
+                    data-testid="profile-address-ward-mismatch-warning"
+                    className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2"
+                  >
+                    <p className="font-semibold leading-snug">
+                      {addressWardValidation.message}
+                    </p>
+                    {addressWardValidation.suggestedWard && (
+                      <button
+                        type="button"
+                        data-testid="profile-apply-suggested-ward-btn"
+                        onClick={() => handleApplySuggestedWardToModal(addressWardValidation.suggestedWard!)}
+                        className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs"
+                      >
+                        <span>
+                          Đổi sang {formatWardLabel(addressWardValidation.suggestedWard.name, addressWardValidation.suggestedWard.district)}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                ) : addressWardValidation.isValid &&
+                  !addressForm.ward &&
+                  !addressForm.ward_id &&
+                  addressWardValidation.suggestedWard ? (
+                  <div
+                    data-testid="profile-address-ward-suggestion-chip"
+                    className="mt-2 flex items-center flex-wrap gap-1.5 rounded-lg border border-secondary/25 bg-yellow/50 px-3 py-1.5 text-xs text-brown"
+                  >
+                    <span>Gợi ý theo địa chỉ:</span>
+                    <button
+                      type="button"
+                      data-testid="profile-select-suggested-ward-btn"
+                      onClick={() => handleApplySuggestedWardToModal(addressWardValidation.suggestedWard!)}
+                      className="font-bold text-primary underline hover:text-secondary cursor-pointer"
+                    >
+                      Chọn {formatWardLabel(addressWardValidation.suggestedWard.name, addressWardValidation.suggestedWard.district)}
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
               {/* Ghi chú */}

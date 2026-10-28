@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import type { AdministrativeWard } from "@/services/orderService";
-import { formatWardLabel, HCMC_WARD_OLD_NAME_MAP } from "@/data/wardMapping";
+import { cleanAdministrativeUnitName, formatWardLabel, HCMC_WARD_OLD_NAME_MAP } from "@/data/wardMapping";
 import RequiredMark from "./RequiredMark";
 
 interface WardSelectComboboxProps {
@@ -172,6 +172,7 @@ export default function WardSelectCombobox({
           {filteredWards.length > 0 ? (
             filteredWards.map((w) => {
               const label = formatWardLabel(w.name, w.district, w.old_ward);
+              const oldWardHint = w.old_ward?.trim() || "";
               const isSelected =
                 w.id === selectedWardId || w.name === selectedWardName;
 
@@ -186,6 +187,11 @@ export default function WardSelectCombobox({
                 >
                   <div className="flex-1 pr-2">
                     <span className="block leading-snug">{label}</span>
+                    {oldWardHint && (
+                      <span className="block text-xs text-gray-500 font-normal mt-0.5">
+                        ({oldWardHint} cũ)
+                      </span>
+                    )}
                   </div>
                   {isSelected && (
                     <span className="text-primary font-bold text-base shrink-0">

@@ -48,7 +48,16 @@ import {
   checkGuestTierByPhone,
   type GuestTierHint,
 } from "@/services/authService";
-import { buildDeliveryAddress, cleanDuplicateAddressParts, resolveNewWardName } from "@/data/wardMapping";
+import {
+  buildDeliveryAddress,
+  cleanDuplicateAddressParts,
+  formatWardLabel,
+  resolveNewWardName,
+  validateAddressWardMatch,
+  verifyAddressViaMapApi,
+  type AddressWardValidationResult,
+  type WardCatalogEntry,
+} from "@/data/wardMapping";
 import GuestTierHintBanner from "@/components/Checkout/GuestTierHintBanner";
 import { checkOperatingHours, formatVietnameseDate, generate15MinTimeSlots, getEarliestPreOrderSlot, getVietnamDate, getVietnamTimeString, isTodayOutOfScheduleSlots, toISODateString } from "@/lib/operatingHours";
 import { formatBranchDisplayName, identifyBrandBranch } from "@/lib/branchHelper";
@@ -429,6 +438,47 @@ export default function MobileCartFlow({
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
   const [description, setDescription] = useState("");
   const [confirmInfo, setConfirmInfo] = useState(true);
+
+  const [mapAddressValidation, setMapAddressValidation] = useState<AddressWardValidationResult | null>(null);
+
+  const syncAddressValidation = useMemo(() => {
+    return validateAddressWardMatch({
+      streetAddress,
+      note: description,
+      selectedWard,
+      selectedWardId,
+      selectedDistrict,
+      selectedProvince,
+      availableWards,
+    });
+  }, [streetAddress, description, selectedWard, selectedWardId, selectedDistrict, selectedProvince, availableWards]);
+
+  useEffect(() => {
+    setMapAddressValidation(null);
+  }, [streetAddress, selectedWard, selectedWardId, selectedDistrict]);
+
+  const addressWardValidation = useMemo(() => {
+    if (!syncAddressValidation.isValid || syncAddressValidation.suggestedWard) {
+      return syncAddressValidation;
+    }
+    if (mapAddressValidation && (!mapAddressValidation.isValid || mapAddressValidation.suggestedWard)) {
+      return mapAddressValidation;
+    }
+    return syncAddressValidation;
+  }, [syncAddressValidation, mapAddressValidation]);
+
+  const handleApplySuggestedWard = useCallback((suggested: WardCatalogEntry) => {
+    setSelectedWardId(suggested.id);
+    setSelectedWard(suggested.name);
+    setSelectedDistrict(suggested.district || "");
+    setMapAddressValidation(null);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.ward;
+      delete next.address;
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (operatingStatus) {
@@ -2055,6 +2105,25 @@ export default function MobileCartFlow({
           setLoading(false);
           return;
         }
+        const addrValidation = validateAddressWardMatch({
+          streetAddress,
+          note: description,
+          selectedWard,
+          selectedWardId,
+          selectedDistrict,
+          selectedProvince,
+          availableWards,
+        });
+        if (!addrValidation.isValid && addrValidation.message) {
+          setFieldErrors((prev) => ({ ...prev, address: addrValidation.message }));
+          setLoading(false);
+          return;
+        }
+        if (mapAddressValidation && !mapAddressValidation.isValid && mapAddressValidation.message) {
+          setFieldErrors((prev) => ({ ...prev, address: mapAddressValidation.message }));
+          setLoading(false);
+          return;
+        }
       } else {
         if (!streetAddress.trim() && !selectedSavedAddress?.full_address) {
           setFieldErrors((prev) => ({ ...prev, address: t("validation.address_detail_required") }));
@@ -3605,10 +3674,86 @@ export default function MobileCartFlow({
                             type="text"
                             placeholder={t("address_placeholder")}
                             value={streetAddress}
-                            onChange={(e) => setStreetAddress(e.target.value)}
-                            className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base font-serif font-normal leading-[150%] tracking-[0%]"
+                            onChange={(e) => {
+                              setStreetAddress(e.target.value);
+                              if (fieldErrors.address) {
+                                setFieldErrors((prev) => {
+                                  const next = { ...prev };
+                                  delete next.address;
+                                  return next;
+                                });
+                              }
+                            }}
+                            onBlur={() => {
+                              if (
+                                process.env.NODE_ENV !== "test" &&
+                                streetAddress.trim().length >= 5 &&
+                                syncAddressValidation.isValid &&
+                                !syncAddressValidation.suggestedWard
+                              ) {
+                                verifyAddressViaMapApi({
+                                  streetAddress,
+                                  note: description,
+                                  selectedWard,
+                                  selectedWardId,
+                                  selectedDistrict,
+                                  selectedProvince,
+                                  availableWards,
+                                })
+                                  .then((res) => {
+                                    if (res) setMapAddressValidation(res);
+                                  })
+                                  .catch(() => {});
+                              }
+                            }}
+                            className={`w-full h-11 rounded-[4px] border shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base font-serif font-normal leading-[150%] tracking-[0%] ${
+                              !addressWardValidation.isValid || fieldErrors.address
+                                ? "border-secondary"
+                                : "border-gray-300"
+                            }`}
                           />
-                          {fieldErrors.address && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.address}</p>}
+                          {!addressWardValidation.isValid && addressWardValidation.message ? (
+                            <div
+                              data-testid="mobile-address-ward-mismatch-warning"
+                              className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2"
+                            >
+                              <p className="font-semibold leading-snug">
+                                {addressWardValidation.message}
+                              </p>
+                              {addressWardValidation.suggestedWard && (
+                                <button
+                                  type="button"
+                                  data-testid="mobile-apply-suggested-ward-btn"
+                                  onClick={() => handleApplySuggestedWard(addressWardValidation.suggestedWard!)}
+                                  className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs"
+                                >
+                                  <span>
+                                    Đổi sang {formatWardLabel(addressWardValidation.suggestedWard.name, addressWardValidation.suggestedWard.district)}
+                                  </span>
+                                </button>
+                              )}
+                            </div>
+                          ) : fieldErrors.address ? (
+                            <p className="text-sm text-secondary mt-1 font-semibold">{fieldErrors.address}</p>
+                          ) : addressWardValidation.isValid &&
+                            !selectedWard &&
+                            !selectedWardId &&
+                            addressWardValidation.suggestedWard ? (
+                            <div
+                              data-testid="mobile-address-ward-suggestion-chip"
+                              className="mt-2 flex items-center flex-wrap gap-1.5 rounded-lg border border-secondary/25 bg-yellow/50 px-3 py-1.5 text-xs text-brown"
+                            >
+                              <span>Gợi ý theo địa chỉ:</span>
+                              <button
+                                type="button"
+                                data-testid="mobile-select-suggested-ward-btn"
+                                onClick={() => handleApplySuggestedWard(addressWardValidation.suggestedWard!)}
+                                className="font-bold text-primary underline hover:text-secondary cursor-pointer"
+                              >
+                                Chọn {formatWardLabel(addressWardValidation.suggestedWard.name, addressWardValidation.suggestedWard.district)}
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     )}

@@ -9,24 +9,24 @@ import {
 
 describe("WardSelectCombobox & Ward Mapping", () => {
   it("formats ward label cleanly without old ward string", () => {
-    // Example 1: Phường An Hội Tây - Gò Vấp (even if old ward passed)
+    // Example 1: Phường An Hội Tây (even if old ward passed)
     const labelAnHoiTay = formatWardLabel("An Hội Tây", "Gò Vấp", "P.14");
-    expect(labelAnHoiTay).toBe("Phường An Hội Tây - Gò Vấp");
+    expect(labelAnHoiTay).toBe("Phường An Hội Tây");
 
-    // Example 2: Phường Gia Định - Bình Thạnh
+    // Example 2: Phường Gia Định
     const labelGiaDinh = formatWardLabel("Gia Định", "Bình Thạnh", "P.1, P.2");
-    expect(labelGiaDinh).toBe("Phường Gia Định - Bình Thạnh");
+    expect(labelGiaDinh).toBe("Phường Gia Định");
 
     // Pure standard format without old ward
     const autoAnDong = formatWardLabel("An Đông", "Quận 5");
-    expect(autoAnDong).toBe("Phường An Đông - Quận 5");
+    expect(autoAnDong).toBe("Phường An Đông");
 
     const autoBanCo = formatWardLabel("Bàn Cờ", "Quận 3");
-    expect(autoBanCo).toBe("Phường Bàn Cờ - Quận 3");
+    expect(autoBanCo).toBe("Phường Bàn Cờ");
 
     // Already prefixed
     const prefixed = formatWardLabel("Phường 14", "Quận 3");
-    expect(prefixed).toBe("Phường 14 - Quận 3");
+    expect(prefixed).toBe("Phường 14");
 
     const commune = formatWardLabel("Xã Bình Chánh", "Bình Chánh");
     expect(commune).toBe("Xã Bình Chánh");
@@ -42,8 +42,8 @@ describe("WardSelectCombobox & Ward Mapping", () => {
     expect(formatWardLabel("Phường Bình Tân", "Quận Bình Tân")).toBe("Phường Bình Tân");
 
     // Khác tên Quận và Phường -> Ghép đầy đủ "[Tiền tố][Tên Phường] - [Quận]"
-    expect(formatWardLabel("An Hội Tây", "Gò Vấp")).toBe("Phường An Hội Tây - Gò Vấp");
-    expect(formatWardLabel("Gia Định", "Quận Bình Thạnh")).toBe("Phường Gia Định - Quận Bình Thạnh");
+    expect(formatWardLabel("An Hội Tây", "Gò Vấp")).toBe("Phường An Hội Tây");
+    expect(formatWardLabel("Gia Định", "Quận Bình Thạnh")).toBe("Phường Gia Định");
   });
 
   it("contains mapping entries for key HCMC wards for fuzzy search support", () => {

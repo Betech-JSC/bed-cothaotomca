@@ -51,7 +51,16 @@ import {
   type CustomerAddress,
 } from "@/services/authService";
 import GuestTierHintBanner from "./GuestTierHintBanner";
-import { buildDeliveryAddress, cleanDuplicateAddressParts, resolveNewWardName } from "@/data/wardMapping";
+import {
+  buildDeliveryAddress,
+  cleanDuplicateAddressParts,
+  formatWardLabel,
+  resolveNewWardName,
+  validateAddressWardMatch,
+  verifyAddressViaMapApi,
+  type AddressWardValidationResult,
+  type WardCatalogEntry,
+} from "@/data/wardMapping";
 import { checkGuestTierByPhone, type GuestTierHint } from "@/services/authService";
 
 import { useAuth, getMemberTier, calculateMemberDiscount } from "@/contexts/AuthContext";
@@ -1460,6 +1469,47 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [itemNote] = useState("");
   const [description, setDescription] = useState("");
 
+  const [mapAddressValidation, setMapAddressValidation] = useState<AddressWardValidationResult | null>(null);
+
+  const syncAddressValidation = useMemo(() => {
+    return validateAddressWardMatch({
+      streetAddress,
+      note: description,
+      selectedWard,
+      selectedWardId,
+      selectedDistrict,
+      selectedProvince,
+      availableWards,
+    });
+  }, [streetAddress, description, selectedWard, selectedWardId, selectedDistrict, selectedProvince, availableWards]);
+
+  useEffect(() => {
+    setMapAddressValidation(null);
+  }, [streetAddress, selectedWard, selectedWardId, selectedDistrict]);
+
+  const addressWardValidation = useMemo(() => {
+    if (!syncAddressValidation.isValid || syncAddressValidation.suggestedWard) {
+      return syncAddressValidation;
+    }
+    if (mapAddressValidation && (!mapAddressValidation.isValid || mapAddressValidation.suggestedWard)) {
+      return mapAddressValidation;
+    }
+    return syncAddressValidation;
+  }, [syncAddressValidation, mapAddressValidation]);
+
+  const handleApplySuggestedWard = useCallback((suggested: WardCatalogEntry) => {
+    setSelectedWardId(suggested.id);
+    setSelectedWard(suggested.name);
+    setSelectedDistrict(suggested.district || "");
+    setMapAddressValidation(null);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next["delivery.ward"];
+      delete next["delivery.address"];
+      return next;
+    });
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -2262,6 +2312,21 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         }
         if (!streetAddress.trim()) {
           errs["delivery.address"] = t("validation.address_required");
+        } else {
+          const addrValidation = validateAddressWardMatch({
+            streetAddress,
+            note: description,
+            selectedWard,
+            selectedWardId,
+            selectedDistrict,
+            selectedProvince,
+            availableWards,
+          });
+          if (!addrValidation.isValid && addrValidation.message) {
+            errs["delivery.address"] = addrValidation.message;
+          } else if (mapAddressValidation && !mapAddressValidation.isValid && mapAddressValidation.message) {
+            errs["delivery.address"] = mapAddressValidation.message;
+          }
         }
       } else {
         if (!streetAddress.trim() && !selectedSavedAddress?.full_address) {
@@ -3102,6 +3167,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           <button
                             type="button"
                             onClick={() => setStreetAddress("")}
+                            title={t("clear_address_title")}
+                            aria-label={t("clear_street_aria")}
                             className="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1 font-serif cursor-pointer"
                           >
                             <span>✕</span>
@@ -3125,23 +3192,77 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                               });
                             }
                           }}
-                          className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] pr-9 bg-white text-gray-900 focus:outline-none focus:border-primary text-base md:text-sm font-serif"
+                          onBlur={() => {
+                            if (
+                              process.env.NODE_ENV !== "test" &&
+                              streetAddress.trim().length >= 5 &&
+                              syncAddressValidation.isValid &&
+                              !syncAddressValidation.suggestedWard
+                            ) {
+                              verifyAddressViaMapApi({
+                                streetAddress,
+                                note: description,
+                                selectedWard,
+                                selectedWardId,
+                                selectedDistrict,
+                                selectedProvince,
+                                availableWards,
+                              })
+                                .then((res) => {
+                                  if (res) setMapAddressValidation(res);
+                                })
+                                .catch(() => {});
+                            }
+                          }}
+                          className={`w-full h-11 rounded-[4px] border px-[14px] bg-white text-gray-900 focus:outline-none text-base md:text-sm font-serif ${
+                            !addressWardValidation.isValid || fieldError("delivery.address")
+                              ? "border-secondary"
+                              : "border-gray-300 focus:border-primary"
+                          }`}
                           placeholder={t("address_placeholder")}
                         />
-                        {streetAddress && (
+                      </div>
+                      {!addressWardValidation.isValid && addressWardValidation.message ? (
+                        <div
+                          data-testid="address-ward-mismatch-warning"
+                          className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2"
+                        >
+                          <p className="font-semibold leading-snug">
+                            {addressWardValidation.message}
+                          </p>
+                          {addressWardValidation.suggestedWard && (
+                            <button
+                              type="button"
+                              data-testid="apply-suggested-ward-btn"
+                              onClick={() => handleApplySuggestedWard(addressWardValidation.suggestedWard!)}
+                              className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs"
+                            >
+                              <span>
+                                Đổi sang {formatWardLabel(addressWardValidation.suggestedWard.name, addressWardValidation.suggestedWard.district)}
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      ) : fieldError("delivery.address") ? (
+                        <p className="text-sm text-secondary mt-1">{fieldError("delivery.address")}</p>
+                      ) : addressWardValidation.isValid &&
+                        !selectedWard &&
+                        !selectedWardId &&
+                        addressWardValidation.suggestedWard ? (
+                        <div
+                          data-testid="address-ward-suggestion-chip"
+                          className="mt-2 flex items-center flex-wrap gap-1.5 rounded-lg border border-secondary/25 bg-yellow/50 px-3 py-1.5 text-xs text-brown"
+                        >
+                          <span>Gợi ý theo địa chỉ:</span>
                           <button
                             type="button"
-                            onClick={() => setStreetAddress("")}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 size-5 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
-                            title={t("clear_address_title")}
-                            aria-label={t("clear_street_aria")}
+                            data-testid="select-suggested-ward-btn"
+                            onClick={() => handleApplySuggestedWard(addressWardValidation.suggestedWard!)}
+                            className="font-bold text-primary underline hover:text-secondary cursor-pointer"
                           >
-                            ✕
+                            Chọn {formatWardLabel(addressWardValidation.suggestedWard.name, addressWardValidation.suggestedWard.district)}
                           </button>
-                        )}
-                      </div>
-                      {fieldError("delivery.address") ? (
-                        <p className="text-sm text-red-600 mt-1">{fieldError("delivery.address")}</p>
+                        </div>
                       ) : null}
 
                       {/* Checkbox lưu địa chỉ cho khách đã đăng nhập */}
