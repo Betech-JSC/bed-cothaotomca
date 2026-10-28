@@ -811,7 +811,7 @@ export default function MobileCartFlow({
               {
                 id: 1333367,
                 branchName: "Chi nhánh Trần Đình Xu (Q.1)",
-                address: "42/2 Trần Đình Xu, Phường Cầu Ông Lãnh (Q.1 cũ), TP. Hồ Chí Minh",
+                address: "42/2 Trần Đình Xu, Phường Cầu Ông Lãnh, TP. Hồ Chí Minh",
                 contactNumber: "024.9999.7122",
                 isActive: true,
               },
@@ -825,14 +825,14 @@ export default function MobileCartFlow({
               {
                 id: 1363270,
                 branchName: "Chi nhánh TP. Thủ Đức",
-                address: "69A Trương Văn Thành, Phường Tăng Nhơn Phú, TP. Thủ Đức",
+                address: "69A Trương Văn Thành, Phường Tăng Nhơn Phú, TP. Hồ Chí Minh",
                 contactNumber: "024.9999.7122",
                 isActive: true,
               },
               {
                 id: 1000000211,
                 branchName: "Chi nhánh Hoàng Sa (Q.1)",
-                address: "197 Hoàng Sa, Phường Tân Định (Q.1 cũ), TP. Hồ Chí Minh",
+                address: "197 Hoàng Sa, Phường Tân Định, TP. Hồ Chí Minh",
                 contactNumber: "024.9999.7122",
                 isActive: true,
               },

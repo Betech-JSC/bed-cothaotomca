@@ -108,7 +108,6 @@ export const WARD_CANONICAL_DISTRICTS: Record<string, string[]> = {
   "Bàn Cờ": ["Quận 3"],
   "Nhiêu Lộc": ["Quận 3"],
   "Hòa Hưng": ["Quận 3", "Quận 10"],
-  "Võ Thị Sáu": ["Quận 3", "Quận 1"],
 
   // Quận 4
   "Khánh Hội": ["Quận 4"],
@@ -186,7 +185,6 @@ export const WARD_CANONICAL_DISTRICTS: Record<string, string[]> = {
 
   // Tân Phú
   "Phú Thạnh": ["Tân Phú"],
-  "Phụ Thọ Hòa": ["Tân Phú"],
   "Phú Thọ Hòa": ["Tân Phú"],
   "Tân Phú": ["Tân Phú"],
   "Tân Sơn Nhì": ["Tân Phú"],
@@ -194,7 +192,6 @@ export const WARD_CANONICAL_DISTRICTS: Record<string, string[]> = {
 
   // TP. Thủ Đức
   "An Khánh": ["TP. Thủ Đức"],
-  "Thảo Điền": ["TP. Thủ Đức"],
   "Cát Lái": ["TP. Thủ Đức"],
   "Cát Lái (TĐ)": ["TP. Thủ Đức"],
   "Bình Chiểu": ["TP. Thủ Đức"],
@@ -239,7 +236,7 @@ export const WARD_CANONICAL_DISTRICTS: Record<string, string[]> = {
  */
 const DISTRICT_DEFAULT_WARDS: Record<string, string[]> = {
   "Quận 1": ["Sài Gòn", "Bến Thành", "Tân Định", "Cầu Ông Lãnh", "Xuân Hòa", "Diên Hồng"],
-  "Quận 3": ["Bàn Cờ", "Nhiêu Lộc", "Hòa Hưng", "Võ Thị Sáu", "Xuân Hòa"],
+  "Quận 3": ["Bàn Cờ", "Nhiêu Lộc", "Hòa Hưng", "Xuân Hòa"],
   "Quận 4": ["Khánh Hội", "Vĩnh Hội", "Xóm Chiếu"],
   "Quận 5": ["An Đông", "Chợ Quán", "Chợ Lớn"],
   "Quận 6": ["Bình Phú", "Bình Tây", "Bình Tiên", "Phú Lâm", "Chợ Lớn"],
@@ -252,9 +249,9 @@ const DISTRICT_DEFAULT_WARDS: Record<string, string[]> = {
   "Bình Thạnh": ["Gia Định", "Bình Thạnh", "Cầu Kiệu", "Bình Lợi Trung", "Thạnh Mỹ Tây", "Bình Quới"],
   "Phú Nhuận": ["Phú Nhuận", "Đức Nhuận", "Cầu Kiệu"],
   "Tân Bình": ["Tân Sơn Nhất", "Tân Bình", "Bảy Hiền", "Tân Sơn Hòa", "Tân Hòa", "Tân Sơn"],
-  "Tân Phú": ["Tân Phú", "Tân Sơn Nhì", "Phú Thạnh", "Tây Thạnh", "Phụ Thọ Hòa", "Vườn Lài"],
+  "Tân Phú": ["Tân Phú", "Tân Sơn Nhì", "Phú Thạnh", "Tây Thạnh", "Phú Thọ Hòa", "Vườn Lài"],
   "Bình Tân": ["Bình Trị Đông", "An Lạc", "Bình Hưng Hòa", "Bình Tân", "Tân Tạo"],
-  "TP. Thủ Đức": ["Thủ Đức", "Tăng Nhơn Phú", "An Khánh", "Thảo Điền", "Linh Xuân", "Phước Long", "Hiệp Bình", "Bình Trưng", "Cát Lái", "Long Bình"],
+  "TP. Thủ Đức": ["Thủ Đức", "Tăng Nhơn Phú", "An Khánh", "Linh Xuân", "Phước Long", "Hiệp Bình", "Bình Trưng", "Cát Lái", "Long Bình"],
   "Huyện Bình Chánh": ["Bình Hưng", "Bình Chánh", "Vĩnh Lộc", "Tân Vĩnh Lộc", "Tân Nhựt", "Hưng Long"],
   "Huyện Hóc Môn": ["Hóc Môn", "Bà Điểm", "Đông Thạnh", "Xuân Thới Sơn"],
   "Huyện Nhà Bè": ["Nhà Bè", "Hiệp Phước"],
@@ -280,6 +277,7 @@ const SPECIFIC_WARD_ALIASES: WardAliasEntry[] = [
   { keywords: ["hiep binh chanh", "hiep binh phuoc"], targetWard: "Hiệp Bình", targetDistrict: "TP. Thủ Đức", displayLabel: "Phường Hiệp Bình" },
   { keywords: ["linh xuan", "linh trung"], targetWard: "Linh Xuân", targetDistrict: "TP. Thủ Đức", displayLabel: "Phường Linh Xuân" },
   { keywords: ["linh chieu", "linh dong", "linh tay"], targetWard: "Thủ Đức", targetDistrict: "TP. Thủ Đức", displayLabel: "Phường Thủ Đức" },
+  { keywords: ["thu duc"], requirePrefix: true, targetWard: "Thủ Đức", targetDistrict: "TP. Thủ Đức", displayLabel: "Phường Thủ Đức" },
   { keywords: ["tang nhon phu a", "tang nhon phu b", "tang nhon phu", "hiep phu"], targetWard: "Tăng Nhơn Phú", targetDistrict: "TP. Thủ Đức", displayLabel: "Phường Tăng Nhơn Phú" },
   { keywords: ["phuoc long a", "phuoc long b", "phuoc long", "phuoc binh"], targetWard: "Phước Long", targetDistrict: "TP. Thủ Đức", displayLabel: "Phường Phước Long" },
   { keywords: ["long truong", "truong thanh", "phu huu"], targetWard: "Long Trường", targetDistrict: "TP. Thủ Đức", displayLabel: "Phường Long Trường" },
@@ -306,6 +304,7 @@ const SPECIFIC_WARD_ALIASES: WardAliasEntry[] = [
   { keywords: ["ban co"], requirePrefix: true, targetWard: "Bàn Cờ", targetDistrict: "Quận 3", displayLabel: "Phường Bàn Cờ" },
   { keywords: ["nhieu loc"], requirePrefix: true, targetWard: "Nhiêu Lộc", targetDistrict: "Quận 3", displayLabel: "Phường Nhiêu Lộc" },
   { keywords: ["hoa hung"], requirePrefix: true, targetWard: "Hòa Hưng", targetDistrict: "Quận 3", displayLabel: "Phường Hòa Hưng" },
+  { keywords: ["xuan hoa", "vo thi sau"], requirePrefix: true, targetWard: "Xuân Hòa", targetDistrict: "Quận 3", displayLabel: "Phường Xuân Hòa" },
 
   // Gò Vấp
   { keywords: ["an hoi tay"], targetWard: "An Hội Tây", targetDistrict: "Gò Vấp", displayLabel: "Phường An Hội Tây" },
@@ -313,29 +312,41 @@ const SPECIFIC_WARD_ALIASES: WardAliasEntry[] = [
   { keywords: ["hanh thong"], targetWard: "Hạnh Thông", targetDistrict: "Gò Vấp", displayLabel: "Phường Hạnh Thông" },
   { keywords: ["thong tay hoi"], targetWard: "Thông Tây Hội", targetDistrict: "Gò Vấp", displayLabel: "Phường Thông Tây Hội" },
   { keywords: ["an nhon"], requirePrefix: true, targetWard: "An Nhơn", targetDistrict: "Gò Vấp", displayLabel: "Phường An Nhơn" },
+  { keywords: ["go vap"], requirePrefix: true, targetWard: "Gò Vấp", targetDistrict: "Gò Vấp", displayLabel: "Phường Gò Vấp" },
 
-  // Bình Thạnh
+  // Bình Thạnh & Phú Nhuận
   { keywords: ["gia dinh"], requirePrefix: true, targetWard: "Gia Định", targetDistrict: "Bình Thạnh", displayLabel: "Phường Gia Định" },
   { keywords: ["cau kieu"], targetWard: "Cầu Kiệu", targetDistrict: "Bình Thạnh", displayLabel: "Phường Cầu Kiệu" },
   { keywords: ["binh loi trung"], targetWard: "Bình Lợi Trung", targetDistrict: "Bình Thạnh", displayLabel: "Phường Bình Lợi Trung" },
   { keywords: ["thanh my tay"], targetWard: "Thạnh Mỹ Tây", targetDistrict: "Bình Thạnh", displayLabel: "Phường Thạnh Mỹ Tây" },
+  { keywords: ["binh thanh"], requirePrefix: true, targetWard: "Bình Thạnh", targetDistrict: "Bình Thạnh", displayLabel: "Phường Bình Thạnh" },
+  { keywords: ["phu nhuan"], requirePrefix: true, targetWard: "Phú Nhuận", targetDistrict: "Phú Nhuận", displayLabel: "Phường Phú Nhuận" },
+  { keywords: ["duc nhuan"], requirePrefix: true, targetWard: "Đức Nhuận", targetDistrict: "Phú Nhuận", displayLabel: "Phường Đức Nhuận" },
 
   // Tân Bình
   { keywords: ["tan son nhat"], requirePrefix: true, targetWard: "Tân Sơn Nhất", targetDistrict: "Tân Bình", displayLabel: "Phường Tân Sơn Nhất" },
   { keywords: ["tan son hoa"], targetWard: "Tân Sơn Hòa", targetDistrict: "Tân Bình", displayLabel: "Phường Tân Sơn Hòa" },
   { keywords: ["bay hien"], targetWard: "Bảy Hiền", targetDistrict: "Tân Bình", displayLabel: "Phường Bảy Hiền" },
+  { keywords: ["tan binh"], requirePrefix: true, targetWard: "Tân Bình", targetDistrict: "Tân Bình", displayLabel: "Phường Tân Bình" },
 
   // Tân Phú
   { keywords: ["tay thanh"], targetWard: "Tây Thạnh", targetDistrict: "Tân Phú", displayLabel: "Phường Tây Thạnh" },
   { keywords: ["tan son nhi"], requirePrefix: true, targetWard: "Tân Sơn Nhì", targetDistrict: "Tân Phú", displayLabel: "Phường Tân Sơn Nhì" },
-  { keywords: ["phu tho hoa", "phu tho hoa"], requirePrefix: true, targetWard: "Phụ Thọ Hòa", targetDistrict: "Tân Phú", displayLabel: "Phường Phụ Thọ Hòa" },
+  { keywords: ["phu tho hoa"], requirePrefix: true, targetWard: "Phú Thọ Hòa", targetDistrict: "Tân Phú", displayLabel: "Phường Phú Thọ Hòa" },
   { keywords: ["phu thanh"], requirePrefix: true, targetWard: "Phú Thạnh", targetDistrict: "Tân Phú", displayLabel: "Phường Phú Thạnh" },
+  { keywords: ["tan phu"], requirePrefix: true, targetWard: "Tân Phú", targetDistrict: "Tân Phú", displayLabel: "Phường Tân Phú" },
 
   // Bình Tân
   { keywords: ["binh hung hoa", "binh hung hoa a", "binh hung hoa b"], targetWard: "Bình Hưng Hòa", targetDistrict: "Bình Tân", displayLabel: "Phường Bình Hưng Hòa" },
   { keywords: ["binh tri dong", "binh tri dong a", "binh tri dong b"], targetWard: "Bình Trị Đông", targetDistrict: "Bình Tân", displayLabel: "Phường Bình Trị Đông" },
   { keywords: ["an lac", "an lac a"], requirePrefix: true, targetWard: "An Lạc", targetDistrict: "Bình Tân", displayLabel: "Phường An Lạc" },
   { keywords: ["tan tao", "tan tao a"], requirePrefix: true, targetWard: "Tân Tạo", targetDistrict: "Bình Tân", displayLabel: "Phường Tân Tạo" },
+  { keywords: ["binh tan"], requirePrefix: true, targetWard: "Bình Tân", targetDistrict: "Bình Tân", displayLabel: "Phường Bình Tân" },
+
+  // Huyện Bình Chánh, Hóc Môn, Nhà Bè (Phường/Xã trùng tên Huyện cũ)
+  { keywords: ["binh chanh"], requirePrefix: true, targetWard: "Bình Chánh", targetDistrict: "Huyện Bình Chánh", displayLabel: "Phường Bình Chánh" },
+  { keywords: ["hoc mon"], requirePrefix: true, targetWard: "Hóc Môn", targetDistrict: "Huyện Hóc Môn", displayLabel: "Phường Hóc Môn" },
+  { keywords: ["nha be"], requirePrefix: true, targetWard: "Nhà Bè", targetDistrict: "Huyện Nhà Bè", displayLabel: "Phường Nhà Bè" },
 
   // Quận 12
   { keywords: ["an phu dong"], targetWard: "An Phú Đông", targetDistrict: "Quận 12", displayLabel: "Phường An Phú Đông" },
@@ -410,25 +421,25 @@ export const HCMC_STREET_DIRECTORY: StreetDirectoryEntry[] = [
     displayName: "Xuân Thủy",
     keywords: ["xuan thuy"],
     districts: ["TP. Thủ Đức"],
-    preferredWards: ["Thảo Điền", "An Khánh"],
+    preferredWards: ["An Khánh"],
   },
   {
     displayName: "Quốc Hương",
     keywords: ["quoc huong"],
     districts: ["TP. Thủ Đức"],
-    preferredWards: ["Thảo Điền", "An Khánh"],
+    preferredWards: ["An Khánh"],
   },
   {
     displayName: "Nguyễn Văn Hưởng",
     keywords: ["nguyen van huong"],
     districts: ["TP. Thủ Đức"],
-    preferredWards: ["Thảo Điền", "An Khánh"],
+    preferredWards: ["An Khánh"],
   },
   {
     displayName: "Trần Não",
     keywords: ["tran nao"],
     districts: ["TP. Thủ Đức"],
-    preferredWards: ["An Khánh", "Thảo Điền"],
+    preferredWards: ["An Khánh"],
   },
   {
     displayName: "Mai Chí Thọ",
@@ -726,7 +737,7 @@ export const HCMC_STREET_DIRECTORY: StreetDirectoryEntry[] = [
     displayName: "Rạch Bùng Binh",
     keywords: ["rach bung binh"],
     districts: ["Quận 3"],
-    preferredWards: ["Nhiêu Lộc", "Hòa Hưng", "Bàn Cờ", "Võ Thị Sáu"],
+    preferredWards: ["Nhiêu Lộc", "Hòa Hưng", "Bàn Cờ", "Xuân Hòa"],
   },
   {
     displayName: "Sư Vạn Hạnh",
@@ -750,7 +761,7 @@ export const HCMC_STREET_DIRECTORY: StreetDirectoryEntry[] = [
     displayName: "Cách Mạng Tháng 8",
     keywords: ["cach mang thang 8", "cach mang thang tam", "cmt8"],
     districts: ["Quận 1", "Quận 3", "Quận 10", "Tân Bình"],
-    preferredWards: ["Võ Thị Sáu", "Bàn Cờ", "Nhiêu Lộc", "Hòa Hưng", "Bảy Hiền", "Bến Thành"],
+    preferredWards: ["Xuân Hòa", "Bàn Cờ", "Nhiêu Lộc", "Hòa Hưng", "Bảy Hiền", "Bến Thành"],
   },
 
   // Quận 8
@@ -909,10 +920,11 @@ function detectExplicitDistrictOrProvince(text: string): {
   const norm = normalizeText(text);
   if (!norm) return null;
 
-  // Check other provinces (avoid false positive on "Xa lộ Hà Nội" or "Đường Bình Dương")
+  // Check other provinces (avoid false positive on "Xa lộ Hà Nội", "Đường Bình Dương", or new 2-tier wards prefixed with Phường/Xã)
   const textWithoutHighways = norm
     .replace(/xa\s*lo\s*ha\s*noi/g, "")
-    .replace(/duong\s*(ha\s*noi|binh\s*duong|dong\s*nai|long\s*an)/g, "");
+    .replace(/duong\s*(ha\s*noi|binh\s*duong|dong\s*nai|long\s*an)/g, "")
+    .replace(/(?:phuong|p\.?|xa)\s*(di\s*an|thuan\s*an|thu\s*dau\s*mot|binh\s*duong)/g, "");
 
   if (/\b(di\s*an|thuan\s*an|thu\s*dau\s*mot|tinh\s*binh\s*duong|binh\s*duong)\b/.test(textWithoutHighways)) {
     return { type: "province", canonicalName: "Bình Dương", rawLabel: "Bình Dương" };
@@ -991,7 +1003,8 @@ function detectExplicitDistrictOrProvince(text: string): {
  */
 function detectExplicitWardInText(
   text: string,
-  explicitDistrictCanon?: string
+  explicitDistrictCanon?: string,
+  availableWards: AdministrativeWard[] = []
 ): { targetWard: string; targetDistrict: string; displayLabel: string } | null {
   const norm = normalizeText(text);
   if (!norm) return null;
@@ -1023,7 +1036,34 @@ function detectExplicitWardInText(
     }
   }
 
-  // 2. Check numbered old wards (e.g. "Phường 14, Gò Vấp" or "P.14, Quận 3") when district context is known
+  // 2. Directly scan all availableWards (the 94 post-merger wards) when explicitly prefixed with Phường / P. / Xã
+  if (availableWards && availableWards.length > 0) {
+    const sortedWards = [...availableWards].sort(
+      (a, b) =>
+        cleanAdministrativeUnitName(b.name).length -
+        cleanAdministrativeUnitName(a.name).length
+    );
+    for (const w of sortedWards) {
+      const cleanW = cleanAdministrativeUnitName(w.name);
+      const normW = normalizeText(cleanW);
+      if (!normW || normW.length < 2 || /^\d+$/.test(normW)) continue;
+      const escapedKw = normW.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const prefixedRegex = new RegExp(
+        `(?:^|[\\s,.\\-/(])(?:phuong|p\\.?|xa|thi\\s*tran|tt\\.?)\\s+${escapedKw}(?=$|[\\s,.\\-/)])`,
+        "i"
+      );
+      if (prefixedRegex.test(norm)) {
+        const mappedDist = WARD_CANONICAL_DISTRICTS[cleanW]?.[0] || w.district || cleanW;
+        return {
+          targetWard: cleanW,
+          targetDistrict: mappedDist,
+          displayLabel: formatWardLabel(w.name),
+        };
+      }
+    }
+  }
+
+  // 3. Check numbered old wards (e.g. "Phường 14, Gò Vấp" or "P.14, Quận 3") when district context is known
   const numWardMatch = norm.match(/(?:^|[\s,.\-/(])(?:phuong|p\.?)\s*0?(\d{1,2})(?=$|[\s,.\-/)])/);
   if (numWardMatch && explicitDistrictCanon) {
     const wardToken = `P.${parseInt(numWardMatch[1], 10)}`;
@@ -1136,7 +1176,8 @@ export function validateAddressWardMatch(
   const explicitDistOrProv = detectExplicitDistrictOrProvince(combinedText);
   const explicitWard = detectExplicitWardInText(
     combinedText,
-    explicitDistOrProv?.type === "district" ? explicitDistOrProv.canonicalName : undefined
+    explicitDistOrProv?.type === "district" ? explicitDistOrProv.canonicalName : undefined,
+    availableWards
   );
   const matchedStreet = detectStreetInText(streetAddress);
 
@@ -1177,26 +1218,42 @@ export function validateAddressWardMatch(
     };
   }
 
-  // 2. Check Explicit Ward Conflict (e.g. typing "Thảo Điền" or "Hiệp Bình Chánh" while selecting "Sài Gòn")
+  // 2. Check Explicit Ward Conflict (e.g. typing "Thảo Điền" or "Hiệp Bình Chánh" or "Phường Thủ Đức" while selecting another ward)
   if (explicitWard) {
     const normTargetWard = normalizeText(explicitWard.targetWard);
     const normSelectedWard = normalizeText(cleanSelectedWard);
 
     if (normTargetWard !== normSelectedWard) {
-      // Check if targetWard exists in availableWards
+      // Check if targetWard exists in availableWards or is a known post-merger ward
       const exactWardInCatalog = availableWards.some(
         (w) => normalizeText(cleanAdministrativeUnitName(w.name)) === normTargetWard
       );
+      const isKnownPostMergerWard = Boolean(HCMC_WARD_OLD_NAME_MAP[explicitWard.targetWard]);
       const targetCanonDist = normalizeDistrictName(explicitWard.targetDistrict);
       const isSameDistrictWhenWardNotInCatalog =
-        !exactWardInCatalog && selectedValidDistricts.has(targetCanonDist);
+        !exactWardInCatalog && !isKnownPostMergerWard && selectedValidDistricts.has(targetCanonDist);
 
       if (!isSameDistrictWhenWardNotInCatalog) {
-        const suggestions = findMatchingWardsFromCatalog(
+        const rawSuggestions = findMatchingWardsFromCatalog(
           availableWards,
           [explicitWard.targetWard],
-          [explicitWard.targetDistrict]
-        );
+          exactWardInCatalog ? [explicitWard.targetDistrict] : []
+        ).filter((w) => normalizeText(cleanAdministrativeUnitName(w.name)) !== normSelectedWard);
+        const fallbackWard: AdministrativeWard | null =
+          rawSuggestions[0] ||
+          (isKnownPostMergerWard
+            ? {
+                id: explicitWard.targetWard,
+                name: explicitWard.targetWard,
+                district: explicitWard.targetWard,
+              }
+            : null);
+        const suggestions =
+          rawSuggestions.length > 0
+            ? rawSuggestions
+            : fallbackWard
+              ? [fallbackWard]
+              : [];
         const areaLabel = suggestions[0]
           ? formatWardLabel(suggestions[0].name)
           : explicitWard.displayLabel;

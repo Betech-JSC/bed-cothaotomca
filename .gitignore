@@ -71,7 +71,6 @@ yarn-error.log*
 config.bat
 
 # Local IDE & AI plugin settings
-.vscode/
 .claude/
 .cursor/
 .codex/

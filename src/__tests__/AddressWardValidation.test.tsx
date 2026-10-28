@@ -112,6 +112,7 @@ const MOCK_WARDS: WardCatalogEntry[] = [
   { id: "SG", name: "Sài Gòn", district: "Sài Gòn" },
   { id: "BT", name: "Bến Thành", district: "Bến Thành" },
   { id: "PL", name: "Phước Long", district: "Phước Long" },
+  { id: "TD", name: "Thủ Đức", district: "Thủ Đức" },
   { id: "TNP", name: "Tăng Nhơn Phú", district: "Tăng Nhơn Phú" },
   { id: "AK", name: "An Khánh", district: "An Khánh" },
   { id: "LB", name: "Long Bình", district: "Long Bình" },
@@ -121,6 +122,7 @@ const MOCK_WARDS: WardCatalogEntry[] = [
   { id: "AHT", name: "An Hội Tây", district: "An Hội Tây" },
   { id: "CK", name: "Cầu Kiệu", district: "Cầu Kiệu" },
   { id: "TSN", name: "Tân Sơn Nhất", district: "Tân Sơn Nhất" },
+  { id: "XH", name: "Xuân Hòa", district: "Xuân Hòa" },
 ];
 
 describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (Mô hình hành chính 2 cấp TP.HCM)", () => {
@@ -264,6 +266,45 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       availableWards: MOCK_WARDS,
     });
     expect(validAnHoiTay.isValid).toBe(true);
+
+    // 5. Chọn Phường Phước Long nhưng gõ "100 Võ Văn Ngân, Phường Thủ Đức" -> Chặn & gợi ý Phường Thủ Đức
+    const thuDucWardMismatch = validateAddressWardMatch({
+      streetAddress: "100 Võ Văn Ngân, Phường Thủ Đức",
+      selectedWard: "Phước Long",
+      selectedWardId: "PL",
+      selectedDistrict: "Phước Long",
+      availableWards: MOCK_WARDS,
+    });
+    expect(thuDucWardMismatch.isValid).toBe(false);
+    expect(thuDucWardMismatch.conflictType).toBe("ward_conflict");
+    expect(thuDucWardMismatch.suggestedWard?.name).toBe("Thủ Đức");
+    expect(thuDucWardMismatch.message).toContain("Phường Thủ Đức");
+
+    // 6. Chọn Phường An Hội Tây nhưng gõ "1073 Phan Văn Trị, Phường Gò Vấp" -> Chặn & gợi ý Phường Gò Vấp
+    const goVapWardMismatch = validateAddressWardMatch({
+      streetAddress: "1073 Phan Văn Trị, Phường Gò Vấp",
+      selectedWard: "An Hội Tây",
+      selectedWardId: "AHT",
+      selectedDistrict: "An Hội Tây",
+      availableWards: MOCK_WARDS,
+    });
+    expect(goVapWardMismatch.isValid).toBe(false);
+    expect(goVapWardMismatch.conflictType).toBe("ward_conflict");
+    expect(goVapWardMismatch.suggestedWard?.name).toBe("Gò Vấp");
+    expect(goVapWardMismatch.message).toContain("Phường Gò Vấp");
+
+    // 7. Gõ đường Xuân Thủy (khu Thảo Điền cũ) -> Luôn gợi ý Phường An Khánh, tuyệt đối không gợi ý Thảo Điền
+    const xuanThuyMismatch = validateAddressWardMatch({
+      streetAddress: "25 Xuân Thủy",
+      selectedWard: "Sài Gòn",
+      selectedWardId: "SG",
+      selectedDistrict: "Sài Gòn",
+      availableWards: MOCK_WARDS,
+    });
+    expect(xuanThuyMismatch.isValid).toBe(false);
+    expect(xuanThuyMismatch.suggestedWard?.name).toBe("An Khánh");
+    expect(xuanThuyMismatch.message).toContain("Phường An Khánh");
+    expect(xuanThuyMismatch.message).not.toContain("Thảo Điền");
   });
 
   describe("TC-FE-05: Luồng UI Checkout thực tế (Cảnh báo + Chặn Submit + 1-Click đổi sang Phường Phước Long cập nhật phí ship 20k -> 45k + Đặt hàng thành công)", () => {

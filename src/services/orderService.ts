@@ -501,12 +501,12 @@ export const FALLBACK_ADMINISTRATIVE_UNITS: AdministrativeProvince[] = [
     id: "prov_tp_ho_chi_minh",
     name: "TP. Hồ Chí Minh",
     wards: [
-      { id: "ward_hcm_go_vap_an_hoi_tay", name: "An Hội Tây", district: "Gò Vấp", province: "TP. Hồ Chí Minh" },
-      { id: "ward_hcm_binh_thanh_gia_dinh", name: "Gia Định", district: "Bình Thạnh", province: "TP. Hồ Chí Minh" },
-      { id: "ward_hcm_q3_ban_co", name: "Bàn Cờ", district: "Quận 3", province: "TP. Hồ Chí Minh" },
-      { id: "ward_hcm_q5_an_dong", name: "An Đông", district: "Quận 5", province: "TP. Hồ Chí Minh" },
-      { id: "ward_hcm_binh_thanh_cau_kieu", name: "Cầu Kiệu", district: "Bình Thạnh", province: "TP. Hồ Chí Minh" },
-      { id: "ward_hcm_q1_sai_gon", name: "Sài Gòn", district: "Quận 1", province: "TP. Hồ Chí Minh" },
+      { id: "ward_hcm_go_vap_an_hoi_tay", name: "An Hội Tây", district: "An Hội Tây", province: "TP. Hồ Chí Minh" },
+      { id: "ward_hcm_binh_thanh_gia_dinh", name: "Gia Định", district: "Gia Định", province: "TP. Hồ Chí Minh" },
+      { id: "ward_hcm_q3_ban_co", name: "Bàn Cờ", district: "Bàn Cờ", province: "TP. Hồ Chí Minh" },
+      { id: "ward_hcm_q5_an_dong", name: "An Đông", district: "An Đông", province: "TP. Hồ Chí Minh" },
+      { id: "ward_hcm_binh_thanh_cau_kieu", name: "Cầu Kiệu", district: "Cầu Kiệu", province: "TP. Hồ Chí Minh" },
+      { id: "ward_hcm_q1_sai_gon", name: "Sài Gòn", district: "Sài Gòn", province: "TP. Hồ Chí Minh" },
     ],
   },
 ];
