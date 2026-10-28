@@ -275,7 +275,7 @@
     "guest_hint_login": "Đăng nhập",
     "guest_hint_close": "Đóng thông báo",
     "ward_select_label": "Phường / Xã (Khu vực giao)",
-    "ward_select_placeholder": "-- Gõ hoặc chọn Phường / Xã (VD: An Hội Tây, P.14, Gò Vấp) --",
+    "ward_select_placeholder": "-- Gõ hoặc chọn Phường / Xã (VD: Phường Sài Gòn, Phường An Hội Tây) --",
     "ward_select_clear": "Xóa lựa chọn",
     "ward_select_not_found": "Không tìm thấy Phường/Xã phù hợp với \"{query}\"",
     "preorder_closed_today": "Hôm nay đã hết khung giờ (Vui lòng chọn ngày mai)",
