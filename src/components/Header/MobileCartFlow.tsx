@@ -64,7 +64,7 @@ import { formatBranchDisplayName, identifyBrandBranch } from "@/lib/branchHelper
 import PreOrderNoticeModal from "@/components/Checkout/PreOrderNoticeModal";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 import Chevron from "@/components/Icons/Chevron";
-import CouponModal, { evaluateCampaignEligibility } from "@/components/Voucher/CouponModal";
+import CouponModal, { evaluateCampaignEligibility, isShipVoucher } from "@/components/Voucher/CouponModal";
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
 import GiftSelectorModal from "@/components/Checkout/GiftSelectorModal";
 import VoucherTicketBar from "@/components/Checkout/VoucherTicketBar";
@@ -440,6 +440,8 @@ export default function MobileCartFlow({
   const [confirmInfo, setConfirmInfo] = useState(true);
 
   const [mapAddressValidation, setMapAddressValidation] = useState<AddressWardValidationResult | null>(null);
+  const latestAddressVerifyKeyRef = useRef("");
+  latestAddressVerifyKeyRef.current = `${deliveryType}|${isSavedAddressSelected}|${streetAddress.trim()}|${selectedWard}|${selectedWardId}|${selectedDistrict}|${selectedProvince}`;
 
   const syncAddressValidation = useMemo(() => {
     return validateAddressWardMatch({
@@ -455,7 +457,61 @@ export default function MobileCartFlow({
 
   useEffect(() => {
     setMapAddressValidation(null);
-  }, [streetAddress, selectedWard, selectedWardId, selectedDistrict]);
+  }, [streetAddress, selectedWard, selectedWardId, selectedDistrict, selectedProvince]);
+
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV === "test" ||
+      (!inline && !isCartOpen) ||
+      deliveryType !== "delivery" ||
+      isSavedAddressSelected ||
+      (!selectedWard && !selectedWardId) ||
+      streetAddress.trim().length < 5 ||
+      !syncAddressValidation.isValid ||
+      Boolean(syncAddressValidation.suggestedWard)
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const snapshotKey = latestAddressVerifyKeyRef.current;
+    const timer = setTimeout(() => {
+      verifyAddressViaMapApi({
+        streetAddress,
+        note: description,
+        selectedWard,
+        selectedWardId,
+        selectedDistrict,
+        selectedProvince,
+        availableWards,
+      })
+        .then((res) => {
+          if (!cancelled && res && latestAddressVerifyKeyRef.current === snapshotKey) {
+            setMapAddressValidation(res);
+          }
+        })
+        .catch(() => {});
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    inline,
+    isCartOpen,
+    deliveryType,
+    isSavedAddressSelected,
+    streetAddress,
+    description,
+    selectedWard,
+    selectedWardId,
+    selectedDistrict,
+    selectedProvince,
+    availableWards,
+    syncAddressValidation.isValid,
+    syncAddressValidation.suggestedWard,
+  ]);
 
   const addressWardValidation = useMemo(() => {
     if (!syncAddressValidation.isValid || syncAddressValidation.suggestedWard) {
@@ -1555,13 +1611,11 @@ export default function MobileCartFlow({
       selectedCampaignIds.some((id) => String(id) === String(c.id))
     );
 
-    const isShip = Boolean(
-      voucherCandidate.discount_type === "freeship" ||
-      voucherCandidate.is_freeship ||
-      voucherCandidate.code?.toUpperCase().includes("FREESHIP") ||
-      voucherCandidate.code?.toUpperCase().includes("PHISHIP") ||
-      (voucherCandidate.code && /^SHIP(\d+|K)?$/i.test(voucherCandidate.code))
-    );
+    const isShip = isShipVoucher({
+      code: voucherCandidate.code || "",
+      discount_type: voucherCandidate.discount_type,
+      is_freeship: voucherCandidate.is_freeship,
+    });
 
     // a) Nếu voucherCandidate.can_combine_with_promotions === false:
     // Tự động ưu tiên voucher và clear CTKM xung đột khi áp dụng thay vì chặn cứng
@@ -1639,7 +1693,7 @@ export default function MobileCartFlow({
         (shippingSettings.shipping_discount_type === "free" || !shippingSettings.shipping_discount_type || (shippingSettings.shipping_discount_value ?? 0) >= originalFee))
     );
 
-    const isCodeFreeship = code.includes("FREESHIP") || code.includes("SHIP");
+    const isCodeFreeship = isShipVoucher({ code });
 
     if (isOrderAutoFreeship && isCodeFreeship) {
       const friendlyMsg = tVoucher("auto_freeship_friendly_tip");
@@ -1680,12 +1734,11 @@ export default function MobileCartFlow({
           setValidatingVoucher(false);
           return false;
         }
-        const isCandidateFreeship = Boolean(
-          result.voucher.discount_type === "freeship" ||
-          result.voucher.is_freeship ||
-          code.includes("FREESHIP") ||
-          code.includes("SHIP")
-        );
+        const isCandidateFreeship = isShipVoucher({
+          code: result.voucher.code,
+          discount_type: result.voucher.discount_type,
+          is_freeship: result.voucher.is_freeship,
+        });
 
         if (isOrderAutoFreeship && isCandidateFreeship) {
           const friendlyMsg = tVoucher("auto_freeship_friendly_tip");
@@ -1937,11 +1990,11 @@ export default function MobileCartFlow({
           false
         );
         if (res.valid && res.voucher) {
-          const isCandidateFreeship = Boolean(
-            res.voucher.discount_type === "freeship" ||
-            res.voucher.is_freeship ||
-            c.includes("FREESHIP") || c.includes("PHISHIP") || /^SHIP(\d+|K)?$/i.test(c)
-          );
+          const isCandidateFreeship = isShipVoucher({
+            code: c,
+            discount_type: res.voucher.discount_type,
+            is_freeship: res.voucher.is_freeship,
+          });
           const canCombine = res.voucher.can_combine_with_promotions !== false;
           const subtotalForCalc = canCombine ? saleSubtotal : originalSubtotal;
           const candidate = {
@@ -3687,10 +3740,12 @@ export default function MobileCartFlow({
                             onBlur={() => {
                               if (
                                 process.env.NODE_ENV !== "test" &&
+                                !isSavedAddressSelected &&
                                 streetAddress.trim().length >= 5 &&
                                 syncAddressValidation.isValid &&
                                 !syncAddressValidation.suggestedWard
                               ) {
+                                const snapshotKey = latestAddressVerifyKeyRef.current;
                                 verifyAddressViaMapApi({
                                   streetAddress,
                                   note: description,
@@ -3701,7 +3756,9 @@ export default function MobileCartFlow({
                                   availableWards,
                                 })
                                   .then((res) => {
-                                    if (res) setMapAddressValidation(res);
+                                    if (res && latestAddressVerifyKeyRef.current === snapshotKey) {
+                                      setMapAddressValidation(res);
+                                    }
                                   })
                                   .catch(() => {});
                               }

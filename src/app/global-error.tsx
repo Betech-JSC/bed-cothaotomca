@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import Link from "next/link";
 import "@/styles/globals.scss";
 
 export default function GlobalError({
@@ -71,12 +72,12 @@ export default function GlobalError({
             >
               Tải lại trang
             </button>
-            <a
+            <Link
               href="/"
               className="px-6 py-3 rounded-full font-bold bg-[#14375F] text-white shadow-sm hover:opacity-90 transition-all cursor-pointer"
             >
               Về trang chủ
-            </a>
+            </Link>
           </div>
 
           <div className="pt-4 border-t border-gray-100 text-sm text-gray-600">

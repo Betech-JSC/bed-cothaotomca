@@ -19,6 +19,8 @@ import {
 import {
   getAdministrativeUnits,
   FALLBACK_ADMINISTRATIVE_UNITS,
+  cancelOrderApi,
+  requestCancelOrderApi,
   type AdministrativeProvince,
 } from "@/services/orderService";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
@@ -51,7 +53,13 @@ interface OrderItem {
   total: string;
   cancel_reason?: string | null;
   cancelled_at?: string | null;
+  can_cancel?: boolean;
   payment_status?: string;
+  remaining_cancel_seconds?: number | null;
+  customer?: {
+    name?: string | null;
+    phone?: string | null;
+  } | null;
   subtotal?: string;
   discount?: string;
   delivery_type?: string;
@@ -63,6 +71,7 @@ interface OrderItem {
   } | null;
   payment?: {
     method: string;
+    status?: string;
     total_payment: string;
   } | null;
   items?: {
@@ -218,7 +227,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       setLoadingOrders(true);
       try {
         const token = localStorage.getItem("auth_token");
-        const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
+        const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
         const res = await fetch(`${BASE_URL}/user/orders`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -241,6 +250,69 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       fetchOrders();
     }
   }, [userId]);
+
+  const handleCancelOrder = async (order: OrderItem, reason?: string) => {
+    try {
+      const cleanPhone = (p?: string | null) => (p && !p.includes("*") ? p.trim() : "");
+      const cancelPhone =
+        cleanPhone(order.delivery?.contact_number) ||
+        cleanPhone((order as any).customer?.phone) ||
+        cleanPhone(user?.phone) ||
+        "";
+      const isOnlinePaid =
+        (order?.payment?.method === "TRANSFER" || order?.payment?.method === "CARD") &&
+        (order?.payment?.status === "paid" || order?.payment_status === "paid");
+
+      if (isOnlinePaid) {
+        const finalReason =
+          reason && reason.trim()
+            ? reason.trim()
+            : "Khách hàng gửi yêu cầu hủy đơn từ trang quản lý tài khoản";
+        const res = await requestCancelOrderApi(order.order_code, cancelPhone, finalReason);
+        setOrders((prev) =>
+          prev.map((item) =>
+            item.order_code === order.order_code
+              ? { ...item, ...(res.data as unknown as Partial<OrderItem>), status: "cancel_requested" }
+              : item
+          )
+        );
+        return res;
+      }
+
+      const res = await cancelOrderApi(order.order_code, cancelPhone, reason);
+      setOrders((prev) =>
+        prev.map((item) =>
+          item.order_code === order.order_code
+            ? { ...item, ...(res.data as unknown as Partial<OrderItem>), status: "cancelled", can_cancel: false }
+            : item
+        )
+      );
+      return res;
+    } catch (e) {
+      console.error("Failed to cancel order:", e);
+      return null;
+    }
+  };
+
+  const canCancelOrder = (orderItem: OrderItem) => {
+    const orderStatus = (orderItem.status || "").toLowerCase();
+    if (["cancelled", "cancel_requested", "expired"].includes(orderStatus)) {
+      return false;
+    }
+    if (Boolean(orderItem.can_cancel)) {
+      return true;
+    }
+    const isOnlinePaid =
+      (orderItem?.payment?.method === "TRANSFER" || orderItem?.payment?.method === "CARD") &&
+      (orderItem?.payment?.status === "paid" || orderItem?.payment_status === "paid");
+    const isPending = ["pending", "pending_payment", "pending_sync", "synced"].includes(orderStatus);
+    const isWindowValid =
+      orderItem.remaining_cancel_seconds === undefined ||
+      orderItem.remaining_cancel_seconds === null ||
+      orderItem.remaining_cancel_seconds > 0;
+
+    return Boolean(isOnlinePaid && isPending && isWindowValid);
+  };
 
   // Keep form fields synced when user info changes
   const userName = user?.name;
@@ -470,7 +542,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     const data = new FormData();
     data.append("avatar", file);
 
-    const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
+    const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
 
     try {
       const res = await fetch(`${BASE_URL}/auth/profile/avatar`, {
@@ -1103,16 +1175,28 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
                               </svg>
                             </Link>
 
-                            <button
-                              type="button"
-                              onClick={(e) => handleReorder(order, e)}
-                              className="text-secondary hover:text-secondary/80 font-bold flex items-center gap-1 cursor-pointer"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                              </svg>
-                              <span>{t("reorder_this_order") || t("reorder")}</span>
-                            </button>
+                            <div className="flex items-center gap-4">
+                              {canCancelOrder(order) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCancelOrder(order)}
+                                  className="text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>{t("cancel")}</span>
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={(e) => handleReorder(order, e)}
+                                className="text-secondary hover:text-secondary/80 font-bold flex items-center gap-1 cursor-pointer"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                </svg>
+                                <span>{t("reorder_this_order") || t("reorder")}</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}

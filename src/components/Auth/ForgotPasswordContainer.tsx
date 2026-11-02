@@ -37,7 +37,7 @@ export default function ForgotPasswordContainer() {
   }, [resendCountdown]);
 
   const API_URL = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
   ).replace(/\/$/, "");
 
   // 1. Send forgot password request

@@ -1,7 +1,7 @@
 import type { PublicCampaignItem, CampaignEligibilityResult, CampaignLockResult } from "@/types/campaign";
 
 const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 ).replace(/\/$/, "");
 
 export type { PublicCampaignItem, CampaignEligibilityResult, CampaignLockResult };

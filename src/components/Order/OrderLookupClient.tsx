@@ -46,6 +46,7 @@ interface OrderDetailData {
   };
   payment: {
     method: string;
+    status?: string;
     total_payment: string;
     account_id?: number;
   };
@@ -93,14 +94,43 @@ export default function OrderLookupClient() {
   // Cancellation Modal & Input
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [cancelAuthPhone, setCancelAuthPhone] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+
+  const isUnmaskedPhone = (val?: string | null): val is string =>
+    Boolean(val && val.trim() && !val.includes("*"));
+
+  const resolvedKnownPhone = isUnmaskedPhone(phone)
+    ? phone.trim()
+    : isUnmaskedPhone(order?.customer?.phone)
+      ? order!.customer!.phone.trim()
+      : isUnmaskedPhone(order?.delivery?.contact_number)
+        ? order!.delivery!.contact_number!.trim()
+        : "";
+  const needsCancelPhoneInput = !resolvedKnownPhone;
+
+  const isOnlinePaid =
+    (order?.payment?.method === "TRANSFER" || order?.payment?.method === "CARD") &&
+    ((order?.payment as { status?: string } | undefined)?.status === "paid" ||
+      order?.payment_status === "paid");
+
+  const canRequestOnlineCancel = Boolean(
+    isOnlinePaid &&
+      order &&
+      ["pending_payment", "pending_sync", "synced", "pending"].includes(
+        (order.status || "").toLowerCase()
+      ) &&
+      (order.remaining_cancel_seconds === undefined || order.remaining_cancel_seconds > 0)
+  );
+
+  const canCancelOrRequest = Boolean(order && (order.can_cancel || canRequestOnlineCancel));
 
   // Precision Countdown timer for 15-minute window
   const { secondsLeft, formattedTime } = usePrecisionCountdown({
     initialSeconds: order?.remaining_cancel_seconds,
     expiresAt: order?.cancel_window_expires_at,
-    enabled: Boolean(order && isCodPayment(order) && order.can_cancel),
+    enabled: canCancelOrRequest,
   });
 
   const fetchOrders = async (codeStr: string, phoneStr: string) => {
@@ -183,7 +213,11 @@ export default function OrderLookupClient() {
 
     const interval = setInterval(async () => {
       try {
-        const orderPhone = phone.trim() || order.customer?.phone || "";
+        const orderPhone = isUnmaskedPhone(phone)
+          ? phone.trim()
+          : isUnmaskedPhone(order.customer?.phone)
+            ? order.customer.phone.trim()
+            : "";
         const res = await lookupOrders(orderPhone, order.order_code);
         if (Array.isArray(res) && res.length === 1) {
           const updated = res[0] as unknown as OrderDetailData;
@@ -198,7 +232,7 @@ export default function OrderLookupClient() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [order?.order_code, order?.status, order?.sync_status, phone]);
+  }, [order?.order_code, order?.status, order?.sync_status, order?.customer?.phone, phone]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,16 +247,18 @@ export default function OrderLookupClient() {
     setOrder(null);
   };
 
-  const isOnlinePaid =
-    order?.payment?.method === "TRANSFER" || order?.payment?.method === "CARD";
-
   const handleConfirmCancel = async () => {
     if (!order) return;
 
     setActionLoading(true);
     setModalError(null);
 
-    const cancelPhone = phone.trim() || order.customer?.phone || order.delivery?.contact_number || "";
+    const cancelPhone = resolvedKnownPhone || cancelAuthPhone.trim();
+    if (!cancelPhone || cancelPhone.includes("*")) {
+      setModalError("Vui lòng nhập số điện thoại đặt hàng để xác thực hủy đơn.");
+      setActionLoading(false);
+      return;
+    }
 
     try {
       if (isOnlinePaid) {
@@ -257,6 +293,7 @@ export default function OrderLookupClient() {
       }
       setShowCancelModal(false);
       setCancelReason("");
+      setCancelAuthPhone("");
     } catch (err: unknown) {
       if (err instanceof OrderApiError) {
         setModalError(err.message);
@@ -588,19 +625,19 @@ export default function OrderLookupClient() {
             {order.status !== "cancelled" &&
               order.status !== "expired" &&
               order.status !== "cancel_requested" &&
-              isCodPayment(order) && (
+              (isCodPayment(order) || canCancelOrRequest || isOnlinePaid) && (
                 <div
                   className={`p-6 border-b border-gray-100 relative ${
-                    order.can_cancel && secondsLeft > 0
+                    canCancelOrRequest && secondsLeft > 0
                       ? "bg-yellow/40"
-                      : !order.can_cancel
+                      : !canCancelOrRequest
                       ? "bg-gray-50/80"
                       : "bg-yellow/20"
                   }`}
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      {order.can_cancel && secondsLeft > 0 ? (
+                      {canCancelOrRequest && secondsLeft > 0 ? (
                         <>
                           <div className="flex items-center gap-2 text-brown font-bold text-sm">
                             <svg className="w-5 h-5 text-secondary animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -618,7 +655,7 @@ export default function OrderLookupClient() {
                             </p>
                           )}
                         </>
-                      ) : !order.can_cancel ? (
+                      ) : !canCancelOrRequest ? (
                         <>
                           <div className="flex items-center gap-2 text-gray-800 font-bold text-sm">
                             <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -649,7 +686,7 @@ export default function OrderLookupClient() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                      {order.can_cancel && secondsLeft > 0 ? (
+                      {canCancelOrRequest && secondsLeft > 0 ? (
                         <>
                           <div className="bg-white text-secondary font-mono font-bold text-lg px-4 py-2 rounded-xl border border-secondary/20 shadow-xs">
                             {formattedTime}
@@ -664,7 +701,7 @@ export default function OrderLookupClient() {
                             {isOnlinePaid ? t("cancel_request") : t("cancel_order")}
                           </button>
                         </>
-                      ) : !order.can_cancel ? (
+                      ) : !canCancelOrRequest ? (
                         <button
                           disabled
                           className="bg-gray-100 text-gray-400 border border-gray-200 text-sm font-medium py-2.5 px-5 rounded-xl cursor-not-allowed whitespace-nowrap"
@@ -827,6 +864,22 @@ export default function OrderLookupClient() {
               <p className="text-sm text-gray-600 leading-relaxed">
                 {t("cancel_modal_desc")}
               </p>
+
+              {needsCancelPhoneInput && (
+                <div>
+                  <label htmlFor="cancelAuthPhone" className="block text-xs font-bold text-primary uppercase tracking-wider mb-1.5">
+                    Số điện thoại đặt hàng (để xác thực hủy đơn) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    id="cancelAuthPhone"
+                    type="tel"
+                    value={cancelAuthPhone}
+                    onChange={(e) => setCancelAuthPhone(e.target.value)}
+                    placeholder={t("phone_placeholder")}
+                    className="w-full h-[44px] px-3.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all outline-none text-gray-900 text-sm shadow-xs"
+                  />
+                </div>
+              )}
 
               <div>
                 <textarea

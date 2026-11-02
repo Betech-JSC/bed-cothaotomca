@@ -235,6 +235,9 @@ describe('Promo Extras in Subtotal & Payload Sync (change: include-promo-extras-
   beforeEach(() => {
     vi.clearAllMocks();
     resetCouponModalCache();
+    if (typeof window !== 'undefined') {
+      window.__MOCK_TIME__ = '14:00';
+    }
     if (typeof localStorage !== 'undefined') {
       localStorage.clear();
     }

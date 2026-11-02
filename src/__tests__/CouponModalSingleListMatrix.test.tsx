@@ -2,9 +2,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import React from 'react';
-import CouponModal, { resetCouponModalCache, getVoucherBadgeLabel } from '@/components/Voucher/CouponModal';
+import CouponModal, { resetCouponModalCache, getVoucherBadgeLabel, isShipVoucher } from '@/components/Voucher/CouponModal';
 import GiftSelectorModal, { GiftItem } from '@/components/Checkout/GiftSelectorModal';
-import { PublicVoucherItem, ActivePromotion } from '@/services/orderService';
+import { PublicVoucherItem, ActivePromotion, isShipVoucherCode } from '@/services/orderService';
 import { getActiveCampaigns, PublicCampaignItem } from '@/services/campaignService';
 import { formatPrice } from '@/lib/format';
 import viMessages from '@/i18n/locales/vi.json';
@@ -2049,6 +2049,128 @@ describe('CouponModal Single List & Ineligible Reason Matrix Tests', () => {
     // 2 campaigns + 1 member tier card = 3
     expect(await screen.findByText('3 ưu đãi đang diễn ra')).toBeInTheDocument();
     expect(screen.getByText('Chương trình ưu đãi (3)')).toBeInTheDocument();
+  });
+
+  describe('Anti-Regression Suite: Voucher Code Pattern Standardization & Combo Selection', () => {
+    it('Task 1 & 5: isShipVoucherCode standardizes SHIP30K, FSHIP20K, NO_SHIP_10K detection', () => {
+      // Freeship formats
+      expect(isShipVoucherCode('SHIP30K')).toBe(true);
+      expect(isShipVoucherCode('SHIP_30K')).toBe(true);
+      expect(isShipVoucherCode('FSHIP20K')).toBe(true);
+      expect(isShipVoucherCode('FREESHIP')).toBe(true);
+      expect(isShipVoucherCode('PHISHIP')).toBe(true);
+      expect(isShipVoucherCode('', 'freeship')).toBe(true);
+      expect(isShipVoucherCode('ANY_CODE', undefined, true)).toBe(true);
+
+      // Non-freeship / Food voucher formats
+      expect(isShipVoucherCode('NO_SHIP_10K')).toBe(false);
+      expect(isShipVoucherCode('NOSHIP')).toBe(false);
+      expect(isShipVoucherCode('G2_NO_SHIP')).toBe(false);
+      expect(isShipVoucherCode('G2_RESTORE_SHIP')).toBe(false);
+      expect(isShipVoucherCode('GIAM50K')).toBe(false);
+      expect(isShipVoucherCode('MON_10K')).toBe(false);
+    });
+
+    it('Task 2 & 5: Simultaneous selection of Food Voucher (GIAM50K) + Freeship Voucher (SHIP30K) when combine flags are default/undefined', async () => {
+      mockVouchersList = [
+        {
+          id: 201,
+          code: 'GIAM50K',
+          discount_type: 'fixed',
+          value: 50000,
+          prereq_price: 100000,
+          // can_combine_with_freeship is undefined -> defaults to true
+        },
+        {
+          id: 202,
+          code: 'SHIP30K',
+          discount_type: 'fixed',
+          value: 30000,
+          prereq_price: 100000,
+          // can_combine_with_promotions is undefined -> defaults to true
+        },
+      ];
+
+      const mockApplyVouchers = vi.fn();
+      const mockOnClose = vi.fn();
+
+      render(
+        <CouponModal
+          isOpen={true}
+          onClose={mockOnClose}
+          subtotal={200000}
+          onApplyVouchers={mockApplyVouchers}
+        />
+      );
+
+      expect(await screen.findByText('GIAM50K')).toBeInTheDocument();
+      expect(screen.getByText('SHIP30K')).toBeInTheDocument();
+
+      const checkboxes = screen.getAllByRole('checkbox');
+      expect(checkboxes.length).toBe(2);
+
+      // Both checkboxes should not be disabled
+      expect(checkboxes[0]).not.toHaveAttribute('aria-disabled', 'true');
+      expect(checkboxes[1]).not.toHaveAttribute('aria-disabled', 'true');
+
+      // Select Food voucher
+      fireEvent.click(checkboxes[0]);
+      // Freeship voucher should still not be disabled
+      expect(checkboxes[1]).not.toHaveAttribute('aria-disabled', 'true');
+
+      // Select Freeship voucher
+      fireEvent.click(checkboxes[1]);
+
+      // Apply button shows 2 offers
+      const applyButton = screen.getByRole('button', { name: /Áp dụng • 2 ưu đãi/i });
+      expect(applyButton).toBeInTheDocument();
+
+      // Click Apply
+      fireEvent.click(applyButton);
+
+      expect(mockApplyVouchers).toHaveBeenCalledWith(['GIAM50K', 'SHIP30K']);
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('Task 5: NO_SHIP_10K is classified as food voucher and mutex locks with another food voucher', async () => {
+      mockVouchersList = [
+        {
+          id: 203,
+          code: 'GIAM50K',
+          discount_type: 'fixed',
+          value: 50000,
+          prereq_price: 100000,
+        },
+        {
+          id: 204,
+          code: 'NO_SHIP_10K',
+          discount_type: 'fixed',
+          value: 10000,
+          prereq_price: 100000,
+        },
+      ];
+
+      render(
+        <CouponModal
+          isOpen={true}
+          onClose={vi.fn()}
+          subtotal={200000}
+          onApplyVouchers={vi.fn()}
+        />
+      );
+
+      expect(await screen.findByText('GIAM50K')).toBeInTheDocument();
+      expect(screen.getByText('NO_SHIP_10K')).toBeInTheDocument();
+
+      const checkboxes = screen.getAllByRole('checkbox');
+      // Select first food voucher
+      fireEvent.click(checkboxes[0]);
+
+      // Second food voucher should be mutex locked (disabled)
+      expect(checkboxes[1]).toHaveAttribute('aria-disabled', 'true');
+    });
   });
 });
 

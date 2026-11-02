@@ -1,7 +1,8 @@
 import React from "react";
 import Image from "next/image";
 import { formatPrice, formatImageUrl, isDefaultVariant, cleanVariantName } from "@/lib/format";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 
 export interface GiftItem {
   id: number;
@@ -42,12 +43,15 @@ export default function GiftSelectorModal({
   onSelect,
 }: GiftSelectorModalProps) {
   const t = useTranslations("gift_selector");
-  let locale = "vi";
+  let useLocaleHook: () => string = () => "vi";
   try {
-    locale = useLocale() || "vi";
+    if (typeof NextIntl.useLocale === "function") {
+      useLocaleHook = NextIntl.useLocale;
+    }
   } catch {
-    locale = "vi";
+    // Fallback when next-intl mock omits useLocale
   }
+  const locale = useLocaleHook() || "vi";
   const modalTitle = title || t("default_title");
 
   if (!isOpen) return null;

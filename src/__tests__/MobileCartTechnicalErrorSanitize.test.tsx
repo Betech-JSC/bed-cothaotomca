@@ -127,7 +127,7 @@ vi.mock("@/services/orderService", async () => {
     ...actual,
     getCheckoutConfig: vi.fn(async () => ({
       default_shipping_fee: "30000",
-      operating_hours: { enabled: true, start_hour: 0, end_hour: 24 },
+      operating_hours: { store_open: "00:00", store_close: "23:59", last_order_cutoff: "23:59" },
       branches: [{ id: 1, branchName: "Chi nhánh 1", address: "123 Lê Lợi" }],
     })),
     getAvailableVouchers: vi.fn().mockResolvedValue([]),
@@ -154,6 +154,9 @@ vi.mock("@/services/orderService", async () => {
 describe("MobileCartFlow - Technical Error Message Sanitization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    if (typeof window !== "undefined") {
+      window.__MOCK_TIME__ = "14:00";
+    }
   });
 
   const setupStep2 = async () => {

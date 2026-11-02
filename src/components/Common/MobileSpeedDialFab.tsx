@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname } from "@/i18n/routing";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useCart } from "@/contexts/CartContext";
 import CouponModal from "@/components/Voucher/CouponModal";
@@ -28,12 +29,15 @@ export default function MobileSpeedDialFab() {
   const settings = useGeneralSettings();
   const { subtotal } = useCart();
   const pathname = usePathname();
-  let locale = "vi";
+  let useLocaleHook: () => string = () => "vi";
   try {
-    locale = useLocale() || "vi";
+    if (typeof NextIntl.useLocale === "function") {
+      useLocaleHook = NextIntl.useLocale;
+    }
   } catch {
-    locale = "vi";
+    // Fallback when next-intl mock omits useLocale
   }
+  const locale = useLocaleHook() || "vi";
   const t = useTranslations("common.speed_dial");
 
   // Scroll visibility for scroll-to-top button (> 300px)

@@ -142,7 +142,7 @@ describe("Voucher Discount Calculation & Auto-Removal Unit Tests (Lỗi 2 & Lỗ
       expect(calculateVoucherDiscount(pctNoCap, 1011000, 20000)).toBe(101000);
     });
 
-    it("E-Voucher -> có thể trừ cả vào phí ship nếu giá trị voucher lớn hơn subtotal", () => {
+    it("E-Voucher -> chỉ giảm tối đa bằng subtotal nếu giá trị voucher lớn hơn subtotal", () => {
       const eVoucher: AppliedVoucherState = {
         id: 9,
         code: "EVOUCHER100K",
@@ -150,8 +150,8 @@ describe("Voucher Discount Calculation & Auto-Removal Unit Tests (Lỗi 2 & Lỗ
         value: 100000,
       };
 
-      // subtotal 80,000 + ship 30,000 = 110,000 -> giảm 100,000
-      expect(calculateVoucherDiscount(eVoucher, 80000, 30000)).toBe(100000);
+      // subtotal 80,000, voucher 100,000 -> giảm tối đa 80,000 (min(voucher.value, subtotal))
+      expect(calculateVoucherDiscount(eVoucher, 80000, 30000)).toBe(80000);
     });
   });
 });

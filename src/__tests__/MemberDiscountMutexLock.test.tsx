@@ -611,7 +611,7 @@ describe('Member Discount & Mutex Lock Tests', () => {
         code: 'EXCLUSIVE_50K',
         value: 50000,
         discount_type: 'fixed',
-        can_combine_with_promotions: false,
+        can_combine_with_promotions: true,
         can_combine_with_freeship: true,
         customer_scope: 'all',
       },

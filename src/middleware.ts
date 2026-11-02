@@ -44,6 +44,10 @@ export default function middleware(request: NextRequest) {
       [/^\/signin\/?$/, '/dang-nhap'],
       [/^\/signup\/?$/, '/dang-ky'],
       [/^\/profile\/?$/, '/thong-tin-ca-nhan'],
+      [/^\/reset-password\/?$/, '/dat-lai-mat-khau'],
+      [/^\/forgot-password\/?$/, '/quen-mat-khau'],
+      [/^\/checkout\/?$/, '/thanh-toan'],
+      [/^\/order-lookup\/?$/, '/tra-cuu-don-hang'],
     ];
     let targetPath = stripped;
     for (const [pattern, replacement] of viRedirectMap) {

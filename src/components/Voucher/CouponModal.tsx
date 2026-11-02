@@ -13,6 +13,7 @@ import {
   ShippingSettings,
   getLoyaltySettings,
   LoyaltySettings,
+  isShipVoucherCode,
 } from "@/services/orderService";
 import {
   PublicCampaignItem,
@@ -22,7 +23,8 @@ import {
 } from "@/services/campaignService";
 import { mergeCampaignObjects } from "@/types/campaign";
 import { useRouter, usePathname } from "@/i18n/routing";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 import { useAuth, StorefrontUser, getMemberTier } from "@/contexts/AuthContext";
 
 export function formatPrivateVoucherError(errMsg: string, locale: string = "vi"): string {
@@ -249,13 +251,7 @@ function formatCampaignDuration(
 }
 
 export function isShipVoucher(v: { code: string; discount_type?: string; is_freeship?: boolean }): boolean {
-  return Boolean(
-    v.is_freeship ||
-    v.discount_type === "freeship" ||
-    v.code.toUpperCase().includes("FREESHIP") ||
-    v.code.toUpperCase().includes("PHISHIP") ||
-    /^SHIP(\d+|K)?$/i.test(v.code)
-  );
+  return isShipVoucherCode(v.code, v.discount_type, v.is_freeship);
 }
 
 export function isFoodVoucher(v: { code: string; discount_type?: string; is_freeship?: boolean }): boolean {
@@ -1041,12 +1037,15 @@ export default function CouponModal({
   loyaltySettings: loyaltySettingsProp,
 }: CouponModalProps) {
   const t = useTranslations("voucher");
-  let locale = "vi";
+  let useLocaleHook: () => string = () => "vi";
   try {
-    locale = useLocale() || "vi";
+    if (typeof NextIntl.useLocale === "function") {
+      useLocaleHook = NextIntl.useLocale;
+    }
   } catch {
-    locale = "vi";
+    // Fallback when next-intl mock omits useLocale
   }
+  const locale = useLocaleHook() || "vi";
   const router = useRouter();
   const rawPathname = usePathname();
   const currentPath = (rawPathname || "") as string;
@@ -1764,13 +1763,13 @@ export default function CouponModal({
 
     // 3. Pair M5: Campaign (can_combine_with_freeship) <-> ShippingSetting (can_combine_with_promotions)
     const hasLockedSelectedCampaign = effectiveSelectedCampaigns.some(
-      (c) => !(Boolean(c.can_combine_with_freeship) && shipPromoFlag)
+      (c) => !(c.can_combine_with_freeship !== false && shipPromoFlag)
     );
     if (hasLockedSelectedCampaign) return true;
 
     // 4. Pair M5 trên activeCartPromos
     const hasLockedActiveCartPromo = activeCartPromos.some(
-      (p) => !(Boolean(p.can_combine_with_freeship) && shipPromoFlag)
+      (p) => !(p.can_combine_with_freeship !== false && shipPromoFlag)
     );
     if (hasLockedActiveCartPromo) return true;
 
@@ -1779,7 +1778,7 @@ export default function CouponModal({
       const hasAppliedLockedCampaign = allCampaigns.some(
         (c) =>
           selectedCampaignIds.some((id) => String(id) === String(c.id)) &&
-          !(Boolean(c.can_combine_with_freeship) && shipPromoFlag)
+          !(c.can_combine_with_freeship !== false && shipPromoFlag)
       );
       if (hasAppliedLockedCampaign) return true;
     }
@@ -1787,9 +1786,9 @@ export default function CouponModal({
     // 6. Pair M8 (Food Voucher <-> ShippingSetting) & Pair M11 (Shipping Voucher <-> ShippingSetting)
     const hasLockedSelectedVoucher = selectedVoucherItems.some((v) => {
       if (isShipVoucher(v)) {
-        return !(Boolean(v.can_combine_with_freeship) && shipFreeshipFlag);
+        return !(v.can_combine_with_freeship !== false && shipFreeshipFlag);
       }
-      return !(Boolean(v.can_combine_with_freeship) && shipPromoFlag);
+      return !(v.can_combine_with_freeship !== false && shipPromoFlag);
     });
     if (hasLockedSelectedVoucher) return true;
 
@@ -1840,11 +1839,11 @@ export default function CouponModal({
 
     const hasLockedSelectedVoucher = selectedVoucherItems.some((v) => {
       if (isShipVoucher(v)) {
-        return !(Boolean(v.can_combine_with_freeship) && shipFreeshipFlag);
+        return !(v.can_combine_with_freeship !== false && shipFreeshipFlag);
       }
-      return !(Boolean(v.can_combine_with_freeship) && shipPromoFlag);
+      return !(v.can_combine_with_freeship !== false && shipPromoFlag);
     });
-    if (hasLockedSelectedVoucher || canCombineWithFreeship === false) {
+    if (hasLockedSelectedVoucher) {
       return t("order_voucher_no_freeship");
     }
 
@@ -1932,7 +1931,7 @@ export default function CouponModal({
       );
       if (otherActiveCampaigns.length > 0) {
         const hasNonCombinablePair = otherActiveCampaigns.some(
-          (c) => !(Boolean(c.can_combine_with_promotions) && Boolean(camp.can_combine_with_promotions))
+          (c) => !(c.can_combine_with_promotions !== false && camp.can_combine_with_promotions !== false)
         );
         if (hasNonCombinablePair) {
           return {
@@ -1945,7 +1944,7 @@ export default function CouponModal({
       // 2. Pair M2: Kiểm tra khóa chéo 2 chiều với Voucher món ăn đang chọn
       const selectedFoodVoucher = selectedVoucherItems.find(isFoodVoucher);
       if (selectedFoodVoucher) {
-        if (!(Boolean(selectedFoodVoucher.can_combine_with_promotions) && Boolean(camp.can_combine_with_promotions))) {
+        if (!(selectedFoodVoucher.can_combine_with_promotions !== false && camp.can_combine_with_promotions !== false)) {
           return {
             locked: true,
             reason: t("campaign_voucher_locked"),
@@ -1956,13 +1955,13 @@ export default function CouponModal({
       // 3. Pair M4: Kiểm tra khóa chéo 2 chiều với Voucher Freeship đang chọn
       const selectedShipVoucher = selectedVoucherItems.find(isShipVoucher);
       if (selectedShipVoucher) {
-        if (!Boolean(selectedShipVoucher.can_combine_with_promotions)) {
+        if (selectedShipVoucher.can_combine_with_promotions === false) {
           return {
             locked: true,
             reason: t("campaign_mutex_locked"),
           };
         }
-        if (!Boolean(camp.can_combine_with_freeship)) {
+        if (camp.can_combine_with_freeship === false) {
           return {
             locked: true,
             reason: t("campaign_freeship_locked"),
@@ -1998,7 +1997,7 @@ export default function CouponModal({
 
       // Pair M6 (Food Voucher <-> Loyalty) & Pair M9 (Shipping Voucher <-> Loyalty)
       if (hasMemberBenefit && isMemberCardSelected && !isMemberCardLocked) {
-        if (isFood && !(canCombineLoyaltyWithPromotions && Boolean(v.can_combine_with_promotions))) {
+        if (isFood && !(canCombineLoyaltyWithPromotions && (v.can_combine_with_promotions !== false))) {
           return {
             locked: true,
             reason: t("mutex_member_tier"),
@@ -2009,7 +2008,7 @@ export default function CouponModal({
           loyaltySettings?.can_combine_with_freeship !== undefined
             ? canCombineLoyaltyWithFreeship
             : canCombineLoyaltyWithPromotions;
-        if (isShip && !(memberFreeshipFlag && Boolean(v.can_combine_with_promotions))) {
+        if (isShip && !(memberFreeshipFlag && (v.can_combine_with_promotions !== false))) {
           return {
             locked: true,
             reason: t("mutex_member_tier"),
@@ -2026,14 +2025,14 @@ export default function CouponModal({
           return { locked: true, reason: t("mutex_selected_promotions") };
         }
         // Pair M7: Food Voucher (can_combine_with_freeship) <-> Shipping Voucher (can_combine_with_promotions)
-        if (selectedShip && !(Boolean(v.can_combine_with_freeship) && Boolean(selectedShip.can_combine_with_promotions))) {
+        if (selectedShip && !(v.can_combine_with_freeship !== false && selectedShip.can_combine_with_promotions !== false)) {
           return { locked: true, reason: t("mutex_selected_promotions") };
         }
         // Pair M2: Campaign (can_combine_with_promotions) <-> Food Voucher (can_combine_with_promotions)
         if (
           effectiveSelectedCampaigns.length > 0 &&
           effectiveSelectedCampaigns.some(
-            (c) => !(Boolean(c.can_combine_with_promotions) && Boolean(v.can_combine_with_promotions))
+            (c) => !(c.can_combine_with_promotions !== false && v.can_combine_with_promotions !== false)
           )
         ) {
           return { locked: true, reason: t("campaign_mutex_locked") };
@@ -2045,10 +2044,10 @@ export default function CouponModal({
           return { locked: true, reason: t("mutex_selected_promotions") };
         }
         // Pair M7: Food Voucher (can_combine_with_freeship) <-> Shipping Voucher (can_combine_with_promotions)
-        if (selectedFood && !(Boolean(selectedFood.can_combine_with_freeship) && Boolean(v.can_combine_with_promotions))) {
+        if (selectedFood && !(selectedFood.can_combine_with_freeship !== false && v.can_combine_with_promotions !== false)) {
           return {
             locked: true,
-            reason: !Boolean(selectedFood.can_combine_with_freeship)
+            reason: selectedFood.can_combine_with_freeship === false
               ? t("order_voucher_no_freeship")
               : t("mutex_selected_promotions"),
           };
@@ -2057,11 +2056,11 @@ export default function CouponModal({
         if (
           effectiveSelectedCampaigns.length > 0 &&
           effectiveSelectedCampaigns.some(
-            (c) => !(Boolean(c.can_combine_with_freeship) && Boolean(v.can_combine_with_promotions))
+            (c) => !(c.can_combine_with_freeship !== false && v.can_combine_with_promotions !== false)
           )
         ) {
           const blockedByCampNoFreeship = effectiveSelectedCampaigns.some(
-            (c) => !Boolean(c.can_combine_with_freeship)
+            (c) => c.can_combine_with_freeship === false
           );
           return {
             locked: true,

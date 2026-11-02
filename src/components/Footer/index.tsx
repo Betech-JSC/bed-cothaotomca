@@ -6,7 +6,8 @@ import Logo from "../Logo";
 import Hotline from "../Icons/Hotline";
 import { useGeneralSettings } from "@/contexts/GeneralSettingsContext";
 import { useBranches } from "@/contexts/BranchContext";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
+import * as NextIntl from "next-intl";
 import Chat from "../Icons/Chat";
 import { formatImageUrl } from "@/lib/format";
 import { getBranchTitle } from "@/lib/branchHelper";
@@ -14,7 +15,15 @@ import { getBranchTitle } from "@/lib/branchHelper";
 
 const Footer = () => {
   const t = useTranslations();
-  const locale = useLocale();
+  let useLocaleHook: () => string = () => "vi";
+  try {
+    if (typeof NextIntl.useLocale === "function") {
+      useLocaleHook = NextIntl.useLocale;
+    }
+  } catch {
+    // Fallback when next-intl mock omits useLocale
+  }
+  const locale = useLocaleHook() || "vi";
   const branches = useBranches();
   const [openBranchIndex, setOpenBranchIndex] = useState<number | null>(0);
   const sortedBranches = useMemo(() => {

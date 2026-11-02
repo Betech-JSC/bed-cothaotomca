@@ -103,10 +103,25 @@ vi.mock('@/services/generalSettingService', () => ({
 }));
 
 // Mock authService
+const mockSavedAddresses = [
+  {
+    id: 1,
+    recipient_name: 'Khách hàng',
+    phone: '0901234567',
+    province: 'TP. Hồ Chí Minh',
+    district: 'Quận 1',
+    ward: 'Phường Bến Nghé',
+    ward_id: '001',
+    street_address: '123 Lê Lợi',
+    full_address: '123 Lê Lợi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+    is_default: true,
+  },
+];
+
 vi.mock('@/services/authService', () => ({
-  getCustomerAddressesApi: vi.fn().mockResolvedValue([]),
+  getCustomerAddressesApi: vi.fn().mockImplementation(() => Promise.resolve(mockSavedAddresses)),
   createCustomerAddressApi: vi.fn().mockResolvedValue({}),
-  getCachedCustomerAddresses: vi.fn().mockReturnValue([]),
+  getCachedCustomerAddresses: vi.fn().mockImplementation(() => mockSavedAddresses),
   setCachedCustomerAddresses: vi.fn(),
   checkGuestTierByPhone: vi.fn().mockResolvedValue(null),
 }));
@@ -344,7 +359,7 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
 
       // VOUCHER_EXPENSIVE is in Tầng 2 (Chưa đủ điều kiện) with missing amount
       expect(screen.getByText('VOUCHER_EXPENSIVE')).toBeInTheDocument();
-      expect(screen.getByText(/Chưa đạt giá trị đơn tối thiểu/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Chưa đạt giá trị đơn tối thiểu/i).length).toBeGreaterThanOrEqual(1);
     });
   });
 

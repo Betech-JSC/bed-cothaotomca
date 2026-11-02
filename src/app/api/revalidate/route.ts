@@ -3,9 +3,9 @@ import { revalidatePath } from 'next/cache';
 
 export async function GET(request: NextRequest) {
   const secret = request.nextUrl.searchParams.get('secret');
-  const expectedSecret = process.env.REVALIDATION_SECRET || 'betech_secret_token_2026';
+  const expectedSecret = process.env.REVALIDATION_SECRET;
 
-  if (!secret || secret !== expectedSecret) {
+  if (!expectedSecret || !secret || secret !== expectedSecret) {
     return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
   }
 

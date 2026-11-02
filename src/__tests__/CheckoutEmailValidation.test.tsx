@@ -176,7 +176,7 @@ vi.mock('@/services/orderService', async () => {
   return {
     ...actual,
     getCheckoutConfig: vi.fn().mockResolvedValue({
-      operating_hours: { store_open: '00:00', store_close: '23:59' },
+      operating_hours: { store_open: '00:00', store_close: '23:59', last_order_cutoff: '23:59' },
       branches: [
         {
           id: 1,
@@ -199,7 +199,7 @@ vi.mock('@/services/orderService', async () => {
 });
 
 const mockConfigData: CheckoutConfig = {
-  operating_hours: { store_open: '00:00', store_close: '23:59' },
+  operating_hours: { store_open: '00:00', store_close: '23:59', last_order_cutoff: '23:59' },
   branches: [
     {
       id: 1,
@@ -218,6 +218,7 @@ describe('Checkout Email Validation & UI Audit Tests', () => {
     vi.clearAllMocks();
     mockUser = null;
     mockToken = null;
+    if (typeof window !== 'undefined') window.__MOCK_TIME__ = '14:00';
     if (typeof localStorage !== 'undefined') {
       localStorage.clear();
     }
@@ -448,7 +449,7 @@ describe('Checkout Email Validation & UI Audit Tests', () => {
       }
 
       // Nhấn nút Đặt hàng khi email để trống
-      const submitBtn = screen.getByRole('button', { name: /(Đặt hàng|Lên lịch giao hàng)/i });
+      const submitBtn = await screen.findByRole('button', { name: /(Đặt hàng|Lên lịch giao hàng)/i });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
@@ -473,7 +474,7 @@ describe('Checkout Email Validation & UI Audit Tests', () => {
       const emailInput = container.querySelector('input[type="email"]') as HTMLInputElement;
       fireEvent.change(emailInput, { target: { value: 'invalid-email-format' } });
 
-      const submitBtn = screen.getByRole('button', { name: /(Đặt hàng|Lên lịch giao hàng)/i });
+      const submitBtn = await screen.findByRole('button', { name: /(Đặt hàng|Lên lịch giao hàng)/i });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
@@ -494,7 +495,7 @@ describe('Checkout Email Validation & UI Audit Tests', () => {
       const emailInput = container.querySelector('input[type="email"]') as HTMLInputElement;
       fireEvent.change(emailInput, { target: { value: 'bad-email' } });
 
-      const submitBtn = screen.getByRole('button', { name: /(Đặt hàng|Lên lịch giao hàng)/i });
+      const submitBtn = await screen.findByRole('button', { name: /(Đặt hàng|Lên lịch giao hàng)/i });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {

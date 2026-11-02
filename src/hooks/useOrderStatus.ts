@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getOrderStatus, type OrderStatus } from "@/services/orderService";
 
 const POLL_INTERVAL_MS = 3000;        // 3 giây
-const MAX_POLL_DURATION_MS = 10 * 60 * 1000; // 10 phút
+const MAX_POLL_DURATION_MS = 15 * 60 * 1000; // 15 phút
 
 interface UseOrderStatusReturn {
   data: OrderStatus | null;
@@ -32,8 +32,8 @@ export function useOrderStatus(orderCode: string | null): UseOrderStatusReturn {
   const isMounted   = useRef(true);
 
   const shouldStop = useCallback((status: OrderStatus): boolean => {
-    if (status.payment_status === "expired") return true;
-    if (status.status === "synced" || status.status === "sync_failed") return true;
+    if (status.payment_status === "expired" || status.payment_status === "paid") return true;
+    if (status.status === "synced" || status.status === "sync_failed" || status.status === "confirmed" || status.status === "completed" || status.status === "cancelled") return true;
     return false;
   }, []);
 

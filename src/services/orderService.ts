@@ -1,5 +1,5 @@
 const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 ).replace(/\/$/, "");
 
 export type DeliveryType = "delivery" | "pickup";
@@ -239,11 +239,18 @@ export async function getOrderByCode(
   orderCode: string,
   phone?: string,
 ): Promise<Record<string, unknown>> {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
   const params = phone ? `?phone=${encodeURIComponent(phone)}` : "";
   const res = await fetch(
     `${API_BASE}/orders/${encodeURIComponent(orderCode)}${params}`,
     {
-      headers: { Accept: "application/json" },
+      headers,
       cache: "no-store",
     },
   );
@@ -262,15 +269,23 @@ export async function lookupOrders(
   code?: string,
 ): Promise<Record<string, unknown> | Record<string, unknown>[]> {
   const params = new URLSearchParams();
-  if (phone && phone.trim()) {
+  if (phone && phone.trim() && !phone.includes("*")) {
     params.set("phone", phone.trim());
   }
   if (code && code.trim()) {
     params.set("code", code.trim());
   }
 
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
   const res = await fetch(`${API_BASE}/orders/lookup?${params.toString()}`, {
-    headers: { Accept: "application/json" },
+    headers,
     cache: "no-store",
   });
 
@@ -317,6 +332,26 @@ export interface AppliedVoucherState {
   discountAmount?: number;
 }
 
+export function isShipVoucherCode(
+  code: string = "",
+  discount_type?: string,
+  is_freeship?: boolean
+): boolean {
+  if (discount_type === "freeship" || is_freeship === true) return true;
+  const codeUpper = (code || "").toUpperCase();
+  if (codeUpper.includes("NO_SHIP") || codeUpper.includes("NOSHIP")) {
+    return false;
+  }
+  return (
+    codeUpper.includes("FREESHIP") ||
+    codeUpper.includes("FREE_SHIP") ||
+    codeUpper.includes("PHISHIP") ||
+    codeUpper.startsWith("FSHIP") ||
+    codeUpper.startsWith("SHIP") ||
+    /^SHIP(_?\d+K?)?$/i.test(codeUpper)
+  );
+}
+
 /**
  * Calculates discount amount matching backend Voucher.php::calculateDiscount()
  */
@@ -332,12 +367,7 @@ export function calculateVoucherDiscount(
 
   const codeUpper = voucher.code.toUpperCase();
   const type = voucher.discountType || "fixed";
-  const isShipping =
-    type === "freeship" ||
-    voucher.isFreeship ||
-    codeUpper.includes("FREESHIP") ||
-    codeUpper.includes("PHISHIP") ||
-    codeUpper.includes("SHIP");
+  const isShipping = isShipVoucherCode(voucher.code, type, voucher.isFreeship);
 
   if (isShipping) {
     if (type === "percent" || codeUpper.includes("PCT")) {
@@ -366,8 +396,12 @@ export function calculateVoucherDiscount(
     return Math.min(calculated, subtotal);
   }
 
-  if (codeUpper.startsWith("EVOUCHER") || codeUpper.startsWith("EVO")) {
-    return Math.min(voucher.value, subtotal + shipping);
+  if (
+    (type as string) === "evoucher" ||
+    codeUpper.startsWith("EVOUCHER") ||
+    codeUpper.startsWith("EVO")
+  ) {
+    return Math.min(voucher.value, subtotal);
   }
 
   return Math.min(voucher.value, subtotal);
@@ -744,12 +778,20 @@ export async function cancelOrderApi(
   phone: string,
   reason?: string,
 ): Promise<{ message: string; data: Record<string, unknown> }> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
   const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderCode)}/cancel`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers,
     body: JSON.stringify({ phone, reason }),
   });
 
@@ -767,12 +809,20 @@ export async function requestCancelOrderApi(
   phone: string,
   reason: string,
 ): Promise<{ message: string; data: Record<string, unknown> }> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
   const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderCode)}/request-cancel`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers,
     body: JSON.stringify({ phone, reason }),
   });
 

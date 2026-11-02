@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import * as NextIntl from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
-import { useSearchParams } from "next/navigation";
+import * as NextNavigation from "next/navigation";
 import { formatPrice, formatOrderPrice, isDefaultVariant, cleanVariantName, formatImageUrl } from "@/lib/format";
 import {
   getCanonicalCartItemKey,
@@ -71,7 +71,7 @@ import WardSelectCombobox from "./WardSelectCombobox";
 import RequiredMark from "./RequiredMark";
 import PreOrderNoticeModal from "./PreOrderNoticeModal";
 import MobileCartFlow from "@/components/Header/MobileCartFlow";
-import CouponModal, { evaluateCampaignEligibility } from "@/components/Voucher/CouponModal";
+import CouponModal, { evaluateCampaignEligibility, isShipVoucher } from "@/components/Voucher/CouponModal";
 import SmartCartProgressBar from "@/components/Cart/SmartCartProgressBar";
 import GiftSelectorModal from "./GiftSelectorModal";
 import VoucherTicketBar from "./VoucherTicketBar";
@@ -163,14 +163,15 @@ const isTechnicalErrorMessage = (msg: string): boolean => {
 };
 
 export default function CheckoutForm({ order, config, mockTime: propMockTime }: CheckoutFormProps) {
-  let searchParams: ReturnType<typeof useSearchParams> | null = null;
+  let useSearchParamsHook: () => ReturnType<typeof NextNavigation.useSearchParams> | null = () => null;
   try {
-    if (typeof useSearchParams === "function") {
-      searchParams = useSearchParams();
+    if (typeof NextNavigation.useSearchParams === "function") {
+      useSearchParamsHook = NextNavigation.useSearchParams;
     }
   } catch {
     // Ignore when rendered outside next/navigation context or in tests
   }
+  const searchParams = useSearchParamsHook();
   const mockTime = propMockTime || searchParams?.get("mock_time");
 
   const mockDate = useMemo(() => {
@@ -188,16 +189,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const t = useTranslations("checkout");
   const tVoucher = useTranslations("voucher");
   const tCart = useTranslations("cart");
-  let locale = "vi";
+  let useLocaleHook: () => string = () =>
+    typeof window !== "undefined" && window.location.pathname.startsWith("/en") ? "en" : "vi";
   try {
     if (typeof (NextIntl as any).useLocale === "function") {
-      locale = (NextIntl as any).useLocale() || "vi";
-    } else if (typeof window !== "undefined" && window.location.pathname.startsWith("/en")) {
-      locale = "en";
+      useLocaleHook = (NextIntl as any).useLocale;
     }
   } catch {
-    locale = "vi";
+    // Ignore when rendered in tests without useLocale mock
   }
+  const locale = useLocaleHook() || "vi";
   const router = useRouter();
   const { cartItems, isLoaded, updateQuantity, removeFromCart, clearCart, addToCart, hasOutOfStockItems, restoreCampaignItemsToOriginalPrice } = useCart();
   const isOutOfStockOverall = hasOutOfStockItems ?? cartItems.some((i) => i.isOutOfStock);
@@ -983,7 +984,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   // Campaign G1 trong giỏ hàng (nhận diện theo các chương trình thực sự đủ điều kiện và đang áp dụng ưu đãi)
   const cartCampaignG1 = useMemo(() => {
-    if (isBestDealVoucherApplied || !allPromotionsList || allPromotionsList.length === 0) return null;
+    if (!allPromotionsList || allPromotionsList.length === 0) return null;
     const checkAmount = originalSubtotal > 0 ? originalSubtotal : subtotal;
     const selectedPromos = allPromotionsList.filter((p) => {
       if (!selectedCampaignIds.some((id) => String(id) === String(p.id))) return false;
@@ -993,20 +994,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         cartItems: checkoutCartItems,
         isBrowseMode: false,
       }).eligible;
-      if (!isEligible) return false;
-      if (p.promotion_type === "order_gift_discount") {
-        return selectedOrderGiftItem !== null && Boolean(eligibleOrderGiftPromo && String(eligibleOrderGiftPromo.id) === String(p.id));
-      }
-      if (p.promotion_type === "buy_x_get_y") {
-        return activeBuyXGetYItems.length > 0 && activeBuyXGetYItems.some((x) => String(x.promo.id) === String(p.id));
-      }
-      if (p.promotion_type === "order_discount") {
-        return autoOrderDiscountAmount > 0 && Boolean(eligibleOrderDiscountPromo && String(eligibleOrderDiscountPromo.id) === String(p.id));
-      }
-      if (p.promotion_type === "same_price_discount") {
-        return activeSamePricePromos.some((sp) => String(sp.id) === String(p.id));
-      }
-      return true;
+      return isEligible;
     });
     const promos = [
       ...selectedPromos,
@@ -1035,13 +1023,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     subtotal,
     selectedCampaignIds,
     checkoutCartItems,
-    isBestDealVoucherApplied,
     activeSamePricePromos,
-    selectedOrderGiftItem,
-    eligibleOrderGiftPromo,
-    activeBuyXGetYItems,
-    autoOrderDiscountAmount,
-    eligibleOrderDiscountPromo,
   ]);
 
   // Ma trận Khuyến mãi & Giảm giá (Promotion Matrix 6 Cases)
@@ -1104,6 +1086,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   }, [appliedVoucher, cartCampaignG1, t]);
 
   const appliedCartPromotions = useMemo(() => {
+    if (isBestDealVoucherApplied) return [];
     const list: ActivePromotion[] = [];
     activeSamePricePromos.forEach((p) => {
       if (!list.some((x) => String(x.id) === String(p.id))) {
@@ -1136,6 +1119,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     eligibleBuyXGetYPromos,
     activeBuyXGetYItems,
     cartCampaignG1,
+    isBestDealVoucherApplied,
   ]);
 
   const promoItemsExtraPrice = useMemo(() => {
@@ -1470,6 +1454,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [description, setDescription] = useState("");
 
   const [mapAddressValidation, setMapAddressValidation] = useState<AddressWardValidationResult | null>(null);
+  const latestAddressVerifyKeyRef = useRef("");
+  latestAddressVerifyKeyRef.current = `${deliveryType}|${isSavedAddressSelected}|${streetAddress.trim()}|${selectedWard}|${selectedWardId}|${selectedDistrict}|${selectedProvince}`;
 
   const syncAddressValidation = useMemo(() => {
     return validateAddressWardMatch({
@@ -1485,7 +1471,58 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   useEffect(() => {
     setMapAddressValidation(null);
-  }, [streetAddress, selectedWard, selectedWardId, selectedDistrict]);
+  }, [streetAddress, selectedWard, selectedWardId, selectedDistrict, selectedProvince]);
+
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV === "test" ||
+      deliveryType !== "delivery" ||
+      isSavedAddressSelected ||
+      (!selectedWard && !selectedWardId) ||
+      streetAddress.trim().length < 5 ||
+      !syncAddressValidation.isValid ||
+      Boolean(syncAddressValidation.suggestedWard)
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const snapshotKey = latestAddressVerifyKeyRef.current;
+    const timer = setTimeout(() => {
+      verifyAddressViaMapApi({
+        streetAddress,
+        note: description,
+        selectedWard,
+        selectedWardId,
+        selectedDistrict,
+        selectedProvince,
+        availableWards,
+      })
+        .then((res) => {
+          if (!cancelled && res && latestAddressVerifyKeyRef.current === snapshotKey) {
+            setMapAddressValidation(res);
+          }
+        })
+        .catch(() => {});
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    deliveryType,
+    isSavedAddressSelected,
+    streetAddress,
+    description,
+    selectedWard,
+    selectedWardId,
+    selectedDistrict,
+    selectedProvince,
+    availableWards,
+    syncAddressValidation.isValid,
+    syncAddressValidation.suggestedWard,
+  ]);
 
   const addressWardValidation = useMemo(() => {
     if (!syncAddressValidation.isValid || syncAddressValidation.suggestedWard) {
@@ -1714,13 +1751,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   }): { allowed: boolean; message?: string } => {
     const activeCampaigns = appliedCartPromotions;
 
-    const isShip = Boolean(
-      voucherCandidate.discount_type === "freeship" ||
-      voucherCandidate.is_freeship ||
-      voucherCandidate.code?.toUpperCase().includes("FREESHIP") ||
-      voucherCandidate.code?.toUpperCase().includes("PHISHIP") ||
-      (voucherCandidate.code && /^SHIP(\d+|K)?$/i.test(voucherCandidate.code))
-    );
+    const isShip = isShipVoucher({
+      code: voucherCandidate.code || "",
+      discount_type: voucherCandidate.discount_type,
+      is_freeship: voucherCandidate.is_freeship,
+    });
 
     // a) Nếu !Boolean(voucherCandidate.can_combine_with_promotions) VÀ activeCampaigns.length > 0 (M2 / M4):
     if (!Boolean(voucherCandidate.can_combine_with_promotions) && activeCampaigns.length > 0) {
@@ -1814,7 +1849,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         (shippingSettings.shipping_discount_type === "free" || !shippingSettings.shipping_discount_type || (shippingSettings.shipping_discount_value ?? 0) >= originalFee))
     );
 
-    const isCodeFreeship = code.includes("FREESHIP") || code.includes("PHISHIP") || /^SHIP(\d+|K)?$/i.test(code);
+    const isCodeFreeship = isShipVoucher({ code });
 
     if (isOrderAutoFreeship && isCodeFreeship) {
       const friendlyMsg = tVoucher("auto_freeship_friendly_tip");
@@ -1855,11 +1890,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           setValidatingVoucher(false);
           return false;
         }
-        const isCandidateFreeship = Boolean(
-          res.voucher.discount_type === "freeship" ||
-          res.voucher.is_freeship ||
-          isCodeFreeship
-        );
+        const isCandidateFreeship = isShipVoucher({
+          code: res.voucher.code,
+          discount_type: res.voucher.discount_type,
+          is_freeship: res.voucher.is_freeship,
+        });
 
         if (isOrderAutoFreeship && isCandidateFreeship) {
           const friendlyMsg = tVoucher("auto_freeship_friendly_tip");
@@ -2131,11 +2166,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           false
         );
         if (res.valid && res.voucher) {
-          const isCandidateFreeship = Boolean(
-            res.voucher.discount_type === "freeship" ||
-            res.voucher.is_freeship ||
-            c.includes("FREESHIP") || c.includes("PHISHIP") || /^SHIP(\d+|K)?$/i.test(c)
-          );
+          const isCandidateFreeship = isShipVoucher({
+            code: c,
+            discount_type: res.voucher.discount_type,
+            is_freeship: res.voucher.is_freeship,
+          });
           const canCombine = res.voucher.can_combine_with_promotions !== false;
           const subtotalForCalc = canCombine ? saleSubtotal : originalSubtotal;
           const candidate = {
@@ -3195,10 +3230,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           onBlur={() => {
                             if (
                               process.env.NODE_ENV !== "test" &&
+                              !isSavedAddressSelected &&
                               streetAddress.trim().length >= 5 &&
                               syncAddressValidation.isValid &&
                               !syncAddressValidation.suggestedWard
                             ) {
+                              const snapshotKey = latestAddressVerifyKeyRef.current;
                               verifyAddressViaMapApi({
                                 streetAddress,
                                 note: description,
@@ -3209,7 +3246,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                                 availableWards,
                               })
                                 .then((res) => {
-                                  if (res) setMapAddressValidation(res);
+                                  if (res && latestAddressVerifyKeyRef.current === snapshotKey) {
+                                    setMapAddressValidation(res);
+                                  }
                                 })
                                 .catch(() => {});
                             }

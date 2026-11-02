@@ -238,7 +238,10 @@ export default function OrderSuccessClient({
   const subtotalNum = parseFloat(order.subtotal) || 0;
   const shippingFeeNum = parseFloat(order.delivery?.price || order.delivery_price || 0);
   const discountNum = parseFloat(order.discount) || 0;
-  const totalNum = parseFloat(order.total) || (subtotalNum + shippingFeeNum - discountNum);
+  const parsedTotal = parseFloat(order.total ?? "");
+  const totalNum = Number.isFinite(parsedTotal)
+    ? parsedTotal
+    : Math.max(0, subtotalNum + shippingFeeNum - discountNum);
 
   const formatVND = (amount: number) => {
     return `${new Intl.NumberFormat("vi-VN").format(Math.max(0, amount))} đ`;
