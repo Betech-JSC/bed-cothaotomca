@@ -70,3 +70,5 @@ config.bat
 # Local IDE settings
 e2e/evidence/
 scratch/
+/.vscode
+.env
