@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Link } from "@/i18n/i18n-navigation";
 import { useCart } from "@/contexts/CartContext";
 import { StorefrontUser } from "@/contexts/AuthContext";
+import { getApiBaseUrl } from "@/services/apiService";
 import {
   changePasswordApi,
   getCustomerAddressesApi,
@@ -227,7 +228,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
       setLoadingOrders(true);
       try {
         const token = localStorage.getItem("auth_token");
-        const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+        const BASE_URL = getApiBaseUrl();
         const res = await fetch(`${BASE_URL}/user/orders`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -542,7 +543,7 @@ const ProfileDashboard = ({ user, onLogout, updateProfile, refreshUser }: Profil
     const data = new FormData();
     data.append("avatar", file);
 
-    const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+    const BASE_URL = getApiBaseUrl();
 
     try {
       const res = await fetch(`${BASE_URL}/auth/profile/avatar`, {

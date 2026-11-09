@@ -1,6 +1,6 @@
-const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
-).replace(/\/$/, "");
+import { getApiBaseUrl } from "./apiService";
+
+const API_BASE = getApiBaseUrl();
 
 export type DeliveryType = "delivery" | "pickup";
 
@@ -37,6 +37,9 @@ export interface CreateOrderPayload {
     district?: string;
     ward?: string;
     ward_id?: string;
+    address_mismatch_confirmed?: boolean;
+    suggested_ward?: string;
+    address_warning_message?: string;
   } | null;
   items: CreateOrderItem[];
   discount?: number;
@@ -522,6 +525,7 @@ export interface AdministrativeWard {
   district?: string;
   province?: string;
   old_ward?: string;
+  old_wards?: string;
 }
 
 export interface AdministrativeProvince {
@@ -620,12 +624,12 @@ export async function calculateShippingFee(params: {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("Failed to calculate shipping fee:", msg);
     return {
-      shipping_fee: 50000,
-      original_fee: 50000,
+      shipping_fee: 0,
+      original_fee: 0,
       shipping_discount: 0,
       auto_shipping_discount: 0,
       shipping_voucher_discount: 0,
-      fee_after_auto_discount: 50000,
+      fee_after_auto_discount: 0,
       shipping_discount_type: "free",
       shipping_discount_value: 0,
       is_freeship: false,

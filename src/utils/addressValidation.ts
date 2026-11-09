@@ -1,4 +1,5 @@
 import type { AdministrativeWard } from "@/services/orderService";
+import { getApiBaseUrl } from "@/services/apiService";
 import {
   cleanAdministrativeUnitName,
   formatWardLabel,
@@ -132,13 +133,13 @@ export const WARD_CANONICAL_DISTRICTS: Record<string, string[]> = {
   "Cô Giang": ["Quận 1"],
   "Nguyễn Cư Trinh": ["Quận 1"],
   "Nguyễn Thái Bình": ["Quận 1"],
-  "Xuân Hòa": ["Quận 1", "Quận 3"],
-  "Diên Hồng": ["Quận 1", "Quận 10"],
+  "Xuân Hòa": ["Quận 3", "Quận 1"],
+  "Diên Hồng": ["Quận 10", "Quận 1"],
 
   // Quận 3
   "Bàn Cờ": ["Quận 3"],
   "Nhiêu Lộc": ["Quận 3"],
-  "Hòa Hưng": ["Quận 3", "Quận 10"],
+  "Hòa Hưng": ["Quận 10", "Quận 3"],
 
   // Quận 4
   "Khánh Hội": ["Quận 4"],
@@ -155,7 +156,7 @@ export const WARD_CANONICAL_DISTRICTS: Record<string, string[]> = {
   "Bình Phú": ["Quận 6"],
   "Bình Tiên": ["Quận 6"],
   "Phú Lâm": ["Quận 6"],
-  "Phú Định": ["Quận 6", "Quận 8"],
+  "Phú Định": ["Quận 8", "Quận 6"],
 
   // Quận 7
   "Tân Hưng": ["Quận 7"],
@@ -170,7 +171,7 @@ export const WARD_CANONICAL_DISTRICTS: Record<string, string[]> = {
   "Bình Đông": ["Quận 8"],
 
   // Quận 10 / 11
-  "Vườn Lài": ["Tân Phú", "Quận 10"],
+  "Vườn Lài": ["Quận 10", "Tân Phú"],
   "Minh Phụng": ["Quận 11"],
   "Hòa Bình": ["Quận 11", "Tân Phú"],
   "Bình Thới": ["Quận 11"],
@@ -191,11 +192,11 @@ export const WARD_CANONICAL_DISTRICTS: Record<string, string[]> = {
   "Gò Vấp": ["Gò Vấp"],
   "Hạnh Thông": ["Gò Vấp"],
   "Thông Tây Hội": ["Gò Vấp"],
-  "Hiệp Bình": ["Gò Vấp", "TP. Thủ Đức"],
+  "Hiệp Bình": ["TP. Thủ Đức", "Gò Vấp"],
 
   // Bình Thạnh
   "Gia Định": ["Bình Thạnh"],
-  "Cầu Kiệu": ["Bình Thạnh", "Phú Nhuận"],
+  "Cầu Kiệu": ["Phú Nhuận", "Bình Thạnh"],
   "Bình Lợi Trung": ["Bình Thạnh"],
   "Bình Quới": ["Bình Thạnh"],
   "Thạnh Mỹ Tây": ["Bình Thạnh"],
@@ -331,10 +332,12 @@ const SPECIFIC_WARD_ALIASES: WardAliasEntry[] = [
   { keywords: ["da kao", "tan dinh"], requirePrefix: true, targetWard: "Tân Định", targetDistrict: "Quận 1", displayLabel: "Phường Tân Định" },
   { keywords: ["cau ong lanh", "co giang", "nguyen cu trinh"], requirePrefix: true, targetWard: "Cầu Ông Lãnh", targetDistrict: "Quận 1", displayLabel: "Phường Cầu Ông Lãnh" },
 
-  // Quận 3
+  // Quận 3 & Quận 10
   { keywords: ["ban co"], requirePrefix: true, targetWard: "Bàn Cờ", targetDistrict: "Quận 3", displayLabel: "Phường Bàn Cờ" },
   { keywords: ["nhieu loc"], requirePrefix: true, targetWard: "Nhiêu Lộc", targetDistrict: "Quận 3", displayLabel: "Phường Nhiêu Lộc" },
-  { keywords: ["hoa hung"], requirePrefix: true, targetWard: "Hòa Hưng", targetDistrict: "Quận 3", displayLabel: "Phường Hòa Hưng" },
+  { keywords: ["hoa hung"], requirePrefix: true, targetWard: "Hòa Hưng", targetDistrict: "Quận 10", displayLabel: "Phường Hòa Hưng" },
+  { keywords: ["dien hong"], requirePrefix: true, targetWard: "Diên Hồng", targetDistrict: "Quận 10", displayLabel: "Phường Diên Hồng" },
+  { keywords: ["vuon lai"], requirePrefix: true, targetWard: "Vườn Lài", targetDistrict: "Quận 10", displayLabel: "Phường Vườn Lài" },
   { keywords: ["xuan hoa", "vo thi sau"], requirePrefix: true, targetWard: "Xuân Hòa", targetDistrict: "Quận 3", displayLabel: "Phường Xuân Hòa" },
 
   // Gò Vấp
@@ -347,9 +350,10 @@ const SPECIFIC_WARD_ALIASES: WardAliasEntry[] = [
 
   // Bình Thạnh & Phú Nhuận
   { keywords: ["gia dinh"], requirePrefix: true, targetWard: "Gia Định", targetDistrict: "Bình Thạnh", displayLabel: "Phường Gia Định" },
-  { keywords: ["cau kieu"], targetWard: "Cầu Kiệu", targetDistrict: "Bình Thạnh", displayLabel: "Phường Cầu Kiệu" },
+  { keywords: ["cau kieu"], targetWard: "Cầu Kiệu", targetDistrict: "Phú Nhuận", displayLabel: "Phường Cầu Kiệu" },
   { keywords: ["binh loi trung"], targetWard: "Bình Lợi Trung", targetDistrict: "Bình Thạnh", displayLabel: "Phường Bình Lợi Trung" },
   { keywords: ["thanh my tay"], targetWard: "Thạnh Mỹ Tây", targetDistrict: "Bình Thạnh", displayLabel: "Phường Thạnh Mỹ Tây" },
+  { keywords: ["binh quoi"], requirePrefix: true, targetWard: "Bình Quới", targetDistrict: "Bình Thạnh", displayLabel: "Phường Bình Quới" },
   { keywords: ["binh thanh"], requirePrefix: true, targetWard: "Bình Thạnh", targetDistrict: "Bình Thạnh", displayLabel: "Phường Bình Thạnh" },
   { keywords: ["phu nhuan"], requirePrefix: true, targetWard: "Phú Nhuận", targetDistrict: "Phú Nhuận", displayLabel: "Phường Phú Nhuận" },
   { keywords: ["duc nhuan"], requirePrefix: true, targetWard: "Đức Nhuận", targetDistrict: "Phú Nhuận", displayLabel: "Phường Đức Nhuận" },
@@ -357,6 +361,8 @@ const SPECIFIC_WARD_ALIASES: WardAliasEntry[] = [
   // Tân Bình
   { keywords: ["tan son nhat"], requirePrefix: true, targetWard: "Tân Sơn Nhất", targetDistrict: "Tân Bình", displayLabel: "Phường Tân Sơn Nhất" },
   { keywords: ["tan son hoa"], targetWard: "Tân Sơn Hòa", targetDistrict: "Tân Bình", displayLabel: "Phường Tân Sơn Hòa" },
+  { keywords: ["tan hoa"], requirePrefix: true, targetWard: "Tân Hòa", targetDistrict: "Tân Bình", displayLabel: "Phường Tân Hòa" },
+  { keywords: ["tan son"], requirePrefix: true, targetWard: "Tân Sơn", targetDistrict: "Tân Bình", displayLabel: "Phường Tân Sơn" },
   { keywords: ["bay hien"], targetWard: "Bảy Hiền", targetDistrict: "Tân Bình", displayLabel: "Phường Bảy Hiền" },
   { keywords: ["tan binh"], requirePrefix: true, targetWard: "Tân Bình", targetDistrict: "Tân Bình", displayLabel: "Phường Tân Bình" },
 
@@ -514,13 +520,13 @@ export const HCMC_STREET_DIRECTORY: StreetDirectoryEntry[] = [
     displayName: "Quang Trung",
     keywords: ["quang trung"],
     districts: ["Gò Vấp", "Quận 12", "Huyện Hóc Môn", "TP. Thủ Đức"],
-    preferredWards: ["Gò Vấp", "An Hội Tây", "Hạnh Thông", "Thông Tây Hội", "An Hội Đông"],
+    preferredWards: ["Hạnh Thông", "Gò Vấp", "Thông Tây Hội", "An Hội Tây", "An Hội Đông", "An Nhơn", "Đông Hưng Thuận", "Trung Mỹ Tây", "Hóc Môn", "Tăng Nhơn Phú"],
   },
   {
     displayName: "Phan Văn Trị",
     keywords: ["phan van tri"],
     districts: ["Gò Vấp", "Bình Thạnh", "Quận 5"],
-    preferredWards: ["Gò Vấp", "Hạnh Thông", "An Hội Tây", "Bình Lợi Trung", "Gia Định"],
+    preferredWards: ["Hạnh Thông", "Gò Vấp", "An Nhơn", "Thông Tây Hội", "An Hội Tây", "Bình Lợi Trung", "Bình Thạnh", "Gia Định", "Chợ Quán", "An Đông"],
   },
   {
     displayName: "Nguyễn Oanh",
@@ -690,7 +696,7 @@ export const HCMC_STREET_DIRECTORY: StreetDirectoryEntry[] = [
     displayName: "Út Tịch",
     keywords: ["ut tich"],
     districts: ["Tân Bình"],
-    preferredWards: ["Tân Sơn Nhất", "Tân Sơn Hòa", "Tân Bình"],
+    preferredWards: ["Tân Sơn Nhất", "Tân Sơn Hòa", "Bảy Hiền", "Tân Bình"],
   },
   {
     displayName: "Thân Nhân Trung",
@@ -792,7 +798,7 @@ export const HCMC_STREET_DIRECTORY: StreetDirectoryEntry[] = [
     displayName: "Cách Mạng Tháng 8",
     keywords: ["cach mang thang 8", "cach mang thang tam", "cmt8"],
     districts: ["Quận 1", "Quận 3", "Quận 10", "Tân Bình", "Tân Phú"],
-    preferredWards: ["Xuân Hòa", "Bàn Cờ", "Nhiêu Lộc", "Hòa Hưng", "Diên Hồng", "Tân Hòa", "Bảy Hiền", "Tân Sơn Nhất", "Bến Thành"],
+    preferredWards: ["Hòa Hưng", "Xuân Hòa", "Bàn Cờ", "Nhiêu Lộc", "Diên Hồng", "Vườn Lài", "Tân Hòa", "Bảy Hiền", "Tân Sơn Nhất", "Tân Sơn Hòa", "Bến Thành"],
   },
 
   // Quận 8
@@ -878,7 +884,7 @@ export const HCMC_STREET_DIRECTORY: StreetDirectoryEntry[] = [
     displayName: "Điện Biên Phủ",
     keywords: ["dien bien phu"],
     districts: ["Quận 1", "Quận 3", "Bình Thạnh", "Quận 10"],
-    preferredWards: ["Tân Định", "Sài Gòn", "Xuân Hòa", "Bàn Cờ", "Vườn Lài", "Gia Định", "Thạnh Mỹ Tây"],
+    preferredWards: ["Tân Định", "Sài Gòn", "Xuân Hòa", "Bàn Cờ", "Vườn Lài", "Diên Hồng", "Gia Định", "Thạnh Mỹ Tây", "Bình Thạnh"],
   },
   {
     displayName: "Võ Thị Sáu",
@@ -914,7 +920,7 @@ export const HCMC_STREET_DIRECTORY: StreetDirectoryEntry[] = [
     displayName: "Lê Văn Sỹ",
     keywords: ["le van sy", "le van si"],
     districts: ["Quận 3", "Phú Nhuận", "Tân Bình"],
-    preferredWards: ["Xuân Hòa", "Nhiêu Lộc", "Phú Nhuận", "Tân Sơn Hòa"],
+    preferredWards: ["Nhiêu Lộc", "Xuân Hòa", "Phú Nhuận", "Đức Nhuận", "Tân Sơn Hòa", "Tân Sơn Nhất"],
   },
   {
     displayName: "Trần Quang Diệu",
@@ -944,7 +950,7 @@ export const HCMC_STREET_DIRECTORY: StreetDirectoryEntry[] = [
     displayName: "Võ Văn Kiệt",
     keywords: ["vo van kiet"],
     districts: ["Quận 1", "Quận 5", "Quận 6", "Quận 8", "Bình Tân"],
-    preferredWards: ["Sài Gòn", "Cầu Ông Lãnh", "Chợ Quán", "An Đông", "Chợ Lớn", "Bình Tiên", "Bình Tây", "Bình Phú", "Phú Định", "An Lạc"],
+    preferredWards: ["Sài Gòn", "Cầu Ông Lãnh", "Bến Thành", "Chợ Quán", "An Đông", "Chợ Lớn", "Bình Tiên", "Bình Tây", "Bình Phú", "Phú Lâm", "Phú Định", "Chánh Hưng", "Bình Đông", "An Lạc"],
   },
 ];
 
@@ -987,7 +993,12 @@ export function findMatchingWardsFromCatalog(
     if (!normCand) continue;
     for (const w of availableWards) {
       const cleanW = cleanAdministrativeUnitName(w.name);
-      const oldWardStr = w.old_ward || HCMC_WARD_OLD_NAME_MAP[w.name] || HCMC_WARD_OLD_NAME_MAP[cleanW] || "";
+      const oldWardStr =
+        w.old_ward ||
+        w.old_wards ||
+        HCMC_WARD_OLD_NAME_MAP[w.name] ||
+        HCMC_WARD_OLD_NAME_MAP[cleanW] ||
+        "";
       if (oldWardStr && normalizeText(oldWardStr).includes(normCand)) {
         addWard(w);
       }
@@ -1195,15 +1206,20 @@ function detectExplicitWardInText(
     const wardToken = `P.${wardNum}`;
     const normDistrictCanon = normalizeDistrictName(explicitDistrictCanon);
 
-    // 3a. Match strictly within HCMC_WARD_OLD_NAME_MAP entries belonging to explicitDistrictCanon first
-    if (normDistrictCanon === "Quận 3" && (norm.includes("rach bung binh") || wardNum >= 9 && wardNum <= 11)) {
-      return {
-        targetWard: "Nhiêu Lộc",
-        targetDistrict: normDistrictCanon,
-        displayLabel: "Phường Nhiêu Lộc",
-      };
+    // 3a. Resolve via NQ 1685 rules in resolveNewWardName first
+    const resolved = resolveNewWardName(wardToken, normDistrictCanon, text);
+    if (resolved) {
+      const resolvedDists = (WARD_CANONICAL_DISTRICTS[resolved] || []).map(normalizeDistrictName);
+      if (resolvedDists.length === 0 || resolvedDists.includes(normDistrictCanon)) {
+        return {
+          targetWard: resolved,
+          targetDistrict: normDistrictCanon,
+          displayLabel: formatWardLabel(resolved),
+        };
+      }
     }
 
+    // 3b. Fallback scan within HCMC_WARD_OLD_NAME_MAP entries belonging to explicitDistrictCanon
     for (const [newWard, oldWards] of Object.entries(HCMC_WARD_OLD_NAME_MAP)) {
       const validDists = (WARD_CANONICAL_DISTRICTS[newWard] || []).map(normalizeDistrictName);
       if (!validDists.includes(normDistrictCanon)) continue;
@@ -1213,19 +1229,6 @@ function detectExplicitWardInText(
           targetWard: newWard,
           targetDistrict: normDistrictCanon,
           displayLabel: formatWardLabel(newWard),
-        };
-      }
-    }
-
-    // 3b. Fallback to resolveNewWardName only if resolved ward belongs to explicitDistrictCanon
-    const resolved = resolveNewWardName(wardToken, explicitDistrictCanon, text);
-    if (resolved) {
-      const resolvedDists = (WARD_CANONICAL_DISTRICTS[resolved] || []).map(normalizeDistrictName);
-      if (resolvedDists.length === 0 || resolvedDists.includes(normDistrictCanon)) {
-        return {
-          targetWard: resolved,
-          targetDistrict: normDistrictCanon,
-          displayLabel: formatWardLabel(resolved),
         };
       }
     }
@@ -1531,6 +1534,15 @@ export function extractLeadingHouseNumber(rawStreet: string): string | null {
   return match ? match[1] : null;
 }
 
+export function hasHouseNumberInAddress(streetAddress: string): boolean {
+  const raw = (streetAddress || "").trim();
+  if (!raw) return false;
+  if (extractLeadingHouseNumber(raw) === null) return false;
+  return /^(?:(?:số\s+nhà|so\s+nha|số|so|sn\.?|hẻm|hem|ngõ|ngo|ngách|ngach|kiệt|kiet|h\.)\s+)*\d+[a-zA-Z]?(?:[\/\-]\d+[a-zA-Z]?)*\s+\S+/iu.test(
+    raw
+  );
+}
+
 function calculateHaversineMeters(
   lat1: number,
   lng1: number,
@@ -1746,12 +1758,53 @@ function parseGeocodeCandidateAdmin(
     explicitDistrict = distOrProv.canonicalName;
   }
 
-  const detectedWard = !otherProvince
-    ? detectExplicitWardInText(adminText, explicitDistrict || undefined, availableWards)
-    : null;
+  // Priority 1: Direct post-merger 94 ward in candidate.ward from TrackAsia / Backend
+  let canonicalWard: string | null = null;
+  let wardDisplayLabel: string | null = null;
+  let hasDirectPostMergerWard = false;
 
-  const canonicalWard = detectedWard ? detectedWard.targetWard : null;
-  const wardDisplayLabel = detectedWard ? detectedWard.displayLabel : null;
+  if (
+    !otherProvince &&
+    candidate.ward &&
+    !/^(quận|q\.|huyện|thành\s*phố|tp\.|tỉnh)\b/i.test(candidate.ward.trim()) &&
+    isKnownPostMerger94Ward(candidate.ward, availableWards)
+  ) {
+    const directClean = cleanAdministrativeUnitName(candidate.ward);
+    const normDirect = normalizeText(directClean);
+    // Avoid confusing old "Phường Tân Phú" (Quận 9 / TP. Thủ Đức -> Tăng Nhơn Phú) with post-merger "Phường Tân Phú" (Quận Tân Phú)
+    const isOldTanPhuInThuDuc =
+      explicitDistrict === "TP. Thủ Đức" && normDirect === "tan phu";
+    if (!isOldTanPhuInThuDuc) {
+      const matchedKey =
+        Object.keys(HCMC_WARD_OLD_NAME_MAP).find((k) => normalizeText(k) === normDirect) ||
+        directClean;
+      const mappedDists = (WARD_CANONICAL_DISTRICTS[matchedKey] || []).map(
+        normalizeDistrictName
+      );
+      const isDistCompatible =
+        !explicitDistrict ||
+        mappedDists.length === 0 ||
+        mappedDists.includes(explicitDistrict);
+      if (isDistCompatible) {
+        canonicalWard = matchedKey;
+        wardDisplayLabel = formatWardLabel(matchedKey);
+        hasDirectPostMergerWard = true;
+      }
+    }
+  }
+
+  // Priority 2: Fallback to analyzing old_ward + district + formatted_address
+  if (!canonicalWard && !otherProvince) {
+    const detectedWard = detectExplicitWardInText(
+      adminText,
+      explicitDistrict || undefined,
+      availableWards
+    );
+    if (detectedWard) {
+      canonicalWard = detectedWard.targetWard;
+      wardDisplayLabel = detectedWard.displayLabel;
+    }
+  }
 
   if (!explicitDistrict && canonicalWard) {
     const mapped = WARD_CANONICAL_DISTRICTS[canonicalWard];
@@ -1760,15 +1813,7 @@ function parseGeocodeCandidateAdmin(
     }
   }
 
-  // Determine whether candidate explicitly named a 94 post-merger ward vs only an old pre-merger ward
-  let hasDirectPostMergerWard = false;
-  if (
-    candidate.ward &&
-    !/^(quận|q\.|huyện|thành\s*phố|tp\.|tỉnh)\b/i.test(candidate.ward.trim()) &&
-    isKnownPostMerger94Ward(candidate.ward, availableWards)
-  ) {
-    hasDirectPostMergerWard = true;
-  } else if (adminFromFormatted) {
+  if (!hasDirectPostMergerWard && adminFromFormatted) {
     const wardSegs = adminFromFormatted
       .split(",")
       .map((s) => s.trim())
@@ -1817,7 +1862,7 @@ function buildSuggestionsForCandidateList(
   );
 
   const districtsForLookup =
-    preferExactWardOnly && candWards.length > 0 && !hasExactInCatalog
+    preferExactWardOnly && candWards.length > 0
       ? []
       : candDistricts;
 
@@ -2013,19 +2058,46 @@ export function evaluateGeocodePayload(
       : p.candidate.distance_meters <= 250
   );
 
+  const inputHouseNumber = extractLeadingHouseNumber(params.streetAddress);
+  const normInputHouse = inputHouseNumber ? normalizeText(inputHouseNumber) : "";
+
+  const candidatesForMatch = parsedCandidates.filter((p, index) => {
+    const isNearby =
+      p.candidate.distance_meters == null
+        ? index === 0
+        : p.candidate.distance_meters <= 250;
+    if (isNearby) return true;
+    if (normInputHouse && p.candidate.house_number) {
+      const candHouse = normalizeText(String(p.candidate.house_number));
+      const extractedCandHouse = extractLeadingHouseNumber(
+        String(p.candidate.house_number)
+      );
+      if (
+        candHouse === normInputHouse ||
+        (extractedCandHouse && normalizeText(extractedCandHouse) === normInputHouse)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  });
+
   if (!hasWardSelected) {
-    const primaryHcmc =
-      nearbyCandidates.find((p) => p.hasResolvedHcmcArea) ||
-      parsedCandidates.find((p) => p.hasResolvedHcmcArea);
-    if (!primaryHcmc) {
+    const matchedHcmc = candidatesForMatch.filter((p) => p.hasResolvedHcmcArea);
+    const hcmcCandidates =
+      matchedHcmc.length > 0
+        ? matchedHcmc
+        : parsedCandidates.filter((p) => p.hasResolvedHcmcArea);
+    if (hcmcCandidates.length === 0) {
       return { isValid: true };
     }
     const suggestions = buildSuggestionsForCandidateList(
-      [primaryHcmc],
+      hcmcCandidates,
       availableWards,
       "",
       true
     );
+    const primaryHcmc = hcmcCandidates[0];
     return {
       isValid: true,
       detectedArea: suggestions[0]
@@ -2036,8 +2108,8 @@ export function evaluateGeocodePayload(
     };
   }
 
-  // Check if ANY candidate within <= 250m border tolerance matches selected ward
-  const hasBorderMatch = nearbyCandidates.some((p) => {
+  // Check if ANY candidate within 250m OR with matching house number across districts matches selected ward
+  const hasBorderMatch = candidatesForMatch.some((p) => {
     if (p.otherProvince) return false;
     if (p.canonicalWard && normalizeText(p.canonicalWard) === normSelectedWard) {
       return true;
@@ -2060,7 +2132,7 @@ export function evaluateGeocodePayload(
   }
 
   const primary = parsedCandidates[0];
-  if (primary?.otherProvince && !nearbyCandidates.some((p) => p.hasResolvedHcmcArea)) {
+  if (primary?.otherProvince && ! nearbyCandidates.some((p) => p.hasResolvedHcmcArea)) {
     return {
       isValid: false,
       conflictType: "province_conflict",
@@ -2071,13 +2143,19 @@ export function evaluateGeocodePayload(
     };
   }
 
+  const matchedHcmc = candidatesForMatch.filter((p) => p.hasResolvedHcmcArea);
+  const hcmcCandidates =
+    matchedHcmc.length > 0
+      ? matchedHcmc
+      : parsedCandidates.filter((p) => p.hasResolvedHcmcArea);
   const primaryHcmc =
     (primary?.hasResolvedHcmcArea ? primary : null) ||
-    nearbyCandidates.find((p) => p.hasResolvedHcmcArea);
+    nearbyCandidates.find((p) => p.hasResolvedHcmcArea) ||
+    hcmcCandidates[0];
 
   if (primaryHcmc) {
     const suggestions = buildSuggestionsForCandidateList(
-      [primaryHcmc],
+      hcmcCandidates.length > 0 ? hcmcCandidates : [primaryHcmc],
       availableWards,
       normSelectedWard,
       true
@@ -2105,22 +2183,28 @@ export function evaluateGeocodePayload(
 /**
  * Asynchronous TrackAsia + Internal Fallback Address Verification:
  * 1. Runs synchronous internal dictionary & explicit-keyword validation first (`validateAddressWardMatch`).
- * 2. Caches structured TrackAsia GeocodeVerificationPayload by normalized "rawStreet|province" so switching Wards re-evaluates in 0ms.
- * 3. Calls Backend Proxy POST ${API_BASE}/shipping/verify-address (TrackAsia + 90-day DB/Cache).
- * 4. If TrackAsia reaches limit (`provider === "internal"`) or network error occurs, falls back 100% to internal validation (`syncResult`).
+ * 2. When the address includes a house number (`hasHouseNumberInAddress`), ALWAYS calls Backend Proxy
+ *    POST ${API_BASE}/shipping/verify-address even when `!selectedWard` so suggestions come from exact house coordinates.
+ * 3. Caches structured GeocodeVerificationPayload by normalized "rawStreet|province|selectedWard".
+ * 4. If TrackAsia reaches limit (`provider === "internal"`) or network error occurs, falls back to internal validation (`syncResult`).
  */
 export async function verifyAddressViaMapApi(
   params: ValidateAddressWardParams & { timeoutMs?: number }
 ): Promise<AddressWardValidationResult> {
-  // 1. Run synchronous internal validation first (0ms, saves TrackAsia quota on obvious conflicts)
   const syncResult = validateAddressWardMatch(params);
   const rawStreet = (params.streetAddress || "").trim();
-  const hasLeadingHouseNumber = extractLeadingHouseNumber(rawStreet) !== null;
+  const hasLeadingHouseNumber = hasHouseNumberInAddress(rawStreet);
 
-  if (!syncResult.isValid || syncResult.suggestedWard) {
-    if (syncResult.conflictType !== "street_conflict" || !hasLeadingHouseNumber) {
+  if (!hasLeadingHouseNumber) {
+    if (!syncResult.isValid || syncResult.suggestedWard) {
       return syncResult;
     }
+  } else if (
+    !syncResult.isValid &&
+    syncResult.conflictType &&
+    syncResult.conflictType !== "street_conflict"
+  ) {
+    return syncResult;
   }
 
   if (rawStreet.length < 5) {
@@ -2138,15 +2222,26 @@ export async function verifyAddressViaMapApi(
     return syncResult;
   }
 
-  const cacheKey = normalizeText(`${rawStreet}|${provinceName}`);
+  const hasWardSelected = Boolean((params.selectedWard || "").trim() || params.selectedWardId);
+  const cacheKey = normalizeText(`${rawStreet}|${provinceName}|${params.selectedWard || ""}`);
+  const streetOnlyCacheKey = normalizeText(`${rawStreet}|${provinceName}`);
   let payload = mapLookupCache.get(cacheKey);
+  if (payload === undefined) {
+    const streetCached = mapLookupCache.get(streetOnlyCacheKey);
+    if (
+      streetCached &&
+      (!hasWardSelected ||
+        streetCached.precision === "street_only" ||
+        !syncResult.isValid ||
+        evaluateGeocodePayload(streetCached, params).isValid)
+    ) {
+      payload = streetCached;
+    }
+  }
 
   if (payload === undefined) {
     const timeoutMs = params.timeoutMs ?? 3000;
-    const apiBase = (
-      (typeof process !== "undefined" ? process.env.NEXT_PUBLIC_API_URL : undefined) ||
-      "http://localhost:8000/api/v1"
-    ).replace(/\/$/, "");
+    const apiBase = getApiBaseUrl();
 
     const controller =
       typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -2183,19 +2278,35 @@ export async function verifyAddressViaMapApi(
               candidates,
             };
             mapLookupCache.set(cacheKey, payload);
+            mapLookupCache.set(streetOnlyCacheKey, payload);
           }
         }
+      } else {
+        console.warn(`[verifyAddressViaMapApi] HTTP ${res.status} when verifying "${rawStreet}"`);
       }
-    } catch {
-      // Backend offline or TrackAsia limit reached -> fall back 100% to internal syncResult
+    } catch (err: unknown) {
+      if (!(err instanceof Error && err.name === "AbortError")) {
+        console.warn("[verifyAddressViaMapApi] Request failed, falling back to internal validation:", err);
+      }
     } finally {
       if (timer) clearTimeout(timer);
+    }
+
+    if (payload === undefined) {
+      payload = mapLookupCache.get(streetOnlyCacheKey);
     }
   }
 
   if (payload && payload.candidates.length > 0) {
     const geoResult = evaluateGeocodePayload(payload, params);
-    if (!syncResult.isValid && geoResult.isValid) {
+    if (!hasWardSelected && !geoResult.suggestedWard && syncResult.suggestedWard) {
+      return syncResult;
+    }
+    if (
+      !syncResult.isValid &&
+      syncResult.conflictType !== "street_conflict" &&
+      geoResult.isValid
+    ) {
       return syncResult;
     }
     return geoResult;

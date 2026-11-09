@@ -1,3 +1,20 @@
+export function getApiBaseUrl(): string {
+  const envUrl = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_API_URL : undefined;
+  if (envUrl && envUrl.trim()) {
+    return envUrl.trim().replace(/\/$/, "");
+  }
+  if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
+    if (
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ) {
+      return "http://localhost:8000/api/v1";
+    }
+    return "https://cms.cothaotomca.vn/api/v1";
+  }
+  return "http://localhost:8000/api/v1";
+}
+
 function getBaseUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL || "https://cms.cothaotomca.vn/api/v1";
   return envUrl.replace("localhost", "127.0.0.1").replace(/\/$/, "");
@@ -31,6 +48,9 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
+
+
+
   }
 
   const effectiveRetries = retries;
@@ -60,30 +80,30 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 1, ba
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      if (response.status === 429) {
+      if (response.status === 429 && effectiveRetries > 0) {
         const delay = (backoff * 2) + Math.random() * 1000;
         console.warn(`Rate limit hit (429) for ${url}. Retrying after ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        return fetchWithRetry(url, options, effectiveRetries, backoff * 2);
+        return fetchWithRetry(url, options, effectiveRetries - 1, backoff * 2);
       }
 
       if (response.status >= 500) {
-        const errorText = await response.text().catch(() => 'No error body');
+        const errorText = await response.clone().text().catch(() => 'No error body');
         console.error(`Server Error (500+) for ${url}:`, errorText);
-        return new Response(JSON.stringify({ data: [], message: 'Server error bypassed' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        });
+        return response;
+
+
+
 
       }
     }
     return response;
   } catch (error: any) {
-    console.warn(`Fetch failed for ${url}: ${error.message}. Returning empty data.`);
-    return new Response(JSON.stringify({ data: [], message: 'Fetch error bypassed' }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.warn(`Fetch failed for ${url}: ${error.message}.`);
+    throw error;
+
+
+
 
   }
 }
@@ -106,6 +126,7 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
     Object.entries(params).forEach(([k, v]) => {
       searchParams.append(k, v.toString());
     });
+
     url += `?${searchParams.toString()}`;
   }
 
@@ -113,6 +134,7 @@ export async function getApi<T>(key: ApiKey, options: { params?: Record<string, 
     const response = await fetchWithRetry(url, {
       next: { revalidate },
     });
+
 
     if (!response.ok) {
       throw new Error(`Failed to fetch API: ${key} - Status: ${response.status}`);
@@ -147,6 +169,7 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
     Object.entries(params).forEach(([k, v]) => {
       searchParams.append(k, v.toString());
     });
+
     url += `?${searchParams.toString()}`;
   }
 
@@ -154,6 +177,7 @@ export async function getSingleApi<T>(key: ApiKey, options: { params?: Record<st
     const response = await fetchWithRetry(url, {
       next: { revalidate },
     });
+
 
     if (!response.ok) {
       throw new Error(`Failed to fetch API: ${key} - Status: ${response.status}`);

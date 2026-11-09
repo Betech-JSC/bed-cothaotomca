@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
-import { postApi } from "@/services/apiService";
+import { postApi, getApiBaseUrl } from "@/services/apiService";
 import { clearAllPromotionStorage } from "@/utils/promotionStorage";
 
 export interface CustomerTierStatus {
@@ -174,7 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setToken(storedToken);
           try {
             // Validate token and fetch user details from /api/auth/me
-            const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+            const BASE_URL = getApiBaseUrl();
             const res = await fetch(`${BASE_URL}/auth/me`, {
               headers: {
                 Authorization: `Bearer ${storedToken}`,
@@ -212,7 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (phone: string, password: string) => {
     try {
-      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+      const BASE_URL = getApiBaseUrl();
       const cleanPhone = phone.trim();
       const res = await fetch(`${BASE_URL}/auth/login`, {
         method: "POST",
@@ -280,7 +280,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: any) => {
     try {
-      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+      const BASE_URL = getApiBaseUrl();
       const res = await fetch(`${BASE_URL}/auth/register`, {
         method: "POST",
         headers: {
@@ -327,6 +327,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    const currentToken = token || localStorage.getItem("auth_token");
+    if (currentToken) {
+      fetch(`${getApiBaseUrl()}/auth/logout`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${currentToken}`,
+        },
+      }).catch(() => {});
+    }
     clearAllPromotionStorage();
     localStorage.removeItem("auth_token");
     localStorage.removeItem("cothaotomca_cached_customer_addresses");
@@ -338,7 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token) return { success: false, message: "Bạn chưa đăng nhập." };
     
     try {
-      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+      const BASE_URL = getApiBaseUrl();
       const res = await fetch(`${BASE_URL}/auth/profile`, {
         method: "PUT",
         headers: {
@@ -375,7 +385,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token) return { success: false, message: "Bạn chưa đăng nhập." };
 
     try {
-      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+      const BASE_URL = getApiBaseUrl();
       const payload = {
         phone: data.phone.trim(),
         password: data.password,
@@ -432,7 +442,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token || isRefreshingUserRef.current) return;
     isRefreshingUserRef.current = true;
     try {
-      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+      const BASE_URL = getApiBaseUrl();
       const res = await fetch(`${BASE_URL}/auth/me`, {
         headers: {
           Authorization: `Bearer ${token}`,

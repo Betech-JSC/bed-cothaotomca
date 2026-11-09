@@ -4,9 +4,9 @@
  * password change, and customer address book CRUD.
  */
 
-const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
-).replace(/\/$/, "");
+import { getApiBaseUrl } from "./apiService";
+
+const API_BASE = getApiBaseUrl();
 
 function getAuthToken(): string | null {
   if (typeof window !== "undefined") {

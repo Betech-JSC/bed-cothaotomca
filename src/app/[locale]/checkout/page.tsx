@@ -39,7 +39,7 @@ const defaultConfig = {
     { value: "delivery" as const, label: "Giao hàng" },
     { value: "pickup" as const, label: "Tự đến lấy" },
   ],
-  default_shipping_fee: "30000",
+  default_shipping_fee: "0",
   branches: [
     {
       id: 1333367,

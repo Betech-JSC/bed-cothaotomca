@@ -88,3 +88,8 @@ CLAUDE.md
 GEMINI.md
 e2e/evidence/
 scratch/
+
+# QA & local audit artifacts
+e2e/screenshots/
+Findings_Betech_Response.*
+

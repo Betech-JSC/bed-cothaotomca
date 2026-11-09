@@ -422,5 +422,64 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       expect(orderPayload.delivery.ward_id).toBe("PL");
       expect(orderPayload.delivery.address).toContain("150 Đỗ Xuân Hợp");
     });
+
+    it("Vấn đề #3 & #4: khi đang cảnh báo sai phường, nút Đặt hàng bị disabled (màu xám) và ẩn phí ship/chi nhánh; khi bấm 'Địa chỉ của tôi đúng, giữ Phường Sài Gòn' thì mở khóa Đặt hàng và gửi cờ address_mismatch_confirmed=true", async () => {
+      render(
+        <CheckoutForm
+          order={null}
+          config={{
+            delivery_types: [{ value: "delivery", label: "Giao tận nơi" }],
+            default_shipping_fee: "30000",
+            branches: [{ id: 1, branchName: "Chi nhánh Trần Đình Xu", address: "42/2 Trần Đình Xu", contactNumber: "0123", isActive: true }],
+          }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(orderService.getAdministrativeUnits).toHaveBeenCalled();
+        expect(screen.getByTestId("desktop-street-address-input")).toBeInTheDocument();
+      });
+
+      const wardInputs = screen.getAllByPlaceholderText("Chọn hoặc gõ tìm Phường / Xã...");
+      const wardInput = wardInputs[wardInputs.length - 1];
+      fireEvent.focus(wardInput);
+      const saiGonOptions = await screen.findAllByText("Phường Sài Gòn");
+      fireEvent.click(saiGonOptions[saiGonOptions.length - 1]);
+
+      const streetInput = screen.getByTestId("desktop-street-address-input");
+      fireEvent.change(streetInput, { target: { value: "150 Đỗ Xuân Hợp" } });
+
+      const warningBox = await screen.findByTestId("address-ward-mismatch-warning");
+      expect(warningBox).toBeInTheDocument();
+
+      const confirmCheckbox = screen.getByTestId("desktop-confirm-checkbox");
+      fireEvent.click(confirmCheckbox);
+
+      const submitBtn = screen.getByTestId("checkout-submit-btn") as HTMLButtonElement;
+      // Nút Đặt hàng bị disabled khi chưa xử lý cảnh báo
+      expect(submitBtn.disabled).toBe(true);
+      expect(screen.getAllByText(/Vui lòng xác nhận Phường\/Xã giao hàng ở trên/i).length).toBeGreaterThan(0);
+
+      // Khách bấm nút "Địa chỉ của tôi đúng, giữ Phường Sài Gòn"
+      const keepBtn = screen.getByTestId("keep-selected-ward-btn");
+      expect(keepBtn.textContent).toContain("Địa chỉ của tôi đúng, giữ Phường Sài Gòn");
+      fireEvent.click(keepBtn);
+
+      await waitFor(() => {
+        expect(submitBtn.disabled).toBe(false);
+      });
+
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(orderService.createOrder).toHaveBeenCalledTimes(1);
+      });
+
+      const orderPayload = (orderService.createOrder as any).mock.calls[0][0];
+      expect(orderPayload.delivery.ward).toBe("Sài Gòn");
+      expect(orderPayload.delivery.address_mismatch_confirmed).toBe(true);
+      expect(orderPayload.delivery.suggested_ward).toBe("Phước Long");
+      expect(orderPayload.delivery.address_warning_message).toContain("Phường Phước Long");
+    });
   });
 });

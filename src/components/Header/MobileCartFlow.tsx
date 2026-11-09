@@ -52,6 +52,7 @@ import {
   buildDeliveryAddress,
   cleanDuplicateAddressParts,
   formatWardLabel,
+  hasHouseNumberInAddress,
   resolveNewWardName,
   validateAddressWardMatch,
   verifyAddressViaMapApi,
@@ -440,8 +441,14 @@ export default function MobileCartFlow({
   const [confirmInfo, setConfirmInfo] = useState(true);
 
   const [mapAddressValidation, setMapAddressValidation] = useState<AddressWardValidationResult | null>(null);
+  const [isAddressWarningConfirmed, setIsAddressWarningConfirmed] = useState(false);
   const latestAddressVerifyKeyRef = useRef("");
   latestAddressVerifyKeyRef.current = `${deliveryType}|${isSavedAddressSelected}|${streetAddress.trim()}|${selectedWard}|${selectedWardId}|${selectedDistrict}|${selectedProvince}`;
+
+  const hasAddressHouseNumber = useMemo(
+    () => hasHouseNumberInAddress(streetAddress),
+    [streetAddress]
+  );
 
   const syncAddressValidation = useMemo(() => {
     return validateAddressWardMatch({
@@ -457,18 +464,26 @@ export default function MobileCartFlow({
 
   useEffect(() => {
     setMapAddressValidation(null);
+    setIsAddressWarningConfirmed(false);
   }, [streetAddress, selectedWard, selectedWardId, selectedDistrict, selectedProvince]);
 
   useEffect(() => {
+    const hasWardSelected = Boolean(selectedWard || selectedWardId);
+    const canVerifySyncState =
+      syncAddressValidation.isValid ||
+      (syncAddressValidation.conflictType === "street_conflict" && hasAddressHouseNumber);
+    const shouldSkipBecauseSyncSuggested =
+      Boolean(syncAddressValidation.suggestedWard) && !hasAddressHouseNumber;
+
     if (
       process.env.NODE_ENV === "test" ||
       (!inline && !isCartOpen) ||
       deliveryType !== "delivery" ||
       isSavedAddressSelected ||
-      (!selectedWard && !selectedWardId) ||
+      (!hasWardSelected && !hasAddressHouseNumber) ||
       streetAddress.trim().length < 5 ||
-      !syncAddressValidation.isValid ||
-      Boolean(syncAddressValidation.suggestedWard)
+      !canVerifySyncState ||
+      shouldSkipBecauseSyncSuggested
     ) {
       return;
     }
@@ -509,28 +524,72 @@ export default function MobileCartFlow({
     selectedDistrict,
     selectedProvince,
     availableWards,
+    hasAddressHouseNumber,
     syncAddressValidation.isValid,
+    syncAddressValidation.conflictType,
     syncAddressValidation.suggestedWard,
   ]);
 
-  const addressWardValidation = useMemo(() => {
+  const addressWardValidation = useMemo<AddressWardValidationResult>(() => {
+    if (mapAddressValidation) {
+      if (!mapAddressValidation.isValid || mapAddressValidation.suggestedWard) {
+        return mapAddressValidation;
+      }
+      if (
+        mapAddressValidation.isValid &&
+        !syncAddressValidation.isValid &&
+        syncAddressValidation.conflictType === "street_conflict" &&
+        hasAddressHouseNumber
+      ) {
+        return mapAddressValidation;
+      }
+    }
+    const hasWardSelected = Boolean(selectedWard || selectedWardId);
+    if (
+      !hasWardSelected &&
+      hasAddressHouseNumber &&
+      !mapAddressValidation &&
+      process.env.NODE_ENV !== "test"
+    ) {
+      return { isValid: true };
+    }
     if (!syncAddressValidation.isValid || syncAddressValidation.suggestedWard) {
       return syncAddressValidation;
     }
-    if (mapAddressValidation && (!mapAddressValidation.isValid || mapAddressValidation.suggestedWard)) {
-      return mapAddressValidation;
-    }
     return syncAddressValidation;
-  }, [syncAddressValidation, mapAddressValidation]);
+  }, [
+    syncAddressValidation,
+    mapAddressValidation,
+    selectedWard,
+    selectedWardId,
+    hasAddressHouseNumber,
+  ]);
+
+  const hasUnconfirmedAddressWarning =
+    deliveryType === "delivery" &&
+    !isSavedAddressSelected &&
+    !addressWardValidation.isValid &&
+    Boolean(addressWardValidation.message) &&
+    !isAddressWarningConfirmed;
 
   const handleApplySuggestedWard = useCallback((suggested: WardCatalogEntry) => {
     setSelectedWardId(suggested.id);
     setSelectedWard(suggested.name);
     setSelectedDistrict(suggested.district || "");
     setMapAddressValidation(null);
+    setIsAddressWarningConfirmed(false);
     setFieldErrors((prev) => {
       const next = { ...prev };
       delete next.ward;
+      delete next.address;
+      return next;
+    });
+  }, []);
+
+  const handleKeepSelectedWard = useCallback(() => {
+    setIsAddressWarningConfirmed(true);
+    setFieldErrors((prev) => {
+      const next = { ...prev };
       delete next.address;
       return next;
     });
@@ -854,7 +913,7 @@ export default function MobileCartFlow({
             { value: "delivery", label: t("delivery_home") },
             { value: "pickup", label: t("delivery_pickup") },
           ],
-          default_shipping_fee: "30000",
+          default_shipping_fee: String(shippingSettings?.default_shipping_fee ?? 0),
           branches: branches && branches.length > 0
             ? branches.map(b => ({
               id: b.id,
@@ -1193,7 +1252,7 @@ export default function MobileCartFlow({
       });
   }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, appliedShippingVoucher, config?.branches, cartCampaignG1]);
 
-  const defaultShippingFee = parseFloat(config?.default_shipping_fee || "30000") || 30000;
+  const defaultShippingFee = Number(shippingSettings?.default_shipping_fee ?? config?.default_shipping_fee ?? 0) || 0;
   const hasSelectedWard = Boolean(selectedWard || selectedWardId);
   const shippingFee =
     cartItems.length === 0 ||
@@ -2158,24 +2217,31 @@ export default function MobileCartFlow({
           setLoading(false);
           return;
         }
-        const addrValidation = validateAddressWardMatch({
-          streetAddress,
-          note: description,
-          selectedWard,
-          selectedWardId,
-          selectedDistrict,
-          selectedProvince,
-          availableWards,
-        });
-        if (!addrValidation.isValid && addrValidation.message) {
-          setFieldErrors((prev) => ({ ...prev, address: addrValidation.message }));
-          setLoading(false);
-          return;
-        }
-        if (mapAddressValidation && !mapAddressValidation.isValid && mapAddressValidation.message) {
-          setFieldErrors((prev) => ({ ...prev, address: mapAddressValidation.message }));
-          setLoading(false);
-          return;
+        if (!isAddressWarningConfirmed) {
+          const addrValidation = validateAddressWardMatch({
+            streetAddress,
+            note: description,
+            selectedWard,
+            selectedWardId,
+            selectedDistrict,
+            selectedProvince,
+            availableWards,
+          });
+          if (!addressWardValidation.isValid && addressWardValidation.message) {
+            setFieldErrors((prev) => ({ ...prev, address: addressWardValidation.message }));
+            setLoading(false);
+            return;
+          }
+          if (!addrValidation.isValid && addrValidation.message) {
+            setFieldErrors((prev) => ({ ...prev, address: addrValidation.message }));
+            setLoading(false);
+            return;
+          }
+          if (mapAddressValidation && !mapAddressValidation.isValid && mapAddressValidation.message) {
+            setFieldErrors((prev) => ({ ...prev, address: mapAddressValidation.message }));
+            setLoading(false);
+            return;
+          }
         }
       } else {
         if (!streetAddress.trim() && !selectedSavedAddress?.full_address) {
@@ -2330,6 +2396,18 @@ export default function MobileCartFlow({
               district: selectedDistrict || undefined,
               ward: selectedWard || undefined,
               ward_id: selectedWardId || undefined,
+              address_mismatch_confirmed:
+                isAddressWarningConfirmed && !addressWardValidation.isValid ? true : undefined,
+              suggested_ward:
+                isAddressWarningConfirmed && !addressWardValidation.isValid
+                  ? addressWardValidation.suggestedWard?.name ||
+                    addressWardValidation.detectedArea ||
+                    undefined
+                  : undefined,
+              address_warning_message:
+                isAddressWarningConfirmed && !addressWardValidation.isValid
+                  ? addressWardValidation.message || undefined
+                  : undefined,
             }
             : null,
         items: [
@@ -3253,6 +3331,10 @@ export default function MobileCartFlow({
                   <div className="text-right">
                     {deliveryType === "pickup" ? (
                       <span className="text-secondary font-bold text-base">{t("shipping_free_pickup", { label: t("delivery_pickup") })}</span>
+                    ) : hasUnconfirmedAddressWarning ? (
+                      <span data-testid="mobile-shipping-fee-pending-ward-confirm" className="text-amber-700 font-semibold text-xs">
+                        Vui lòng xác nhận Phường/Xã giao hàng ở trên
+                      </span>
                     ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                       <span className="text-gray-500 font-bold text-base">--</span>
                     ) : (shippingVoucherDiscount > 0 || appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship"))) ? (
@@ -3738,12 +3820,20 @@ export default function MobileCartFlow({
                               }
                             }}
                             onBlur={() => {
+                              const hasWardSelected = Boolean(selectedWard || selectedWardId);
+                              const canVerifySyncState =
+                                syncAddressValidation.isValid ||
+                                (syncAddressValidation.conflictType === "street_conflict" && hasAddressHouseNumber);
+                              const shouldSkipBecauseSyncSuggested =
+                                Boolean(syncAddressValidation.suggestedWard) && !hasAddressHouseNumber;
+
                               if (
                                 process.env.NODE_ENV !== "test" &&
                                 !isSavedAddressSelected &&
+                                (hasWardSelected || hasAddressHouseNumber) &&
                                 streetAddress.trim().length >= 5 &&
-                                syncAddressValidation.isValid &&
-                                !syncAddressValidation.suggestedWard
+                                canVerifySyncState &&
+                                !shouldSkipBecauseSyncSuggested
                               ) {
                                 const snapshotKey = latestAddressVerifyKeyRef.current;
                                 verifyAddressViaMapApi({
@@ -3764,32 +3854,78 @@ export default function MobileCartFlow({
                               }
                             }}
                             className={`w-full h-11 rounded-[4px] border shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base font-serif font-normal leading-[150%] tracking-[0%] ${
-                              !addressWardValidation.isValid || fieldErrors.address
+                              hasUnconfirmedAddressWarning || fieldErrors.address
                                 ? "border-secondary"
                                 : "border-gray-300"
                             }`}
                           />
                           {!addressWardValidation.isValid && addressWardValidation.message ? (
-                            <div
-                              data-testid="mobile-address-ward-mismatch-warning"
-                              className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2"
-                            >
-                              <p className="font-semibold leading-snug">
-                                {addressWardValidation.message}
-                              </p>
-                              {addressWardValidation.suggestedWard && (
-                                <button
-                                  type="button"
-                                  data-testid="mobile-apply-suggested-ward-btn"
-                                  onClick={() => handleApplySuggestedWard(addressWardValidation.suggestedWard!)}
-                                  className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs"
-                                >
-                                  <span>
+                            !isAddressWarningConfirmed ? (
+                              <div
+                                data-testid="mobile-address-ward-mismatch-warning"
+                                className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2"
+                              >
+                                <p className="font-semibold leading-snug">
+                                  {addressWardValidation.message}
+                                </p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {(addressWardValidation.suggestedWards &&
+                                  addressWardValidation.suggestedWards.length > 0
+                                    ? addressWardValidation.suggestedWards
+                                    : addressWardValidation.suggestedWard
+                                      ? [addressWardValidation.suggestedWard]
+                                      : []
+                                  ).map((sw, idx) => (
+                                    <button
+                                      key={sw.id || sw.name}
+                                      type="button"
+                                      data-testid={
+                                        idx === 0
+                                          ? "mobile-apply-suggested-ward-btn"
+                                          : `mobile-apply-suggested-ward-btn-${idx}`
+                                      }
+                                      onClick={() => handleApplySuggestedWard(sw)}
+                                      className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs"
+                                    >
+                                      <span>
+                                        Đổi sang {formatWardLabel(sw.name, sw.district)}
+                                      </span>
+                                    </button>
+                                  ))}
+                                  {(selectedWard || selectedWardId) && (
+                                    <button
+                                      type="button"
+                                      data-testid="mobile-keep-selected-ward-btn"
+                                      onClick={handleKeepSelectedWard}
+                                      className="inline-flex items-center gap-1.5 rounded-[4px] border border-secondary/50 bg-white px-3 py-1.5 text-xs font-bold text-secondary hover:bg-secondary/10 transition-colors cursor-pointer shadow-xs"
+                                    >
+                                      <span>
+                                        Địa chỉ của tôi đúng, giữ {formatWardLabel(selectedWard, selectedDistrict)}
+                                      </span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                data-testid="mobile-address-ward-kept-notice"
+                                className="mt-2 flex items-center justify-between flex-wrap gap-2 rounded-lg border border-emerald-300 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-800"
+                              >
+                                <span className="font-semibold">
+                                  ✓ Đã giữ {formatWardLabel(selectedWard, selectedDistrict)} theo xác nhận của bạn (Sẽ được nhân viên kiểm tra khi xác nhận đơn)
+                                </span>
+                                {addressWardValidation.suggestedWard && (
+                                  <button
+                                    type="button"
+                                    data-testid="mobile-apply-suggested-ward-btn"
+                                    onClick={() => handleApplySuggestedWard(addressWardValidation.suggestedWard!)}
+                                    className="font-bold text-secondary underline hover:text-secondary/80 cursor-pointer"
+                                  >
                                     Đổi sang {formatWardLabel(addressWardValidation.suggestedWard.name, addressWardValidation.suggestedWard.district)}
-                                  </span>
-                                </button>
-                              )}
-                            </div>
+                                  </button>
+                                )}
+                              </div>
+                            )
                           ) : fieldErrors.address ? (
                             <p className="text-sm text-secondary mt-1 font-semibold">{fieldErrors.address}</p>
                           ) : addressWardValidation.isValid &&
@@ -3801,28 +3937,46 @@ export default function MobileCartFlow({
                               className="mt-2 flex items-center flex-wrap gap-1.5 rounded-lg border border-secondary/25 bg-yellow/50 px-3 py-1.5 text-xs text-brown"
                             >
                               <span>Gợi ý theo địa chỉ:</span>
-                              <button
-                                type="button"
-                                data-testid="mobile-select-suggested-ward-btn"
-                                onClick={() => handleApplySuggestedWard(addressWardValidation.suggestedWard!)}
-                                className="font-bold text-primary underline hover:text-secondary cursor-pointer"
-                              >
-                                Chọn {formatWardLabel(addressWardValidation.suggestedWard.name, addressWardValidation.suggestedWard.district)}
-                              </button>
+                              {(addressWardValidation.suggestedWards &&
+                              addressWardValidation.suggestedWards.length > 0
+                                ? addressWardValidation.suggestedWards
+                                : [addressWardValidation.suggestedWard]
+                              ).map((sw, idx) => (
+                                <button
+                                  key={sw.id || sw.name}
+                                  type="button"
+                                  data-testid={
+                                    idx === 0
+                                      ? "mobile-select-suggested-ward-btn"
+                                      : `mobile-select-suggested-ward-btn-${idx}`
+                                  }
+                                  onClick={() => handleApplySuggestedWard(sw)}
+                                  className="font-bold text-primary underline hover:text-secondary cursor-pointer"
+                                >
+                                  Chọn {formatWardLabel(sw.name, sw.district)}
+                                </button>
+                              ))}
                             </div>
                           ) : null}
                         </div>
                       </div>
                     )}
 
-                    {assignedBranchName && (
+                    {hasUnconfirmedAddressWarning ? (
+                      <div
+                        data-testid="mobile-branch-pending-ward-confirm"
+                        className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 font-medium"
+                      >
+                        Vui lòng xác nhận Phường/Xã giao hàng ở trên để xác định chi nhánh & phí vận chuyển.
+                      </div>
+                    ) : assignedBranchName ? (
                       <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-xs text-primary font-medium">
                         {t.rich("auto_assigned_branch", {
                           branchName: assignedBranchName,
                           strong: (chunks) => <strong>{chunks}</strong>,
                         })}
                       </div>
-                    )}
+                    ) : null}
 
                     {shippingMessage && (
                       <p className={`text-xs font-semibold mt-1.5 ${!isDeliverable ? "text-red-600" : "text-secondary"}`}>
@@ -4106,10 +4260,15 @@ export default function MobileCartFlow({
                   </p>
                 )}
                 <button
+                  data-testid="mobile-checkout-submit-btn"
                   type="button"
                   onClick={handleSubmit}
-                  disabled={loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || isOutOfStockOverall}
-                  className="w-full bg-secondary hover:bg-secondary/95 text-white font-bold rounded-full py-4 text-center transition-all shadow-[0_4px_12px_rgba(205,72,41,0.2)] font-display title-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.99]"
+                  disabled={loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || isOutOfStockOverall || hasUnconfirmedAddressWarning}
+                  className={`w-full font-bold rounded-full py-4 text-center transition-all font-display title-2 ${
+                    loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || isOutOfStockOverall || hasUnconfirmedAddressWarning
+                      ? "bg-gray-200! text-gray-400! border-gray-200! shadow-none! cursor-not-allowed pointer-events-none"
+                      : "bg-secondary hover:bg-secondary/95 text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)] cursor-pointer active:scale-[0.99]"
+                  } disabled:opacity-50 disabled:pointer-events-none`}
                 >
                   {loading
                     ? t("submitting")

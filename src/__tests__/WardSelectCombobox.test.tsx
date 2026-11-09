@@ -47,10 +47,10 @@ describe("WardSelectCombobox & Ward Mapping", () => {
   });
 
   it("contains mapping entries for key HCMC wards for fuzzy search support", () => {
-    expect(HCMC_WARD_OLD_NAME_MAP["An Hội Tây"]).toBe("P.14");
-    expect(HCMC_WARD_OLD_NAME_MAP["Gia Định"]).toBe("P.1, P.2");
-    expect(HCMC_WARD_OLD_NAME_MAP["Bàn Cờ"]).toBe("P.1, P.2, P.3");
-    expect(HCMC_WARD_OLD_NAME_MAP["An Đông"]).toBe("P.9, P.10");
+    expect(HCMC_WARD_OLD_NAME_MAP["An Hội Tây"]).toBe("P.12, P.14");
+    expect(HCMC_WARD_OLD_NAME_MAP["Gia Định"]).toBe("P.1, P.2, P.3, P.7, P.15, P.17");
+    expect(HCMC_WARD_OLD_NAME_MAP["Bàn Cờ"]).toBe("P.1, P.2, P.3, P.4, P.5");
+    expect(HCMC_WARD_OLD_NAME_MAP["An Đông"]).toBe("P.5, P.6, P.7, P.8, P.9, P.10");
   });
 
   describe("Address Deduplication (cleanDuplicateAddressParts & buildDeliveryAddress)", () => {
