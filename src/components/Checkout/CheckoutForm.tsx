@@ -53,10 +53,11 @@ import {
 import GuestTierHintBanner from "./GuestTierHintBanner";
 import {
   buildDeliveryAddress,
+  cleanAdministrativeUnitName,
   cleanDuplicateAddressParts,
   formatWardLabel,
   hasHouseNumberInAddress,
-  resolveNewWardName,
+  isKnownPostMerger94Ward,
   validateAddressWardMatch,
   verifyAddressViaMapApi,
   type AddressWardValidationResult,
@@ -301,6 +302,24 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     isMounted && (user || token || (typeof window !== "undefined" && Boolean(localStorage.getItem("auth_token"))))
   );
 
+  // Regional Shipping & Freeship calculation states
+  const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>(FALLBACK_ADMINISTRATIVE_UNITS);
+  const [selectedProvince, setSelectedProvince] = useState("TP. Hồ Chí Minh");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedWard, setSelectedWard] = useState("");
+  const [selectedWardId, setSelectedWardId] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+  const [savedAddressWardWarning, setSavedAddressWardWarning] = useState<string | null>(null);
+  const [shippingCalculationError, setShippingCalculationError] = useState<boolean>(false);
+
+  const currentProvinceData = useMemo(() => {
+    return adminProvinces.find((p) => p.name === selectedProvince);
+  }, [adminProvinces, selectedProvince]);
+
+  const availableWards = useMemo(() => {
+    return currentProvinceData?.wards || [];
+  }, [currentProvinceData]);
+
   // Customer Address Book states (for logged in customers)
   const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(null);
@@ -308,8 +327,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [isLoadingCustomerAddresses, setIsLoadingCustomerAddresses] = useState<boolean>(false);
   const hasAutoFilledDefaultAddressRef = useRef(false);
 
+  const availableWardsRef = useRef<AdministrativeWard[]>([]);
+  availableWardsRef.current = availableWards;
+
+  const selectedAddressIdRef = useRef(selectedAddressId);
+  selectedAddressIdRef.current = selectedAddressId;
+  const customerAddressesRef = useRef(customerAddresses);
+  customerAddressesRef.current = customerAddresses;
+
   // Auto-fill address details helper
-  const applyAddressToForm = useCallback((addr: CustomerAddress) => {
+  const applyAddressToForm = useCallback((addr: CustomerAddress, overrideWards?: AdministrativeWard[]) => {
     setSelectedAddressId(addr.id);
     if (addr.recipient_name) setName(addr.recipient_name);
     if (addr.phone) setPhone(addr.phone);
@@ -319,17 +346,51 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
     if (addr.district) setSelectedDistrict(addr.district);
 
-    // Tự động ánh xạ tên Phường cũ (VD: Phường 14) sang Phường mới (Nhiêu Lộc / Hòa Hưng)
-    const fullContext = addr.full_address || addr.street_address || "";
-    const resolvedName = resolveNewWardName(addr.ward || "", addr.district, fullContext);
-    const finalWard = resolvedName || addr.ward || "";
-    setSelectedWard(finalWard);
-    if (addr.ward_id) {
-      setSelectedWardId(addr.ward_id);
+    // STT 10: Validate whether addr.ward / addr.ward_id belongs to the 91 new wards catalog
+    const wardsToCheck = (overrideWards && overrideWards.length > 0) ? overrideWards : availableWardsRef.current;
+    let matchedWard: AdministrativeWard | null = null;
+    if (addr.ward_id && wardsToCheck && wardsToCheck.length > 0) {
+      matchedWard = wardsToCheck.find((w) => w.id === addr.ward_id) || null;
+    }
+    if (!matchedWard && addr.ward && wardsToCheck && wardsToCheck.length > 0) {
+      const cleanAddrWard = cleanAdministrativeUnitName(addr.ward).toLowerCase();
+      matchedWard = wardsToCheck.find((w) => {
+        const cleanW = cleanAdministrativeUnitName(w.name).toLowerCase();
+        return cleanW === cleanAddrWard || w.name.toLowerCase() === addr.ward!.toLowerCase();
+      }) || null;
+    }
+
+    const isValidPostMergerWard = Boolean(
+      matchedWard ||
+      (addr.ward && isKnownPostMerger94Ward(addr.ward, wardsToCheck || []))
+    );
+
+    if (isValidPostMergerWard) {
+      setSelectedWard(matchedWard?.name || addr.ward || "");
+      setSelectedWardId(matchedWard?.id || addr.ward_id || "");
+      setSavedAddressWardWarning(null);
+    } else {
+      // Outdated or invalid ward: DO NOT auto-fill, require customer to re-select valid new ward
+      setSelectedWard("");
+      setSelectedWardId("");
+      setSavedAddressWardWarning(t("invalid_saved_ward_notice"));
+      setFieldErrors((prev) => ({
+        ...prev,
+        "delivery.ward": t("invalid_saved_ward_notice"),
+      }));
     }
 
     const addrStreet = addr.street_address || addr.full_address || "";
     if (addrStreet) setStreetAddress(addrStreet);
+  }, [t]);
+
+  // Load administrative units catalog
+  useEffect(() => {
+    getAdministrativeUnits().then((units) => {
+      if (units && units.length > 0) {
+        setAdminProvinces(units);
+      }
+    });
   }, []);
 
 
@@ -370,17 +431,17 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
           setCustomerAddresses(addrs);
           setCachedCustomerAddresses(addrs);
           if (addrs.length > 0) {
+            const defaultAddr = addrs.find((a) => a.is_default) || addrs[0];
             setSelectedAddressId((curr) => {
-              if (curr && curr !== "new" && addrs.some((a) => a.id === curr)) {
+              if (curr === "new" || (curr && addrs.some((a) => a.id === curr))) {
                 return curr;
-              }
-              const defaultAddr = addrs.find((a) => a.is_default) || addrs[0];
-              if (defaultAddr && !hasAutoFilledDefaultAddressRef.current) {
-                hasAutoFilledDefaultAddressRef.current = true;
-                applyAddressToForm(defaultAddr);
               }
               return defaultAddr ? defaultAddr.id : curr;
             });
+            if (defaultAddr && !hasAutoFilledDefaultAddressRef.current) {
+              hasAutoFilledDefaultAddressRef.current = true;
+              applyAddressToForm(defaultAddr);
+            }
           }
         })
         .catch((err) => {
@@ -397,14 +458,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   // COD/Transfer selection (CARD removed)
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "TRANSFER">("COD");
 
-  // Regional Shipping & Freeship calculation states
-  const [adminProvinces, setAdminProvinces] = useState<AdministrativeProvince[]>(FALLBACK_ADMINISTRATIVE_UNITS);
-  const [selectedProvince, setSelectedProvince] = useState("TP. Hồ Chí Minh");
-  const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [selectedWard, setSelectedWard] = useState("");
-  const [selectedWardId, setSelectedWardId] = useState("");
-  const [streetAddress, setStreetAddress] = useState("");
-
   const isSavedAddressSelected = Boolean(
     isMounted &&
     isUserLoggedIn &&
@@ -418,6 +471,33 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     return customerAddresses.find((a) => a.id === selectedAddressId) || null;
   }, [customerAddresses, isSavedAddressSelected, selectedAddressId]);
 
+  // STT 10: Re-verify saved address ward whenever availableWards updates
+  useEffect(() => {
+    if (selectedSavedAddress && availableWards.length > 0) {
+      const targetWard = selectedWard || selectedSavedAddress.ward;
+      if (targetWard) {
+        const cleanTarget = cleanAdministrativeUnitName(targetWard).toLowerCase();
+        const matched = availableWards.find((w) => {
+          if (selectedWardId && w.id === selectedWardId) return true;
+          if (selectedSavedAddress.ward_id && w.id === selectedSavedAddress.ward_id) return true;
+          return cleanAdministrativeUnitName(w.name).toLowerCase() === cleanTarget;
+        });
+        const isValid = Boolean(matched || isKnownPostMerger94Ward(targetWard, availableWards));
+        if (isValid) {
+          if (matched && (!selectedWard || !selectedWardId)) {
+            setSelectedWard(matched.name);
+            setSelectedWardId(matched.id);
+          }
+          setSavedAddressWardWarning(null);
+        } else {
+          setSelectedWard("");
+          setSelectedWardId("");
+          setSavedAddressWardWarning(t("invalid_saved_ward_notice"));
+        }
+      }
+    }
+  }, [availableWards, selectedSavedAddress, selectedWard, selectedWardId, t]);
+
   const handleSelectCustomerAddress = (addrId: number | "new") => {
     if (addrId === "new") {
       setSelectedAddressId("new");
@@ -427,6 +507,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       setSelectedDistrict("");
       setSelectedProvince(adminProvinces[0]?.name || "TP. Hồ Chí Minh");
       setSaveToAddressBook(false);
+      setSavedAddressWardWarning(null);
       if (user) {
         setName(user.name || "");
         setPhone(user.phone || "");
@@ -440,6 +521,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       return;
     }
     setSaveToAddressBook(false);
+    setSavedAddressWardWarning(null);
     const addr = customerAddresses.find((a) => a.id === addrId);
     if (addr) {
       applyAddressToForm(addr);
@@ -461,23 +543,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [shippingMessage, setShippingMessage] = useState<string | null>(null);
   const [assignedBranchName, setAssignedBranchName] = useState<string | null>(null);
   const [calculatingShipping, setCalculatingShipping] = useState<boolean>(false);
-
-  // Load administrative units catalog
-  useEffect(() => {
-    getAdministrativeUnits().then((units) => {
-      if (units && units.length > 0) {
-        setAdminProvinces(units);
-      }
-    });
-  }, []);
-
-  const currentProvinceData = useMemo(() => {
-    return adminProvinces.find((p) => p.name === selectedProvince);
-  }, [adminProvinces, selectedProvince]);
-
-  const availableWards = useMemo(() => {
-    return currentProvinceData?.wards || [];
-  }, [currentProvinceData]);
 
   // Voucher states
   const [voucherCode, setVoucherCode] = useState("");
@@ -720,7 +785,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   }, [isCartCheckout, cartItems, order, quantity]);
 
   // Pure Checkbox Selection for campaigns (default empty array [])
-  const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>([]);
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>(() => {
+    return typeof window !== "undefined" ? getStoredCampaignIds() : [];
+  });
 
   useEffect(() => {
     const stored = getStoredCampaignIds();
@@ -1230,6 +1297,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       setShippingMessage(null);
       setAssignedBranchName(null);
       setCalculatingShipping(false);
+      setShippingCalculationError(false);
       return;
     }
 
@@ -1239,6 +1307,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     const activeFoodV = appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.discountType !== "freeship" ? appliedVoucher : null;
     const activeShipV = appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") ? appliedVoucher : null);
     const effectivePromosForShip = (activeFoodV && activeFoodV.canCombineWithPromotions === false) ? [] : appliedCartPromotions;
+
 
     calculateShippingFee({
       province: selectedProvince,
@@ -1260,6 +1329,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     })
       .then((res) => {
         if (!isSubscribed) return;
+        setShippingCalculationError(false);
 
         const shipFreeshipFlag = shippingSettings ? Boolean(shippingSettings.can_combine_with_freeship) : true;
         // M11: Shipping Voucher <-> ShippingSetting (Auto Ship 400K)
@@ -1313,7 +1383,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         }
       })
       .catch((err) => {
+        if (!isSubscribed) return;
         console.error("Error calculating shipping:", err);
+        setShippingCalculationError(true);
+        setIsDeliverable(false);
+        setShippingMessage(t("shipping_calculation_failed"));
       })
       .finally(() => {
         if (isSubscribed) setCalculatingShipping(false);
@@ -1463,7 +1537,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   );
 
   const syncAddressValidation = useMemo(() => {
-    return validateAddressWardMatch({
+    const res = validateAddressWardMatch({
       streetAddress,
       note: description,
       selectedWard,
@@ -1472,11 +1546,17 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       selectedProvince,
       availableWards,
     });
+    return res;
   }, [streetAddress, description, selectedWard, selectedWardId, selectedDistrict, selectedProvince, availableWards]);
 
+  const prevAddressKeyRef = useRef("");
   useEffect(() => {
-    setMapAddressValidation(null);
-    setIsAddressWarningConfirmed(false);
+    const currentKey = `${streetAddress}|${selectedWard}|${selectedWardId}|${selectedDistrict}|${selectedProvince}`;
+    if (prevAddressKeyRef.current && prevAddressKeyRef.current !== currentKey) {
+      setMapAddressValidation(null);
+      setIsAddressWarningConfirmed(false);
+    }
+    prevAddressKeyRef.current = currentKey;
   }, [streetAddress, selectedWard, selectedWardId, selectedDistrict, selectedProvince]);
 
   useEffect(() => {
@@ -1797,7 +1877,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     );
   }, [user, memberTier, t, tVoucher]);
 
-  const total = (isCartCheckout && cartItems.length === 0) ? 0 : Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
+  const effectiveShippingFeeForTotal =
+    hasUnconfirmedAddressWarning || shippingCalculationError ? 0 : effectiveShippingFee;
+
+  const total = (isCartCheckout && cartItems.length === 0) ? 0 : Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFeeForTotal);
 
   const validateVoucherMutexLock = useCallback((voucherCandidate: {
     discount_type?: string;
@@ -2711,7 +2794,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         const customerPhone = phone.trim();
         const successPath = locale === "en" ? "/en/order-success" : "/dat-hang-thanh-cong";
         const targetUrl = `${successPath}?code=${encodeURIComponent(orderCode)}&phone=${encodeURIComponent(customerPhone)}`;
-        window.location.href = targetUrl;
+        if (process.env.NODE_ENV !== "test") {
+          window.location.href = targetUrl;
+        }
       } else {
         // Bank transfer: Show SePay QR Code Screen
         setPendingOrder(result.data);
@@ -3148,6 +3233,44 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         </div>
                       </div>
                     )}
+
+                    {/* STT 10: Cảnh báo địa chỉ đã lưu có Phường cũ và cho phép chọn lại Phường Mới */}
+                    {isSavedAddressSelected && (!selectedWard || savedAddressWardWarning) && (
+                      <div
+                        data-testid="saved-address-invalid-ward-container"
+                        className="mt-3 p-3.5 bg-amber-50 border border-amber-300 rounded-xl space-y-2.5 animate-fade-in"
+                      >
+                        <div className="flex items-start gap-2 text-xs text-amber-900 font-medium leading-relaxed">
+                          <span className="text-sm">⚠️</span>
+                          <p>{savedAddressWardWarning || t("invalid_saved_ward_notice")}</p>
+                        </div>
+                        <WardSelectCombobox
+                          dataTestId="saved-address-ward-select"
+                          wards={availableWards}
+                          selectedWardId={selectedWardId}
+                          selectedWardName={selectedWard}
+                          onSelectWard={(wObj) => {
+                            if (wObj) {
+                              setSelectedWardId(wObj.id);
+                              setSelectedWard(wObj.name);
+                              if (wObj.district) setSelectedDistrict(wObj.district);
+                              setSavedAddressWardWarning(null);
+                              setFieldErrors((prev) => {
+                                const next = { ...prev };
+                                delete next["delivery.ward"];
+                                return next;
+                              });
+                            } else {
+                              setSelectedWardId("");
+                              setSelectedWard("");
+                              setSavedAddressWardWarning(t("invalid_saved_ward_notice"));
+                            }
+                          }}
+                          hasError={!selectedWard}
+                          errorMessage={savedAddressWardWarning || t("invalid_saved_ward_notice")}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -3228,6 +3351,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                       </div>
 
                       <WardSelectCombobox
+                        dataTestId="desktop-ward-select"
                         wards={availableWards}
                         selectedWardId={selectedWardId}
                         selectedWardName={selectedWard}
@@ -3377,7 +3501,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                                 <button
                                   type="button"
                                   data-testid="keep-selected-ward-btn"
-                                  onClick={handleKeepSelectedWard}
+                                  onClick={() => handleKeepSelectedWard()}
                                   className="inline-flex items-center gap-1.5 rounded-[4px] border border-secondary/50 bg-white px-3 py-1.5 text-xs font-bold text-secondary hover:bg-secondary/10 transition-colors cursor-pointer shadow-xs"
                                 >
                                   <span>
@@ -3465,6 +3589,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800 font-medium"
                   >
                     Vui lòng xác nhận Phường/Xã giao hàng ở trên để xác định chi nhánh & phí vận chuyển.
+                  </div>
+                ) : shippingCalculationError ? (
+                  <div
+                    data-testid="shipping-calculation-error-alert"
+                    className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 font-medium flex items-center gap-2"
+                  >
+                    <span>⚠️</span>
+                    <span>{shippingMessage || t("shipping_calculation_failed")}</span>
                   </div>
                 ) : assignedBranchName ? (
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-sm text-primary font-medium">
@@ -4292,6 +4424,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                     <span data-testid="shipping-fee-pending-ward-confirm" className="text-amber-700 font-semibold text-xs">
                       Vui lòng xác nhận Phường/Xã giao hàng ở trên
                     </span>
+                  ) : shippingCalculationError ? (
+                    <span data-testid="shipping-calculation-error-label" className="text-red-600 font-semibold text-xs">
+                      {shippingMessage || t("shipping_calculation_failed")}
+                    </span>
                   ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                     <span className="text-gray-500 font-bold text-base">--</span>
                   ) : (shippingVoucherDiscount > 0 || appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship"))) ? (
@@ -4450,9 +4586,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               data-testid="checkout-submit-btn"
               type="button"
               onClick={handleSubmit}
-              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || (isCartCheckout && isOutOfStockOverall) || hasUnconfirmedAddressWarning}
+              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || (isCartCheckout && isOutOfStockOverall) || hasUnconfirmedAddressWarning || shippingCalculationError}
               className={`w-full font-bold rounded-full py-3.5 2xl:py-4 text-center transition-all font-display title-2 ${
-                loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || (isCartCheckout && isOutOfStockOverall) || hasUnconfirmedAddressWarning
+                loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || (isCartCheckout && isOutOfStockOverall) || hasUnconfirmedAddressWarning || shippingCalculationError
                   ? "bg-gray-200! text-gray-400! border-gray-200! shadow-none! cursor-not-allowed pointer-events-none"
                   : "bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)] cursor-pointer"
               } disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none`}

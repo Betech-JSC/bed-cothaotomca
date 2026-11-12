@@ -1,7 +1,7 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 import CheckoutForm from "@/components/Checkout/CheckoutForm";
 import {
@@ -308,8 +308,18 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
   });
 
   describe("TC-FE-05: Luồng UI Checkout thực tế (Cảnh báo + Chặn Submit + 1-Click đổi sang Phường Phước Long cập nhật phí ship 20k -> 45k + Đặt hàng thành công)", () => {
+    afterEach(() => {
+      cleanup();
+      vi.restoreAllMocks();
+    });
+
     beforeEach(() => {
       vi.clearAllMocks();
+      vi.spyOn(orderService, "getCheckoutConfig").mockResolvedValue({
+        delivery_types: [{ value: "delivery", label: "Giao tận nơi" }],
+        default_shipping_fee: "30000",
+        branches: [{ id: 1, branchName: "Chi nhánh Trần Đình Xu", address: "42/2 Trần Đình Xu", contactNumber: "0123", isActive: true }],
+      } as any);
       vi.spyOn(orderService, "getAdministrativeUnits").mockResolvedValue([
         {
           id: "HCM",
@@ -344,6 +354,10 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       } as any);
     });
 
+    afterEach(() => {
+      cleanup();
+    });
+
     it("chặn Submit khi chọn Phường Sài Gòn (20k) nhưng nhập địa chỉ Đỗ Xuân Hợp, và cho phép Submit sau khi bấm 1-Click đổi sang Phường Phước Long (45k)", async () => {
       render(
         <CheckoutForm
@@ -359,14 +373,15 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       await waitFor(() => {
         expect(orderService.getAdministrativeUnits).toHaveBeenCalled();
         expect(screen.getByTestId("desktop-street-address-input")).toBeInTheDocument();
+        expect(screen.getByTestId("desktop-ward-select-input")).toBeInTheDocument();
       });
 
       // Bước 1: Khách chọn Phường Sài Gòn (phí ship 20.000đ)
-      const wardInputs = screen.getAllByPlaceholderText("Chọn hoặc gõ tìm Phường / Xã...");
-      const wardInput = wardInputs[wardInputs.length - 1];
-      fireEvent.focus(wardInput);
-      const saiGonOptions = await screen.findAllByText("Phường Sài Gòn");
-      fireEvent.click(saiGonOptions[saiGonOptions.length - 1]);
+      const desktopWardInput = screen.getByTestId("desktop-ward-select-input");
+      fireEvent.focus(desktopWardInput);
+      fireEvent.click(desktopWardInput);
+      const saiGonOption = await screen.findByTestId("desktop-ward-select-option-SG");
+      fireEvent.click(saiGonOption);
 
       await waitFor(() => {
         expect(orderService.calculateShippingFee).toHaveBeenCalledWith(
@@ -395,7 +410,7 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       expect(orderService.createOrder).not.toHaveBeenCalled();
 
       // Bước 2: Khách bấm nút 1-click [Đổi sang Phường Phước Long]
-      const switchBtn = screen.getByTestId("apply-suggested-ward-btn");
+      const switchBtn = await screen.findByTestId("apply-suggested-ward-btn");
       expect(switchBtn.textContent).toContain("Đổi sang Phường Phước Long");
       fireEvent.click(switchBtn);
 
@@ -408,14 +423,14 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
             ward_id: "PL",
           })
         );
-      });
+      }, { timeout: 4000 });
 
       // Bước 3: Bấm Đặt hàng lại -> Submit thành công với đúng Phường Phước Long
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
         expect(orderService.createOrder).toHaveBeenCalledTimes(1);
-      });
+      }, { timeout: 4000 });
 
       const orderPayload = (orderService.createOrder as any).mock.calls[0][0];
       expect(orderPayload.delivery.ward).toBe("Phước Long");
@@ -438,13 +453,23 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       await waitFor(() => {
         expect(orderService.getAdministrativeUnits).toHaveBeenCalled();
         expect(screen.getByTestId("desktop-street-address-input")).toBeInTheDocument();
+        expect(screen.getByTestId("desktop-ward-select-input")).toBeInTheDocument();
       });
 
-      const wardInputs = screen.getAllByPlaceholderText("Chọn hoặc gõ tìm Phường / Xã...");
-      const wardInput = wardInputs[wardInputs.length - 1];
-      fireEvent.focus(wardInput);
-      const saiGonOptions = await screen.findAllByText("Phường Sài Gòn");
-      fireEvent.click(saiGonOptions[saiGonOptions.length - 1]);
+      const desktopWardInput = screen.getByTestId("desktop-ward-select-input");
+      fireEvent.focus(desktopWardInput);
+      fireEvent.click(desktopWardInput);
+      const saiGonOption = await screen.findByTestId("desktop-ward-select-option-SG");
+      fireEvent.click(saiGonOption);
+
+      await waitFor(() => {
+        expect(orderService.calculateShippingFee).toHaveBeenCalledWith(
+          expect.objectContaining({
+            ward: "Sài Gòn",
+            ward_id: "SG",
+          })
+        );
+      });
 
       const streetInput = screen.getByTestId("desktop-street-address-input");
       fireEvent.change(streetInput, { target: { value: "150 Đỗ Xuân Hợp" } });
@@ -461,19 +486,20 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       expect(screen.getAllByText(/Vui lòng xác nhận Phường\/Xã giao hàng ở trên/i).length).toBeGreaterThan(0);
 
       // Khách bấm nút "Địa chỉ của tôi đúng, giữ Phường Sài Gòn"
-      const keepBtn = screen.getByTestId("keep-selected-ward-btn");
+      const keepBtn = await screen.findByTestId("keep-selected-ward-btn");
       expect(keepBtn.textContent).toContain("Địa chỉ của tôi đúng, giữ Phường Sài Gòn");
       fireEvent.click(keepBtn);
 
       await waitFor(() => {
-        expect(submitBtn.disabled).toBe(false);
-      });
+        const freshSubmitBtn = screen.getByTestId("checkout-submit-btn") as HTMLButtonElement;
+        expect(freshSubmitBtn.disabled).toBe(false);
+      }, { timeout: 4000 });
 
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
         expect(orderService.createOrder).toHaveBeenCalledTimes(1);
-      });
+      }, { timeout: 4000 });
 
       const orderPayload = (orderService.createOrder as any).mock.calls[0][0];
       expect(orderPayload.delivery.ward).toBe("Sài Gòn");

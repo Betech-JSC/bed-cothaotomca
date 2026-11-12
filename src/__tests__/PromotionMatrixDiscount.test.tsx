@@ -868,12 +868,14 @@ describe('OpenSpec complete-discount-matrix-and-ui Tests', () => {
         />
       );
 
+      let matchedPayload: any = null;
       await waitFor(() => {
-        expect(lastCalculateShippingPayload).not.toBeNull();
+        expect(lastCalculateShippingPayload?.campaign_id).toBe(999);
+        matchedPayload = lastCalculateShippingPayload;
       });
 
-      expect(lastCalculateShippingPayload.campaign_id).toBe(999);
-      expect(lastCalculateShippingPayload.campaign_can_combine_with_freeship).toBe(false);
+      expect(matchedPayload.campaign_id).toBe(999);
+      expect(matchedPayload.campaign_can_combine_with_freeship).toBe(false);
     });
   });
 

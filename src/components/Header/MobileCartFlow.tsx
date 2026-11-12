@@ -50,10 +50,10 @@ import {
 } from "@/services/authService";
 import {
   buildDeliveryAddress,
+  cleanAdministrativeUnitName,
   cleanDuplicateAddressParts,
   formatWardLabel,
   hasHouseNumberInAddress,
-  resolveNewWardName,
   validateAddressWardMatch,
   verifyAddressViaMapApi,
   type AddressWardValidationResult,
@@ -210,11 +210,7 @@ export default function MobileCartFlow({
     }
     if (addr.district) setSelectedDistrict(addr.district);
 
-    // Tự động ánh xạ tên Phường cũ (VD: Phường 14) sang Phường mới (Nhiêu Lộc / Hòa Hưng)
-    const fullContext = addr.full_address || addr.street_address || "";
-    const resolvedName = resolveNewWardName(addr.ward || "", addr.district, fullContext);
-    const finalWard = resolvedName || addr.ward || "";
-    setSelectedWard(finalWard);
+    setSelectedWard(addr.ward || "");
     if (addr.ward_id) {
       setSelectedWardId(addr.ward_id);
     }
@@ -1045,7 +1041,9 @@ export default function MobileCartFlow({
     return lineItems.reduce((acc, curr) => acc + curr.price * curr.quantity, 0);
   }, [lineItems]);
 
-  const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>([]);
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<(number | string)[]>(() => {
+    return typeof window !== "undefined" ? getStoredCampaignIds() : [];
+  });
 
   useEffect(() => {
     const stored = getStoredCampaignIds();
@@ -1657,7 +1655,8 @@ export default function MobileCartFlow({
     );
   }, [user, memberTier, t]);
 
-  const total = cartItems.length === 0 ? 0 : Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFee);
+  const effectiveShippingFeeForTotal = hasUnconfirmedAddressWarning ? 0 : effectiveShippingFee;
+  const total = cartItems.length === 0 ? 0 : Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFeeForTotal);
 
   const validateVoucherMutexLock = useCallback((voucherCandidate: {
     discount_type?: string;
@@ -3766,6 +3765,7 @@ export default function MobileCartFlow({
                         </div>
 
                         <WardSelectCombobox
+                          dataTestId="mobile-ward-select"
                           wards={availableWards}
                           selectedWardId={selectedWardId}
                           selectedWardName={selectedWard}

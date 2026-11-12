@@ -569,6 +569,52 @@ export async function getAdministrativeUnits(): Promise<AdministrativeProvince[]
   }
 }
 
+export interface HcmcWardMappingResponse {
+  old_to_new: Array<{
+    o: string;
+    d: string;
+    n: string[];
+    p: boolean;
+  }>;
+  new_wards: Array<{
+    n: string;
+    d: string;
+    olds: string[];
+  }>;
+  nguon: string;
+}
+
+let cachedHcmcWardMapping: HcmcWardMappingResponse | null = null;
+
+export async function getHcmcWardMapping(): Promise<HcmcWardMappingResponse | null> {
+  if (cachedHcmcWardMapping) {
+    return cachedHcmcWardMapping;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/administrative-units/ward-mapping`, {
+      headers: { Accept: "application/json" },
+      cache: "default",
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json();
+    const payload = json.data || json;
+    if (payload && (Array.isArray(payload.old_to_new) || Array.isArray(payload.new_wards))) {
+      cachedHcmcWardMapping = {
+        old_to_new: Array.isArray(payload.old_to_new) ? payload.old_to_new : [],
+        new_wards: Array.isArray(payload.new_wards) ? payload.new_wards : [],
+        nguon: payload.nguon || "",
+      };
+      return cachedHcmcWardMapping;
+    }
+    return null;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("Failed to fetch HCMC ward mapping:", msg);
+    return null;
+  }
+}
+
 export interface ShippingCalculationResult {
   shipping_fee: number;
   original_fee: number;
@@ -615,7 +661,8 @@ export async function calculateShippingFee(params: {
     });
 
     if (!res.ok) {
-      throw new Error("Không thể tính phí giao hàng.");
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.message || "Không thể tính phí giao hàng.");
     }
 
     const json = await res.json();
@@ -623,19 +670,7 @@ export async function calculateShippingFee(params: {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("Failed to calculate shipping fee:", msg);
-    return {
-      shipping_fee: 0,
-      original_fee: 0,
-      shipping_discount: 0,
-      auto_shipping_discount: 0,
-      shipping_voucher_discount: 0,
-      fee_after_auto_discount: 0,
-      shipping_discount_type: "free",
-      shipping_discount_value: 0,
-      is_freeship: false,
-      is_deliverable: true,
-      is_configured_area: false,
-    };
+    throw err;
   }
 }
 
@@ -866,6 +901,7 @@ export const orderService = {
   getAvailableVouchers,
   validateVoucher,
   getAdministrativeUnits,
+  getHcmcWardMapping,
   calculateShippingFee,
   getShippingSettings,
   getLoyaltySettings,

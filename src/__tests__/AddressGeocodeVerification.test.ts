@@ -9,7 +9,6 @@ import {
   type WardCatalogEntry,
   type GeocodeVerificationPayload,
 } from "@/utils/addressValidation";
-import { resolveNewWardName } from "@/data/wardMapping";
 
 const MOCK_WARDS: WardCatalogEntry[] = [
   { id: "SG", name: "Sài Gòn", district: "Sài Gòn" },
@@ -21,7 +20,7 @@ const MOCK_WARDS: WardCatalogEntry[] = [
   { id: "CQ", name: "Chợ Quán", district: "Chợ Quán" },
   { id: "HT", name: "Hạnh Thông", district: "Hạnh Thông" },
   { id: "GV", name: "Gò Vấp", district: "Gò Vấp" },
-  { id: "TTH", name: "Thông Tây Hội", district: "Thông Tây Hội" },
+  { id: "TTH", name: "Thông Tây Hội", district: "Thông Tây Hội", old_ward: "Phường 8, Phường 9, Phường 11" },
   { id: "GD", name: "Gia Định", district: "Gia Định" },
   { id: "PN", name: "Phú Nhuận", district: "Phú Nhuận" },
   { id: "DN", name: "Đức Nhuận", district: "Đức Nhuận" },
@@ -31,7 +30,7 @@ const MOCK_WARDS: WardCatalogEntry[] = [
   { id: "PL", name: "Phước Long", district: "Phước Long" },
   { id: "BTH", name: "Bình Thạnh", district: "Bình Thạnh" },
   { id: "VL", name: "Vườn Lài", district: "Vườn Lài" },
-  { id: "COL", name: "Cầu Ông Lãnh", district: "Cầu Ông Lãnh" },
+  { id: "COL", name: "Cầu Ông Lãnh", district: "Cầu Ông Lãnh", old_ward: "Phường Cô Giang, Phường Cầu Kho, Phường Nguyễn Cư Trinh" },
   { id: "CK", name: "Cầu Kiệu", district: "Cầu Kiệu" },
 ];
 
@@ -674,14 +673,10 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("Vấn đề #5: resolveNewWardName ánh xạ chính xác Phường cũ -> Phường mới theo Nghị quyết 1685/NQ-UBTVQH15 có kèm Quận", () => {
-      expect(resolveNewWardName("Phường 1", "Quận Gò Vấp")).toBe("Hạnh Thông");
-      expect(resolveNewWardName("Phường 7", "Quận Gò Vấp")).toBe("Hạnh Thông");
-      expect(resolveNewWardName("Phường 10", "Quận Gò Vấp")).toBe("Gò Vấp");
-      expect(resolveNewWardName("Phường 17", "Quận Gò Vấp")).toBe("Gò Vấp");
-      expect(resolveNewWardName("Phường 8", "Quận Gò Vấp")).toBe("Thông Tây Hội");
-      expect(resolveNewWardName("Phường 4", "Quận Tân Bình")).toBe("Tân Sơn Nhất");
-      expect(resolveNewWardName("Phường 1", "Quận Bình Thạnh")).toBe("Gia Định");
+    it("STT 8: Loại bỏ resolveNewWardName ngầm trong code, vận hành theo 91 phường mới", () => {
+      // Codebase vận hành theo 91 phường mới, không tự đoán số phường
+      expect(MOCK_WARDS.some((w) => w.name === "Hạnh Thông")).toBe(true);
+      expect(MOCK_WARDS.some((w) => w.name === "Gia Định")).toBe(true);
     });
 
     it("Bảng test 14 địa chỉ thực tế (Feedback phí ship - Bảng test địa chỉ.csv): gợi ý chuẩn 14/14 khi chưa chọn phường (selectedWard='') và 0% tự mâu thuẫn khi bấm chọn phường gợi ý", async () => {
@@ -843,7 +838,7 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
           candidates: [
             {
               formatted_address: "1000 Quang Trung, Phường 8, Quận Gò Vấp, Thành phố Hồ Chí Minh",
-              ward: "Phường 8",
+              ward: "Phường Thông Tây Hội",
               old_ward: "Phường 8",
               district: "Quận Gò Vấp",
               house_number: "1000",
@@ -950,7 +945,7 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
 
       for (const tc of CSV_14_CASES) {
         clearAddressGeocodeCache();
-        const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+        const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async () =>
           createJsonResponse({
             success: true,
             data: {

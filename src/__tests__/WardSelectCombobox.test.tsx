@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   formatWardLabel,
-  HCMC_WARD_OLD_NAME_MAP,
   cleanAdministrativeUnitName,
   cleanDuplicateAddressParts,
   buildDeliveryAddress,
@@ -46,11 +45,11 @@ describe("WardSelectCombobox & Ward Mapping", () => {
     expect(formatWardLabel("Gia Định", "Quận Bình Thạnh")).toBe("Phường Gia Định");
   });
 
-  it("contains mapping entries for key HCMC wards for fuzzy search support", () => {
-    expect(HCMC_WARD_OLD_NAME_MAP["An Hội Tây"]).toBe("P.12, P.14");
-    expect(HCMC_WARD_OLD_NAME_MAP["Gia Định"]).toBe("P.1, P.2, P.3, P.7, P.15, P.17");
-    expect(HCMC_WARD_OLD_NAME_MAP["Bàn Cờ"]).toBe("P.1, P.2, P.3, P.4, P.5");
-    expect(HCMC_WARD_OLD_NAME_MAP["An Đông"]).toBe("P.5, P.6, P.7, P.8, P.9, P.10");
+  it("formats 91 new HCMC wards cleanly without old hardcoded maps", () => {
+    expect(formatWardLabel("An Hội Tây")).toBe("Phường An Hội Tây");
+    expect(formatWardLabel("Gia Định")).toBe("Phường Gia Định");
+    expect(formatWardLabel("Bàn Cờ")).toBe("Phường Bàn Cờ");
+    expect(formatWardLabel("An Đông")).toBe("Phường An Đông");
   });
 
   describe("Address Deduplication (cleanDuplicateAddressParts & buildDeliveryAddress)", () => {

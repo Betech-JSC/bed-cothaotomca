@@ -3,8 +3,6 @@ import { getApiBaseUrl } from "@/services/apiService";
 import {
   cleanAdministrativeUnitName,
   formatWardLabel,
-  HCMC_WARD_OLD_NAME_MAP,
-  resolveNewWardName,
 } from "@/data/wardMapping";
 
 export type AddressWardConflictType =
@@ -289,7 +287,7 @@ const DISTRICT_DEFAULT_WARDS: Record<string, string[]> = {
   "Huyện Nhà Bè": ["Nhà Bè", "Hiệp Phước"],
 };
 
-interface WardAliasEntry {
+export interface WardAliasEntry {
   keywords: string[];
   requirePrefix?: boolean;
   targetWard: string;
@@ -300,7 +298,7 @@ interface WardAliasEntry {
 /**
  * Specific Ward / Old Ward alias dictionary for unambiguous ward-level detection
  */
-const SPECIFIC_WARD_ALIASES: WardAliasEntry[] = [
+export const SPECIFIC_WARD_ALIASES: WardAliasEntry[] = [
   // TP. Thủ Đức (Quận 2, Quận 9, Thủ Đức)
   { keywords: ["thao dien"], targetWard: "An Khánh", targetDistrict: "TP. Thủ Đức", displayLabel: "Phường An Khánh" },
   { keywords: ["an phu", "binh an", "an khanh"], requirePrefix: true, targetWard: "An Khánh", targetDistrict: "TP. Thủ Đức", displayLabel: "Phường An Khánh" },
@@ -987,17 +985,14 @@ export function findMatchingWardsFromCatalog(
     }
   }
 
-  // 1b. Match by old_ward or HCMC_WARD_OLD_NAME_MAP containing candidate ward name
+  // 1b. Match by old_ward or old_wards containing candidate ward name
   for (const candName of candidateWardNames) {
     const normCand = normalizeText(cleanAdministrativeUnitName(candName));
     if (!normCand) continue;
     for (const w of availableWards) {
-      const cleanW = cleanAdministrativeUnitName(w.name);
       const oldWardStr =
         w.old_ward ||
         w.old_wards ||
-        HCMC_WARD_OLD_NAME_MAP[w.name] ||
-        HCMC_WARD_OLD_NAME_MAP[cleanW] ||
         "";
       if (oldWardStr && normalizeText(oldWardStr).includes(normCand)) {
         addWard(w);
@@ -1164,13 +1159,12 @@ function detectExplicitWardInText(
     }
   }
 
-  // 2. Directly scan all availableWards & canonical 94 post-merger wards when explicitly prefixed with Phường / P. / Xã / Thị trấn
+  // 2. Directly scan all availableWards & canonical post-merger wards when explicitly prefixed with Phường / P. / Xã / Thị trấn
   const candidateWardPool: Array<{ name: string; district?: string }> = [
     ...(availableWards || []),
-    ...Object.keys(HCMC_WARD_OLD_NAME_MAP).map((wName) => ({
-      name: wName,
-      district: WARD_CANONICAL_DISTRICTS[wName]?.[0] || wName,
-    })),
+    ...Object.entries(DISTRICT_DEFAULT_WARDS).flatMap(([dist, wards]) =>
+      wards.map((wName) => ({ name: wName, district: dist }))
+    ),
   ];
 
   if (candidateWardPool.length > 0) {
@@ -1194,41 +1188,6 @@ function detectExplicitWardInText(
           targetWard: cleanW,
           targetDistrict: mappedDist,
           displayLabel: formatWardLabel(w.name),
-        };
-      }
-    }
-  }
-
-  // 3. Check numbered old wards (e.g. "Phường 14, Gò Vấp" or "P.14, Quận 3" or "P.4, Tân Bình") when district context is known
-  const numWardMatch = norm.match(/(?:^|[\s,.\-/(])(?:phuong|p\.?)\s*0?(\d{1,2})(?=$|[\s,.\-/)])/);
-  if (numWardMatch && explicitDistrictCanon) {
-    const wardNum = parseInt(numWardMatch[1], 10);
-    const wardToken = `P.${wardNum}`;
-    const normDistrictCanon = normalizeDistrictName(explicitDistrictCanon);
-
-    // 3a. Resolve via NQ 1685 rules in resolveNewWardName first
-    const resolved = resolveNewWardName(wardToken, normDistrictCanon, text);
-    if (resolved) {
-      const resolvedDists = (WARD_CANONICAL_DISTRICTS[resolved] || []).map(normalizeDistrictName);
-      if (resolvedDists.length === 0 || resolvedDists.includes(normDistrictCanon)) {
-        return {
-          targetWard: resolved,
-          targetDistrict: normDistrictCanon,
-          displayLabel: formatWardLabel(resolved),
-        };
-      }
-    }
-
-    // 3b. Fallback scan within HCMC_WARD_OLD_NAME_MAP entries belonging to explicitDistrictCanon
-    for (const [newWard, oldWards] of Object.entries(HCMC_WARD_OLD_NAME_MAP)) {
-      const validDists = (WARD_CANONICAL_DISTRICTS[newWard] || []).map(normalizeDistrictName);
-      if (!validDists.includes(normDistrictCanon)) continue;
-      const list = oldWards.split(",").map((s) => s.trim().toLowerCase());
-      if (list.includes(`p.${wardNum}`)) {
-        return {
-          targetWard: newWard,
-          targetDistrict: normDistrictCanon,
-          displayLabel: formatWardLabel(newWard),
         };
       }
     }
@@ -1396,7 +1355,7 @@ export function validateAddressWardMatch(
       const exactWardInCatalog = availableWards.some(
         (w) => normalizeText(cleanAdministrativeUnitName(w.name)) === normTargetWard
       );
-      const isKnownPostMergerWard = Boolean(HCMC_WARD_OLD_NAME_MAP[explicitWard.targetWard]);
+      const isKnownPostMergerWard = Boolean(WARD_CANONICAL_DISTRICTS[explicitWard.targetWard]);
       const targetCanonDist = normalizeDistrictName(explicitWard.targetDistrict);
       const isSameDistrictWhenWardNotInCatalog =
         !exactWardInCatalog && !isKnownPostMergerWard && selectedValidDistricts.has(targetCanonDist);
@@ -1682,9 +1641,9 @@ function extractAdminSegmentsFromFormatted(
   return kept.join(", ");
 }
 
-function isKnownPostMerger94Ward(
+export function isKnownPostMerger94Ward(
   wardName: string,
-  availableWards: AdministrativeWard[]
+  availableWards: AdministrativeWard[] = []
 ): boolean {
   const norm = normalizeText(cleanAdministrativeUnitName(wardName));
   if (!norm) return false;
@@ -1695,8 +1654,8 @@ function isKnownPostMerger94Ward(
   ) {
     return true;
   }
-  return Object.keys(HCMC_WARD_OLD_NAME_MAP).some(
-    (k) => normalizeText(k) === norm
+  return Object.values(DISTRICT_DEFAULT_WARDS).some((wards) =>
+    wards.some((w) => normalizeText(cleanAdministrativeUnitName(w)) === norm)
   );
 }
 
@@ -1775,8 +1734,14 @@ function parseGeocodeCandidateAdmin(
     const isOldTanPhuInThuDuc =
       explicitDistrict === "TP. Thủ Đức" && normDirect === "tan phu";
     if (!isOldTanPhuInThuDuc) {
+      const matchedObj = availableWards.find(
+        (w) => normalizeText(cleanAdministrativeUnitName(w.name)) === normDirect
+      );
       const matchedKey =
-        Object.keys(HCMC_WARD_OLD_NAME_MAP).find((k) => normalizeText(k) === normDirect) ||
+        matchedObj?.name ||
+        Object.values(DISTRICT_DEFAULT_WARDS)
+          .flat()
+          .find((k) => normalizeText(cleanAdministrativeUnitName(k)) === normDirect) ||
         directClean;
       const mappedDists = (WARD_CANONICAL_DISTRICTS[matchedKey] || []).map(
         normalizeDistrictName
@@ -1790,6 +1755,20 @@ function parseGeocodeCandidateAdmin(
         wardDisplayLabel = formatWardLabel(matchedKey);
         hasDirectPostMergerWard = true;
       }
+    }
+  }
+
+  // Priority 1b: Match candidate.ward against old_ward / old_wards in availableWards
+  if (!canonicalWard && !otherProvince && candidate.ward && availableWards.length > 0) {
+    const directClean = cleanAdministrativeUnitName(candidate.ward);
+    const normDirect = normalizeText(directClean);
+    const matchingOldWardInCatalog = availableWards.find((w) => {
+      const oldWardStr = w.old_ward || w.old_wards || "";
+      return oldWardStr && normalizeText(oldWardStr).includes(normDirect);
+    });
+    if (matchingOldWardInCatalog) {
+      canonicalWard = cleanAdministrativeUnitName(matchingOldWardInCatalog.name);
+      wardDisplayLabel = formatWardLabel(matchingOldWardInCatalog.name);
     }
   }
 
@@ -1882,7 +1861,7 @@ function buildSuggestionsForCandidateList(
 
   const firstKnownWard = candWards.find(
     (cw) =>
-      Boolean(HCMC_WARD_OLD_NAME_MAP[cw]) &&
+      isKnownPostMerger94Ward(cw, availableWards) &&
       (!normSelectedWard || normalizeText(cw) !== normSelectedWard)
   );
   if (firstKnownWard) {
@@ -1994,6 +1973,17 @@ export function evaluateGeocodePayload(
       if (p.otherProvince) return false;
       if (p.canonicalWard && normalizeText(p.canonicalWard) === normSelectedWard) {
         return true;
+      }
+      if (currentWardObj && (p.candidate.ward || p.candidate.old_ward)) {
+        const oldWardStr = normalizeText(currentWardObj.old_ward || currentWardObj.old_wards || "");
+        const candWardNorm = normalizeText(cleanAdministrativeUnitName(p.candidate.ward || ""));
+        const candOldWardNorm = normalizeText(cleanAdministrativeUnitName(p.candidate.old_ward || ""));
+        if (
+          (candWardNorm && oldWardStr.includes(candWardNorm)) ||
+          (candOldWardNorm && oldWardStr.includes(candOldWardNorm))
+        ) {
+          return true;
+        }
       }
       if (
         (!p.canonicalWard || p.isOldWardOnly) &&
@@ -2113,6 +2103,17 @@ export function evaluateGeocodePayload(
     if (p.otherProvince) return false;
     if (p.canonicalWard && normalizeText(p.canonicalWard) === normSelectedWard) {
       return true;
+    }
+    if (currentWardObj && (p.candidate.ward || p.candidate.old_ward)) {
+      const oldWardStr = normalizeText(currentWardObj.old_ward || currentWardObj.old_wards || "");
+      const candWardNorm = normalizeText(cleanAdministrativeUnitName(p.candidate.ward || ""));
+      const candOldWardNorm = normalizeText(cleanAdministrativeUnitName(p.candidate.old_ward || ""));
+      if (
+        (candWardNorm && oldWardStr.includes(candWardNorm)) ||
+        (candOldWardNorm && oldWardStr.includes(candOldWardNorm))
+      ) {
+        return true;
+      }
     }
     const wardKnownIn94 = p.canonicalWard
       ? isKnownPostMerger94Ward(p.canonicalWard, availableWards)

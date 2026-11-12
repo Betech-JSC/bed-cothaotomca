@@ -170,6 +170,10 @@ vi.mock('@/services/campaignService', () => ({
   getActiveCampaigns: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock('@/services/generalSettingService', () => ({
+  getGeneralSettings: vi.fn().mockResolvedValue({ hotline: '024.9999.7122' }),
+}));
+
 vi.mock('@/services/authService', async () => {
   const actual = await vi.importActual<typeof import('@/services/authService')>(
     '@/services/authService'
@@ -202,6 +206,8 @@ vi.mock('@/services/orderService', async () => {
     getAvailableVouchers: vi.fn().mockResolvedValue([]),
     getShippingSettings: vi.fn().mockResolvedValue(null),
     getGeneralSettings: vi.fn().mockResolvedValue({ hotline: '024.9999.7122' }),
+    getLoyaltySettings: vi.fn().mockResolvedValue(null),
+    getHcmcWardMapping: vi.fn().mockResolvedValue(null),
     getAdministrativeUnits: vi.fn().mockResolvedValue([
       {
         id: 'P01',
@@ -424,7 +430,9 @@ describe('Checkout Saved Address Selection & Conditional Rendering Tests', () =>
     fireEvent.change(streetInput, { target: { value: '99 Quang Trung' } });
 
     // Chọn phường xã mới (trên desktop form)
-    const wardInputs = screen.getAllByPlaceholderText(/-- Gõ hoặc chọn Phường \/ Xã/i);
+    const wardInputs = screen.getAllByPlaceholderText(
+      new RegExp(viMessages.checkout.ward_select_placeholder, 'i')
+    );
     const wardInput = wardInputs[wardInputs.length - 1];
     fireEvent.focus(wardInput);
     fireEvent.change(wardInput, { target: { value: 'An Hội Tây' } });
@@ -519,10 +527,14 @@ describe('Checkout Saved Address Selection & Conditional Rendering Tests', () =>
 
     // Giải quyết API sau đó
     resolveApi(mockSavedAddresses);
+    await waitFor(() => {
+      expect(screen.getByTestId('customer-address-select')).toBeInTheDocument();
+    });
   });
 
   it('10. Khi khách hàng đăng nhập nhưng chưa có địa chỉ nào trong sổ (mảng rỗng): kết thúc loading và hiển thị form nhập tay', async () => {
-    vi.mocked(getCustomerAddressesApi).mockResolvedValueOnce([]);
+    localStorage.clear();
+    vi.mocked(getCustomerAddressesApi).mockImplementation(() => Promise.resolve([]));
 
     render(<CheckoutForm order={null} config={mockConfigData} />);
 
@@ -540,9 +552,11 @@ describe('Checkout Saved Address Selection & Conditional Rendering Tests', () =>
     // Form nhập tay xuất hiện kèm checkbox lưu vào sổ địa chỉ
     expect(screen.getByTestId('desktop-street-address-input')).toBeInTheDocument();
     expect(screen.getByText('Lưu địa chỉ này vào danh sách địa chỉ')).toBeInTheDocument();
+
+    vi.mocked(getCustomerAddressesApi).mockImplementation(() => Promise.resolve(mockSavedAddresses));
   });
 
-  it('11. Khi chọn địa chỉ có tên phường cũ (Phường 14, Quận 3, 73 Rạch Bùng Binh), hệ thống tự động ánh xạ sang Phường mới khi tính phí ship', async () => {
+  it('11. STT 10: Khi chọn địa chỉ có tên phường cũ/không thuộc 91 phường mới, hệ thống không tự điền và hiển thị cảnh báo yêu cầu chọn lại', async () => {
     const oldWardAddresses = [
       {
         id: 77,
@@ -557,22 +571,21 @@ describe('Checkout Saved Address Selection & Conditional Rendering Tests', () =>
         is_default: true,
       },
     ];
-    vi.mocked(getCustomerAddressesApi).mockResolvedValueOnce(oldWardAddresses as any);
+    vi.mocked(getCustomerAddressesApi).mockImplementation(() => Promise.resolve(oldWardAddresses as any));
 
     render(<CheckoutForm order={null} config={mockConfigData} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Chọn từ danh sách địa chỉ')).toBeInTheDocument();
+      expect(screen.getByTestId('customer-address-select')).toBeInTheDocument();
     });
 
     await waitFor(() => {
-      expect(mockCalculateShippingFee).toHaveBeenCalledWith(
-        expect.objectContaining({
-          province: 'TP. Hồ Chí Minh',
-          district: 'Quận 3',
-          ward: 'Nhiêu Lộc',
-        })
-      );
+      expect(
+        screen.getByTestId('saved-address-invalid-ward-container')
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByText(viMessages.checkout.invalid_saved_ward_notice).length
+      ).toBeGreaterThanOrEqual(1);
     });
   });
 });

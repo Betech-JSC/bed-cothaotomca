@@ -319,7 +319,7 @@ describe('Comprehensive i18n & Voucher Standardization Tests', () => {
         />
       );
 
-      expect(screen.getByPlaceholderText(/-- Gõ hoặc chọn Phường \/ Xã/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Gõ hoặc chọn phường mới/i)).toBeInTheDocument();
       expect(screen.getByText('* Vui lòng chọn Phường / Xã (Khu vực giao).')).toBeInTheDocument();
 
       currentLocale = 'en';
@@ -333,7 +333,7 @@ describe('Comprehensive i18n & Voucher Standardization Tests', () => {
         />
       );
 
-      expect(screen.getByPlaceholderText(/-- Type or select Ward \/ Commune/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Type or select your new ward/i)).toBeInTheDocument();
       expect(screen.getByText('* Please select a delivery Ward / Commune.')).toBeInTheDocument();
     });
   });
