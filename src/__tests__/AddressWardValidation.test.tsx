@@ -4,12 +4,14 @@ import "@testing-library/jest-dom";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 import CheckoutForm from "@/components/Checkout/CheckoutForm";
+import * as wardMapping from "@/data/wardMapping";
 import {
   validateAddressWardMatch,
   formatWardLabel,
   type WardCatalogEntry,
 } from "@/data/wardMapping";
 import * as orderService from "@/services/orderService";
+import * as authService from "@/services/authService";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => {
@@ -315,6 +317,11 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
 
     beforeEach(() => {
       vi.clearAllMocks();
+      vi.spyOn(wardMapping, "verifyAddressViaMapApi").mockImplementation(async (params) => {
+        return wardMapping.validateAddressWardMatch(params);
+      });
+      vi.spyOn(authService, "getCustomerAddressesApi").mockResolvedValue([]);
+      vi.spyOn(authService, "getCachedCustomerAddresses").mockReturnValue([]);
       vi.spyOn(orderService, "getCheckoutConfig").mockResolvedValue({
         delivery_types: [{ value: "delivery", label: "Giao tận nơi" }],
         default_shipping_fee: "30000",
@@ -352,10 +359,6 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
         success: true,
         data: { order_code: "ORD-VERIFIED-01" },
       } as any);
-    });
-
-    afterEach(() => {
-      cleanup();
     });
 
     it("chặn Submit khi chọn Phường Sài Gòn (20k) nhưng nhập địa chỉ Đỗ Xuân Hợp, và cho phép Submit sau khi bấm 1-Click đổi sang Phường Phước Long (45k)", async () => {
@@ -396,10 +399,13 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       const streetInput = screen.getByTestId("desktop-street-address-input");
       fireEvent.change(streetInput, { target: { value: "150 Đỗ Xuân Hợp" } });
 
-      // Cảnh báo xuất hiện ngay lập tức kèm gợi ý Phường Phước Long
-      const warningBox = await screen.findByTestId("address-ward-mismatch-warning");
-      expect(warningBox).toBeInTheDocument();
-      expect(warningBox.textContent).toContain("Phường Phước Long");
+      // Cảnh báo xuất hiện sau khi hoàn tất xác minh kèm gợi ý Phường Phước Long
+      await waitFor(() => {
+        expect(screen.queryByTestId("address-verifying-loader")).not.toBeInTheDocument();
+        const warningBox = screen.getByTestId("address-ward-mismatch-warning");
+        expect(warningBox).toBeInTheDocument();
+        expect(warningBox.textContent).toContain("Phường Phước Long");
+      }, { timeout: 4000 });
 
       // Tick xác nhận thông tin và cố tình bấm Đặt hàng -> Bị chặn, createOrder KHÔNG được gọi
       const confirmCheckbox = screen.getByTestId("desktop-confirm-checkbox");
@@ -417,13 +423,16 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       // Tự động đổi sang Phường Phước Long, tính lại phí ship (45.000đ) và xóa cảnh báo
       await waitFor(() => {
         expect(screen.queryByTestId("address-ward-mismatch-warning")).not.toBeInTheDocument();
+      }, { timeout: 4000 });
+
+      await waitFor(() => {
         expect(orderService.calculateShippingFee).toHaveBeenCalledWith(
           expect.objectContaining({
             ward: "Phước Long",
             ward_id: "PL",
           })
         );
-      }, { timeout: 4000 });
+      }, { timeout: 8000 });
 
       // Bước 3: Bấm Đặt hàng lại -> Submit thành công với đúng Phường Phước Long
       fireEvent.click(submitBtn);
@@ -474,8 +483,11 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       const streetInput = screen.getByTestId("desktop-street-address-input");
       fireEvent.change(streetInput, { target: { value: "150 Đỗ Xuân Hợp" } });
 
-      const warningBox = await screen.findByTestId("address-ward-mismatch-warning");
-      expect(warningBox).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByTestId("address-verifying-loader")).not.toBeInTheDocument();
+        const warningBox = screen.getByTestId("address-ward-mismatch-warning");
+        expect(warningBox).toBeInTheDocument();
+      }, { timeout: 4000 });
 
       const confirmCheckbox = screen.getByTestId("desktop-confirm-checkbox");
       fireEvent.click(confirmCheckbox);
@@ -506,6 +518,92 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       expect(orderPayload.delivery.address_mismatch_confirmed).toBe(true);
       expect(orderPayload.delivery.suggested_ward).toBe("Phước Long");
       expect(orderPayload.delivery.address_warning_message).toContain("Phường Phước Long");
+    });
+
+    it("TC-FE-06: khi nhập địa chỉ có số nhà (500 Cách Mạng Tháng 8), hiển thị loading 'Đang xác định khu vực giao hàng...' và KHÔNG hiển thị 5-6 nút gợi ý từ sync dictionary", async () => {
+      let resolveVerify: (val: any) => void = () => {};
+      const verifyPromise = new Promise((resolve) => {
+        resolveVerify = resolve;
+      });
+      const verifySpy = vi.spyOn(wardMapping, "verifyAddressViaMapApi").mockReturnValue(verifyPromise as any);
+
+      try {
+        render(
+          <CheckoutForm
+            order={null}
+            config={{
+              delivery_types: [{ value: "delivery", label: "Giao tận nơi" }],
+              default_shipping_fee: "30000",
+              branches: [{ id: 1, branchName: "Chi nhánh Trần Đình Xu", address: "42/2 Trần Đình Xu", contactNumber: "0123", isActive: true }],
+            }}
+          />
+        );
+
+        await waitFor(() => {
+          expect(orderService.getAdministrativeUnits).toHaveBeenCalled();
+          expect(screen.getByTestId("desktop-street-address-input")).toBeInTheDocument();
+          expect(screen.getByTestId("desktop-ward-select-input")).toBeInTheDocument();
+        });
+
+        // Chọn Phường Phước Long (xa trung tâm, không đi qua đường CMT8)
+        const desktopWardInput = screen.getByTestId("desktop-ward-select-input");
+        fireEvent.focus(desktopWardInput);
+        fireEvent.click(desktopWardInput);
+        const plOption = await screen.findByTestId("desktop-ward-select-option-PL");
+        fireEvent.click(plOption);
+
+        await waitFor(() => {
+          expect(orderService.calculateShippingFee).toHaveBeenCalledWith(
+            expect.objectContaining({
+              ward: "Phước Long",
+              ward_id: "PL",
+            })
+          );
+        });
+
+        // Nhập địa chỉ trục đường dài có số nhà: "500 Cách Mạng Tháng 8"
+        const streetInput = await screen.findByTestId("desktop-street-address-input");
+        fireEvent.change(streetInput, { target: { value: "500 Cách Mạng Tháng 8" } });
+
+        // Trong lúc chờ API geocode (debounce hoặc đang fetch):
+        // 1. Phải hiển thị spinner loading "Đang xác định khu vực giao hàng..."
+        // 2. Tuyệt đối KHÔNG hiển thị khung cảnh báo 5-6 phường từ sync dictionary
+        await waitFor(() => {
+          const loader = screen.getByTestId("address-verifying-loader");
+          expect(loader).toBeInTheDocument();
+          expect(loader.textContent).toContain("Đang xác định khu vực giao hàng");
+          expect(screen.queryByTestId("address-ward-mismatch-warning")).not.toBeInTheDocument();
+        }, { timeout: 4000 });
+
+        // Đợi debounce timer (350ms) kết thúc và API thực sự được gọi
+        await waitFor(() => {
+          expect(verifySpy).toHaveBeenCalled();
+        }, { timeout: 4000 });
+
+        // Giả lập API geocode trả về kết quả chính xác duy nhất: Phường Xuân Hòa
+        resolveVerify({
+          isValid: false,
+          conflictType: "street_conflict",
+          detectedArea: "Phường Xuân Hòa",
+          message: "Địa chỉ bạn nhập thuộc Phường Xuân Hòa. Vui lòng đổi phường.",
+          suggestedWard: { id: "XH", name: "Xuân Hòa", district: "Xuân Hòa" },
+          suggestedWards: [{ id: "XH", name: "Xuân Hòa", district: "Xuân Hòa" }],
+        });
+
+        // Sau khi API trả về:
+        // 1. Loader biến mất
+        // 2. Chỉ hiển thị cảnh báo với đúng 1 phường gợi ý (Xuân Hòa), không bị chớp 5-6 phường
+        await waitFor(() => {
+          expect(screen.queryByTestId("address-verifying-loader")).not.toBeInTheDocument();
+          expect(screen.getByTestId("address-ward-mismatch-warning")).toBeInTheDocument();
+        }, { timeout: 4000 });
+
+        const warningBox = screen.getByTestId("address-ward-mismatch-warning");
+        expect(warningBox.textContent).toContain("Phường Xuân Hòa");
+        expect(screen.queryByText("Đổi sang Phường Bến Thành")).not.toBeInTheDocument();
+      } finally {
+        verifySpy.mockRestore();
+      }
     });
   });
 });

@@ -326,6 +326,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [saveToAddressBook, setSaveToAddressBook] = useState(false);
   const [isLoadingCustomerAddresses, setIsLoadingCustomerAddresses] = useState<boolean>(false);
   const hasAutoFilledDefaultAddressRef = useRef(false);
+  const hasFetchedCustomerAddressesRef = useRef(false);
+  const prevUserIdRef = useRef(user?.id);
+  if (prevUserIdRef.current !== user?.id) {
+    hasFetchedCustomerAddressesRef.current = false;
+    hasAutoFilledDefaultAddressRef.current = false;
+    prevUserIdRef.current = user?.id;
+  }
 
   const availableWardsRef = useRef<AdministrativeWard[]>([]);
   availableWardsRef.current = availableWards;
@@ -412,6 +419,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         setPhone((prev) => prev || user.phone || "");
         setEmail((prev) => prev || user.email || "");
       }
+
+      if (hasFetchedCustomerAddressesRef.current) return;
+      hasFetchedCustomerAddressesRef.current = true;
 
       const cached = getCachedCustomerAddresses();
       if (cached.length > 0) {
@@ -1528,6 +1538,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   const [mapAddressValidation, setMapAddressValidation] = useState<AddressWardValidationResult | null>(null);
   const [isAddressWarningConfirmed, setIsAddressWarningConfirmed] = useState(false);
+  const [isVerifyingAddress, setIsVerifyingAddress] = useState(false);
   const latestAddressVerifyKeyRef = useRef("");
   latestAddressVerifyKeyRef.current = `${deliveryType}|${isSavedAddressSelected}|${streetAddress.trim()}|${selectedWard}|${selectedWardId}|${selectedDistrict}|${selectedProvince}`;
 
@@ -1568,7 +1579,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       Boolean(syncAddressValidation.suggestedWard) && !hasAddressHouseNumber;
 
     if (
-      process.env.NODE_ENV === "test" ||
       deliveryType !== "delivery" ||
       isSavedAddressSelected ||
       (!hasWardSelected && !hasAddressHouseNumber) ||
@@ -1576,10 +1586,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       !canVerifySyncState ||
       shouldSkipBecauseSyncSuggested
     ) {
+      setIsVerifyingAddress(false);
       return;
     }
 
     let cancelled = false;
+    setIsVerifyingAddress(true);
     const snapshotKey = latestAddressVerifyKeyRef.current;
     const timer = setTimeout(() => {
       verifyAddressViaMapApi({
@@ -1596,7 +1608,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             setMapAddressValidation(res);
           }
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) {
+            setIsVerifyingAddress(false);
+          }
+        });
     }, 350);
 
     return () => {
@@ -1637,8 +1654,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     if (
       !hasWardSelected &&
       hasAddressHouseNumber &&
-      !mapAddressValidation &&
-      process.env.NODE_ENV !== "test"
+      !mapAddressValidation
     ) {
       return { isValid: true };
     }
@@ -1657,6 +1673,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const hasUnconfirmedAddressWarning =
     deliveryType === "delivery" &&
     !isSavedAddressSelected &&
+    (!isVerifyingAddress || !hasAddressHouseNumber) &&
     !addressWardValidation.isValid &&
     Boolean(addressWardValidation.message) &&
     !isAddressWarningConfirmed;
@@ -1667,6 +1684,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     setSelectedDistrict(suggested.district || "");
     setMapAddressValidation(null);
     setIsAddressWarningConfirmed(false);
+    setIsVerifyingAddress(false);
     setFieldErrors((prev) => {
       const next = { ...prev };
       delete next["delivery.ward"];
@@ -2794,9 +2812,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         const customerPhone = phone.trim();
         const successPath = locale === "en" ? "/en/order-success" : "/dat-hang-thanh-cong";
         const targetUrl = `${successPath}?code=${encodeURIComponent(orderCode)}&phone=${encodeURIComponent(customerPhone)}`;
-        if (process.env.NODE_ENV !== "test") {
-          window.location.href = targetUrl;
-        }
+        window.location.href = targetUrl;
       } else {
         // Bank transfer: Show SePay QR Code Screen
         setPendingOrder(result.data);
@@ -3413,7 +3429,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           required
                           value={streetAddress}
                           onChange={(e) => {
-                            setStreetAddress(e.target.value);
+                            const val = e.target.value;
+                            setStreetAddress(val);
+                            if (hasHouseNumberInAddress(val) && val.trim().length >= 5) {
+                              setIsVerifyingAddress(true);
+                            }
                             if (fieldErrors["delivery.address"]) {
                               setFieldErrors((prev) => {
                                 const next = { ...prev };
@@ -3431,13 +3451,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                               Boolean(syncAddressValidation.suggestedWard) && !hasAddressHouseNumber;
 
                             if (
-                              process.env.NODE_ENV !== "test" &&
                               !isSavedAddressSelected &&
                               (hasWardSelected || hasAddressHouseNumber) &&
                               streetAddress.trim().length >= 5 &&
                               canVerifySyncState &&
-                              !shouldSkipBecauseSyncSuggested
+                              !shouldSkipBecauseSyncSuggested &&
+                              !mapAddressValidation &&
+                              !isVerifyingAddress
                             ) {
+                              setIsVerifyingAddress(true);
                               const snapshotKey = latestAddressVerifyKeyRef.current;
                               verifyAddressViaMapApi({
                                 streetAddress,
@@ -3453,7 +3475,10 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                                     setMapAddressValidation(res);
                                   }
                                 })
-                                .catch(() => {});
+                                .catch(() => {})
+                                .finally(() => {
+                                  setIsVerifyingAddress(false);
+                                });
                             }
                           }}
                           className={`w-full h-11 rounded-[4px] border px-[14px] bg-white text-gray-900 focus:outline-none text-base md:text-sm font-serif ${
@@ -3464,7 +3489,15 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           placeholder={t("address_placeholder")}
                         />
                       </div>
-                      {!addressWardValidation.isValid && addressWardValidation.message ? (
+                      {isVerifyingAddress && hasAddressHouseNumber ? (
+                        <div
+                          data-testid="address-verifying-loader"
+                          className="mt-2 flex items-center gap-2 text-xs text-gray-500"
+                        >
+                          <span className="inline-block w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          <span>Đang xác định khu vực giao hàng...</span>
+                        </div>
+                      ) : !addressWardValidation.isValid && addressWardValidation.message ? (
                         !isAddressWarningConfirmed ? (
                           <div
                             data-testid="address-ward-mismatch-warning"
