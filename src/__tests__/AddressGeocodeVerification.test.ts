@@ -994,4 +994,159 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
       }
     });
   });
+
+  describe("6. Regression 14/11: old_ward trùng số phường ở quận khác không được bỏ qua cảnh báo", () => {
+    const REAL_WARDS: WardCatalogEntry[] = [
+      {
+        id: "XH",
+        name: "Xuân Hòa",
+        district: "Quận 3",
+        old_wards: "P. Võ Thị Sáu, P.6, P.7, P.8, một phần P.4",
+      },
+      {
+        id: "TSN",
+        name: "Tân Sơn Nhất",
+        district: "Tân Bình",
+        old_wards: "P.4, P.5, P.7",
+      },
+    ];
+
+    const CASES: Array<{
+      name: string;
+      address: string;
+      candidates: GeocodeVerificationPayload["candidates"];
+    }> = [
+      {
+        name: "64 Út Tịch (old_ward Phường 4 - Tân Bình)",
+        address: "64 Út Tịch",
+        candidates: [
+          {
+            formatted_address:
+              "64 Đường Út Tịch, Phường Tân Sơn Nhất, Thành phố Hồ Chí Minh",
+            ward: "Phường Tân Sơn Nhất",
+            old_ward: "Phường 4",
+            district: "Quận Tân Bình",
+            province: "Thành phố Hồ Chí Minh",
+            house_number: "64",
+            street: "Đường Út Tịch",
+            distance_meters: 0,
+          },
+        ],
+      },
+      {
+        name: "1000 Cách Mạng Tháng 8 (old_ward Phường 7 / Phường 5 - Tân Bình)",
+        address: "1000 Cách Mạng Tháng 8",
+        candidates: [
+          {
+            formatted_address:
+              "1000 Đường Cách Mạng Tháng 8, Phường Tân Sơn Nhất, Thành phố Hồ Chí Minh",
+            ward: "Phường Tân Sơn Nhất",
+            old_ward: "Phường 7",
+            district: "Quận Tân Bình",
+            province: "Thành phố Hồ Chí Minh",
+            house_number: "1000",
+            street: "Đường Cách Mạng Tháng 8",
+            distance_meters: 0,
+          },
+          {
+            formatted_address:
+              "1000 Đường Cách Mạng Tháng 8, Phường Tân Sơn Nhất, Thành phố Hồ Chí Minh",
+            ward: "Phường Tân Sơn Nhất",
+            old_ward: "Phường 5",
+            district: "Quận Tân Bình",
+            province: "Thành phố Hồ Chí Minh",
+            house_number: "1000",
+            street: "Đường Cách Mạng Tháng 8",
+            distance_meters: 14,
+          },
+        ],
+      },
+    ];
+
+    for (const tc of CASES) {
+      it(`cảnh báo khi chọn Phường Xuân Hòa nhưng API trả Tân Sơn Nhất — ${tc.name}`, () => {
+        const res = evaluateGeocodePayload(
+          {
+            provider: "trackasia",
+            precision: "house_number",
+            candidates: tc.candidates,
+          },
+          {
+            streetAddress: tc.address,
+            selectedWard: "Xuân Hòa",
+            selectedWardId: "XH",
+            selectedDistrict: "Quận 3",
+            selectedProvince: "TP. Hồ Chí Minh",
+            availableWards: REAL_WARDS,
+          }
+        );
+
+        expect(res.isValid).toBe(false);
+        expect(res.conflictType).toBe("ward_conflict");
+        expect(res.detectedArea).toContain("Tân Sơn Nhất");
+        expect(res.suggestedWard?.name).toBe("Tân Sơn Nhất");
+      });
+    }
+
+    it("không nới lỏng cảnh báo đang đúng: 500 Quang Trung (Gò Vấp) & 200 Nguyễn Văn Trỗi (Phú Nhuận)", () => {
+      const controlCases: Array<{
+        address: string;
+        candidates: GeocodeVerificationPayload["candidates"];
+      }> = [
+        {
+          address: "500 Quang Trung",
+          candidates: [
+            {
+              formatted_address:
+                "500 Quang Trung, Phường Gò Vấp, Quận Gò Vấp, Thành phố Hồ Chí Minh",
+              ward: "Phường Gò Vấp",
+              old_ward: "Phường 10",
+              district: "Quận Gò Vấp",
+              province: "Thành phố Hồ Chí Minh",
+              house_number: "500",
+              street: "Quang Trung",
+              distance_meters: 0,
+            },
+          ],
+        },
+        {
+          address: "200 Nguyễn Văn Trỗi",
+          candidates: [
+            {
+              formatted_address:
+                "200 Nguyễn Văn Trỗi, Phường Phú Nhuận, Quận Phú Nhuận, Thành phố Hồ Chí Minh",
+              ward: "Phường Phú Nhuận",
+              old_ward: "Phường 10",
+              district: "Quận Phú Nhuận",
+              province: "Thành phố Hồ Chí Minh",
+              house_number: "200",
+              street: "Nguyễn Văn Trỗi",
+              distance_meters: 0,
+            },
+          ],
+        },
+      ];
+
+      for (const tc of controlCases) {
+        const res = evaluateGeocodePayload(
+          {
+            provider: "trackasia",
+            precision: "house_number",
+            candidates: tc.candidates,
+          },
+          {
+            streetAddress: tc.address,
+            selectedWard: "Xuân Hòa",
+            selectedWardId: "XH",
+            selectedDistrict: "Quận 3",
+            selectedProvince: "TP. Hồ Chí Minh",
+            availableWards: REAL_WARDS,
+          }
+        );
+
+        expect(res.isValid).toBe(false);
+        expect(res.conflictType).toBe("ward_conflict");
+      }
+    });
+  });
 });

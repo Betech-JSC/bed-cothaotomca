@@ -766,6 +766,7 @@ describe("UI Flow & Vitest Regression Audit (Opus 5.5)", () => {
         ["http://localhost:3000/vi/forgot-password", "/quen-mat-khau"],
         ["http://localhost:3000/vi/checkout", "/thanh-toan"],
         ["http://localhost:3000/vi/order-lookup?code=ORD-1", "/tra-cuu-don-hang?code=ORD-1"],
+        ["http://localhost:3000/order-lookup?code=ORD-2", "/tra-cuu-don-hang?code=ORD-2"],
       ];
 
       for (const [inputUrl, expectedLocationSuffix] of cases) {

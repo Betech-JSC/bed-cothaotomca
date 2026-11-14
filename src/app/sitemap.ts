@@ -24,7 +24,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { vi: '/lien-he', en: '/contact', priority: 0.8 },
     { vi: '/san-pham', en: '/product', priority: 0.8 },
     { vi: '/tin-tuc', en: '/blog', priority: 0.8 },
-    { vi: '/chinh-sach', en: '/policy', priority: 0.8 },
     { vi: '/dang-nhap', en: '/signin', priority: 0.5 },
     { vi: '/dang-ky', en: '/signup', priority: 0.5 },
     { vi: '/thong-tin-ca-nhan', en: '/profile', priority: 0.5 },

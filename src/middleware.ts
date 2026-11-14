@@ -30,6 +30,11 @@ export default function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/thong-tin-ca-nhan${search}`, request.url), 301);
   }
 
+  // /vi/order-lookup và /order-lookup: 301 thẳng về URL tiếng Việt duy nhất (giữ query)
+  if (/^\/(?:vi\/)?order-lookup\/?$/.test(pathname)) {
+    return NextResponse.redirect(new URL(`/tra-cuu-don-hang${search}`, request.url), 301);
+  }
+
   if (pathname === '/vi' || pathname.startsWith('/vi/')) {
     const stripped = pathname.replace(/^\/vi(\/|$)/, '/') || '/';
     const viRedirectMap: Array<[RegExp, string]> = [

@@ -1816,6 +1816,65 @@ function parseGeocodeCandidateAdmin(
   };
 }
 
+/** Chuẩn hoá một mục old_ward ("P.4", "Phường Võ Thị Sáu", "một phần P.4") thành key so khớp. */
+function toOldWardKey(raw?: string | null): string {
+  if (!raw) return "";
+  return normalizeText(
+    cleanAdministrativeUnitName(
+      raw.replace(/^(?:một|mot)\s+phần?\s+/i, "").replace(/^phần?\s+/i, "")
+    )
+  );
+}
+
+/** Danh sách key old ward của một phường (tách theo dấu phẩy). */
+function parseOldWardKeys(raw?: string | null): Set<string> {
+  const keys = new Set<string>();
+  if (!raw) return keys;
+  raw.split(/[,;]/).forEach((part) => {
+    const key = toOldWardKey(part);
+    if (key) keys.add(key);
+  });
+  return keys;
+}
+
+/**
+ * So khớp old ward có cấu trúc, tránh so chuỗi số trần (số phường cũ lặp ở nhiều quận):
+ * tên old ward phải trùng đúng một mục old_ward của phường đang chọn VÀ
+ * quận của candidate phải trùng quận của phường đang chọn.
+ */
+function isOldWardOfSelectedWard(
+  parsed: ParsedGeocodeCandidateAdmin,
+  currentWardObj?: AdministrativeWard
+): boolean {
+  if (!currentWardObj) return false;
+
+  const oldWardKeys = parseOldWardKeys(
+    currentWardObj.old_ward || currentWardObj.old_wards
+  );
+  if (oldWardKeys.size === 0) return false;
+
+  const candidateDistrict =
+    parsed.explicitDistrict ||
+    (parsed.candidate.district
+      ? normalizeDistrictName(parsed.candidate.district)
+      : "");
+  if (!candidateDistrict) return false;
+
+  const wardDistricts = new Set<string>();
+  if (currentWardObj.district) {
+    wardDistricts.add(normalizeDistrictName(currentWardObj.district));
+  }
+  (
+    WARD_CANONICAL_DISTRICTS[cleanAdministrativeUnitName(currentWardObj.name)] || []
+  ).forEach((district) => wardDistricts.add(normalizeDistrictName(district)));
+  if (!wardDistricts.has(candidateDistrict)) return false;
+
+  return [parsed.candidate.ward, parsed.candidate.old_ward].some((name) => {
+    const key = toOldWardKey(name);
+    return Boolean(key) && oldWardKeys.has(key);
+  });
+}
+
 function buildSuggestionsForCandidateList(
   parsedList: ParsedGeocodeCandidateAdmin[],
   availableWards: AdministrativeWard[],
@@ -1974,16 +2033,8 @@ export function evaluateGeocodePayload(
       if (p.canonicalWard && normalizeText(p.canonicalWard) === normSelectedWard) {
         return true;
       }
-      if (currentWardObj && (p.candidate.ward || p.candidate.old_ward)) {
-        const oldWardStr = normalizeText(currentWardObj.old_ward || currentWardObj.old_wards || "");
-        const candWardNorm = normalizeText(cleanAdministrativeUnitName(p.candidate.ward || ""));
-        const candOldWardNorm = normalizeText(cleanAdministrativeUnitName(p.candidate.old_ward || ""));
-        if (
-          (candWardNorm && oldWardStr.includes(candWardNorm)) ||
-          (candOldWardNorm && oldWardStr.includes(candOldWardNorm))
-        ) {
-          return true;
-        }
+      if (isOldWardOfSelectedWard(p, currentWardObj)) {
+        return true;
       }
       if (
         (!p.canonicalWard || p.isOldWardOnly) &&
@@ -2104,16 +2155,8 @@ export function evaluateGeocodePayload(
     if (p.canonicalWard && normalizeText(p.canonicalWard) === normSelectedWard) {
       return true;
     }
-    if (currentWardObj && (p.candidate.ward || p.candidate.old_ward)) {
-      const oldWardStr = normalizeText(currentWardObj.old_ward || currentWardObj.old_wards || "");
-      const candWardNorm = normalizeText(cleanAdministrativeUnitName(p.candidate.ward || ""));
-      const candOldWardNorm = normalizeText(cleanAdministrativeUnitName(p.candidate.old_ward || ""));
-      if (
-        (candWardNorm && oldWardStr.includes(candWardNorm)) ||
-        (candOldWardNorm && oldWardStr.includes(candOldWardNorm))
-      ) {
-        return true;
-      }
+    if (isOldWardOfSelectedWard(p, currentWardObj)) {
+      return true;
     }
     const wardKnownIn94 = p.canonicalWard
       ? isKnownPostMerger94Ward(p.canonicalWard, availableWards)

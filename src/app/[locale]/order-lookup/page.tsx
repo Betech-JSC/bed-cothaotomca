@@ -18,14 +18,19 @@ export async function generateMetadata({
     ? "Look up your order status and shipping progress with Co Thao Tom Ca"
     : "Tra cứu thông tin, tình trạng xử lý và tiến độ giao hàng đơn hàng tại Cô Thảo Tôm Cá");
 
+  const canonicalUrl = isEn
+    ? `${baseUrl}/en/order-lookup`
+    : `${baseUrl}/tra-cuu-don-hang`;
+
   return {
     title,
     description,
     alternates: {
-      canonical: `${baseUrl}/${locale}/order-lookup`,
+      canonical: canonicalUrl,
       languages: {
-        vi: `${baseUrl}/vi/tra-cuu-don-hang`,
+        vi: `${baseUrl}/tra-cuu-don-hang`,
         en: `${baseUrl}/en/order-lookup`,
+        "x-default": `${baseUrl}/tra-cuu-don-hang`,
       },
     },
     openGraph: {
