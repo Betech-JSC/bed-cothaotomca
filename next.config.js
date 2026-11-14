@@ -141,6 +141,11 @@ const nextConfig = {
         permanent: true,
       },
       {
+        source: '/vi/order-lookup',
+        destination: '/tra-cuu-don-hang',
+        statusCode: 301,
+      },
+      {
         source: '/vi/:path*',
         destination: '/:path*',
         permanent: true,
