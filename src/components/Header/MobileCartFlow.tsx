@@ -1599,32 +1599,31 @@ export default function MobileCartFlow({
   }, [cartItems]);
 
   const canCombineLoyaltyWithPromotions = Boolean(loyaltySettings?.can_combine_with_promotions);
+  const canCombineLoyaltyWithFreeship = Boolean(loyaltySettings?.can_combine_with_freeship);
 
   const isMemberExcludedByPromotions = useMemo(() => {
-    if (canCombineLoyaltyWithPromotions) return false;
-    if (appliedVoucher && appliedVoucher.canCombineWithPromotions === false) return true;
-    if (appliedShippingVoucher && appliedShippingVoucher.canCombineWithPromotions === false) return true;
-
-    const activePromos = (allPromotionsList || []).filter((c) =>
-      selectedCampaignIds.some((id) => String(id) === String(c.id))
-    );
-    if (activePromos.some((c) => c.can_combine_with_promotions === false)) return true;
-    if (cartCampaignG1 && cartCampaignG1.can_combine_with_promotions === false) return true;
-    if (eligibleOrderGiftPromo && eligibleOrderGiftPromo.can_combine_with_promotions === false) return true;
-    if (eligibleOrderDiscountPromo && eligibleOrderDiscountPromo.can_combine_with_promotions === false) return true;
-    if (eligibleBuyXGetYPromos.some((p) => p.can_combine_with_promotions === false)) return true;
+    // M6: Food Voucher <-> Loyalty
+    const activeFoodV = appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.discountType !== "freeship" ? appliedVoucher : null;
+    if (activeFoodV && !(Boolean(activeFoodV.canCombineWithPromotions) && canCombineLoyaltyWithPromotions)) {
+      return true;
+    }
+    // M9: Shipping Voucher <-> Loyalty
+    const activeShipV = appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") ? appliedVoucher : null);
+    if (activeShipV && !(Boolean(activeShipV.canCombineWithPromotions) && canCombineLoyaltyWithFreeship)) {
+      return true;
+    }
+    // M3: Campaign (all 4 types) <-> Loyalty
+    if (appliedCartPromotions.some((c) => !(Boolean(c.can_combine_with_promotions) && canCombineLoyaltyWithPromotions))) {
+      return true;
+    }
 
     return false;
   }, [
     canCombineLoyaltyWithPromotions,
+    canCombineLoyaltyWithFreeship,
     appliedVoucher,
     appliedShippingVoucher,
-    allPromotionsList,
-    selectedCampaignIds,
-    cartCampaignG1,
-    eligibleOrderGiftPromo,
-    eligibleOrderDiscountPromo,
-    eligibleBuyXGetYPromos,
+    appliedCartPromotions,
   ]);
 
   const isExcludedByVoucher = isMemberExcludedByPromotions;

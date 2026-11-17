@@ -14,7 +14,7 @@ import {
   filterAndLocalizeBlogs,
   cleanBlogSlugSegment,
 } from "@/lib/format";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Metadata } from "next";
 import JsonLd from "@/components/SEO/JsonLd";
 import AlternateLinksUpdater from "@/components/SEO/AlternateLinksUpdater";
@@ -61,7 +61,15 @@ async function fetchBlog(slug: string, locale: string): Promise<Blog | null> {
   return localizeBlogItem(blogResponse!.data as any as Blog, locale);
 }
 
-function resolveBlogAlternateSlugs(blog: any, locale: string, currentCategory: string, currentSlug: string) {
+function safeDecodeSegment(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function resolveBlogAlternateSlugs(blog: any, locale: string, _currentCategory: string, currentSlug: string) {
   const isEn = locale === 'en';
   const altSlugs = blog?.alternate_slugs;
 
@@ -69,6 +77,8 @@ function resolveBlogAlternateSlugs(blog: any, locale: string, currentCategory: s
     altSlugs?.vi?.category_slug ||
     blog?.category?.slug_vi ||
     blog?.category?.original_slug ||
+    (blog?.category?.vi_title ? slugify(blog.category.vi_title) : '') ||
+    (!isEn && blog?.category?.title ? slugify(blog.category.title) : '') ||
     (!isEn ? blog?.category?.slug : '') ||
     'tin-tuc';
   const viCatSlug = cleanBlogSlugSegment(rawViCatSlug) || 'tin-tuc';
@@ -76,10 +86,12 @@ function resolveBlogAlternateSlugs(blog: any, locale: string, currentCategory: s
   const rawEnCatSlug =
     altSlugs?.en?.category_slug ||
     blog?.category?.slug_en ||
-    (isEn ? (blog?.category?.slug || currentCategory) : '') ||
+    (blog?.category?.en_title ? slugify(blog.category.en_title) : '') ||
+    (isEn && blog?.category?.title ? slugify(blog.category.title) : '') ||
+    (isEn ? blog?.category?.slug : '') ||
     'news';
   const cleanedEnCat = cleanBlogSlugSegment(rawEnCatSlug) || 'news';
-  const enCatSlug = cleanedEnCat === 'blog' ? 'news' : cleanedEnCat;
+  const enCatSlug = cleanedEnCat === 'blog' || cleanedEnCat === 'category' ? 'news' : cleanedEnCat;
 
   const rawViBlogSlug =
     (typeof altSlugs?.vi === 'string' ? altSlugs.vi : altSlugs?.vi?.slug) ||
@@ -182,6 +194,27 @@ export default async function BlogDetailsPage({
     notFound();
   }
 
+  const { viCatSlug, enCatSlug, viBlogSlug, enBlogSlug } = resolveBlogAlternateSlugs(blog, locale, category, slug);
+  const expectedCatSlug = locale === 'en' ? enCatSlug : viCatSlug;
+  const expectedBlogSlug = locale === 'en' ? enBlogSlug : viBlogSlug;
+
+  const normCurrentCat = safeDecodeSegment(category).trim().toLowerCase();
+  const normExpectedCat = safeDecodeSegment(expectedCatSlug).trim().toLowerCase();
+  const normCurrentSlug = safeDecodeSegment(slug).trim().toLowerCase();
+  const normExpectedSlug = safeDecodeSegment(expectedBlogSlug).trim().toLowerCase();
+
+  if (
+    expectedCatSlug &&
+    expectedBlogSlug &&
+    (normCurrentCat !== normExpectedCat || normCurrentSlug !== normExpectedSlug)
+  ) {
+    const canonicalPath =
+      locale === 'en'
+        ? `/en/blog/${expectedCatSlug}/${expectedBlogSlug}`
+        : `/tin-tuc/${expectedCatSlug}/${expectedBlogSlug}`;
+    permanentRedirect(canonicalPath);
+  }
+
   const translation = getTranslation<BlogTranslation>(blog.translations, locale);
   const catTranslation = getTranslation<BlogCategoryTranslation>(blog.category?.translations, locale);
 
@@ -225,13 +258,20 @@ export default async function BlogDetailsPage({
     const itemTranslation = getTranslation<BlogTranslation>(item.translations, locale);
     const itemCatTranslation = getTranslation<BlogCategoryTranslation>(item.category?.translations, locale);
     const title = locale === 'en' ? (item.title || itemTranslation?.title) : (itemTranslation?.title || item.title);
-    const catName = locale === 'en'
-      ? (item.category?.title || itemCatTranslation?.title || categoryName)
-      : (itemCatTranslation?.title || item.category?.title || categoryName);
-    const rawCatSlug = locale === 'en'
-      ? (item.category?.slug || slugify(catName) || 'news')
-      : (item.category?.slug || slugify(catName) || 'tin-tuc');
-    const finalCatSlug = (locale === 'en' && rawCatSlug === 'blog') ? 'news' : rawCatSlug;
+    const hasItemCategory = Boolean(item.category);
+    const itemCatTitle = hasItemCategory
+      ? (locale === 'en'
+          ? (item.category?.title || itemCatTranslation?.title || '')
+          : (itemCatTranslation?.title || item.category?.title || ''))
+      : '';
+    const catName = itemCatTitle || (locale === 'en' ? 'News' : 'Tin tức');
+    const rawCatSlug = hasItemCategory
+      ? (locale === 'en'
+          ? ((item.category as any)?.slug_en || item.category?.slug || (itemCatTitle ? slugify(itemCatTitle) : '') || 'news')
+          : ((item.category as any)?.slug_vi || (item.category as any)?.original_slug || item.category?.slug || (itemCatTitle ? slugify(itemCatTitle) : '') || 'tin-tuc'))
+      : (locale === 'en' ? 'news' : 'tin-tuc');
+    const cleanedItemCatSlug = cleanBlogSlugSegment(rawCatSlug) || (locale === 'en' ? 'news' : 'tin-tuc');
+    const finalCatSlug = (locale === 'en' && (cleanedItemCatSlug === 'blog' || cleanedItemCatSlug === 'category')) ? 'news' : cleanedItemCatSlug;
 
     return {
       image: {
@@ -249,8 +289,6 @@ export default async function BlogDetailsPage({
   });
 
   const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'https://cothaotomca.vn').replace(/\/$/, '');
-  const cleanCategory = locale === 'en' && category === 'blog' ? 'news' : category;
-  const { viCatSlug, enCatSlug, viBlogSlug, enBlogSlug } = resolveBlogAlternateSlugs(blog, locale, category, slug);
   const alternateLinks = {
     vi: {
       pathname: "/blog/category/[category]/[slug]",

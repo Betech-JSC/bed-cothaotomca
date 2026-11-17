@@ -37,13 +37,21 @@
     "**/*.tsx",
     ".next/dev/types/**/*.ts",
     ".next-build/types/**/*.ts",
-    ".next-build/dev/types/**/*.ts",
-    ".next-qa/types/**/*.ts",
-    ".next-qa/dev/types/**/*.ts"
+    ".next-build/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
+    ".next-qa",
     "playwright.config.ts",
-    "e2e"
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "e2e",
+    "e2e/**",
+    "src/**/__tests__/**",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
   ]
 }

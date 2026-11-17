@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "BUILD_DIR=.next-build next build --webpack && cp -rf .next-build/. .next/",
+    "build:check": "BUILD_DIR=.next-build next build --webpack",
     "start": "next start",
     "lint": "ESLINT_USE_FLAT_CONFIG=false eslint src --max-warnings=0",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },

@@ -94,8 +94,6 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
     }),
   ]);
 
-  console.log("ℹ️ [CheckoutPage] Branches list fetched from backend:", config?.branches);
-
   if (!product && slug) {
     notFound();
   }

@@ -277,11 +277,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
   }, [order, addToCart, cartItems]);
 
-  // Log branches list in browser F12 developer console for easy verification
-  useMemo(() => {
-    console.log("👉 [CheckoutForm] Branches list loaded in browser:", config.branches);
-  }, [config.branches]);
-
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
@@ -1277,18 +1272,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     const isM8Blocked = Boolean(
       activeFoodV && !(Boolean(activeFoodV.canCombineWithFreeship) && shipPromoFlag)
     );
-    // M10: Loyalty <-> ShippingSetting (Auto Ship 400K)
-    const isM10Blocked = Boolean(
-      memberDiscount > 0 && !(canCombineLoyaltyWithFreeship && shipPromoFlag)
-    );
 
-    return isM5Blocked || isM8Blocked || isM10Blocked;
+    return isM5Blocked || isM8Blocked;
   }, [
     shippingSettings,
     appliedVoucher,
     appliedCartPromotions,
-    memberDiscount,
-    canCombineLoyaltyWithFreeship,
   ]);
 
   // Trigger real-time calculation when address, subtotal or voucher changes

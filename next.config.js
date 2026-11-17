@@ -5,7 +5,7 @@ const nextConfig = {
   distDir: process.env.BUILD_DIR || '.next',
   poweredByHeader: false,
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   images: {
     unoptimized: true,

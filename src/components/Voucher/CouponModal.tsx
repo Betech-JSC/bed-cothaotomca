@@ -1744,7 +1744,7 @@ export default function CouponModal({
     return "";
   }, [isMemberCardLocked, hasSelectedExclusiveVoucher, hasSelectedExclusiveCampaign, t]);
 
-  // Xác định điều kiện khóa thẻ Trợ giá ship tự động (shipping-promotion-card) theo ma trận 2 chiều (M5, M8, M10, M11)
+  // Xác định điều kiện khóa thẻ Trợ giá ship tự động (shipping-promotion-card) theo ma trận 2 chiều (M5, M8, M11)
   const isShippingPromotionLocked = useMemo(() => {
     // 1. Khóa khi CheckoutForm / MobileCartFlow báo freeship bị chặn
     if (isFreeshipBlocked) return true;
@@ -1792,18 +1792,6 @@ export default function CouponModal({
     });
     if (hasLockedSelectedVoucher) return true;
 
-    // 7. Pair M10: Loyalty (canCombineLoyaltyWithFreeship) <-> ShippingSetting (can_combine_with_promotions)
-    if (
-      !isBrowseMode &&
-      hasMemberBenefit &&
-      isMemberCardSelected &&
-      !isMemberCardLocked &&
-      loyaltySettings?.can_combine_with_freeship !== undefined &&
-      !(canCombineLoyaltyWithFreeship && shipPromoFlag)
-    ) {
-      return true;
-    }
-
     return false;
   }, [
     isFreeshipBlocked,
@@ -1817,12 +1805,6 @@ export default function CouponModal({
     selectedCampaignIds,
     allCampaigns,
     selectedVoucherItems,
-    isBrowseMode,
-    hasMemberBenefit,
-    isMemberCardSelected,
-    isMemberCardLocked,
-    loyaltySettings,
-    canCombineLoyaltyWithFreeship,
   ]);
 
   const shippingPromotionLockReason = useMemo(() => {
@@ -1847,17 +1829,6 @@ export default function CouponModal({
       return t("order_voucher_no_freeship");
     }
 
-    if (
-      !isBrowseMode &&
-      hasMemberBenefit &&
-      isMemberCardSelected &&
-      !isMemberCardLocked &&
-      loyaltySettings?.can_combine_with_freeship !== undefined &&
-      !(canCombineLoyaltyWithFreeship && shipPromoFlag)
-    ) {
-      return t("mutex_member_tier");
-    }
-
     return t("campaign_no_freeship");
   }, [
     isShippingPromotionLocked,
@@ -1865,13 +1836,6 @@ export default function CouponModal({
     canCombineShippingWithPromotions,
     canCombineShippingWithFreeship,
     selectedVoucherItems,
-    canCombineWithFreeship,
-    isBrowseMode,
-    hasMemberBenefit,
-    isMemberCardSelected,
-    isMemberCardLocked,
-    loyaltySettings,
-    canCombineLoyaltyWithFreeship,
     t,
   ]);
 
