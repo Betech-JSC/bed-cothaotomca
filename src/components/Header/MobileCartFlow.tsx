@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/exhaustive-deps -- Cac effect/useCallback trong file nay co dependency array chu dich (handler/t on dinh hoac co guard ref); them dep vao se gay re-run lap. */
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
@@ -39,6 +40,7 @@ import {
 } from "@/services/orderService";
 import PaymentQRScreen from "@/components/Checkout/PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
+import { submitAddressCallbackRequest } from "@/services/contactService";
 import { useAuth, getMemberTier, calculateMemberDiscount } from "@/contexts/AuthContext";
 import {
   getCustomerAddressesApi,
@@ -54,6 +56,7 @@ import {
   cleanDuplicateAddressParts,
   formatWardLabel,
   hasHouseNumberInAddress,
+  isKnownPostMerger94Ward,
   validateAddressWardMatch,
   verifyAddressViaMapApi,
   type AddressWardValidationResult,
@@ -197,10 +200,13 @@ export default function MobileCartFlow({
   const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(null);
   const [isLoadingCustomerAddresses, setIsLoadingCustomerAddresses] = useState<boolean>(false);
+  const [savedAddressWardWarning, setSavedAddressWardWarning] = useState<string | null>(null);
   const hasAutoFilledDefaultAddressRef = useRef(false);
+  const hasFetchedCustomerAddressesRef = useRef(false);
+  const availableWardsRef = useRef<AdministrativeWard[]>([]);
 
   // Auto-fill address details helper
-  const applyAddressToForm = useCallback((addr: CustomerAddress) => {
+  const applyAddressToForm = useCallback((addr: CustomerAddress, overrideWards?: AdministrativeWard[]) => {
     setSelectedAddressId(addr.id);
     if (addr.recipient_name) setName(addr.recipient_name);
     if (addr.phone) setPhone(addr.phone);
@@ -210,14 +216,43 @@ export default function MobileCartFlow({
     }
     if (addr.district) setSelectedDistrict(addr.district);
 
-    setSelectedWard(addr.ward || "");
-    if (addr.ward_id) {
-      setSelectedWardId(addr.ward_id);
+    // STT 10: Validate whether addr.ward / addr.ward_id belongs to the 91 new wards catalog
+    const wardsToCheck = (overrideWards && overrideWards.length > 0) ? overrideWards : availableWardsRef.current;
+    let matchedWard: AdministrativeWard | null = null;
+    if (addr.ward_id && wardsToCheck && wardsToCheck.length > 0) {
+      matchedWard = wardsToCheck.find((w) => w.id === addr.ward_id) || null;
+    }
+    if (!matchedWard && addr.ward && wardsToCheck && wardsToCheck.length > 0) {
+      const cleanAddrWard = cleanAdministrativeUnitName(addr.ward).toLowerCase();
+      matchedWard = wardsToCheck.find((w) => {
+        const cleanW = cleanAdministrativeUnitName(w.name).toLowerCase();
+        return cleanW === cleanAddrWard || w.name.toLowerCase() === addr.ward!.toLowerCase();
+      }) || null;
+    }
+
+    const isValidPostMergerWard = Boolean(
+      matchedWard ||
+      (addr.ward && isKnownPostMerger94Ward(addr.ward, wardsToCheck || []))
+    );
+
+    if (isValidPostMergerWard) {
+      setSelectedWard(matchedWard?.name || addr.ward || "");
+      setSelectedWardId(matchedWard?.id || addr.ward_id || "");
+      setSavedAddressWardWarning(null);
+    } else {
+      // Outdated or invalid ward: DO NOT auto-fill, require customer to re-select valid new ward
+      setSelectedWard("");
+      setSelectedWardId("");
+      setSavedAddressWardWarning(t("invalid_saved_ward_notice"));
+      setFieldErrors((prev) => ({
+        ...prev,
+        ward: t("invalid_saved_ward_notice"),
+      }));
     }
 
     const addrStreet = addr.street_address || addr.full_address || "";
-    if (addrStreet) setStreetAddress(addrStreet);
-  }, []);
+    setStreetAddress(addrStreet);
+  }, [t]);
 
   // Auto-fill from cached address immediately on client mount if available
   useEffect(() => {
@@ -238,6 +273,9 @@ export default function MobileCartFlow({
         setEmail((prev) => prev || user.email || "");
       }
 
+      if (hasFetchedCustomerAddressesRef.current) return;
+      hasFetchedCustomerAddressesRef.current = true;
+
       const cached = getCachedCustomerAddresses();
       if (cached.length > 0) {
         setCustomerAddresses((prev) => (prev.length === 0 ? cached : prev));
@@ -255,17 +293,17 @@ export default function MobileCartFlow({
           setCustomerAddresses(addrs);
           setCachedCustomerAddresses(addrs);
           if (addrs.length > 0) {
+            const defaultAddr = addrs.find((a) => a.is_default) || addrs[0];
             setSelectedAddressId((curr) => {
               if (curr && curr !== "new" && addrs.some((a) => a.id === curr)) {
                 return curr;
               }
-              const defaultAddr = addrs.find((a) => a.is_default) || addrs[0];
-              if (defaultAddr && !hasAutoFilledDefaultAddressRef.current) {
-                hasAutoFilledDefaultAddressRef.current = true;
-                applyAddressToForm(defaultAddr);
-              }
               return defaultAddr ? defaultAddr.id : curr;
             });
+            if (defaultAddr && !hasAutoFilledDefaultAddressRef.current) {
+              hasAutoFilledDefaultAddressRef.current = true;
+              applyAddressToForm(defaultAddr);
+            }
           }
         })
         .catch((err) => {
@@ -274,10 +312,16 @@ export default function MobileCartFlow({
         .finally(() => {
           setIsLoadingCustomerAddresses(false);
         });
+    } else {
+      hasFetchedCustomerAddressesRef.current = false;
+      setIsLoadingCustomerAddresses(false);
     }
   }, [isUserLoggedIn, user, applyAddressToForm]);
 
   const handleSelectCustomerAddress = (addrId: number | "new") => {
+    setCallbackRequestSuccess(null);
+    setCallbackRequestError(null);
+    callbackSubmittedRef.current = false;
     if (addrId === "new") {
       setSelectedAddressId("new");
       setStreetAddress("");
@@ -285,6 +329,7 @@ export default function MobileCartFlow({
       setSelectedWardId("");
       setSelectedDistrict("");
       setSelectedProvince(adminProvinces[0]?.name || "TP. Hồ Chí Minh");
+      setSavedAddressWardWarning(null);
       if (user) {
         setName(user.name || "");
         setPhone(user.phone || "");
@@ -297,6 +342,7 @@ export default function MobileCartFlow({
       });
       return;
     }
+    setSavedAddressWardWarning(null);
     const addr = customerAddresses.find((a) => a.id === addrId);
     if (addr) {
       applyAddressToForm(addr);
@@ -385,6 +431,34 @@ export default function MobileCartFlow({
   const availableWards = useMemo(() => {
     return currentProvinceData?.wards || [];
   }, [currentProvinceData]);
+  availableWardsRef.current = availableWards;
+
+  // STT 10: Re-verify saved address ward whenever availableWards updates
+  useEffect(() => {
+    if (selectedSavedAddress && availableWards.length > 0) {
+      const targetWard = selectedWard || selectedSavedAddress.ward;
+      if (targetWard) {
+        const cleanTarget = cleanAdministrativeUnitName(targetWard).toLowerCase();
+        const matched = availableWards.find((w) => {
+          if (selectedWardId && w.id === selectedWardId) return true;
+          if (selectedSavedAddress.ward_id && w.id === selectedSavedAddress.ward_id) return true;
+          return cleanAdministrativeUnitName(w.name).toLowerCase() === cleanTarget;
+        });
+        const isValid = Boolean(matched || isKnownPostMerger94Ward(targetWard, availableWards));
+        if (isValid) {
+          if (matched && (!selectedWard || !selectedWardId)) {
+            setSelectedWard(matched.name);
+            setSelectedWardId(matched.id);
+          }
+          setSavedAddressWardWarning(null);
+        } else {
+          setSelectedWard("");
+          setSelectedWardId("");
+          setSavedAddressWardWarning(t("invalid_saved_ward_notice"));
+        }
+      }
+    }
+  }, [availableWards, selectedSavedAddress, selectedWard, selectedWardId, t]);
 
   // Config
   const [config, setConfig] = useState<CheckoutConfig | null>(null);
@@ -436,9 +510,19 @@ export default function MobileCartFlow({
   const [description, setDescription] = useState("");
   const [confirmInfo, setConfirmInfo] = useState(true);
 
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const phoneInputRef = useRef<HTMLInputElement | null>(null);
+  const addressSectionRef = useRef<HTMLDivElement | null>(null);
+
   const [mapAddressValidation, setMapAddressValidation] = useState<AddressWardValidationResult | null>(null);
-  const [isAddressWarningConfirmed, setIsAddressWarningConfirmed] = useState(false);
+  const [isVerifyingAddress, setIsVerifyingAddress] = useState(false);
+  const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
+  const isSubmittingCallbackRef = useRef(false);
+  const callbackSubmittedRef = useRef(false);
+  const [callbackRequestSuccess, setCallbackRequestSuccess] = useState<string | null>(null);
+  const [callbackRequestError, setCallbackRequestError] = useState<string | null>(null);
   const latestAddressVerifyKeyRef = useRef("");
+  const skipVerifyKeyRef = useRef("");
   latestAddressVerifyKeyRef.current = `${deliveryType}|${isSavedAddressSelected}|${streetAddress.trim()}|${selectedWard}|${selectedWardId}|${selectedDistrict}|${selectedProvince}`;
 
   const hasAddressHouseNumber = useMemo(
@@ -458,33 +542,40 @@ export default function MobileCartFlow({
     });
   }, [streetAddress, description, selectedWard, selectedWardId, selectedDistrict, selectedProvince, availableWards]);
 
+  const prevAddressKeyRef = useRef("");
   useEffect(() => {
-    setMapAddressValidation(null);
-    setIsAddressWarningConfirmed(false);
+    const currentKey = `${streetAddress}|${selectedWard}|${selectedWardId}|${selectedDistrict}|${selectedProvince}`;
+    if (prevAddressKeyRef.current && prevAddressKeyRef.current !== currentKey) {
+      setMapAddressValidation(null);
+      setCallbackRequestSuccess(null);
+      setCallbackRequestError(null);
+      callbackSubmittedRef.current = false;
+    }
+    prevAddressKeyRef.current = currentKey;
   }, [streetAddress, selectedWard, selectedWardId, selectedDistrict, selectedProvince]);
 
   useEffect(() => {
-    const hasWardSelected = Boolean(selectedWard || selectedWardId);
-    const canVerifySyncState =
-      syncAddressValidation.isValid ||
-      (syncAddressValidation.conflictType === "street_conflict" && hasAddressHouseNumber);
-    const shouldSkipBecauseSyncSuggested =
-      Boolean(syncAddressValidation.suggestedWard) && !hasAddressHouseNumber;
-
     if (
-      process.env.NODE_ENV === "test" ||
       (!inline && !isCartOpen) ||
       deliveryType !== "delivery" ||
-      isSavedAddressSelected ||
-      (!hasWardSelected && !hasAddressHouseNumber) ||
-      streetAddress.trim().length < 5 ||
-      !canVerifySyncState ||
-      shouldSkipBecauseSyncSuggested
+      !hasAddressHouseNumber ||
+      streetAddress.trim().length < 4
     ) {
+      setIsVerifyingAddress(false);
+      return;
+    }
+
+    if (
+      skipVerifyKeyRef.current &&
+      skipVerifyKeyRef.current === latestAddressVerifyKeyRef.current
+    ) {
+      skipVerifyKeyRef.current = "";
+      setIsVerifyingAddress(false);
       return;
     }
 
     let cancelled = false;
+    setIsVerifyingAddress(true);
     const snapshotKey = latestAddressVerifyKeyRef.current;
     const timer = setTimeout(() => {
       verifyAddressViaMapApi({
@@ -501,7 +592,12 @@ export default function MobileCartFlow({
             setMapAddressValidation(res);
           }
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) {
+            setIsVerifyingAddress(false);
+          }
+        });
     }, 350);
 
     return () => {
@@ -512,7 +608,6 @@ export default function MobileCartFlow({
     inline,
     isCartOpen,
     deliveryType,
-    isSavedAddressSelected,
     streetAddress,
     description,
     selectedWard,
@@ -521,39 +616,37 @@ export default function MobileCartFlow({
     selectedProvince,
     availableWards,
     hasAddressHouseNumber,
-    syncAddressValidation.isValid,
-    syncAddressValidation.conflictType,
-    syncAddressValidation.suggestedWard,
   ]);
 
   const addressWardValidation = useMemo<AddressWardValidationResult>(() => {
-    if (mapAddressValidation) {
-      if (!mapAddressValidation.isValid || mapAddressValidation.suggestedWard) {
-        return mapAddressValidation;
-      }
-      if (
-        mapAddressValidation.isValid &&
-        !syncAddressValidation.isValid &&
-        syncAddressValidation.conflictType === "street_conflict" &&
-        hasAddressHouseNumber
-      ) {
-        return mapAddressValidation;
-      }
+    if (streetAddress.length > 0 && !hasAddressHouseNumber) {
+      return {
+        isValid: false,
+        conflictType: "missing_house_number",
+        verificationStatus: "missing_house_number",
+        verifiedWard: null,
+        isWardMatched: false,
+        canOrder: false,
+        requiresCallback: false,
+        message: "Vui lòng nhập đầy đủ số nhà và tên đường để hệ thống xác minh địa chỉ giao hàng.",
+        suggestedWard: null,
+        suggestedWards: [],
+      };
     }
-    const hasWardSelected = Boolean(selectedWard || selectedWardId);
+    if (mapAddressValidation) {
+      return mapAddressValidation;
+    }
+    const hasWardSelected = Boolean(selectedWard.trim() || selectedWardId);
     if (
       !hasWardSelected &&
       hasAddressHouseNumber &&
-      !mapAddressValidation &&
-      process.env.NODE_ENV !== "test"
+      !mapAddressValidation
     ) {
       return { isValid: true };
     }
-    if (!syncAddressValidation.isValid || syncAddressValidation.suggestedWard) {
-      return syncAddressValidation;
-    }
     return syncAddressValidation;
   }, [
+    streetAddress,
     syncAddressValidation,
     mapAddressValidation,
     selectedWard,
@@ -563,33 +656,45 @@ export default function MobileCartFlow({
 
   const hasUnconfirmedAddressWarning =
     deliveryType === "delivery" &&
-    !isSavedAddressSelected &&
-    !addressWardValidation.isValid &&
-    Boolean(addressWardValidation.message) &&
-    !isAddressWarningConfirmed;
+    streetAddress.length > 0 &&
+    (!isVerifyingAddress || !hasAddressHouseNumber) &&
+    (!addressWardValidation.isValid ||
+      addressWardValidation.verificationStatus === "missing_house_number" ||
+      addressWardValidation.verificationStatus === "ward_mismatch" ||
+      addressWardValidation.verificationStatus === "ambiguous_multiple_wards" ||
+      addressWardValidation.verificationStatus === "unverifiable" ||
+      addressWardValidation.verificationStatus === "api_error");
 
   const handleApplySuggestedWard = useCallback((suggested: WardCatalogEntry) => {
+    const nextDistrict = suggested.district || "";
+    prevAddressKeyRef.current = `${streetAddress}|${suggested.name}|${suggested.id}|${nextDistrict}|${selectedProvince}`;
+    skipVerifyKeyRef.current = `${deliveryType}|${isSavedAddressSelected}|${streetAddress.trim()}|${suggested.name}|${suggested.id}|${nextDistrict}|${selectedProvince}`;
     setSelectedWardId(suggested.id);
     setSelectedWard(suggested.name);
-    setSelectedDistrict(suggested.district || "");
-    setMapAddressValidation(null);
-    setIsAddressWarningConfirmed(false);
+    setSelectedDistrict(nextDistrict);
+    setSavedAddressWardWarning(null);
+    setMapAddressValidation({
+      isValid: true,
+      verificationStatus: "verified_single_ward",
+      verifiedWard: suggested.name,
+      isWardMatched: true,
+      canOrder: true,
+      requiresCallback: false,
+      detectedArea: formatWardLabel(suggested.name, suggested.district),
+      suggestedWard: suggested,
+      suggestedWards: [suggested],
+    });
+    setIsVerifyingAddress(false);
+    setCallbackRequestSuccess(null);
+    setCallbackRequestError(null);
+    callbackSubmittedRef.current = false;
     setFieldErrors((prev) => {
       const next = { ...prev };
       delete next.ward;
       delete next.address;
       return next;
     });
-  }, []);
-
-  const handleKeepSelectedWard = useCallback(() => {
-    setIsAddressWarningConfirmed(true);
-    setFieldErrors((prev) => {
-      const next = { ...prev };
-      delete next.address;
-      return next;
-    });
-  }, []);
+  }, [deliveryType, isSavedAddressSelected, streetAddress, selectedProvince]);
 
   useEffect(() => {
     if (operatingStatus) {
@@ -986,6 +1091,7 @@ export default function MobileCartFlow({
   const [isDeliverable, setIsDeliverable] = useState<boolean>(true);
   const [shippingMessage, setShippingMessage] = useState<string | null>(null);
   const [calculatingShipping, setCalculatingShipping] = useState<boolean>(false);
+  const [shippingCalculationError, setShippingCalculationError] = useState<boolean>(false);
 
   useEffect(() => {
     getShippingSettings(locale).then(setShippingSettings);
@@ -1168,11 +1274,12 @@ export default function MobileCartFlow({
     return isG1BlockingFreeship || isG2BlockingFreeship;
   }, [cartCampaignG1, appliedVoucher]);
 
+  const isCartEmpty = !cartItems || cartItems.length === 0;
+
   useEffect(() => {
     if (
       deliveryType !== "delivery" ||
-      !cartItems ||
-      cartItems.length === 0 ||
+      isCartEmpty ||
       (!selectedWard && !selectedWardId)
     ) {
       setCalculatedFee(0);
@@ -1185,10 +1292,15 @@ export default function MobileCartFlow({
       setAssignedBranchName(null);
       setCalculatingShipping(false);
       setHasCalculatedFee(false);
+      setShippingCalculationError(false);
       return;
     }
 
+    let isSubscribed = true;
     setCalculatingShipping(true);
+    setHasCalculatedFee(false);
+    setShippingCalculationError(false);
+
     calculateShippingFee({
       province: selectedProvince,
       district: selectedDistrict,
@@ -1201,6 +1313,9 @@ export default function MobileCartFlow({
       campaign_can_combine_with_freeship: appliedVoucher?.canCombineWithPromotions === false ? undefined : cartCampaignG1?.can_combine_with_freeship,
     })
       .then((res) => {
+        if (!isSubscribed) return;
+        setShippingCalculationError(false);
+
         const isG1BlockingFreeship = Boolean(
           cartCampaignG1 &&
           cartCampaignG1.can_combine_with_freeship === false &&
@@ -1243,26 +1358,34 @@ export default function MobileCartFlow({
         }
       })
       .catch((err) => {
+        if (!isSubscribed) return;
         console.error("Failed to calculate shipping in mobile cart flow:", err);
+        setShippingCalculationError(true);
+        setHasCalculatedFee(false);
+        setIsDeliverable(false);
+        setShippingMessage(t("shipping_calculation_failed"));
       })
       .finally(() => {
-        setCalculatingShipping(false);
+        if (isSubscribed) setCalculatingShipping(false);
       });
-  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, appliedShippingVoucher, config?.branches, cartCampaignG1]);
 
-  const defaultShippingFee = Number(shippingSettings?.default_shipping_fee ?? config?.default_shipping_fee ?? 0) || 0;
+    return () => {
+      isSubscribed = false;
+    };
+  }, [deliveryType, selectedProvince, selectedDistrict, selectedWard, selectedWardId, rawSubtotal, appliedVoucher, appliedShippingVoucher, config?.branches, cartCampaignG1, isCartEmpty]);
+
   const hasSelectedWard = Boolean(selectedWard || selectedWardId);
   const shippingFee =
     cartItems.length === 0 ||
     deliveryType !== "delivery" ||
     !hasSelectedWard ||
-    !isDeliverable
+    !isDeliverable ||
+    shippingCalculationError ||
+    !hasCalculatedFee
       ? 0
       : isFreeship
         ? 0
-        : hasCalculatedFee
-          ? calculatedFee
-          : calculatedFee || defaultShippingFee;
+        : calculatedFee;
 
   const { subtotal, shipping } = calcOrderTotal(
     lineItems,
@@ -1654,8 +1777,22 @@ export default function MobileCartFlow({
     );
   }, [user, memberTier, t]);
 
-  const effectiveShippingFeeForTotal = hasUnconfirmedAddressWarning ? 0 : effectiveShippingFee;
+  const effectiveShippingFeeForTotal =
+    hasUnconfirmedAddressWarning || shippingCalculationError ? 0 : effectiveShippingFee;
   const total = cartItems.length === 0 ? 0 : Math.max(0, displaySubtotal - foodVoucherDiscount - autoOrderDiscountAmount - memberDiscount + effectiveShippingFeeForTotal);
+
+  const hasSelectedWardTrimmed = Boolean(selectedWard.trim() || selectedWardId);
+  const isDeliveryOrderBlocked =
+    deliveryType === "delivery" &&
+    (!isDeliverable ||
+      shippingCalculationError ||
+      calculatingShipping ||
+      (hasSelectedWardTrimmed && !hasCalculatedFee) ||
+      isVerifyingAddress ||
+      hasUnconfirmedAddressWarning ||
+      (streetAddress.trim().length > 0 && !hasSelectedWardTrimmed) ||
+      (isSavedAddressSelected && !hasSelectedWardTrimmed) ||
+      addressWardValidation.canOrder === false);
 
   const validateVoucherMutexLock = useCallback((voucherCandidate: {
     discount_type?: string;
@@ -2161,6 +2298,102 @@ export default function MobileCartFlow({
     );
   }, []);
 
+  const validatePhoneInput = (val: string): string | null => {
+    const clean = val.trim().replace(/\s+/g, "");
+    if (!clean) {
+      return t("validation.phone_required");
+    }
+    const normalized = clean.startsWith("+84") ? "0" + clean.slice(3) : clean;
+    const phoneRegex = /^0[35789]\d{8}$/;
+    if (!phoneRegex.test(normalized)) {
+      return t("validation.phone_invalid");
+    }
+    if (/^(\d)\1{9}$/.test(normalized) || normalized === "0123456789") {
+      return t("validation.phone_invalid");
+    }
+    return null;
+  };
+
+  const handleRequestStoreCallback = async () => {
+    if (
+      isSubmittingCallbackRef.current ||
+      callbackSubmittedRef.current ||
+      Boolean(callbackRequestSuccess)
+    ) {
+      return;
+    }
+    setCallbackRequestError(null);
+    setCallbackRequestSuccess(null);
+
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim().replace(/\s+/g, "");
+    const phoneErr = validatePhoneInput(phone);
+    const nameErr = !cleanName
+      ? t("validation.name_required")
+      : cleanName.length < 2
+        ? t("validation.name_min")
+        : null;
+
+    if (nameErr || phoneErr) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        ...(nameErr ? { name: nameErr } : {}),
+        ...(phoneErr ? { phone: phoneErr } : {}),
+      }));
+      setCallbackRequestError(
+        "Vui lòng nhập đầy đủ Họ và tên và Số điện thoại hợp lệ trên form Checkout trước khi gửi yêu cầu gọi lại."
+      );
+      if (nameErr && nameInputRef.current) {
+        nameInputRef.current.focus();
+        nameInputRef.current.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      } else if (phoneErr && phoneInputRef.current) {
+        phoneInputRef.current.focus();
+        phoneInputRef.current.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+
+    isSubmittingCallbackRef.current = true;
+    setIsSubmittingCallback(true);
+    try {
+      await submitAddressCallbackRequest({
+        name: cleanName,
+        phone: cleanPhone,
+        email: email.trim() || undefined,
+        is_callback_request: true,
+        type: "address_callback",
+        address: streetAddress.trim(),
+        ward: selectedWard || undefined,
+        suggested_ward:
+          addressWardValidation.suggestedWard?.name ||
+          addressWardValidation.verifiedWard ||
+          undefined,
+        verification_status:
+          addressWardValidation.verificationStatus || "unverifiable",
+        items: cartItems.map((item) => ({
+          product_id: item.productId,
+          product_code: item.productCode,
+          product_name: item.title,
+          quantity: item.quantity,
+          price: item.unitPrice,
+        })),
+      });
+
+      callbackSubmittedRef.current = true;
+      setCallbackRequestSuccess(
+        "Đã tiếp nhận yêu cầu gọi lại! Nhân viên cửa hàng sẽ sớm liên hệ với bạn để xác minh địa chỉ và hỗ trợ đặt đơn (Chưa tạo đơn hàng & chưa thu tiền)."
+      );
+    } catch (err: any) {
+      setCallbackRequestError(
+        err?.message ||
+          "Không thể gửi yêu cầu gọi lại lúc này. Vui lòng liên hệ trực tiếp Hotline."
+      );
+    } finally {
+      isSubmittingCallbackRef.current = false;
+      setIsSubmittingCallback(false);
+    }
+  };
+
   // Submit Order
   const handleSubmit = async () => {
     setLoading(true);
@@ -2187,8 +2420,9 @@ export default function MobileCartFlow({
       return;
     }
 
-    if (!phone.trim()) {
-      setFieldErrors(prev => ({ ...prev, phone: t("validation.phone_required") }));
+    const phoneErr = validatePhoneInput(phone);
+    if (phoneErr) {
+      setFieldErrors(prev => ({ ...prev, phone: phoneErr }));
       setLoading(false);
       return;
     }
@@ -2204,20 +2438,34 @@ export default function MobileCartFlow({
     }
 
     if (deliveryType === "delivery") {
-      if (!isSavedAddressSelected) {
-        if (!selectedWard && !selectedWardId) {
-          setFieldErrors((prev) => ({ ...prev, ward: t("validation.ward_required") }));
-          setLoading(false);
-          return;
-        }
-        if (!streetAddress.trim()) {
-          setFieldErrors((prev) => ({ ...prev, address: t("validation.address_detail_required") }));
-          setLoading(false);
-          return;
-        }
-        if (!isAddressWarningConfirmed) {
-          const addrValidation = validateAddressWardMatch({
-            streetAddress,
+      if (!selectedWard.trim() && !selectedWardId) {
+        setFieldErrors((prev) => ({ ...prev, ward: t("validation.ward_required") }));
+        addressSectionRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+        setLoading(false);
+        return;
+      }
+      const effectiveStreet = streetAddress.trim();
+      if (!effectiveStreet) {
+        setFieldErrors((prev) => ({ ...prev, address: t("validation.address_detail_required") }));
+        addressSectionRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+        setLoading(false);
+        return;
+      }
+      if (!hasHouseNumberInAddress(effectiveStreet)) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          address: "Vui lòng nhập đầy đủ số nhà và tên đường để hệ thống xác minh địa chỉ giao hàng.",
+        }));
+        addressSectionRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+        setLoading(false);
+        return;
+      }
+      let activeValidation = addressWardValidation;
+      if (isVerifyingAddress || !mapAddressValidation) {
+        try {
+          setIsVerifyingAddress(true);
+          const liveRes = await verifyAddressViaMapApi({
+            streetAddress: effectiveStreet,
             note: description,
             selectedWard,
             selectedWardId,
@@ -2225,31 +2473,30 @@ export default function MobileCartFlow({
             selectedProvince,
             availableWards,
           });
-          if (!addressWardValidation.isValid && addressWardValidation.message) {
-            setFieldErrors((prev) => ({ ...prev, address: addressWardValidation.message }));
-            setLoading(false);
-            return;
-          }
-          if (!addrValidation.isValid && addrValidation.message) {
-            setFieldErrors((prev) => ({ ...prev, address: addrValidation.message }));
-            setLoading(false);
-            return;
-          }
-          if (mapAddressValidation && !mapAddressValidation.isValid && mapAddressValidation.message) {
-            setFieldErrors((prev) => ({ ...prev, address: mapAddressValidation.message }));
-            setLoading(false);
-            return;
-          }
-        }
-      } else {
-        if (!streetAddress.trim() && !selectedSavedAddress?.full_address) {
-          setFieldErrors((prev) => ({ ...prev, address: t("validation.address_detail_required") }));
-          setLoading(false);
-          return;
+          setMapAddressValidation(liveRes);
+          activeValidation = liveRes;
+        } finally {
+          setIsVerifyingAddress(false);
         }
       }
-      if (!isDeliverable) {
-        setError(t("validation.delivery_not_supported"));
+      if (
+        !activeValidation.isValid ||
+        activeValidation.verificationStatus !== "verified_single_ward" ||
+        (Boolean(selectedWard.trim() || selectedWardId) &&
+          activeValidation.isWardMatched === false)
+      ) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          address:
+            activeValidation.message ||
+            "Hệ thống chưa thể xác minh chính xác Phường/Xã cho địa chỉ này.",
+        }));
+        addressSectionRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+        setLoading(false);
+        return;
+      }
+      if (calculatingShipping || shippingCalculationError || !isDeliverable || !hasCalculatedFee) {
+        setError(shippingMessage || t("shipping_calculation_failed"));
         setLoading(false);
         return;
       }
@@ -2263,7 +2510,13 @@ export default function MobileCartFlow({
 
     let finalAddress = "";
     if (deliveryType === "delivery") {
-      if (isSavedAddressSelected && selectedSavedAddress?.full_address) {
+      if (
+        isSavedAddressSelected &&
+        selectedSavedAddress?.full_address &&
+        (!selectedSavedAddress.ward ||
+          cleanAdministrativeUnitName(selectedWard).toLowerCase() ===
+            cleanAdministrativeUnitName(selectedSavedAddress.ward).toLowerCase())
+      ) {
         finalAddress = cleanDuplicateAddressParts(selectedSavedAddress.full_address);
       } else {
         finalAddress = buildDeliveryAddress(streetAddress, selectedWard, selectedDistrict, selectedProvince);
@@ -2394,18 +2647,6 @@ export default function MobileCartFlow({
               district: selectedDistrict || undefined,
               ward: selectedWard || undefined,
               ward_id: selectedWardId || undefined,
-              address_mismatch_confirmed:
-                isAddressWarningConfirmed && !addressWardValidation.isValid ? true : undefined,
-              suggested_ward:
-                isAddressWarningConfirmed && !addressWardValidation.isValid
-                  ? addressWardValidation.suggestedWard?.name ||
-                    addressWardValidation.detectedArea ||
-                    undefined
-                  : undefined,
-              address_warning_message:
-                isAddressWarningConfirmed && !addressWardValidation.isValid
-                  ? addressWardValidation.message || undefined
-                  : undefined,
             }
             : null,
         items: [
@@ -2593,6 +2834,193 @@ export default function MobileCartFlow({
       setPendingOrder(null);
     }
   };
+
+  const mobileCallbackButtonDisabled = isSubmittingCallback || Boolean(callbackRequestSuccess);
+  const mobileCallbackButtonLabel = isSubmittingCallback
+    ? "Đang gửi yêu cầu..."
+    : callbackRequestSuccess
+      ? "Đã gửi yêu cầu gọi lại"
+      : "Yêu cầu cửa hàng gọi lại";
+
+  const mobileAddressVerificationStatusBlock = (
+    <>
+      {isVerifyingAddress && hasAddressHouseNumber ? (
+        <div
+          data-testid="mobile-address-verifying-loader"
+          className="mt-2 flex items-center gap-2 text-xs text-gray-500"
+        >
+          <span className="inline-block w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span>Đang xác định khu vực giao hàng...</span>
+        </div>
+      ) : streetAddress.length > 0 &&
+        (!hasAddressHouseNumber ||
+          addressWardValidation.verificationStatus === "missing_house_number") ? (
+        <div
+          data-testid="mobile-address-missing-house-number-warning"
+          className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-1.5"
+        >
+          <p className="font-semibold leading-snug">
+            {addressWardValidation.message ||
+              "Vui lòng nhập đầy đủ số nhà và tên đường để hệ thống xác minh địa chỉ giao hàng."}
+          </p>
+        </div>
+      ) : addressWardValidation.verificationStatus === "ambiguous_multiple_wards" ? (
+        <div
+          data-testid="mobile-address-ambiguous-support-warning"
+          className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2.5"
+        >
+          <p className="font-semibold leading-snug">
+            {addressWardValidation.message ||
+              'Địa chỉ trả về nhiều Phường/Xã khác nhau trên bản đồ nên hệ thống chưa thể tự động xác nhận. Vui lòng liên hệ Hotline hoặc bấm "Yêu cầu cửa hàng gọi lại" để được hỗ trợ đặt đơn.'}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`tel:${hotline.replace(/[^0-9+]/g, "")}`}
+              data-testid="mobile-address-support-hotline-link"
+              className="inline-flex items-center gap-1.5 rounded-[4px] border border-primary/40 bg-white px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 transition-colors shadow-xs"
+            >
+              <span>📞 Hotline: {hotline}</span>
+            </a>
+            <button
+              type="button"
+              data-testid="mobile-request-store-callback-btn"
+              disabled={mobileCallbackButtonDisabled}
+              onClick={handleRequestStoreCallback}
+              className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span>{mobileCallbackButtonLabel}</span>
+            </button>
+          </div>
+        </div>
+      ) : addressWardValidation.verificationStatus === "unverifiable" ||
+        addressWardValidation.verificationStatus === "api_error" ? (
+        <div
+          data-testid="mobile-address-unverifiable-support-warning"
+          className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2.5"
+        >
+          <p className="font-semibold leading-snug">
+            {addressWardValidation.message ||
+              'Hệ thống chưa thể xác minh chính xác Phường/Xã cho địa chỉ này. Vui lòng kiểm tra lại số nhà, tên đường hoặc bấm "Yêu cầu cửa hàng gọi lại" để nhân viên hỗ trợ.'}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`tel:${hotline.replace(/[^0-9+]/g, "")}`}
+              data-testid="mobile-address-support-hotline-link"
+              className="inline-flex items-center gap-1.5 rounded-[4px] border border-primary/40 bg-white px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 transition-colors shadow-xs"
+            >
+              <span>📞 Hotline: {hotline}</span>
+            </a>
+            <button
+              type="button"
+              data-testid="mobile-request-store-callback-btn"
+              disabled={mobileCallbackButtonDisabled}
+              onClick={handleRequestStoreCallback}
+              className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span>{mobileCallbackButtonLabel}</span>
+            </button>
+          </div>
+        </div>
+      ) : !addressWardValidation.isValid && addressWardValidation.message ? (
+        <div
+          data-testid="mobile-address-ward-mismatch-warning"
+          className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2.5"
+        >
+          <p className="font-semibold leading-snug">
+            {addressWardValidation.message}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {addressWardValidation.suggestedWard && (
+              <button
+                key={
+                  addressWardValidation.suggestedWard.id ||
+                  addressWardValidation.suggestedWard.name
+                }
+                type="button"
+                data-testid="mobile-apply-suggested-ward-btn"
+                onClick={() =>
+                  handleApplySuggestedWard(addressWardValidation.suggestedWard!)
+                }
+                className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs"
+              >
+                <span>
+                  Đổi sang{" "}
+                  {formatWardLabel(
+                    addressWardValidation.suggestedWard.name,
+                    addressWardValidation.suggestedWard.district
+                  )}
+                </span>
+              </button>
+            )}
+            <a
+              href={`tel:${hotline.replace(/[^0-9+]/g, "")}`}
+              data-testid="mobile-address-support-hotline-link"
+              className="inline-flex items-center gap-1.5 rounded-[4px] border border-primary/40 bg-white px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 transition-colors shadow-xs"
+            >
+              <span>📞 Hotline: {hotline}</span>
+            </a>
+            <button
+              type="button"
+              data-testid="mobile-request-store-callback-btn"
+              disabled={mobileCallbackButtonDisabled}
+              onClick={handleRequestStoreCallback}
+              className="inline-flex items-center gap-1.5 rounded-[4px] border border-secondary/50 bg-white px-3 py-1.5 text-xs font-bold text-secondary hover:bg-secondary/10 transition-colors cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span>{mobileCallbackButtonLabel}</span>
+            </button>
+          </div>
+        </div>
+      ) : fieldErrors.address ? (
+        <p className="text-sm text-secondary mt-1 font-semibold">{fieldErrors.address}</p>
+      ) : addressWardValidation.isValid &&
+        !selectedWard &&
+        !selectedWardId &&
+        addressWardValidation.suggestedWard ? (
+        <div
+          data-testid="mobile-address-ward-suggestion-chip"
+          className="mt-2 flex items-center flex-wrap gap-1.5 rounded-lg border border-secondary/25 bg-yellow/50 px-3 py-1.5 text-xs text-brown"
+        >
+          <span>Gợi ý theo địa chỉ:</span>
+          <button
+            key={
+              addressWardValidation.suggestedWard.id ||
+              addressWardValidation.suggestedWard.name
+            }
+            type="button"
+            data-testid="mobile-select-suggested-ward-btn"
+            onClick={() =>
+              handleApplySuggestedWard(addressWardValidation.suggestedWard!)
+            }
+            className="font-bold text-primary underline hover:text-secondary cursor-pointer"
+          >
+            Chọn{" "}
+            {formatWardLabel(
+              addressWardValidation.suggestedWard.name,
+              addressWardValidation.suggestedWard.district
+            )}
+          </button>
+        </div>
+      ) : null}
+
+      {callbackRequestError && (
+        <div
+          data-testid="mobile-callback-request-error-notice"
+          className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+        >
+          {callbackRequestError}
+        </div>
+      )}
+
+      {callbackRequestSuccess && (
+        <div
+          data-testid="mobile-callback-request-success-notice"
+          className="mt-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-800"
+        >
+          ✓ {callbackRequestSuccess}
+        </div>
+      )}
+    </>
+  );
 
   if (!inline && !isCartOpen) return null;
 
@@ -3117,6 +3545,10 @@ export default function MobileCartFlow({
                           <span className="text-secondary font-bold font-display">0đ</span>
                         ) : deliveryType === "pickup" ? (
                           <span className="text-secondary font-bold font-display">0đ ({t("delivery_pickup")})</span>
+                        ) : shippingCalculationError ? (
+                          <span className="text-red-600 font-semibold text-xs">
+                            {shippingMessage || t("shipping_calculation_failed")}
+                          </span>
                         ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                           <span className="text-gray-500 font-bold text-base">--</span>
                         ) : (shippingVoucherDiscount > 0 || appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship"))) ? (
@@ -3333,6 +3765,10 @@ export default function MobileCartFlow({
                       <span data-testid="mobile-shipping-fee-pending-ward-confirm" className="text-amber-700 font-semibold text-xs">
                         Vui lòng xác nhận Phường/Xã giao hàng ở trên
                       </span>
+                    ) : shippingCalculationError ? (
+                      <span data-testid="mobile-shipping-calculation-error-label" className="text-red-600 font-semibold text-xs">
+                        {shippingMessage || t("shipping_calculation_failed")}
+                      </span>
                     ) : !isDeliverable || (!selectedWard && !selectedWardId) ? (
                       <span className="text-gray-500 font-bold text-base">--</span>
                     ) : (shippingVoucherDiscount > 0 || appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship"))) ? (
@@ -3474,10 +3910,24 @@ export default function MobileCartFlow({
                     <RequiredMark />
                   </label>
                   <input
+                    data-testid="mobile-name-input"
+                    ref={nameInputRef}
                     type="text"
                     placeholder={t("name_placeholder")}
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (callbackRequestError) setCallbackRequestError(null);
+                      if (callbackRequestSuccess) setCallbackRequestSuccess(null);
+                      callbackSubmittedRef.current = false;
+                      if (fieldErrors.name) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.name;
+                          return next;
+                        });
+                      }
+                    }}
                     className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
                   />
                   {fieldErrors.name && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.name}</p>}
@@ -3490,10 +3940,24 @@ export default function MobileCartFlow({
                     <RequiredMark />
                   </label>
                   <input
+                    data-testid="mobile-phone-input"
+                    ref={phoneInputRef}
                     type="tel"
                     placeholder={t("phone_placeholder")}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      if (callbackRequestError) setCallbackRequestError(null);
+                      if (callbackRequestSuccess) setCallbackRequestSuccess(null);
+                      callbackSubmittedRef.current = false;
+                      if (fieldErrors.phone) {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.phone;
+                          return next;
+                        });
+                      }
+                    }}
                     className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none focus:border-primary text-base font-serif font-normal leading-[150%] tracking-[0%]"
                   />
                   {fieldErrors.phone && <p className="text-sm text-red-600 mt-1 font-semibold">{fieldErrors.phone}</p>}
@@ -3581,7 +4045,7 @@ export default function MobileCartFlow({
 
                 {/* Delivery address details selection */}
                 {deliveryType === "delivery" ? (
-                  <div className="space-y-4 rounded-xl bg-gray-50 p-4 border border-gray-100 mt-2">
+                  <div ref={addressSectionRef} className="space-y-4 rounded-xl bg-gray-50 p-4 border border-gray-100 mt-2">
                     <p className="text-sm text-gray-700 font-bold font-serif">{t("delivery_home")}</p>
 
                     {/* 1. Skeleton Loading khi đang tải sổ địa chỉ của khách hàng đã đăng nhập */}
@@ -3686,6 +4150,46 @@ export default function MobileCartFlow({
                             </div>
                           </div>
                         )}
+
+                        {/* STT 10: Cảnh báo địa chỉ đã lưu có Phường cũ và cho phép chọn lại Phường Mới */}
+                        {isSavedAddressSelected && (!selectedWard || savedAddressWardWarning) && (
+                          <div
+                            data-testid="mobile-saved-address-invalid-ward-container"
+                            className="mt-3 p-3.5 bg-amber-50 border border-amber-300 rounded-xl space-y-2.5 animate-fade-in"
+                          >
+                            <div className="flex items-start gap-2 text-xs text-amber-900 font-medium leading-relaxed">
+                              <span className="text-sm">⚠️</span>
+                              <p>{savedAddressWardWarning || t("invalid_saved_ward_notice")}</p>
+                            </div>
+                            <WardSelectCombobox
+                              dataTestId="mobile-saved-address-ward-select"
+                              wards={availableWards}
+                              selectedWardId={selectedWardId}
+                              selectedWardName={selectedWard}
+                              onSelectWard={(wObj) => {
+                                if (wObj) {
+                                  setSelectedWardId(wObj.id);
+                                  setSelectedWard(wObj.name);
+                                  if (wObj.district) setSelectedDistrict(wObj.district);
+                                  setSavedAddressWardWarning(null);
+                                  setFieldErrors((prev) => {
+                                    const next = { ...prev };
+                                    delete next.ward;
+                                    return next;
+                                  });
+                                } else {
+                                  setSelectedWardId("");
+                                  setSelectedWard("");
+                                  setSavedAddressWardWarning(t("invalid_saved_ward_notice"));
+                                }
+                              }}
+                              hasError={!selectedWard}
+                              errorMessage={savedAddressWardWarning || t("invalid_saved_ward_notice")}
+                            />
+                          </div>
+                        )}
+
+                        {isSavedAddressSelected && mobileAddressVerificationStatusBlock}
                       </div>
                     )}
 
@@ -3744,6 +4248,7 @@ export default function MobileCartFlow({
                               setShippingMessage(null);
                               setAssignedBranchName(null);
                               setHasCalculatedFee(false);
+                              setShippingCalculationError(false);
                             }}
                             className="w-full h-11 rounded-[4px] border border-gray-300 shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base cursor-pointer font-serif font-normal leading-[150%] tracking-[0%]"
                           >
@@ -3786,6 +4291,7 @@ export default function MobileCartFlow({
                               setShippingMessage(null);
                               setAssignedBranchName(null);
                               setHasCalculatedFee(false);
+                              setShippingCalculationError(false);
                             }
                             if (fieldErrors.ward) {
                               setFieldErrors((prev) => {
@@ -3805,11 +4311,21 @@ export default function MobileCartFlow({
                             <RequiredMark />
                           </label>
                           <input
+                            data-testid="mobile-street-address-input"
                             type="text"
                             placeholder={t("address_placeholder")}
                             value={streetAddress}
                             onChange={(e) => {
-                              setStreetAddress(e.target.value);
+                              const val = e.target.value;
+                              setStreetAddress(val);
+                              setCallbackRequestSuccess(null);
+                              setCallbackRequestError(null);
+                              callbackSubmittedRef.current = false;
+                              if (hasHouseNumberInAddress(val) && val.trim().length >= 4) {
+                                setIsVerifyingAddress(true);
+                              } else {
+                                setIsVerifyingAddress(false);
+                              }
                               if (fieldErrors.address) {
                                 setFieldErrors((prev) => {
                                   const next = { ...prev };
@@ -3819,21 +4335,13 @@ export default function MobileCartFlow({
                               }
                             }}
                             onBlur={() => {
-                              const hasWardSelected = Boolean(selectedWard || selectedWardId);
-                              const canVerifySyncState =
-                                syncAddressValidation.isValid ||
-                                (syncAddressValidation.conflictType === "street_conflict" && hasAddressHouseNumber);
-                              const shouldSkipBecauseSyncSuggested =
-                                Boolean(syncAddressValidation.suggestedWard) && !hasAddressHouseNumber;
-
                               if (
-                                process.env.NODE_ENV !== "test" &&
-                                !isSavedAddressSelected &&
-                                (hasWardSelected || hasAddressHouseNumber) &&
-                                streetAddress.trim().length >= 5 &&
-                                canVerifySyncState &&
-                                !shouldSkipBecauseSyncSuggested
+                                hasAddressHouseNumber &&
+                                streetAddress.trim().length >= 4 &&
+                                !mapAddressValidation &&
+                                !isVerifyingAddress
                               ) {
+                                setIsVerifyingAddress(true);
                                 const snapshotKey = latestAddressVerifyKeyRef.current;
                                 verifyAddressViaMapApi({
                                   streetAddress,
@@ -3849,7 +4357,10 @@ export default function MobileCartFlow({
                                       setMapAddressValidation(res);
                                     }
                                   })
-                                  .catch(() => {});
+                                  .catch(() => {})
+                                  .finally(() => {
+                                    setIsVerifyingAddress(false);
+                                  });
                               }
                             }}
                             className={`w-full h-11 rounded-[4px] border shadow-[0_1px_2px_rgba(16,24,40,0.05)] px-[14px] py-[10px] bg-white text-gray-900 focus:outline-none text-base font-serif font-normal leading-[150%] tracking-[0%] ${
@@ -3858,105 +4369,7 @@ export default function MobileCartFlow({
                                 : "border-gray-300"
                             }`}
                           />
-                          {!addressWardValidation.isValid && addressWardValidation.message ? (
-                            !isAddressWarningConfirmed ? (
-                              <div
-                                data-testid="mobile-address-ward-mismatch-warning"
-                                className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2"
-                              >
-                                <p className="font-semibold leading-snug">
-                                  {addressWardValidation.message}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {(addressWardValidation.suggestedWards &&
-                                  addressWardValidation.suggestedWards.length > 0
-                                    ? addressWardValidation.suggestedWards
-                                    : addressWardValidation.suggestedWard
-                                      ? [addressWardValidation.suggestedWard]
-                                      : []
-                                  ).map((sw, idx) => (
-                                    <button
-                                      key={sw.id || sw.name}
-                                      type="button"
-                                      data-testid={
-                                        idx === 0
-                                          ? "mobile-apply-suggested-ward-btn"
-                                          : `mobile-apply-suggested-ward-btn-${idx}`
-                                      }
-                                      onClick={() => handleApplySuggestedWard(sw)}
-                                      className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs"
-                                    >
-                                      <span>
-                                        Đổi sang {formatWardLabel(sw.name, sw.district)}
-                                      </span>
-                                    </button>
-                                  ))}
-                                  {(selectedWard || selectedWardId) && (
-                                    <button
-                                      type="button"
-                                      data-testid="mobile-keep-selected-ward-btn"
-                                      onClick={handleKeepSelectedWard}
-                                      className="inline-flex items-center gap-1.5 rounded-[4px] border border-secondary/50 bg-white px-3 py-1.5 text-xs font-bold text-secondary hover:bg-secondary/10 transition-colors cursor-pointer shadow-xs"
-                                    >
-                                      <span>
-                                        Địa chỉ của tôi đúng, giữ {formatWardLabel(selectedWard, selectedDistrict)}
-                                      </span>
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <div
-                                data-testid="mobile-address-ward-kept-notice"
-                                className="mt-2 flex items-center justify-between flex-wrap gap-2 rounded-lg border border-emerald-300 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-800"
-                              >
-                                <span className="font-semibold">
-                                  ✓ Đã giữ {formatWardLabel(selectedWard, selectedDistrict)} theo xác nhận của bạn (Sẽ được nhân viên kiểm tra khi xác nhận đơn)
-                                </span>
-                                {addressWardValidation.suggestedWard && (
-                                  <button
-                                    type="button"
-                                    data-testid="mobile-apply-suggested-ward-btn"
-                                    onClick={() => handleApplySuggestedWard(addressWardValidation.suggestedWard!)}
-                                    className="font-bold text-secondary underline hover:text-secondary/80 cursor-pointer"
-                                  >
-                                    Đổi sang {formatWardLabel(addressWardValidation.suggestedWard.name, addressWardValidation.suggestedWard.district)}
-                                  </button>
-                                )}
-                              </div>
-                            )
-                          ) : fieldErrors.address ? (
-                            <p className="text-sm text-secondary mt-1 font-semibold">{fieldErrors.address}</p>
-                          ) : addressWardValidation.isValid &&
-                            !selectedWard &&
-                            !selectedWardId &&
-                            addressWardValidation.suggestedWard ? (
-                            <div
-                              data-testid="mobile-address-ward-suggestion-chip"
-                              className="mt-2 flex items-center flex-wrap gap-1.5 rounded-lg border border-secondary/25 bg-yellow/50 px-3 py-1.5 text-xs text-brown"
-                            >
-                              <span>Gợi ý theo địa chỉ:</span>
-                              {(addressWardValidation.suggestedWards &&
-                              addressWardValidation.suggestedWards.length > 0
-                                ? addressWardValidation.suggestedWards
-                                : [addressWardValidation.suggestedWard]
-                              ).map((sw, idx) => (
-                                <button
-                                  key={sw.id || sw.name}
-                                  type="button"
-                                  data-testid={
-                                    idx === 0
-                                      ? "mobile-select-suggested-ward-btn"
-                                      : `mobile-select-suggested-ward-btn-${idx}`
-                                  }
-                                  onClick={() => handleApplySuggestedWard(sw)}
-                                  className="font-bold text-primary underline hover:text-secondary cursor-pointer"
-                                >
-                                  Chọn {formatWardLabel(sw.name, sw.district)}
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
+                          {mobileAddressVerificationStatusBlock}
                         </div>
                       </div>
                     )}
@@ -3968,6 +4381,14 @@ export default function MobileCartFlow({
                       >
                         Vui lòng xác nhận Phường/Xã giao hàng ở trên để xác định chi nhánh & phí vận chuyển.
                       </div>
+                    ) : shippingCalculationError ? (
+                      <div
+                        data-testid="mobile-shipping-calculation-error-alert"
+                        className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium flex items-center gap-2"
+                      >
+                        <span>⚠️</span>
+                        <span>{shippingMessage || t("shipping_calculation_failed")}</span>
+                      </div>
                     ) : assignedBranchName ? (
                       <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-xs text-primary font-medium">
                         {t.rich("auto_assigned_branch", {
@@ -3977,7 +4398,7 @@ export default function MobileCartFlow({
                       </div>
                     ) : null}
 
-                    {shippingMessage && (
+                    {!shippingCalculationError && shippingMessage && (
                       <p className={`text-xs font-semibold mt-1.5 ${!isDeliverable ? "text-red-600" : "text-secondary"}`}>
                         {shippingMessage}
                       </p>
@@ -4262,9 +4683,9 @@ export default function MobileCartFlow({
                   data-testid="mobile-checkout-submit-btn"
                   type="button"
                   onClick={handleSubmit}
-                  disabled={loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || isOutOfStockOverall || hasUnconfirmedAddressWarning}
+                  disabled={loading || !confirmInfo || isOutOfStockOverall || isDeliveryOrderBlocked}
                   className={`w-full font-bold rounded-full py-4 text-center transition-all font-display title-2 ${
-                    loading || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || isOutOfStockOverall || hasUnconfirmedAddressWarning
+                    loading || !confirmInfo || isOutOfStockOverall || isDeliveryOrderBlocked
                       ? "bg-gray-200! text-gray-400! border-gray-200! shadow-none! cursor-not-allowed pointer-events-none"
                       : "bg-secondary hover:bg-secondary/95 text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)] cursor-pointer active:scale-[0.99]"
                   } disabled:opacity-50 disabled:pointer-events-none`}

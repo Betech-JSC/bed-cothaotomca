@@ -4,6 +4,7 @@ import "@testing-library/jest-dom";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import WardSelectCombobox from "@/components/Checkout/WardSelectCombobox";
 import CheckoutForm from "@/components/Checkout/CheckoutForm";
+import MobileCartFlow from "@/components/Header/MobileCartFlow";
 import * as wardMapping from "@/data/wardMapping";
 import {
   validateAddressWardMatch,
@@ -12,6 +13,7 @@ import {
 } from "@/data/wardMapping";
 import * as orderService from "@/services/orderService";
 import * as authService from "@/services/authService";
+import * as contactService from "@/services/contactService";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => {
@@ -30,6 +32,10 @@ vi.mock("next-intl", () => ({
         "validation.ward_required": "Vui lòng chọn Phường / Xã",
         "validation.address_required": "Vui lòng nhập địa chỉ giao hàng",
         "validation.form_incomplete": "Vui lòng kiểm tra lại thông tin",
+        "validation.phone_required": "Vui lòng nhập số điện thoại.",
+        "validation.phone_invalid": "Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số để nhận cuộc gọi xác nhận.",
+        shipping_calculation_failed: "Chưa tính được phí ship, vui lòng thử lại",
+        invalid_saved_ward_notice: "Địa chỉ đã lưu có Phường/Xã cũ. Vui lòng chọn lại Phường Mới hợp lệ theo sáp nhập 2025.",
       };
       return map[key] || key;
     };
@@ -90,6 +96,11 @@ vi.mock("@/contexts/CartContext", () => ({
     ],
     clearCart: vi.fn(),
     restoreCampaignItemsToOriginalPrice: vi.fn(),
+    isLoaded: true,
+    isCartOpen: true,
+    hasOutOfStockItems: false,
+    updateQuantity: vi.fn(),
+    removeFromCart: vi.fn(),
   }),
 }));
 
@@ -432,6 +443,7 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
             ward_id: "PL",
           })
         );
+        expect((submitBtn as HTMLButtonElement).disabled).toBe(false);
       }, { timeout: 8000 });
 
       // Bước 3: Bấm Đặt hàng lại -> Submit thành công với đúng Phường Phước Long
@@ -447,7 +459,12 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       expect(orderPayload.delivery.address).toContain("150 Đỗ Xuân Hợp");
     });
 
-    it("Vấn đề #3 & #4: khi đang cảnh báo sai phường, nút Đặt hàng bị disabled (màu xám) và ẩn phí ship/chi nhánh; khi bấm 'Địa chỉ của tôi đúng, giữ Phường Sài Gòn' thì mở khóa Đặt hàng và gửi cờ address_mismatch_confirmed=true", async () => {
+    it("Mục 2, 5, 6 & 7: khi đang cảnh báo sai phường (ward_mismatch), KHÔNG còn nút 'Địa chỉ của tôi đúng, giữ Phường...', nút Đặt hàng bị disabled kèm Hotline và nút 'Yêu cầu cửa hàng gọi lại' gửi POST /api/v1/contacts", async () => {
+      const callbackSpy = vi.spyOn(contactService, "submitAddressCallbackRequest").mockResolvedValue({
+        success: true,
+        message: "Đã tiếp nhận yêu cầu gọi lại.",
+      });
+
       render(
         <CheckoutForm
           order={null}
@@ -489,35 +506,125 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
         expect(warningBox).toBeInTheDocument();
       }, { timeout: 4000 });
 
+      // Mục 6 & 7: Tuyệt đối KHÔNG còn nút "Địa chỉ của tôi đúng, giữ Phường..."
+      expect(screen.queryByTestId("keep-selected-ward-btn")).not.toBeInTheDocument();
+
+      // Mục 2: Có nút 1-click đổi phường gợi ý, nút Hotline và nút "Yêu cầu cửa hàng gọi lại"
+      expect(screen.getByTestId("apply-suggested-ward-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("request-store-callback-btn")).toBeInTheDocument();
+
       const confirmCheckbox = screen.getByTestId("desktop-confirm-checkbox");
       fireEvent.click(confirmCheckbox);
 
       const submitBtn = screen.getByTestId("checkout-submit-btn") as HTMLButtonElement;
-      // Nút Đặt hàng bị disabled khi chưa xử lý cảnh báo
       expect(submitBtn.disabled).toBe(true);
-      expect(screen.getAllByText(/Vui lòng xác nhận Phường\/Xã giao hàng ở trên/i).length).toBeGreaterThan(0);
 
-      // Khách bấm nút "Địa chỉ của tôi đúng, giữ Phường Sài Gòn"
-      const keepBtn = await screen.findByTestId("keep-selected-ward-btn");
-      expect(keepBtn.textContent).toContain("Địa chỉ của tôi đúng, giữ Phường Sài Gòn");
-      fireEvent.click(keepBtn);
+      // Mục 5: Khách bấm "Yêu cầu cửa hàng gọi lại" -> tự lấy name, phone, address, ward, items từ form Checkout
+      fireEvent.click(screen.getByTestId("request-store-callback-btn"));
 
       await waitFor(() => {
-        const freshSubmitBtn = screen.getByTestId("checkout-submit-btn") as HTMLButtonElement;
-        expect(freshSubmitBtn.disabled).toBe(false);
-      }, { timeout: 4000 });
+        expect(callbackSpy).toHaveBeenCalledTimes(1);
+        expect(screen.getByTestId("callback-request-success-notice")).toBeInTheDocument();
+      });
 
-      fireEvent.click(submitBtn);
+      expect(callbackSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Nguyễn Văn Khách",
+          phone: "0909123456",
+          is_callback_request: true,
+          type: "address_callback",
+          address: "150 Đỗ Xuân Hợp",
+          ward: "Sài Gòn",
+          suggested_ward: "Phước Long",
+          verification_status: "ward_mismatch",
+          items: [
+            expect.objectContaining({
+              product_id: 101,
+              product_name: "Chân gà sả tắc",
+              quantity: 2,
+              price: 120000,
+            }),
+          ],
+        })
+      );
+
+      // Không tạo đơn hàng khi yêu cầu gọi lại
+      expect(orderService.createOrder).not.toHaveBeenCalled();
+    });
+
+    it("Mục 3, 4 & 5: chặn đặt hàng với missing_house_number, ambiguous_multiple_wards (không cho tự chọn danh sách nhiều phường), unverifiable / api_error và nhắc điền Tên/SĐT nếu thiếu khi bấm Yêu cầu cửa hàng gọi lại", async () => {
+      const callbackSpy = vi.spyOn(contactService, "submitAddressCallbackRequest").mockResolvedValue({
+        success: true,
+        message: "Đã tiếp nhận yêu cầu gọi lại.",
+      });
+
+      render(
+        <CheckoutForm
+          order={null}
+          config={{
+            delivery_types: [{ value: "delivery", label: "Giao tận nơi" }],
+            default_shipping_fee: "30000",
+            branches: [{ id: 1, branchName: "Chi nhánh Trần Đình Xu", address: "42/2 Trần Đình Xu", contactNumber: "0123", isActive: true }],
+          }}
+        />
+      );
 
       await waitFor(() => {
-        expect(orderService.createOrder).toHaveBeenCalledTimes(1);
+        expect(orderService.getAdministrativeUnits).toHaveBeenCalled();
+        expect(screen.getByTestId("desktop-street-address-input")).toBeInTheDocument();
+      });
+
+      const streetInput = screen.getByTestId("desktop-street-address-input");
+      const confirmCheckbox = screen.getByTestId("desktop-confirm-checkbox");
+      fireEvent.click(confirmCheckbox);
+      const submitBtn = screen.getByTestId("checkout-submit-btn") as HTMLButtonElement;
+
+      // 1. Mục 4: Thiếu số nhà ("Đỗ Xuân Hợp") -> hiển thị cảnh báo thiếu số nhà & khóa đặt hàng
+      fireEvent.change(streetInput, { target: { value: "Đỗ Xuân Hợp" } });
+      await waitFor(() => {
+        expect(screen.getByTestId("address-missing-house-number-warning")).toBeInTheDocument();
+      });
+      expect(submitBtn.disabled).toBe(true);
+
+      // 2. Mục 3: API trả nhiều phường mới khác nhau (ambiguous_multiple_wards) -> hiển thị cảnh báo hỗ trợ, KHÔNG hiển thị nút chọn phường, khóa đặt hàng
+      vi.spyOn(wardMapping, "verifyAddressViaMapApi").mockResolvedValueOnce({
+        isValid: false,
+        verificationStatus: "ambiguous_multiple_wards",
+        canOrder: false,
+        requiresCallback: true,
+        message: "Hệ thống tìm thấy nhiều địa chỉ trùng tên ở các phường khác nhau.",
+        suggestedWards: [],
+      });
+
+      fireEvent.change(streetInput, { target: { value: "100 Phan Văn Trị" } });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("address-ambiguous-support-warning")).toBeInTheDocument();
       }, { timeout: 4000 });
 
-      const orderPayload = (orderService.createOrder as any).mock.calls[0][0];
-      expect(orderPayload.delivery.ward).toBe("Sài Gòn");
-      expect(orderPayload.delivery.address_mismatch_confirmed).toBe(true);
-      expect(orderPayload.delivery.suggested_ward).toBe("Phước Long");
-      expect(orderPayload.delivery.address_warning_message).toContain("Phường Phước Long");
+      expect(screen.queryByTestId("select-suggested-ward-btn")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("apply-suggested-ward-btn")).not.toBeInTheDocument();
+      expect(submitBtn.disabled).toBe(true);
+
+      // 3. Mục 5: Nếu khách xóa Tên trên form Checkout rồi bấm "Yêu cầu cửa hàng gọi lại" -> nhắc khách nhập Tên & SĐT trước khi gửi
+      const nameInputs = screen.getAllByPlaceholderText("Nhập họ và tên người nhận");
+      const nameInput = nameInputs[nameInputs.length - 1];
+      fireEvent.change(nameInput, { target: { value: "   " } });
+
+      fireEvent.click(screen.getByTestId("request-store-callback-btn"));
+      await waitFor(() => {
+        expect(screen.getByTestId("callback-request-error-notice")).toBeInTheDocument();
+      });
+      expect(callbackSpy).not.toHaveBeenCalled();
+
+      // Điền lại Tên hợp lệ và bấm lại "Yêu cầu cửa hàng gọi lại" -> gửi thành công
+      fireEvent.change(nameInput, { target: { value: "Trần Thị Khách" } });
+      fireEvent.click(screen.getByTestId("request-store-callback-btn"));
+
+      await waitFor(() => {
+        expect(callbackSpy).toHaveBeenCalledTimes(1);
+        expect(screen.getByTestId("callback-request-success-notice")).toBeInTheDocument();
+      });
     });
 
     it("TC-FE-06: khi nhập địa chỉ có số nhà (500 Cách Mạng Tháng 8), hiển thị loading 'Đang xác định khu vực giao hàng...' và KHÔNG hiển thị 5-6 nút gợi ý từ sync dictionary", async () => {
@@ -583,6 +690,11 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
         // Giả lập API geocode trả về kết quả chính xác duy nhất: Phường Xuân Hòa
         resolveVerify({
           isValid: false,
+          verificationStatus: "ward_mismatch",
+          verifiedWard: { id: "XH", name: "Xuân Hòa", district: "Xuân Hòa" },
+          isWardMatched: false,
+          canOrder: false,
+          requiresCallback: true,
           conflictType: "street_conflict",
           detectedArea: "Phường Xuân Hòa",
           message: "Địa chỉ bạn nhập thuộc Phường Xuân Hòa. Vui lòng đổi phường.",
@@ -604,6 +716,347 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       } finally {
         verifySpy.mockRestore();
       }
+    });
+
+    it("A03 & Ma trận #2 & D02 (Desktop): Khóa nút Đặt hàng khi đã nhập địa chỉ nhưng chưa chọn phường hoặc chỉ nhập khoảng trắng", async () => {
+      vi.spyOn(wardMapping, "verifyAddressViaMapApi").mockResolvedValue({
+        isValid: true,
+        verificationStatus: "verified_single_ward",
+        verifiedWard: "Phước Long",
+        isWardMatched: false,
+        canOrder: false,
+        requiresCallback: false,
+        detectedArea: "Phường Phước Long",
+        suggestedWard: { id: "PL", name: "Phước Long", district: "Phước Long" },
+        suggestedWards: [{ id: "PL", name: "Phước Long", district: "Phước Long" }],
+      });
+
+      render(
+        <CheckoutForm
+          order={null}
+          config={{
+            delivery_types: [{ value: "delivery", label: "Giao tận nơi" }],
+            default_shipping_fee: "30000",
+            branches: [{ id: 1, branchName: "Chi nhánh Trần Đình Xu", address: "42/2 Trần Đình Xu", contactNumber: "0123", isActive: true }],
+          }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("desktop-street-address-input")).toBeInTheDocument();
+      });
+
+      const confirmCheckbox = screen.getByTestId("desktop-confirm-checkbox");
+      fireEvent.click(confirmCheckbox);
+      const submitBtn = screen.getByTestId("checkout-submit-btn") as HTMLButtonElement;
+      const streetInput = screen.getByTestId("desktop-street-address-input");
+
+      // D02: Chỉ nhập toàn khoảng trắng -> coi như thiếu số nhà & khóa nút
+      fireEvent.change(streetInput, { target: { value: "   " } });
+      await waitFor(() => {
+        expect(screen.getByTestId("address-missing-house-number-warning")).toBeInTheDocument();
+      });
+      expect(submitBtn.disabled).toBe(true);
+
+      // A03 & Ma trận #2: Nhập đủ địa chỉ nhưng CHƯA chọn phường -> nút Đặt hàng vẫn bị khóa
+      fireEvent.change(streetInput, { target: { value: "150 Đỗ Xuân Hợp" } });
+      await waitFor(() => {
+        expect(screen.getByTestId("select-suggested-ward-btn")).toBeInTheDocument();
+      }, { timeout: 4000 });
+      expect(submitBtn.disabled).toBe(true);
+
+      // Bấm chọn phường gợi ý -> tính ship xong -> nút Đặt hàng mở khóa
+      fireEvent.click(screen.getByTestId("select-suggested-ward-btn"));
+      await waitFor(() => {
+        expect(orderService.calculateShippingFee).toHaveBeenCalledWith(
+          expect.objectContaining({ ward: "Phước Long", ward_id: "PL" })
+        );
+        expect(submitBtn.disabled).toBe(false);
+      }, { timeout: 4000 });
+    });
+
+    it("E05 (Desktop): Double-click nút Yêu cầu cửa hàng gọi lại chỉ gửi 1 request và khóa nút sau khi gửi thành công cho đến khi sửa thông tin", async () => {
+      let resolveCallback: (v: any) => void = () => {};
+      const callbackSpy = vi.spyOn(contactService, "submitAddressCallbackRequest").mockImplementation(
+        () => new Promise((resolve) => { resolveCallback = resolve; })
+      );
+
+      render(
+        <CheckoutForm
+          order={null}
+          config={{
+            delivery_types: [{ value: "delivery", label: "Giao tận nơi" }],
+            default_shipping_fee: "30000",
+            branches: [{ id: 1, branchName: "Chi nhánh Trần Đình Xu", address: "42/2 Trần Đình Xu", contactNumber: "0123", isActive: true }],
+          }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("desktop-street-address-input")).toBeInTheDocument();
+      });
+
+      vi.spyOn(wardMapping, "verifyAddressViaMapApi").mockResolvedValue({
+        isValid: false,
+        verificationStatus: "unverifiable",
+        canOrder: false,
+        requiresCallback: true,
+        message: "Không xác minh được địa chỉ.",
+        suggestedWards: [],
+      });
+
+      const streetInput = screen.getByTestId("desktop-street-address-input");
+      fireEvent.change(streetInput, { target: { value: "999 Không Tồn Tại" } });
+
+      const callbackBtn = await screen.findByTestId("request-store-callback-btn", {}, { timeout: 4000 });
+      // Rapid double-click đồng bộ trước khi React re-render
+      fireEvent.click(callbackBtn);
+      fireEvent.click(callbackBtn);
+      expect(callbackSpy).toHaveBeenCalledTimes(1);
+
+      resolveCallback({ success: true, message: "OK" });
+      await waitFor(() => {
+        expect(screen.getByTestId("callback-request-success-notice")).toBeInTheDocument();
+      });
+      expect((screen.getByTestId("request-store-callback-btn") as HTMLButtonElement).disabled).toBe(true);
+
+      // Click thêm lần nữa khi đã thành công -> không gửi trùng
+      fireEvent.click(screen.getByTestId("request-store-callback-btn"));
+      expect(callbackSpy).toHaveBeenCalledTimes(1);
+
+      // Khi sửa tên -> cho phép gửi lại
+      const nameInputs = screen.getAllByPlaceholderText("Nhập họ và tên người nhận");
+      fireEvent.change(nameInputs[nameInputs.length - 1], { target: { value: "Nguyễn Văn Mới" } });
+      await waitFor(() => {
+        expect((screen.getByTestId("request-store-callback-btn") as HTMLButtonElement).disabled).toBe(false);
+      });
+    });
+  });
+
+  describe("TC-FE-07: MobileCartFlow parity (Ma trận #2 & #7, A03, H04 race condition, H07 saved address, E05 double-click, E07 phone_invalid)", () => {
+    afterEach(() => {
+      cleanup();
+      vi.restoreAllMocks();
+    });
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      vi.spyOn(wardMapping, "verifyAddressViaMapApi").mockImplementation(async (params) => {
+        return wardMapping.validateAddressWardMatch(params);
+      });
+      vi.spyOn(authService, "getCustomerAddressesApi").mockResolvedValue([]);
+      vi.spyOn(authService, "getCachedCustomerAddresses").mockReturnValue([]);
+      vi.spyOn(orderService, "getCheckoutConfig").mockResolvedValue({
+        delivery_types: [{ value: "delivery", label: "Giao tận nơi" }],
+        default_shipping_fee: "30000",
+        branches: [{ id: 1, branchName: "Chi nhánh Trần Đình Xu", address: "42/2 Trần Đình Xu", contactNumber: "0123", isActive: true }],
+      } as any);
+      vi.spyOn(orderService, "getAdministrativeUnits").mockResolvedValue([
+        { id: "HCM", name: "TP. Hồ Chí Minh", wards: MOCK_WARDS },
+      ]);
+      vi.spyOn(orderService, "getShippingSettings").mockResolvedValue({
+        free_shipping_threshold: 400000,
+        default_shipping_fee: 30000,
+        can_combine_with_promotions: true,
+        can_combine_with_freeship: true,
+      } as any);
+      vi.spyOn(orderService, "getLoyaltySettings").mockResolvedValue({
+        can_combine_with_promotions: true,
+        can_combine_with_freeship: true,
+      } as any);
+      vi.spyOn(orderService, "getAvailableVouchers").mockResolvedValue([]);
+      vi.spyOn(orderService, "createOrder").mockResolvedValue({
+        success: true,
+        data: { order_code: "ORD-MOBILE-01" },
+      } as any);
+    });
+
+    it("Ma trận #7 & H04 (Mobile): Khi calculateShippingFee lỗi -> KHÔNG fallback defaultShippingFee, báo lỗi và khóa nút; Đổi phường nhanh bỏ qua response cũ (race condition)", async () => {
+      let resolveFirstWard: (v: any) => void = () => {};
+      let resolveSecondWard: (v: any) => void = () => {};
+      const shipSpy = vi.spyOn(orderService, "calculateShippingFee")
+        .mockRejectedValueOnce(new Error("Shipping service unavailable"))
+        .mockImplementationOnce(() => new Promise((r) => { resolveFirstWard = r; }))
+        .mockImplementationOnce(() => new Promise((r) => { resolveSecondWard = r; }));
+
+      render(<MobileCartFlow inline={true} />);
+
+      await waitFor(() => {
+        expect(orderService.getAdministrativeUnits).toHaveBeenCalled();
+        expect(orderService.getCheckoutConfig).toHaveBeenCalled();
+        expect(authService.getCustomerAddressesApi).toHaveBeenCalled();
+        expect(screen.queryByText(/Đang tải danh sách địa chỉ/i)).not.toBeInTheDocument();
+        expect(screen.getByTestId("mobile-ward-select-input")).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        const input = screen.getByTestId("mobile-ward-select-input");
+        fireEvent.focus(input);
+        fireEvent.click(input);
+        expect(screen.getByTestId("mobile-ward-select-option-SG")).toBeInTheDocument();
+      });
+
+      const mobileSubmitBtn = screen.getByTestId("mobile-checkout-submit-btn") as HTMLButtonElement;
+
+      // 1. Chọn Phường Sài Gòn nhưng API tính ship bị lỗi -> báo lỗi & khóa nút Đặt hàng (không fallback 30.000đ)
+      fireEvent.click(await screen.findByTestId("mobile-ward-select-option-SG"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("mobile-shipping-calculation-error-alert")).toBeInTheDocument();
+        expect(screen.getByTestId("mobile-shipping-calculation-error-label")).toBeInTheDocument();
+      });
+      expect(mobileSubmitBtn.disabled).toBe(true);
+      expect(screen.queryByText(/30\.000\s*(đ|VNĐ)/i)).not.toBeInTheDocument();
+
+      // 2. H04: Đổi nhanh sang Phường Bến Thành (chậm 20k) rồi đổi ngay sang Phường Phước Long (nhanh 45k)
+      fireEvent.change(screen.getByTestId("mobile-ward-select-input"), { target: { value: "Bến Thành" } });
+      fireEvent.click(await screen.findByTestId("mobile-ward-select-option-BT"));
+
+      fireEvent.change(screen.getByTestId("mobile-ward-select-input"), { target: { value: "Phước Long" } });
+      fireEvent.click(await screen.findByTestId("mobile-ward-select-option-PL"));
+
+      expect(shipSpy).toHaveBeenCalledTimes(3);
+
+      // Phước Long (45k) trả về trước, Bến Thành (20k) trả về trễ hơn -> KHÔNG được ghi đè 45k thành 20k
+      resolveSecondWard({
+        shipping_fee: 45000,
+        original_fee: 45000,
+        shipping_discount: 0,
+        is_freeship: false,
+        is_deliverable: true,
+        branch_id: 1,
+        branch_name: "Chi nhánh Trần Đình Xu",
+      });
+      resolveFirstWard({
+        shipping_fee: 20000,
+        original_fee: 20000,
+        shipping_discount: 0,
+        is_freeship: false,
+        is_deliverable: true,
+        branch_id: 1,
+        branch_name: "Chi nhánh Trần Đình Xu",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText(/45\.000\s*(đ|VNĐ)/i)).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/20\.000\s*(đ|VNĐ)/i)).not.toBeInTheDocument();
+    });
+
+    it("A03, E07 & E05 (Mobile): Khóa nút khi chưa chọn phường; E07 báo phone_invalid cho SĐT sai định dạng ('0123456789'); E05 chống double-click callback", async () => {
+      vi.spyOn(orderService, "calculateShippingFee").mockResolvedValue({
+        shipping_fee: 20000,
+        original_fee: 20000,
+        shipping_discount: 0,
+        is_freeship: false,
+        is_deliverable: true,
+        branch_id: 1,
+        branch_name: "Chi nhánh Trần Đình Xu",
+      } as any);
+      const callbackSpy = vi.spyOn(contactService, "submitAddressCallbackRequest").mockResolvedValue({
+        success: true,
+        message: "OK",
+      });
+      vi.spyOn(wardMapping, "verifyAddressViaMapApi").mockResolvedValue({
+        isValid: false,
+        verificationStatus: "unverifiable",
+        canOrder: false,
+        requiresCallback: true,
+        message: "Không xác minh được địa chỉ.",
+        suggestedWards: [],
+      });
+
+      render(<MobileCartFlow inline={true} />);
+
+      await waitFor(() => {
+        expect(orderService.getAdministrativeUnits).toHaveBeenCalled();
+        expect(orderService.getCheckoutConfig).toHaveBeenCalled();
+        expect(authService.getCustomerAddressesApi).toHaveBeenCalled();
+        expect(screen.getByPlaceholderText("Nhập số nhà, tên đường...")).toBeInTheDocument();
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const streetInput = screen.getByPlaceholderText("Nhập số nhà, tên đường...");
+      const phoneInput = screen.getByPlaceholderText("Nhập số điện thoại nhận hàng");
+      const mobileSubmitBtn = screen.getByTestId("mobile-checkout-submit-btn") as HTMLButtonElement;
+
+      // A03: Nhập địa chỉ chưa chọn phường -> khóa nút Đặt hàng
+      fireEvent.change(streetInput, { target: { value: "150 Đỗ Xuân Hợp" } });
+      expect(mobileSubmitBtn.disabled).toBe(true);
+
+      // Chờ xác minh xong và cảnh báo unverifiable hiện nút callback
+      await waitFor(() => {
+        expect(screen.queryByTestId("mobile-address-verifying-loader")).not.toBeInTheDocument();
+        expect(screen.getByTestId("mobile-request-store-callback-btn")).toBeInTheDocument();
+      }, { timeout: 4000 });
+
+      // E07: SĐT sai định dạng "0123456789" -> báo phone_invalid (KHÔNG báo phone_required)
+      fireEvent.change(phoneInput, { target: { value: "0123456789" } });
+      fireEvent.click(await screen.findByTestId("mobile-request-store-callback-btn", {}, { timeout: 4000 }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("mobile-callback-request-error-notice")).toBeInTheDocument();
+        expect(screen.getByText(/Số điện thoại không hợp lệ/i)).toBeInTheDocument();
+      });
+      expect(callbackSpy).not.toHaveBeenCalled();
+
+      // Sửa SĐT hợp lệ và double-click callback -> chỉ gọi 1 lần và khóa nút
+      fireEvent.change(phoneInput, { target: { value: "0909123456" } });
+      const callbackBtnAfterFix = await screen.findByTestId("mobile-request-store-callback-btn", {}, { timeout: 4000 });
+      fireEvent.click(callbackBtnAfterFix);
+      fireEvent.click(callbackBtnAfterFix);
+
+      await waitFor(() => {
+        expect(callbackSpy).toHaveBeenCalledTimes(1);
+        expect(screen.getByTestId("mobile-callback-request-success-notice")).toBeInTheDocument();
+      });
+      expect((screen.getByTestId("mobile-request-store-callback-btn") as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it("H07 (Mobile): Địa chỉ đã lưu lệch phường vẫn qua verifyAddressViaMapApi, hiện cảnh báo, khóa đặt hàng và cho phép 1-click đổi phường", async () => {
+      vi.spyOn(authService, "getCustomerAddressesApi").mockResolvedValue([
+        {
+          id: 91,
+          recipient_name: "Nguyễn Văn Khách",
+          phone: "0909123456",
+          province: "TP. Hồ Chí Minh",
+          district: "Sài Gòn",
+          ward: "Sài Gòn",
+          ward_id: "SG",
+          street_address: "150 Đỗ Xuân Hợp",
+          full_address: "150 Đỗ Xuân Hợp, Sài Gòn, TP. Hồ Chí Minh",
+          is_default: true,
+        },
+      ]);
+      vi.spyOn(orderService, "calculateShippingFee").mockResolvedValue({
+        shipping_fee: 45000,
+        original_fee: 45000,
+        shipping_discount: 0,
+        is_freeship: false,
+        is_deliverable: true,
+        branch_id: 1,
+        branch_name: "Chi nhánh Trần Đình Xu",
+      } as any);
+
+      render(<MobileCartFlow inline={true} />);
+
+      await waitFor(() => {
+        expect(orderService.getAdministrativeUnits).toHaveBeenCalled();
+        expect(wardMapping.verifyAddressViaMapApi).toHaveBeenCalled();
+        expect(screen.queryByTestId("mobile-address-verifying-loader")).not.toBeInTheDocument();
+        expect(screen.getByTestId("mobile-address-ward-mismatch-warning")).toBeInTheDocument();
+        expect(screen.getByTestId("mobile-apply-suggested-ward-btn")).toBeInTheDocument();
+      }, { timeout: 4000 });
+
+      const mobileSubmitBtn = screen.getByTestId("mobile-checkout-submit-btn") as HTMLButtonElement;
+      expect(mobileSubmitBtn.disabled).toBe(true);
+
+      fireEvent.click(screen.getByTestId("mobile-apply-suggested-ward-btn"));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("mobile-address-ward-mismatch-warning")).not.toBeInTheDocument();
+        expect(mobileSubmitBtn.disabled).toBe(false);
+      }, { timeout: 4000 });
     });
   });
 });

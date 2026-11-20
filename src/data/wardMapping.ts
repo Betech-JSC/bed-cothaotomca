@@ -103,6 +103,7 @@ export function buildDeliveryAddress(
 export {
   validateAddressWardMatch,
   verifyAddressViaMapApi,
+  evaluateGeocodePayload,
   hasHouseNumberInAddress,
   HCMC_STREET_DIRECTORY,
   WARD_CANONICAL_DISTRICTS,
@@ -112,6 +113,7 @@ export {
 } from "@/utils/addressValidation";
 export type {
   AddressWardConflictType,
+  AddressVerificationStatus,
   AddressWardValidationParams,
   AddressWardValidationResult,
   WardCatalogEntry,

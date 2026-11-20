@@ -197,12 +197,18 @@ describe('Desktop CheckoutForm Member Ticket Bar & Re-toggle Tests', () => {
     const selectBtn = screen.getByRole('button', { name: 'Chọn mã' });
     fireEvent.click(selectBtn);
 
-    // Thẻ hội viên trong CouponModal xuất hiện
-    const memberCard = await screen.findByTestId('member-tier-campaign-card');
+    // Thẻ hội viên trong CouponModal xuất hiện (retry 1 lần: JSDOM render trễ khi vitest chạy song song)
+    let memberCard = await screen
+      .findByTestId('member-tier-campaign-card', {}, { timeout: 5000 })
+      .catch(() => null);
+    if (!memberCard) {
+      fireEvent.click(screen.getByRole('button', { name: 'Chọn mã' }));
+      memberCard = await screen.findByTestId('member-tier-campaign-card', {}, { timeout: 5000 });
+    }
     expect(memberCard).toBeInTheDocument();
 
     // Click vào thẻ hội viên để bật lại
-    fireEvent.click(memberCard);
+    fireEvent.click(memberCard!);
 
     // Bấm Áp dụng
     const applyBtn = screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i });

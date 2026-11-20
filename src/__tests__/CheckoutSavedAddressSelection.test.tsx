@@ -4,6 +4,7 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import CheckoutForm from '@/components/Checkout/CheckoutForm';
 import { getCustomerAddressesApi, type CustomerAddress } from '@/services/authService';
+import * as wardMapping from '@/data/wardMapping';
 import type { CheckoutConfig } from '@/services/orderService';
 import viMessages from '@/i18n/locales/vi.json';
 
@@ -216,6 +217,7 @@ vi.mock('@/services/orderService', async () => {
           { id: 'W001', name: 'Tân Sơn Nhất', district: 'Tân Bình' },
           { id: 'W002', name: 'Võ Thị Sáu', district: 'Quận 3' },
           { id: 'W003', name: 'An Hội Tây', district: 'Gò Vấp' },
+          { id: 'W004', name: 'Xuân Hòa', district: 'Quận 3' },
         ],
       },
     ]),
@@ -242,6 +244,9 @@ const mockConfigData: CheckoutConfig = {
 describe('Checkout Saved Address Selection & Conditional Rendering Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(wardMapping, 'verifyAddressViaMapApi').mockImplementation(async (params) =>
+      wardMapping.validateAddressWardMatch(params)
+    );
     if (typeof localStorage !== 'undefined') {
       localStorage.clear();
     }
@@ -378,8 +383,13 @@ describe('Checkout Saved Address Selection & Conditional Rendering Tests', () =>
     const confirmCheckbox = screen.getByTestId('desktop-confirm-checkbox');
     fireEvent.click(confirmCheckbox);
 
+    // Chờ xác minh địa chỉ đã lưu (H07) & tính phí ship hoàn tất để nút Đặt hàng mở khóa
+    const submitBtn = screen.getByTestId('checkout-submit-btn') as HTMLButtonElement;
+    await waitFor(() => {
+      expect(submitBtn.disabled).toBe(false);
+    }, { timeout: 4000 });
+
     // Bấm đặt món
-    const submitBtn = screen.getByTestId('checkout-submit-btn');
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -441,6 +451,12 @@ describe('Checkout Saved Address Selection & Conditional Rendering Tests', () =>
       expect(screen.getByText(/An Hội Tây/i)).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText(/An Hội Tây/i));
+
+    // Chờ xác minh địa chỉ hoàn tất
+    await waitFor(() => {
+      expect(screen.queryByTestId('address-verifying-loader')).not.toBeInTheDocument();
+      expect((screen.getByTestId('checkout-submit-btn') as HTMLButtonElement).disabled).toBe(false);
+    }, { timeout: 4000 });
 
     // Submit lại
     fireEvent.click(submitBtn);
@@ -587,6 +603,98 @@ describe('Checkout Saved Address Selection & Conditional Rendering Tests', () =>
         screen.getAllByText(viMessages.checkout.invalid_saved_ward_notice).length
       ).toBeGreaterThanOrEqual(1);
     });
+
+    const confirmCheckbox = screen.getByTestId('desktop-confirm-checkbox');
+    fireEvent.click(confirmCheckbox);
+    const submitBtn = screen.getByTestId('checkout-submit-btn') as HTMLButtonElement;
+    expect(submitBtn.disabled).toBe(true);
+  });
+
+  it('12. H07 & A08: Địa chỉ đã lưu VẪN phải qua verifyAddressViaMapApi; nếu lệch phường thì hiện cảnh báo, khóa nút Đặt hàng và cho phép 1-click đổi phường', async () => {
+    const mismatchSavedAddresses = [
+      {
+        id: 88,
+        recipient_name: 'Trần Minh Tâm',
+        phone: '0912345678',
+        province: 'TP. Hồ Chí Minh',
+        district: 'Tân Bình',
+        ward: 'Tân Sơn Nhất',
+        ward_id: 'W001',
+        street_address: '150 Đỗ Xuân Hợp',
+        full_address: '150 Đỗ Xuân Hợp, Tân Sơn Nhất, Tân Bình, TP. Hồ Chí Minh',
+        is_default: true,
+      },
+    ];
+    vi.mocked(getCustomerAddressesApi).mockImplementation(() => Promise.resolve(mismatchSavedAddresses as any));
+    vi.spyOn(wardMapping, 'verifyAddressViaMapApi').mockResolvedValue({
+      isValid: false,
+      conflictType: 'ward_conflict',
+      verificationStatus: 'ward_mismatch',
+      verifiedWard: 'Xuân Hòa',
+      isWardMatched: false,
+      canOrder: false,
+      requiresCallback: true,
+      detectedArea: 'Phường Xuân Hòa',
+      message: 'Địa chỉ giao hàng thuộc Phường Xuân Hòa, không khớp với Phường Tân Sơn Nhất bạn đang chọn.',
+      suggestedWard: { id: 'W004', name: 'Xuân Hòa', district: 'Quận 3' },
+      suggestedWards: [{ id: 'W004', name: 'Xuân Hòa', district: 'Quận 3' }],
+    });
+
+    render(<CheckoutForm order={null} config={mockConfigData} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('address-ward-mismatch-warning')).toBeInTheDocument();
+      expect(screen.getByTestId('apply-suggested-ward-btn')).toBeInTheDocument();
+    }, { timeout: 4000 });
+
+    const confirmCheckbox = screen.getByTestId('desktop-confirm-checkbox');
+    fireEvent.click(confirmCheckbox);
+    const submitBtn = screen.getByTestId('checkout-submit-btn') as HTMLButtonElement;
+    expect(submitBtn.disabled).toBe(true);
+
+    fireEvent.click(screen.getByTestId('apply-suggested-ward-btn'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('address-ward-mismatch-warning')).not.toBeInTheDocument();
+      expect(submitBtn.disabled).toBe(false);
+    }, { timeout: 4000 });
+
+    fireEvent.click(submitBtn);
+    await waitFor(() => {
+      expect(mockCreateOrder).toHaveBeenCalledTimes(1);
+    });
+    expect(mockCreateOrder.mock.calls[0][0].delivery.ward).toBe('Xuân Hòa');
+    expect(mockCreateOrder.mock.calls[0][0].delivery.address).toContain('Xuân Hòa');
+  });
+
+  it('13. H07: Địa chỉ đã lưu bị thiếu số nhà phải hiện cảnh báo thiếu số nhà và khóa nút Đặt hàng', async () => {
+    const missingHouseSavedAddresses = [
+      {
+        id: 89,
+        recipient_name: 'Trần Minh Tâm',
+        phone: '0912345678',
+        province: 'TP. Hồ Chí Minh',
+        district: 'Tân Bình',
+        ward: 'Tân Sơn Nhất',
+        ward_id: 'W001',
+        street_address: 'Đỗ Xuân Hợp',
+        full_address: 'Đỗ Xuân Hợp, Tân Sơn Nhất, Tân Bình, TP. Hồ Chí Minh',
+        is_default: true,
+      },
+    ];
+    vi.mocked(getCustomerAddressesApi).mockImplementation(() => Promise.resolve(missingHouseSavedAddresses as any));
+
+    render(<CheckoutForm order={null} config={mockConfigData} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('address-missing-house-number-warning')).toBeInTheDocument();
+    });
+
+    const confirmCheckbox = screen.getByTestId('desktop-confirm-checkbox');
+    fireEvent.click(confirmCheckbox);
+    const submitBtn = screen.getByTestId('checkout-submit-btn') as HTMLButtonElement;
+    expect(submitBtn.disabled).toBe(true);
+    expect(mockCreateOrder).not.toHaveBeenCalled();
   });
 });
 

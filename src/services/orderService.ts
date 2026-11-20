@@ -37,9 +37,6 @@ export interface CreateOrderPayload {
     district?: string;
     ward?: string;
     ward_id?: string;
-    address_mismatch_confirmed?: boolean;
-    suggested_ward?: string;
-    address_warning_message?: string;
   } | null;
   items: CreateOrderItem[];
   discount?: number;

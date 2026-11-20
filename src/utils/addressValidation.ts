@@ -9,7 +9,19 @@ export type AddressWardConflictType =
   | "district_conflict"
   | "ward_conflict"
   | "street_conflict"
-  | "province_conflict";
+  | "province_conflict"
+  | "ambiguous_multiple_wards"
+  | "missing_house_number"
+  | "unverifiable"
+  | "api_error";
+
+export type AddressVerificationStatus =
+  | "verified_single_ward"
+  | "ward_mismatch"
+  | "ambiguous_multiple_wards"
+  | "missing_house_number"
+  | "unverifiable"
+  | "api_error";
 
 export type WardCatalogEntry = AdministrativeWard;
 
@@ -32,6 +44,11 @@ export interface AddressWardValidationResult {
   message?: string;
   suggestedWard?: AdministrativeWard | null;
   suggestedWards?: AdministrativeWard[];
+  verificationStatus?: AddressVerificationStatus;
+  verifiedWard?: string | null;
+  isWardMatched?: boolean;
+  canOrder?: boolean;
+  requiresCallback?: boolean;
 }
 
 export type GeocodeProvider =
@@ -48,6 +65,7 @@ export type GeocodePrecision =
 export interface GeocodeCandidate {
   formatted_address: string;
   ward?: string;
+  new_ward?: string;
   old_ward?: string;
   district?: string;
   province?: string;
@@ -63,6 +81,12 @@ export interface GeocodeVerificationPayload {
   cached?: boolean;
   precision: GeocodePrecision;
   candidates: GeocodeCandidate[];
+  verification_status?: AddressVerificationStatus;
+  can_order?: boolean;
+  is_ward_matched?: boolean;
+  verified_ward?: string | null;
+  suggested_ward?: string | null;
+  unique_wards?: string[];
 }
 
 export function normalizeText(str: string): string {
@@ -1323,8 +1347,14 @@ export function validateAddressWardMatch(
     }
 
     const suggestions = findMatchingWardsFromCatalog(availableWards, candWards, candDistricts);
+    const singleSuggested = suggestions.length === 1 ? suggestions[0] : (suggestions[0] || null);
     return {
       isValid: true,
+      verificationStatus: singleSuggested ? "verified_single_ward" : undefined,
+      verifiedWard: singleSuggested?.name || null,
+      isWardMatched: false,
+      canOrder: false,
+      requiresCallback: false,
       detectedArea:
         explicitWard?.displayLabel ||
         (suggestions[0] ? formatWardLabel(suggestions[0].name) : undefined),
@@ -1338,6 +1368,11 @@ export function validateAddressWardMatch(
     return {
       isValid: false,
       conflictType: "province_conflict",
+      verificationStatus: "unverifiable",
+      verifiedWard: null,
+      isWardMatched: false,
+      canOrder: false,
+      requiresCallback: true,
       detectedArea: explicitDistOrProv.rawLabel,
       message: `Địa chỉ bạn nhập thuộc khu vực ${explicitDistOrProv.rawLabel}, không khớp với ${selectedWardDisplay} (TP. Hồ Chí Minh). Vui lòng kiểm tra lại Tỉnh/Thành hoặc Phường/Xã để tính chính xác phí vận chuyển.`,
       suggestedWard: null,
@@ -1390,6 +1425,11 @@ export function validateAddressWardMatch(
         return {
           isValid: false,
           conflictType: "ward_conflict",
+          verificationStatus: "ward_mismatch",
+          verifiedWard: suggestions[0]?.name || explicitWard.targetWard,
+          isWardMatched: false,
+          canOrder: false,
+          requiresCallback: true,
           detectedArea: areaLabel,
           message: `Địa chỉ bạn nhập thuộc khu vực ${areaLabel}, không khớp với ${selectedWardDisplay} đang chọn. Vui lòng đổi về đúng Phường/Xã để tính chính xác phí vận chuyển.${suggestionHint}`,
           suggestedWard: suggestions[0] || null,
@@ -1423,6 +1463,11 @@ export function validateAddressWardMatch(
       return {
         isValid: false,
         conflictType: "district_conflict",
+        verificationStatus: "ward_mismatch",
+        verifiedWard: suggestions[0]?.name || null,
+        isWardMatched: false,
+        canOrder: false,
+        requiresCallback: true,
         detectedArea: areaLabel,
         message: `Địa chỉ bạn nhập thuộc khu vực ${areaLabel}, không khớp với ${selectedWardDisplay} đang chọn. Vui lòng đổi về đúng Phường/Xã để tính chính xác phí vận chuyển.${suggestionHint}`,
         suggestedWard: suggestions[0] || null,
@@ -1456,6 +1501,11 @@ export function validateAddressWardMatch(
       return {
         isValid: false,
         conflictType: "street_conflict",
+        verificationStatus: "ward_mismatch",
+        verifiedWard: suggestions[0]?.name || null,
+        isWardMatched: false,
+        canOrder: false,
+        requiresCallback: true,
         detectedArea: areaLabel,
         message: `Địa chỉ bạn nhập (Đường ${matchedStreet.displayName}) thuộc khu vực ${areaLabel}, không khớp với ${selectedWardDisplay} đang chọn. Vui lòng đổi về đúng Phường/Xã để tính chính xác phí vận chuyển.${suggestionHint}`,
         suggestedWard: suggestions[0] || null,
@@ -1464,7 +1514,15 @@ export function validateAddressWardMatch(
     }
   }
 
-  return { isValid: true };
+  const hasHouseNum = hasHouseNumberInAddress(streetAddress);
+  return {
+    isValid: true,
+    verificationStatus: hasHouseNum ? "verified_single_ward" : "missing_house_number",
+    verifiedWard: hasHouseNum ? cleanSelectedWard || null : null,
+    isWardMatched: Boolean(hasHouseNum && hasWardSelected),
+    canOrder: Boolean(hasHouseNum && hasWardSelected),
+    requiresCallback: false,
+  };
 }
 
 // In-memory cache for Map Geocoding API lookups (keyed by normalized "rawStreet|province")
@@ -1487,6 +1545,10 @@ export function clearAddressGeocodeCache(): void {
 export function extractLeadingHouseNumber(rawStreet: string): string | null {
   const norm = normalizeText(rawStreet);
   if (!norm) return null;
+  const loMatch = norm.match(
+    /^(?:(?:so\s+nha|so|sn\.?|hem|ngo|ngach|kiet|h\.)\s+)*lo\s+([a-z]{1,2}\d+[a-z]{0,2}|\d+[a-z]{0,2})(?=$|[\s,/.\-])/i
+  );
+  if (loMatch) return loMatch[1].toLowerCase();
   const match = norm.match(
     /^(?:(?:so\s+nha|so|sn\.?|hem|ngo|ngach|kiet|h\.)\s+)*(\d+)(?:[a-z]{0,2})(?=$|[\s,/.\-])/i
   );
@@ -1497,7 +1559,7 @@ export function hasHouseNumberInAddress(streetAddress: string): boolean {
   const raw = (streetAddress || "").trim();
   if (!raw) return false;
   if (extractLeadingHouseNumber(raw) === null) return false;
-  return /^(?:(?:số\s+nhà|so\s+nha|số|so|sn\.?|hẻm|hem|ngõ|ngo|ngách|ngach|kiệt|kiet|h\.)\s+)*\d+[a-zA-Z]?(?:[\/\-]\d+[a-zA-Z]?)*\s+\S+/iu.test(
+  return /^(?:(?:số\s+nhà|so\s+nha|số|so|sn\.?|hẻm|hem|ngõ|ngo|ngách|ngach|kiệt|kiet|h\.)\s+)*(?:\d+[a-zA-Z]{0,2}(?:[\/\-]\d+[a-zA-Z]{0,2})*|(?:lô|lo)\s+(?:[a-zA-Z]{1,2}\d+[a-zA-Z]{0,2}|\d+[a-zA-Z]{0,2})(?:[\/\-]\d+[a-zA-Z]{0,2})*)(?:,\s*|\s+)\S+/iu.test(
     raw
   );
 }
@@ -1669,6 +1731,139 @@ interface ParsedGeocodeCandidateAdmin {
   hasResolvedHcmcArea: boolean;
 }
 
+const RESOLUTION_1685_NUMBERED_OLD_WARD_MAP: Record<string, Record<number, string>> = {
+  "Gò Vấp": {
+    1: "Hạnh Thông",
+    3: "Hạnh Thông",
+    4: "Hạnh Thông",
+    5: "An Nhơn",
+    6: "An Nhơn",
+    7: "Hạnh Thông",
+    8: "Thông Tây Hội",
+    9: "Thông Tây Hội",
+    10: "Gò Vấp",
+    11: "Thông Tây Hội",
+    12: "An Hội Tây",
+    13: "An Hội Đông",
+    14: "An Hội Tây",
+    15: "An Hội Đông",
+    16: "An Hội Đông",
+    17: "Gò Vấp",
+  },
+  "Tân Bình": {
+    1: "Tân Sơn Hòa",
+    2: "Tân Sơn Hòa",
+    3: "Tân Sơn Hòa",
+    4: "Tân Sơn Nhất",
+    5: "Tân Sơn Nhất",
+    6: "Tân Hòa",
+    7: "Tân Sơn Nhất",
+    8: "Tân Hòa",
+    9: "Tân Hòa",
+    10: "Bảy Hiền",
+    11: "Bảy Hiền",
+    12: "Bảy Hiền",
+    13: "Tân Bình",
+    14: "Tân Bình",
+    15: "Tân Sơn",
+  },
+  "Phú Nhuận": {
+    1: "Cầu Kiệu",
+    2: "Cầu Kiệu",
+    3: "Đức Nhuận",
+    4: "Đức Nhuận",
+    5: "Đức Nhuận",
+    7: "Cầu Kiệu",
+    8: "Phú Nhuận",
+    9: "Đức Nhuận",
+    10: "Phú Nhuận",
+    11: "Phú Nhuận",
+    13: "Phú Nhuận",
+    15: "Phú Nhuận",
+  },
+  "Quận 3": {
+    1: "Bàn Cờ",
+    2: "Bàn Cờ",
+    3: "Bàn Cờ",
+    4: "Bàn Cờ",
+    5: "Bàn Cờ",
+    6: "Xuân Hòa",
+    7: "Xuân Hòa",
+    8: "Xuân Hòa",
+    9: "Nhiêu Lộc",
+    10: "Hòa Hưng",
+    11: "Nhiêu Lộc",
+    12: "Nhiêu Lộc",
+    13: "Hòa Hưng",
+    14: "Nhiêu Lộc",
+  },
+  "Quận 10": {
+    1: "Vườn Lài",
+    2: "Vườn Lài",
+    4: "Vườn Lài",
+    5: "Diên Hồng",
+    6: "Diên Hồng",
+    7: "Diên Hồng",
+    8: "Diên Hồng",
+    9: "Vườn Lài",
+    10: "Vườn Lài",
+    11: "Diên Hồng",
+    12: "Hòa Hưng",
+    13: "Hòa Hưng",
+    14: "Hòa Hưng",
+    15: "Hòa Hưng",
+  },
+  "Bình Thạnh": {
+    1: "Gia Định",
+    2: "Gia Định",
+    3: "Gia Định",
+    5: "Bình Lợi Trung",
+    6: "Bình Lợi Trung",
+    7: "Bình Lợi Trung",
+    11: "Bình Lợi Trung",
+    12: "Bình Thạnh",
+    13: "Bình Lợi Trung",
+    14: "Bình Thạnh",
+    15: "Gia Định",
+    17: "Gia Định",
+    19: "Thạnh Mỹ Tây",
+    21: "Thạnh Mỹ Tây",
+    22: "Thạnh Mỹ Tây",
+    25: "Thạnh Mỹ Tây",
+    26: "Bình Thạnh",
+    27: "Bình Quới",
+    28: "Bình Quới",
+  },
+  "Quận 5": {
+    1: "Chợ Quán",
+    2: "Chợ Quán",
+    3: "Chợ Quán",
+    4: "Chợ Quán",
+    5: "An Đông",
+    7: "An Đông",
+    8: "An Đông",
+    9: "An Đông",
+    11: "Chợ Lớn",
+    12: "Chợ Lớn",
+    13: "Chợ Lớn",
+    14: "Chợ Lớn",
+  },
+};
+
+function resolveNumberedOldWardByDistrict(
+  rawWard?: string | null,
+  canonicalDistrict?: string | null
+): string | null {
+  if (!rawWard || !canonicalDistrict) return null;
+  const distMap = RESOLUTION_1685_NUMBERED_OLD_WARD_MAP[canonicalDistrict];
+  if (!distMap) return null;
+  const clean = cleanAdministrativeUnitName(rawWard);
+  const numMatch = clean.match(/^0*(\d{1,2})$/);
+  if (!numMatch) return null;
+  const num = parseInt(numMatch[1], 10);
+  return distMap[num] || null;
+}
+
 function parseGeocodeCandidateAdmin(
   candidate: GeocodeCandidate,
   availableWards: AdministrativeWard[]
@@ -1679,6 +1874,7 @@ function parseGeocodeCandidateAdmin(
   );
 
   const adminText = [
+    formatCandidateWardForDetection(candidate.new_ward),
     formatCandidateWardForDetection(candidate.ward),
     formatCandidateWardForDetection(candidate.old_ward),
     formatCandidateDistrictForDetection(candidate.district),
@@ -1717,20 +1913,20 @@ function parseGeocodeCandidateAdmin(
     explicitDistrict = distOrProv.canonicalName;
   }
 
-  // Priority 1: Direct post-merger 94 ward in candidate.ward from TrackAsia / Backend
   let canonicalWard: string | null = null;
   let wardDisplayLabel: string | null = null;
   let hasDirectPostMergerWard = false;
 
+  // Priority 0: Explicit new_ward from Backend
+  const directWardCandidate = candidate.new_ward || candidate.ward;
   if (
     !otherProvince &&
-    candidate.ward &&
-    !/^(quận|q\.|huyện|thành\s*phố|tp\.|tỉnh)\b/i.test(candidate.ward.trim()) &&
-    isKnownPostMerger94Ward(candidate.ward, availableWards)
+    directWardCandidate &&
+    !/^(quận|q\.|huyện|thành\s*phố|tp\.|tỉnh)\b/i.test(directWardCandidate.trim()) &&
+    isKnownPostMerger94Ward(directWardCandidate, availableWards)
   ) {
-    const directClean = cleanAdministrativeUnitName(candidate.ward);
+    const directClean = cleanAdministrativeUnitName(directWardCandidate);
     const normDirect = normalizeText(directClean);
-    // Avoid confusing old "Phường Tân Phú" (Quận 9 / TP. Thủ Đức -> Tăng Nhơn Phú) with post-merger "Phường Tân Phú" (Quận Tân Phú)
     const isOldTanPhuInThuDuc =
       explicitDistrict === "TP. Thủ Đức" && normDirect === "tan phu";
     if (!isOldTanPhuInThuDuc) {
@@ -1758,17 +1954,30 @@ function parseGeocodeCandidateAdmin(
     }
   }
 
-  // Priority 1b: Match candidate.ward against old_ward / old_wards in availableWards
-  if (!canonicalWard && !otherProvince && candidate.ward && availableWards.length > 0) {
-    const directClean = cleanAdministrativeUnitName(candidate.ward);
-    const normDirect = normalizeText(directClean);
-    const matchingOldWardInCatalog = availableWards.find((w) => {
-      const oldWardStr = w.old_ward || w.old_wards || "";
-      return oldWardStr && normalizeText(oldWardStr).includes(normDirect);
-    });
-    if (matchingOldWardInCatalog) {
-      canonicalWard = cleanAdministrativeUnitName(matchingOldWardInCatalog.name);
-      wardDisplayLabel = formatWardLabel(matchingOldWardInCatalog.name);
+  // Priority 1a: Resolution 1685 numbered old ward + district mapping
+  if (!canonicalWard && !otherProvince && explicitDistrict) {
+    const numberedMapped =
+      resolveNumberedOldWardByDistrict(candidate.old_ward, explicitDistrict) ||
+      resolveNumberedOldWardByDistrict(candidate.ward, explicitDistrict);
+    if (numberedMapped) {
+      canonicalWard = numberedMapped;
+      wardDisplayLabel = formatWardLabel(numberedMapped);
+    }
+  }
+
+  // Priority 1b: Match candidate.ward / old_ward against old_ward / old_wards in availableWards (with district check)
+  if (!canonicalWard && !otherProvince && (candidate.ward || candidate.old_ward) && availableWards.length > 0) {
+    const wardToMatch = candidate.old_ward || candidate.ward || "";
+    const targetKey = toOldWardKey(wardToMatch);
+    if (targetKey && !/^\d+$/.test(targetKey)) {
+      const matchingOldWardInCatalog = availableWards.find((w) => {
+        const oldKeys = parseOldWardKeys(w.old_ward || w.old_wards);
+        return oldKeys.has(targetKey);
+      });
+      if (matchingOldWardInCatalog) {
+        canonicalWard = cleanAdministrativeUnitName(matchingOldWardInCatalog.name);
+        wardDisplayLabel = formatWardLabel(matchingOldWardInCatalog.name);
+      }
     }
   }
 
@@ -1837,118 +2046,116 @@ function parseOldWardKeys(raw?: string | null): Set<string> {
   return keys;
 }
 
-/**
- * So khớp old ward có cấu trúc, tránh so chuỗi số trần (số phường cũ lặp ở nhiều quận):
- * tên old ward phải trùng đúng một mục old_ward của phường đang chọn VÀ
- * quận của candidate phải trùng quận của phường đang chọn.
- */
-function isOldWardOfSelectedWard(
-  parsed: ParsedGeocodeCandidateAdmin,
-  currentWardObj?: AdministrativeWard
-): boolean {
-  if (!currentWardObj) return false;
-
-  const oldWardKeys = parseOldWardKeys(
-    currentWardObj.old_ward || currentWardObj.old_wards
-  );
-  if (oldWardKeys.size === 0) return false;
-
-  const candidateDistrict =
-    parsed.explicitDistrict ||
-    (parsed.candidate.district
-      ? normalizeDistrictName(parsed.candidate.district)
-      : "");
-  if (!candidateDistrict) return false;
-
-  const wardDistricts = new Set<string>();
-  if (currentWardObj.district) {
-    wardDistricts.add(normalizeDistrictName(currentWardObj.district));
-  }
-  (
-    WARD_CANONICAL_DISTRICTS[cleanAdministrativeUnitName(currentWardObj.name)] || []
-  ).forEach((district) => wardDistricts.add(normalizeDistrictName(district)));
-  if (!wardDistricts.has(candidateDistrict)) return false;
-
-  return [parsed.candidate.ward, parsed.candidate.old_ward].some((name) => {
-    const key = toOldWardKey(name);
-    return Boolean(key) && oldWardKeys.has(key);
-  });
-}
-
-function buildSuggestionsForCandidateList(
-  parsedList: ParsedGeocodeCandidateAdmin[],
+function resolveWardCatalogEntry(
+  wardName: string,
   availableWards: AdministrativeWard[],
-  normSelectedWard: string,
-  preferExactWardOnly: boolean
-): AdministrativeWard[] {
-  const candWards: string[] = [];
-  const candDistricts: string[] = [];
+  fallbackDistrict?: string | null
+): AdministrativeWard {
+  const cleanName = cleanAdministrativeUnitName(wardName);
+  const norm = normalizeText(cleanName);
+  const matched = availableWards.find(
+    (w) => normalizeText(cleanAdministrativeUnitName(w.name)) === norm
+  );
+  if (matched) return matched;
+  return {
+    id: cleanName,
+    name: cleanName,
+    district: fallbackDistrict || cleanName,
+  };
+}
 
-  for (const p of parsedList) {
-    if (p.canonicalWard && !candWards.includes(p.canonicalWard)) {
-      candWards.push(p.canonicalWard);
-    }
-    if (p.explicitDistrict && !candDistricts.includes(p.explicitDistrict)) {
-      candDistricts.push(p.explicitDistrict);
-    }
+function normalizeStreetForComparison(rawStreet?: string | null): string {
+  let norm = normalizeText(rawStreet || "");
+  if (!norm) return "";
+  norm = norm
+    .replace(/^(?:hem|ngo|ngach|kiet|h\.)\s+\d+(?:[\/\-]\d+[a-z]{0,2})*\s+/i, "")
+    .replace(/^(?:duong\s+|d\.\s*|pho\s+)/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  norm = norm
+    .replace(/\bcmt8\b/g, "cach mang thang 8")
+    .replace(/\bcach mang thang tam\b/g, "cach mang thang 8")
+    .replace(/\ble van si\b/g, "le van sy")
+    .replace(/\b3\/2\b/g, "3 thang 2")
+    .replace(/\bba thang hai\b/g, "3 thang 2");
+  return norm;
+}
+
+function extractInputStreetName(rawStreetAddress: string): string {
+  const segments = (rawStreetAddress || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (segments.length === 0) return "";
+
+  const stripHousePrefix = (seg: string) =>
+    normalizeText(seg)
+      .replace(
+        /^(?:(?:so\s+nha|so|sn\.?|hem|ngo|ngach|kiet|h\.)\s+)*(?:\d+[a-z]{0,2}(?:[\/\-]\d+[a-z]{0,2})*|lo\s+(?:[a-z]{1,2}\d+[a-z]{0,2}|\d+[a-z]{0,2})(?:[\/\-]\d+[a-z]{0,2})*)(?=[\s,.\-]|$)[\s,.\-]*/i,
+        ""
+      )
+      .trim();
+
+  let streetPart = stripHousePrefix(segments[0]);
+  if (!streetPart && segments.length > 1) {
+    streetPart = stripHousePrefix(segments[1]);
   }
+  if (!streetPart) return "";
 
-  const hasExactInCatalog = candWards.some((cw) =>
-    availableWards.some(
-      (w) => normalizeText(cleanAdministrativeUnitName(w.name)) === normalizeText(cw)
+  streetPart = streetPart
+    .replace(
+      /\s+(?:phuong|p\.|xa|thi\s*tran|tt\.|quan|q\.|huyen|tp\.|thanh\s*pho|tinh)(?=\s|\d).*$/i,
+      ""
     )
-  );
+    .replace(/\s+[pq]\d+\b.*$/i, "")
+    .trim();
 
-  const districtsForLookup =
-    preferExactWardOnly && candWards.length > 0
-      ? []
-      : candDistricts;
+  return normalizeStreetForComparison(streetPart);
+}
 
-  const rawSuggestions = findMatchingWardsFromCatalog(
-    availableWards,
-    candWards,
-    districtsForLookup
-  ).filter(
-    (w) =>
-      !normSelectedWard ||
-      normalizeText(cleanAdministrativeUnitName(w.name)) !== normSelectedWard
-  );
-
-  if (rawSuggestions.length > 0) {
-    return rawSuggestions;
+function candidateMatchesInputStreet(
+  cand: GeocodeCandidate,
+  normInputStreet: string
+): boolean {
+  if (!normInputStreet) return true;
+  if (cand.street) {
+    const normCandStreet = normalizeStreetForComparison(cand.street);
+    if (normCandStreet) {
+      return normCandStreet === normInputStreet;
+    }
   }
-
-  const firstKnownWard = candWards.find(
-    (cw) =>
-      isKnownPostMerger94Ward(cw, availableWards) &&
-      (!normSelectedWard || normalizeText(cw) !== normSelectedWard)
-  );
-  if (firstKnownWard) {
-    return [
-      {
-        id: firstKnownWard,
-        name: firstKnownWard,
-        district: candDistricts[0] || firstKnownWard,
-      },
-    ];
+  const segments = (cand.formatted_address || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  for (let i = 0; i < Math.min(segments.length, 2); i++) {
+    const stripped = normalizeText(segments[i]).replace(
+      /^(?:(?:so\s+nha|so|sn\.?|hem|ngo|ngach|kiet|h\.)\s+)*(?:\d+[a-z]{0,2}(?:[\/\-]\d+[a-z]{0,2})*|lo\s+(?:[a-z]{1,2}\d+[a-z]{0,2}|\d+[a-z]{0,2})(?:[\/\-]\d+[a-z]{0,2})*)(?=[\s,.\-]|$)[\s,.\-]*/i,
+      ""
+    );
+    if (normalizeStreetForComparison(stripped) === normInputStreet) {
+      return true;
+    }
   }
-
-  return [];
+  return false;
 }
 
 /**
- * Evaluate a structured GeocodeVerificationPayload against user's selected Ward / Province.
- * - Case A ("street_only"): checks ALL candidate street segments (eliminates 100% false-positive blocks on multi-ward streets).
- * - Case B ("house_number" | "poi"): checks exact coordinate match with <= 250m border tolerance.
+ * Evaluate a structured GeocodeVerificationPayload against user's selected Ward / Province
+ * according to the 7 strict address & ward verification requirements:
+ * - Mục 1: verified_single_ward (1 unique ward verified; if ward not selected -> suggest; if matched -> canOrder = true)
+ * - Mục 2: ward_mismatch (1 unique ward verified != selectedWard -> suggest 1-click switch + Hotline + Callback; canOrder = false)
+ * - Mục 3: ambiguous_multiple_wards (>1 unique new wards -> Hotline + Callback, NO manual ward selection list; canOrder = false)
+ * - Mục 4: missing_house_number | unverifiable | api_error (cannot order; Hotline + Callback for unverifiable/api_error)
  */
 export function evaluateGeocodePayload(
   payload: GeocodeVerificationPayload,
   params: ValidateAddressWardParams
 ): AddressWardValidationResult {
   const {
+    streetAddress = "",
     selectedWard = "",
     selectedWardId = "",
-    selectedDistrict = "",
     selectedProvince = "TP. Hồ Chí Minh",
     availableWards = [],
   } = params;
@@ -1960,16 +2167,74 @@ export function evaluateGeocodePayload(
     normProv.includes("hcm") ||
     normProv.includes("sai gon");
   if (!isHcmc) {
-    return { isValid: true };
+    return {
+      isValid: true,
+      verificationStatus: "verified_single_ward",
+      isWardMatched: true,
+      canOrder: true,
+      requiresCallback: false,
+    };
+  }
+
+  if (
+    payload?.verification_status === "missing_house_number" ||
+    (streetAddress.trim().length > 0 && !hasHouseNumberInAddress(streetAddress))
+  ) {
+    return {
+      isValid: false,
+      conflictType: "missing_house_number",
+      verificationStatus: "missing_house_number",
+      verifiedWard: null,
+      isWardMatched: false,
+      canOrder: false,
+      requiresCallback: false,
+      message: "Vui lòng nhập đầy đủ số nhà và tên đường để hệ thống xác minh địa chỉ giao hàng.",
+      suggestedWard: null,
+      suggestedWards: [],
+    };
   }
 
   if (
     !payload ||
+    payload.verification_status === "api_error" ||
+    payload.provider === "internal" ||
+    payload.provider === "none"
+  ) {
+    return {
+      isValid: false,
+      conflictType: "api_error",
+      verificationStatus: "api_error",
+      verifiedWard: null,
+      isWardMatched: false,
+      canOrder: false,
+      requiresCallback: true,
+      message:
+        'Hệ thống chưa thể xác minh tự động địa chỉ này lúc này. Vui lòng liên hệ Hotline hoặc bấm "Yêu cầu cửa hàng gọi lại" để nhân viên hỗ trợ đặt đơn.',
+      suggestedWard: null,
+      suggestedWards: [],
+    };
+  }
+
+  if (
+    payload.verification_status === "unverifiable" ||
     !Array.isArray(payload.candidates) ||
     payload.candidates.length === 0 ||
-    payload.precision === "unknown"
+    payload.precision === "unknown" ||
+    payload.precision === "street_only"
   ) {
-    return { isValid: true };
+    return {
+      isValid: false,
+      conflictType: "unverifiable",
+      verificationStatus: "unverifiable",
+      verifiedWard: null,
+      isWardMatched: false,
+      canOrder: false,
+      requiresCallback: true,
+      message:
+        'Hệ thống chưa thể xác minh chính xác Phường/Xã cho địa chỉ này. Vui lòng kiểm tra lại số nhà, tên đường hoặc bấm "Yêu cầu cửa hàng gọi lại" để nhân viên hỗ trợ.',
+      suggestedWard: null,
+      suggestedWards: [],
+    };
   }
 
   const currentWardObj = availableWards.find(
@@ -1985,274 +2250,233 @@ export function evaluateGeocodePayload(
   );
   const normSelectedWard = normalizeText(cleanSelectedWard);
   const hasWardSelected = Boolean(cleanSelectedWard || selectedWardId);
-
-  const selectedValidDistricts = new Set<string>();
-  if (currentWardObj?.district) {
-    const normDist = normalizeDistrictName(currentWardObj.district);
-    if (normDist in DISTRICT_DEFAULT_WARDS) {
-      selectedValidDistricts.add(normDist);
-    }
-  }
-  if (selectedDistrict) {
-    const normDist = normalizeDistrictName(selectedDistrict);
-    if (normDist in DISTRICT_DEFAULT_WARDS) {
-      selectedValidDistricts.add(normDist);
-    }
-  }
-  if (cleanSelectedWard) {
-    const mapped = WARD_CANONICAL_DISTRICTS[cleanSelectedWard];
-    if (mapped) {
-      mapped.forEach((d) => selectedValidDistricts.add(normalizeDistrictName(d)));
-    }
-    for (const [wKey, dists] of Object.entries(WARD_CANONICAL_DISTRICTS)) {
-      if (normalizeText(wKey) === normSelectedWard) {
-        dists.forEach((d) => selectedValidDistricts.add(normalizeDistrictName(d)));
-      }
-    }
-  }
-
   const selectedWardDisplay = cleanSelectedWard
     ? formatWardLabel(currentWardObj?.name || selectedWard)
     : "Phường/Xã đang chọn";
+
+  const buildUnverifiableResult = (): AddressWardValidationResult => ({
+    isValid: false,
+    conflictType: "unverifiable",
+    verificationStatus: "unverifiable",
+    verifiedWard: null,
+    isWardMatched: false,
+    canOrder: false,
+    requiresCallback: true,
+    message:
+      'Hệ thống chưa thể xác minh chính xác Phường/Xã cho địa chỉ này. Vui lòng kiểm tra lại số nhà, tên đường hoặc bấm "Yêu cầu cửa hàng gọi lại" để nhân viên hỗ trợ.',
+    suggestedWard: null,
+    suggestedWards: [],
+  });
 
   const candidatesWithDistances = attachHaversineDistances(payload.candidates);
   const parsedCandidates = candidatesWithDistances.map((cand) =>
     parseGeocodeCandidateAdmin(cand, availableWards)
   );
 
-  // ── Case A: street_only (Geocoder only returned road segments, no exact house coordinates) ──
-  if (payload.precision === "street_only") {
-    if (!hasWardSelected) {
-      // Do not guess a single ward on a potentially multi-ward street
-      return { isValid: true };
-    }
-
-    // Check ALL segments: if ANY segment touches cleanSelectedWard or selectedValidDistricts (district-only / old ward in same district), pass immediately!
-    const hasAnyMatchingSegment = parsedCandidates.some((p) => {
-      if (p.otherProvince) return false;
-      if (p.canonicalWard && normalizeText(p.canonicalWard) === normSelectedWard) {
-        return true;
-      }
-      if (isOldWardOfSelectedWard(p, currentWardObj)) {
-        return true;
-      }
-      if (
-        (!p.canonicalWard || p.isOldWardOnly) &&
-        p.explicitDistrict &&
-        selectedValidDistricts.has(p.explicitDistrict)
-      ) {
-        return true;
-      }
-      return false;
-    });
-
-    if (hasAnyMatchingSegment) {
-      return { isValid: true };
-    }
-
-    const hcmcResolved = parsedCandidates.filter((p) => p.hasResolvedHcmcArea);
-    if (hcmcResolved.length > 0) {
-      const suggestions = buildSuggestionsForCandidateList(
-        hcmcResolved,
-        availableWards,
-        normSelectedWard,
-        false
-      );
-      const firstResolved = hcmcResolved[0];
-      const areaLabel = suggestions[0]
-        ? formatWardLabel(suggestions[0].name)
-        : firstResolved.wardDisplayLabel || firstResolved.explicitDistrict || "khu vực khác";
-      const suggestionHint = suggestions[0]
-        ? ` Gợi ý: ${formatWardLabel(suggestions[0].name)}.`
-        : "";
-
-      return {
-        isValid: false,
-        conflictType: "ward_conflict",
-        detectedArea: areaLabel,
-        message: `Địa chỉ bạn nhập thuộc khu vực ${areaLabel}, không khớp với ${selectedWardDisplay} đang chọn. Vui lòng đổi về đúng Phường/Xã để tính chính xác phí vận chuyển.${suggestionHint}`,
-        suggestedWard: suggestions[0] || null,
-        suggestedWards: suggestions,
-      };
-    }
-
-    // Check if ALL segments belong to another province outside HCMC
-    const otherProvCand = parsedCandidates.find((p) => p.otherProvince);
-    if (otherProvCand && parsedCandidates.every((p) => Boolean(p.otherProvince))) {
-      return {
-        isValid: false,
-        conflictType: "province_conflict",
-        detectedArea: otherProvCand.otherProvince!,
-        message: `Địa chỉ bạn nhập thuộc khu vực ${otherProvCand.otherProvince}, không khớp với ${selectedWardDisplay} (TP. Hồ Chí Minh). Vui lòng kiểm tra lại Tỉnh/Thành hoặc Phường/Xã để tính chính xác phí vận chuyển.`,
-        suggestedWard: null,
-        suggestedWards: [],
-      };
-    }
-
-    return { isValid: true };
-  }
-
-  // ── Case B: house_number | poi (Exact building / house coordinate known) ──
-  const nearbyCandidates = parsedCandidates.filter((p, index) =>
-    p.candidate.distance_meters == null
-      ? index === 0
-      : p.candidate.distance_meters <= 250
-  );
-
-  const inputHouseNumber = extractLeadingHouseNumber(params.streetAddress);
+  const inputHouseNumber = extractLeadingHouseNumber(streetAddress);
   const normInputHouse = inputHouseNumber ? normalizeText(inputHouseNumber) : "";
 
-  const candidatesForMatch = parsedCandidates.filter((p, index) => {
-    const isNearby =
-      p.candidate.distance_meters == null
-        ? index === 0
-        : p.candidate.distance_meters <= 250;
-    if (isNearby) return true;
-    if (normInputHouse && p.candidate.house_number) {
-      const candHouse = normalizeText(String(p.candidate.house_number));
-      const extractedCandHouse = extractLeadingHouseNumber(
-        String(p.candidate.house_number)
-      );
-      if (
-        candHouse === normInputHouse ||
-        (extractedCandHouse && normalizeText(extractedCandHouse) === normInputHouse)
-      ) {
-        return true;
+  const candidatesMatchingHouse = parsedCandidates.filter((p) => {
+    if (!normInputHouse) return true;
+    if (!p.candidate.house_number) return false;
+    const candHouse = normalizeText(String(p.candidate.house_number));
+    const extractedCandHouse = extractLeadingHouseNumber(
+      String(p.candidate.house_number)
+    );
+    return (
+      candHouse === normInputHouse ||
+      (extractedCandHouse !== null &&
+        normalizeText(extractedCandHouse) === normInputHouse)
+    );
+  });
+
+  if (normInputHouse && candidatesMatchingHouse.length === 0) {
+    return buildUnverifiableResult();
+  }
+
+  const normInputStreet = extractInputStreetName(streetAddress);
+  const candidatesMatchingStreet = candidatesMatchingHouse.filter((p) =>
+    candidateMatchesInputStreet(p.candidate, normInputStreet)
+  );
+
+  if (normInputStreet && candidatesMatchingStreet.length === 0) {
+    return buildUnverifiableResult();
+  }
+
+  const explicitInputArea = detectExplicitDistrictOrProvince(streetAddress);
+  const activeCandidates = candidatesMatchingStreet.filter((p) => {
+    if (!explicitInputArea) return true;
+    if (explicitInputArea.type === "province") {
+      return false;
+    }
+    if (explicitInputArea.type === "district" && p.explicitDistrict) {
+      return p.explicitDistrict === explicitInputArea.canonicalName;
+    }
+    return true;
+  });
+
+  // Check if all candidates belong to another province outside HCMC
+  const hcmcCandidates = activeCandidates.filter((p) => p.hasResolvedHcmcArea);
+  if (hcmcCandidates.length === 0) {
+    return buildUnverifiableResult();
+  }
+
+  const didFilterCandidates = hcmcCandidates.length < parsedCandidates.length;
+  const uniqueWardMap = new Map<string, { name: string; district: string | null }>();
+
+  if (
+    !didFilterCandidates &&
+    Array.isArray(payload.unique_wards) &&
+    payload.unique_wards.length > 0
+  ) {
+    for (const uw of payload.unique_wards) {
+      const cleanUw = cleanAdministrativeUnitName(uw);
+      const normUw = normalizeText(cleanUw);
+      if (normUw && !uniqueWardMap.has(normUw)) {
+        uniqueWardMap.set(normUw, {
+          name: cleanUw,
+          district: hcmcCandidates[0]?.explicitDistrict || null,
+        });
       }
     }
-    return false;
-  });
-
-  if (!hasWardSelected) {
-    const matchedHcmc = candidatesForMatch.filter((p) => p.hasResolvedHcmcArea);
-    const hcmcCandidates =
-      matchedHcmc.length > 0
-        ? matchedHcmc
-        : parsedCandidates.filter((p) => p.hasResolvedHcmcArea);
-    if (hcmcCandidates.length === 0) {
-      return { isValid: true };
+  } else {
+    for (const p of hcmcCandidates) {
+      let resolvedName = p.canonicalWard;
+      if (!resolvedName && p.explicitDistrict) {
+        const fallbackFromCatalog = findMatchingWardsFromCatalog(
+          availableWards,
+          [],
+          [p.explicitDistrict]
+        )[0];
+        resolvedName =
+          fallbackFromCatalog?.name ||
+          DISTRICT_DEFAULT_WARDS[p.explicitDistrict]?.[0] ||
+          null;
+      }
+      if (resolvedName) {
+        const cleanW = cleanAdministrativeUnitName(resolvedName);
+        const normW = normalizeText(cleanW);
+        if (normW && !uniqueWardMap.has(normW)) {
+          uniqueWardMap.set(normW, {
+            name: cleanW,
+            district: p.explicitDistrict,
+          });
+        }
+      }
     }
-    const suggestions = buildSuggestionsForCandidateList(
-      hcmcCandidates,
-      availableWards,
-      "",
-      true
-    );
-    const primaryHcmc = hcmcCandidates[0];
-    return {
-      isValid: true,
-      detectedArea: suggestions[0]
-        ? formatWardLabel(suggestions[0].name)
-        : primaryHcmc.wardDisplayLabel || primaryHcmc.explicitDistrict || undefined,
-      suggestedWard: suggestions[0] || null,
-      suggestedWards: suggestions,
-    };
   }
 
-  // Check if ANY candidate within 250m OR with matching house number across districts matches selected ward
-  const hasBorderMatch = candidatesForMatch.some((p) => {
-    if (p.otherProvince) return false;
-    if (p.canonicalWard && normalizeText(p.canonicalWard) === normSelectedWard) {
-      return true;
-    }
-    if (isOldWardOfSelectedWard(p, currentWardObj)) {
-      return true;
-    }
-    const wardKnownIn94 = p.canonicalWard
-      ? isKnownPostMerger94Ward(p.canonicalWard, availableWards)
-      : false;
-    if (
-      !wardKnownIn94 &&
-      p.explicitDistrict &&
-      selectedValidDistricts.has(p.explicitDistrict)
-    ) {
-      return true;
-    }
-    return false;
-  });
+  const uniqueWardsList = Array.from(uniqueWardMap.values());
 
-  if (hasBorderMatch) {
-    return { isValid: true };
+  if (uniqueWardsList.length === 0) {
+    return buildUnverifiableResult();
   }
 
-  const primary = parsedCandidates[0];
-  if (primary?.otherProvince && ! nearbyCandidates.some((p) => p.hasResolvedHcmcArea)) {
+  // Mục 3: Nhiều phường mới khác nhau -> Chuyển sang hỗ trợ, không cho khách tự chọn phường để đặt hàng
+  if (
+    (!didFilterCandidates && payload.verification_status === "ambiguous_multiple_wards") ||
+    uniqueWardsList.length > 1
+  ) {
+    const areaLabels = uniqueWardsList.map((w) => formatWardLabel(w.name)).join(", ");
     return {
       isValid: false,
-      conflictType: "province_conflict",
-      detectedArea: primary.otherProvince,
-      message: `Địa chỉ bạn nhập thuộc khu vực ${primary.otherProvince}, không khớp với ${selectedWardDisplay} (TP. Hồ Chí Minh). Vui lòng kiểm tra lại Tỉnh/Thành hoặc Phường/Xã để tính chính xác phí vận chuyển.`,
+      conflictType: "ambiguous_multiple_wards",
+      verificationStatus: "ambiguous_multiple_wards",
+      verifiedWard: null,
+      isWardMatched: false,
+      canOrder: false,
+      requiresCallback: true,
+      detectedArea: areaLabels,
+      message:
+        'Địa chỉ trả về nhiều Phường/Xã khác nhau trên bản đồ nên hệ thống chưa thể tự động xác nhận. Vui lòng liên hệ Hotline hoặc bấm "Yêu cầu cửa hàng gọi lại" để được hỗ trợ đặt đơn.',
       suggestedWard: null,
       suggestedWards: [],
     };
   }
 
-  const matchedHcmc = candidatesForMatch.filter((p) => p.hasResolvedHcmcArea);
-  const hcmcCandidates =
-    matchedHcmc.length > 0
-      ? matchedHcmc
-      : parsedCandidates.filter((p) => p.hasResolvedHcmcArea);
-  const primaryHcmc =
-    (primary?.hasResolvedHcmcArea ? primary : null) ||
-    nearbyCandidates.find((p) => p.hasResolvedHcmcArea) ||
-    hcmcCandidates[0];
+  // Mục 1 & Mục 2: Xác minh được duy nhất 1 phường mới
+  const singleVerified = uniqueWardsList[0];
+  const matchedWardObj = resolveWardCatalogEntry(
+    (!didFilterCandidates && payload.verified_ward) || singleVerified.name,
+    availableWards,
+    singleVerified.district
+  );
+  const normVerifiedWard = normalizeText(cleanAdministrativeUnitName(matchedWardObj.name));
+  const areaLabel = formatWardLabel(matchedWardObj.name);
 
-  if (primaryHcmc) {
-    const suggestions = buildSuggestionsForCandidateList(
-      hcmcCandidates.length > 0 ? hcmcCandidates : [primaryHcmc],
-      availableWards,
-      normSelectedWard,
-      true
-    );
-    const areaLabel = suggestions[0]
-      ? formatWardLabel(suggestions[0].name)
-      : primaryHcmc.wardDisplayLabel || primaryHcmc.explicitDistrict || "khu vực khác";
-    const suggestionHint = suggestions[0]
-      ? ` Gợi ý: ${formatWardLabel(suggestions[0].name)}.`
-      : "";
-
+  if (!hasWardSelected) {
+    // Mục 1a: Khách chưa chọn phường -> hiển thị gợi ý 1 phường duy nhất
     return {
-      isValid: false,
-      conflictType: "ward_conflict",
+      isValid: true,
+      verificationStatus: "verified_single_ward",
+      verifiedWard: matchedWardObj.name,
+      isWardMatched: false,
+      canOrder: false,
+      requiresCallback: false,
       detectedArea: areaLabel,
-      message: `Địa chỉ bạn nhập thuộc khu vực ${areaLabel}, không khớp với ${selectedWardDisplay} đang chọn. Vui lòng đổi về đúng Phường/Xã để tính chính xác phí vận chuyển.${suggestionHint}`,
-      suggestedWard: suggestions[0] || null,
-      suggestedWards: suggestions,
+      suggestedWard: matchedWardObj,
+      suggestedWards: [matchedWardObj],
     };
   }
 
-  return { isValid: true };
+  const isMatched = normVerifiedWard === normSelectedWard;
+  if (isMatched) {
+    // Mục 1b: Khách đã chọn đúng phường xác minh -> cho phép đặt hàng
+    return {
+      isValid: true,
+      verificationStatus: "verified_single_ward",
+      verifiedWard: matchedWardObj.name,
+      isWardMatched: true,
+      canOrder: true,
+      requiresCallback: false,
+      detectedArea: areaLabel,
+      suggestedWard: matchedWardObj,
+      suggestedWards: [matchedWardObj],
+    };
+  }
+
+  // Mục 2: Khách chọn sai phường -> cảnh báo + nút đổi sang phường gợi ý + Hotline + Yêu cầu gọi lại, khóa đặt hàng
+  return {
+    isValid: false,
+    conflictType: "ward_conflict",
+    verificationStatus: "ward_mismatch",
+    verifiedWard: matchedWardObj.name,
+    isWardMatched: false,
+    canOrder: false,
+    requiresCallback: true,
+    detectedArea: areaLabel,
+    message: `Địa chỉ giao hàng thuộc ${areaLabel}, không khớp với ${selectedWardDisplay} bạn đang chọn. Vui lòng đổi sang ${areaLabel} hoặc yêu cầu cửa hàng gọi lại hỗ trợ. Gợi ý: ${areaLabel}.`,
+    suggestedWard: matchedWardObj,
+    suggestedWards: [matchedWardObj],
+  };
 }
 
 /**
- * Asynchronous TrackAsia + Internal Fallback Address Verification:
- * 1. Runs synchronous internal dictionary & explicit-keyword validation first (`validateAddressWardMatch`).
- * 2. When the address includes a house number (`hasHouseNumberInAddress`), ALWAYS calls Backend Proxy
- *    POST ${API_BASE}/shipping/verify-address even when `!selectedWard` so suggestions come from exact house coordinates.
- * 3. Caches structured GeocodeVerificationPayload by normalized "rawStreet|province|selectedWard".
- * 4. If TrackAsia reaches limit (`provider === "internal"`) or network error occurs, falls back to internal validation (`syncResult`).
+ * Asynchronous TrackAsia Address Verification via Backend Proxy:
+ * - Requires house number in address (returns missing_house_number if missing).
+ * - Calls POST ${API_BASE}/shipping/verify-address.
+ * - Caches valid TrackAsia responses by normalized "rawStreet|province|selectedWard".
+ * - Never caches API errors (provider === "internal" / verification_status === "api_error" / network error).
  */
 export async function verifyAddressViaMapApi(
   params: ValidateAddressWardParams & { timeoutMs?: number }
 ): Promise<AddressWardValidationResult> {
-  const syncResult = validateAddressWardMatch(params);
   const rawStreet = (params.streetAddress || "").trim();
   const hasLeadingHouseNumber = hasHouseNumberInAddress(rawStreet);
 
-  if (!hasLeadingHouseNumber) {
-    if (!syncResult.isValid || syncResult.suggestedWard) {
-      return syncResult;
-    }
-  } else if (
-    !syncResult.isValid &&
-    syncResult.conflictType &&
-    syncResult.conflictType !== "street_conflict"
-  ) {
-    return syncResult;
-  }
-
-  if (rawStreet.length < 5) {
-    return syncResult;
+  if (!rawStreet || rawStreet.length < 4 || !hasLeadingHouseNumber) {
+    return {
+      isValid: false,
+      conflictType: "missing_house_number",
+      verificationStatus: "missing_house_number",
+      verifiedWard: null,
+      isWardMatched: false,
+      canOrder: false,
+      requiresCallback: false,
+      message: "Vui lòng nhập đầy đủ số nhà và tên đường để hệ thống xác minh địa chỉ giao hàng.",
+      suggestedWard: null,
+      suggestedWards: [],
+    };
   }
 
   const provinceName = params.selectedProvince || "TP. Hồ Chí Minh";
@@ -2263,7 +2487,13 @@ export async function verifyAddressViaMapApi(
     normProv.includes("hcm") ||
     normProv.includes("sai gon");
   if (!isHcmc) {
-    return syncResult;
+    return {
+      isValid: true,
+      verificationStatus: "verified_single_ward",
+      isWardMatched: true,
+      canOrder: true,
+      requiresCallback: false,
+    };
   }
 
   const hasWardSelected = Boolean((params.selectedWard || "").trim() || params.selectedWardId);
@@ -2274,12 +2504,18 @@ export async function verifyAddressViaMapApi(
     const streetCached = mapLookupCache.get(streetOnlyCacheKey);
     if (
       streetCached &&
-      (!hasWardSelected ||
-        streetCached.precision === "street_only" ||
-        !syncResult.isValid ||
-        evaluateGeocodePayload(streetCached, params).isValid)
+      streetCached.provider === "trackasia" &&
+      streetCached.verification_status !== "api_error"
     ) {
-      payload = streetCached;
+      const cachedStatus = evaluateGeocodePayload(streetCached, params).verificationStatus;
+      if (
+        !hasWardSelected ||
+        cachedStatus === "verified_single_ward" ||
+        cachedStatus === "ward_mismatch" ||
+        cachedStatus === "ambiguous_multiple_wards"
+      ) {
+        payload = streetCached;
+      }
     }
   }
 
@@ -2311,16 +2547,32 @@ export async function verifyAddressViaMapApi(
 
       if (res.ok) {
         const json = await res.json();
-        if (Array.isArray(json?.data?.candidates)) {
-          const provider = (json.data.provider as GeocodeProvider) || "none";
-          const candidates = attachHaversineDistances(json.data.candidates);
-          if (provider === "trackasia" && candidates.length > 0) {
-            payload = {
-              provider,
-              cached: Boolean(json.data.cached),
-              precision: (json.data.precision as GeocodePrecision) || "unknown",
-              candidates,
-            };
+        const data = json?.data;
+        if (data && typeof data === "object") {
+          const provider = (data.provider as GeocodeProvider) || "none";
+          const candidates = Array.isArray(data.candidates)
+            ? attachHaversineDistances(data.candidates)
+            : [];
+          const verificationStatus = data.verification_status as
+            | AddressVerificationStatus
+            | undefined;
+
+          payload = {
+            provider,
+            cached: Boolean(data.cached),
+            precision: (data.precision as GeocodePrecision) || "unknown",
+            candidates,
+            verification_status: verificationStatus,
+            can_order: data.can_order,
+            is_ward_matched: data.is_ward_matched,
+            verified_ward: data.verified_ward ?? null,
+            suggested_ward: data.suggested_ward ?? null,
+            unique_wards: Array.isArray(data.unique_wards)
+              ? data.unique_wards
+              : undefined,
+          };
+
+          if (provider === "trackasia" && verificationStatus !== "api_error") {
             mapLookupCache.set(cacheKey, payload);
             mapLookupCache.set(streetOnlyCacheKey, payload);
           }
@@ -2330,31 +2582,28 @@ export async function verifyAddressViaMapApi(
       }
     } catch (err: unknown) {
       if (!(err instanceof Error && err.name === "AbortError")) {
-        console.warn("[verifyAddressViaMapApi] Request failed, falling back to internal validation:", err);
+        console.warn("[verifyAddressViaMapApi] Request failed:", err);
       }
     } finally {
       if (timer) clearTimeout(timer);
     }
-
-    if (payload === undefined) {
-      payload = mapLookupCache.get(streetOnlyCacheKey);
-    }
   }
 
-  if (payload && payload.candidates.length > 0) {
-    const geoResult = evaluateGeocodePayload(payload, params);
-    if (!hasWardSelected && !geoResult.suggestedWard && syncResult.suggestedWard) {
-      return syncResult;
-    }
-    if (
-      !syncResult.isValid &&
-      syncResult.conflictType !== "street_conflict" &&
-      geoResult.isValid
-    ) {
-      return syncResult;
-    }
-    return geoResult;
+  if (payload) {
+    return evaluateGeocodePayload(payload, params);
   }
 
-  return syncResult;
+  return {
+    isValid: false,
+    conflictType: "api_error",
+    verificationStatus: "api_error",
+    verifiedWard: null,
+    isWardMatched: false,
+    canOrder: false,
+    requiresCallback: true,
+    message:
+      'Hệ thống chưa thể xác minh tự động địa chỉ này lúc này. Vui lòng liên hệ Hotline hoặc bấm "Yêu cầu cửa hàng gọi lại" để nhân viên hỗ trợ đặt đơn.',
+    suggestedWard: null,
+    suggestedWards: [],
+  };
 }

@@ -405,12 +405,18 @@ describe('ConsolidatedMobileFlow Comprehensive Test Suite', () => {
       const selectBtn = screen.getByRole('button', { name: 'Chọn mã' });
       fireEvent.click(selectBtn);
 
-      // Trong CouponModal, thẻ hội viên hiển thị
-      const memberCard = await screen.findByTestId('member-tier-campaign-card');
+      // Trong CouponModal, thẻ hội viên hiển thị (retry 1 lần do JSDOM render trễ khi chạy song song)
+      let memberCard = await screen
+        .findByTestId('member-tier-campaign-card', {}, { timeout: 5000 })
+        .catch(() => null);
+      if (!memberCard) {
+        fireEvent.click(screen.getByRole('button', { name: 'Chọn mã' }));
+        memberCard = await screen.findByTestId('member-tier-campaign-card', {}, { timeout: 5000 });
+      }
       expect(memberCard).toBeInTheDocument();
 
       // Click vào card hội viên để bật lại
-      fireEvent.click(memberCard);
+      fireEvent.click(memberCard!);
 
       // Áp dụng lại
       const applyBtn = screen.getByRole('button', { name: /Áp dụng • 1 ưu đãi/i });

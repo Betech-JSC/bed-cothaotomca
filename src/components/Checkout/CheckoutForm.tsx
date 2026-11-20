@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/exhaustive-deps -- Cac effect/useCallback trong file nay co dependency array chu dich (handler/t on dinh hoac co guard ref); them dep vao se gay re-run lap. */
 
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
@@ -43,6 +44,7 @@ import {
 } from "@/services/orderService";
 import PaymentQRScreen from "./PaymentQRScreen";
 import { getGeneralSettings } from "@/services/generalSettingService";
+import { submitAddressCallbackRequest } from "@/services/contactService";
 import {
   getCustomerAddressesApi,
   createCustomerAddressApi,
@@ -383,7 +385,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     }
 
     const addrStreet = addr.street_address || addr.full_address || "";
-    if (addrStreet) setStreetAddress(addrStreet);
+    setStreetAddress(addrStreet);
   }, [t]);
 
   // Load administrative units catalog
@@ -504,6 +506,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   }, [availableWards, selectedSavedAddress, selectedWard, selectedWardId, t]);
 
   const handleSelectCustomerAddress = (addrId: number | "new") => {
+    setCallbackRequestSuccess(null);
+    setCallbackRequestError(null);
+    callbackSubmittedRef.current = false;
     if (addrId === "new") {
       setSelectedAddressId("new");
       setStreetAddress("");
@@ -548,6 +553,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [shippingMessage, setShippingMessage] = useState<string | null>(null);
   const [assignedBranchName, setAssignedBranchName] = useState<string | null>(null);
   const [calculatingShipping, setCalculatingShipping] = useState<boolean>(false);
+  const [hasCalculatedFee, setHasCalculatedFee] = useState<boolean>(false);
 
   // Voucher states
   const [voucherCode, setVoucherCode] = useState("");
@@ -1280,11 +1286,18 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     appliedCartPromotions,
   ]);
 
+  const appliedPromoKey = useMemo(
+    () => appliedCartPromotions.map((p) => p.id).join(","),
+    [appliedCartPromotions]
+  );
+
+  const isCartEmpty = cartItems.length === 0;
+
   // Trigger real-time calculation when address, subtotal or voucher changes
   useEffect(() => {
     if (
       deliveryType !== "delivery" ||
-      (isCartCheckout && cartItems.length === 0) ||
+      (isCartCheckout && isCartEmpty) ||
       (!selectedWard && !selectedWardId)
     ) {
       setShippingFee(0);
@@ -1297,11 +1310,14 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       setAssignedBranchName(null);
       setCalculatingShipping(false);
       setShippingCalculationError(false);
+      setHasCalculatedFee(false);
       return;
     }
 
     let isSubscribed = true;
     setCalculatingShipping(true);
+    setHasCalculatedFee(false);
+    setShippingCalculationError(false);
 
     const activeFoodV = appliedVoucher && !appliedVoucher.isFreeship && appliedVoucher.discountType !== "freeship" ? appliedVoucher : null;
     const activeShipV = appliedShippingVoucher || (appliedVoucher && (appliedVoucher.isFreeship || appliedVoucher.discountType === "freeship") ? appliedVoucher : null);
@@ -1329,6 +1345,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       .then((res) => {
         if (!isSubscribed) return;
         setShippingCalculationError(false);
+        setHasCalculatedFee(true);
 
         const shipFreeshipFlag = shippingSettings ? Boolean(shippingSettings.can_combine_with_freeship) : true;
         // M11: Shipping Voucher <-> ShippingSetting (Auto Ship 400K)
@@ -1385,6 +1402,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         if (!isSubscribed) return;
         console.error("Error calculating shipping:", err);
         setShippingCalculationError(true);
+        setHasCalculatedFee(false);
         setIsDeliverable(false);
         setShippingMessage(t("shipping_calculation_failed"));
       })
@@ -1405,12 +1423,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     appliedVoucher,
     appliedShippingVoucher,
     config.branches,
-    appliedCartPromotions,
+    appliedPromoKey,
     memberDiscount,
     isFreeshipBlocked,
     shippingSettings,
     isCartCheckout,
-    cartItems,
+    isCartEmpty,
   ]);
 
   // Store Pickup input & Auto-assigned delivery branch
@@ -1525,10 +1543,19 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
   const [itemNote] = useState("");
   const [description, setDescription] = useState("");
 
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const phoneInputRef = useRef<HTMLInputElement | null>(null);
+  const addressSectionRef = useRef<HTMLDivElement | null>(null);
+
   const [mapAddressValidation, setMapAddressValidation] = useState<AddressWardValidationResult | null>(null);
-  const [isAddressWarningConfirmed, setIsAddressWarningConfirmed] = useState(false);
   const [isVerifyingAddress, setIsVerifyingAddress] = useState(false);
+  const [isSubmittingCallback, setIsSubmittingCallback] = useState(false);
+  const isSubmittingCallbackRef = useRef(false);
+  const callbackSubmittedRef = useRef(false);
+  const [callbackRequestSuccess, setCallbackRequestSuccess] = useState<string | null>(null);
+  const [callbackRequestError, setCallbackRequestError] = useState<string | null>(null);
   const latestAddressVerifyKeyRef = useRef("");
+  const skipVerifyKeyRef = useRef("");
   latestAddressVerifyKeyRef.current = `${deliveryType}|${isSavedAddressSelected}|${streetAddress.trim()}|${selectedWard}|${selectedWardId}|${selectedDistrict}|${selectedProvince}`;
 
   const hasAddressHouseNumber = useMemo(
@@ -1554,27 +1581,28 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     const currentKey = `${streetAddress}|${selectedWard}|${selectedWardId}|${selectedDistrict}|${selectedProvince}`;
     if (prevAddressKeyRef.current && prevAddressKeyRef.current !== currentKey) {
       setMapAddressValidation(null);
-      setIsAddressWarningConfirmed(false);
+      setCallbackRequestSuccess(null);
+      setCallbackRequestError(null);
+      callbackSubmittedRef.current = false;
     }
     prevAddressKeyRef.current = currentKey;
   }, [streetAddress, selectedWard, selectedWardId, selectedDistrict, selectedProvince]);
 
   useEffect(() => {
-    const hasWardSelected = Boolean(selectedWard || selectedWardId);
-    const canVerifySyncState =
-      syncAddressValidation.isValid ||
-      (syncAddressValidation.conflictType === "street_conflict" && hasAddressHouseNumber);
-    const shouldSkipBecauseSyncSuggested =
-      Boolean(syncAddressValidation.suggestedWard) && !hasAddressHouseNumber;
-
     if (
       deliveryType !== "delivery" ||
-      isSavedAddressSelected ||
-      (!hasWardSelected && !hasAddressHouseNumber) ||
-      streetAddress.trim().length < 5 ||
-      !canVerifySyncState ||
-      shouldSkipBecauseSyncSuggested
+      !hasAddressHouseNumber ||
+      streetAddress.trim().length < 4
     ) {
+      setIsVerifyingAddress(false);
+      return;
+    }
+
+    if (
+      skipVerifyKeyRef.current &&
+      skipVerifyKeyRef.current === latestAddressVerifyKeyRef.current
+    ) {
+      skipVerifyKeyRef.current = "";
       setIsVerifyingAddress(false);
       return;
     }
@@ -1611,7 +1639,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     };
   }, [
     deliveryType,
-    isSavedAddressSelected,
     streetAddress,
     description,
     selectedWard,
@@ -1620,26 +1647,27 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     selectedProvince,
     availableWards,
     hasAddressHouseNumber,
-    syncAddressValidation.isValid,
-    syncAddressValidation.conflictType,
-    syncAddressValidation.suggestedWard,
   ]);
 
   const addressWardValidation = useMemo<AddressWardValidationResult>(() => {
-    if (mapAddressValidation) {
-      if (!mapAddressValidation.isValid || mapAddressValidation.suggestedWard) {
-        return mapAddressValidation;
-      }
-      if (
-        mapAddressValidation.isValid &&
-        !syncAddressValidation.isValid &&
-        syncAddressValidation.conflictType === "street_conflict" &&
-        hasAddressHouseNumber
-      ) {
-        return mapAddressValidation;
-      }
+    if (streetAddress.length > 0 && !hasAddressHouseNumber) {
+      return {
+        isValid: false,
+        conflictType: "missing_house_number",
+        verificationStatus: "missing_house_number",
+        verifiedWard: null,
+        isWardMatched: false,
+        canOrder: false,
+        requiresCallback: false,
+        message: "Vui lòng nhập đầy đủ số nhà và tên đường để hệ thống xác minh địa chỉ giao hàng.",
+        suggestedWard: null,
+        suggestedWards: [],
+      };
     }
-    const hasWardSelected = Boolean(selectedWard || selectedWardId);
+    if (mapAddressValidation) {
+      return mapAddressValidation;
+    }
+    const hasWardSelected = Boolean(selectedWard.trim() || selectedWardId);
     if (
       !hasWardSelected &&
       hasAddressHouseNumber &&
@@ -1647,11 +1675,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     ) {
       return { isValid: true };
     }
-    if (!syncAddressValidation.isValid || syncAddressValidation.suggestedWard) {
-      return syncAddressValidation;
-    }
     return syncAddressValidation;
   }, [
+    streetAddress,
     syncAddressValidation,
     mapAddressValidation,
     selectedWard,
@@ -1661,35 +1687,58 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
   const hasUnconfirmedAddressWarning =
     deliveryType === "delivery" &&
-    !isSavedAddressSelected &&
+    streetAddress.length > 0 &&
     (!isVerifyingAddress || !hasAddressHouseNumber) &&
-    !addressWardValidation.isValid &&
-    Boolean(addressWardValidation.message) &&
-    !isAddressWarningConfirmed;
+    (!addressWardValidation.isValid ||
+      addressWardValidation.verificationStatus === "missing_house_number" ||
+      addressWardValidation.verificationStatus === "ward_mismatch" ||
+      addressWardValidation.verificationStatus === "ambiguous_multiple_wards" ||
+      addressWardValidation.verificationStatus === "unverifiable" ||
+      addressWardValidation.verificationStatus === "api_error");
+
+  const hasSelectedWardTrimmed = Boolean(selectedWard.trim() || selectedWardId);
+  const isDeliveryOrderBlocked =
+    deliveryType === "delivery" &&
+    (!isDeliverable ||
+      shippingCalculationError ||
+      calculatingShipping ||
+      (hasSelectedWardTrimmed && !hasCalculatedFee) ||
+      isVerifyingAddress ||
+      hasUnconfirmedAddressWarning ||
+      (streetAddress.trim().length > 0 && !hasSelectedWardTrimmed) ||
+      (isSavedAddressSelected && !hasSelectedWardTrimmed) ||
+      addressWardValidation.canOrder === false);
 
   const handleApplySuggestedWard = useCallback((suggested: WardCatalogEntry) => {
+    const nextDistrict = suggested.district || "";
+    prevAddressKeyRef.current = `${streetAddress}|${suggested.name}|${suggested.id}|${nextDistrict}|${selectedProvince}`;
+    skipVerifyKeyRef.current = `${deliveryType}|${isSavedAddressSelected}|${streetAddress.trim()}|${suggested.name}|${suggested.id}|${nextDistrict}|${selectedProvince}`;
     setSelectedWardId(suggested.id);
     setSelectedWard(suggested.name);
-    setSelectedDistrict(suggested.district || "");
-    setMapAddressValidation(null);
-    setIsAddressWarningConfirmed(false);
+    setSelectedDistrict(nextDistrict);
+    setSavedAddressWardWarning(null);
+    setMapAddressValidation({
+      isValid: true,
+      verificationStatus: "verified_single_ward",
+      verifiedWard: suggested.name,
+      isWardMatched: true,
+      canOrder: true,
+      requiresCallback: false,
+      detectedArea: formatWardLabel(suggested.name, suggested.district),
+      suggestedWard: suggested,
+      suggestedWards: [suggested],
+    });
     setIsVerifyingAddress(false);
+    setCallbackRequestSuccess(null);
+    setCallbackRequestError(null);
+    callbackSubmittedRef.current = false;
     setFieldErrors((prev) => {
       const next = { ...prev };
       delete next["delivery.ward"];
       delete next["delivery.address"];
       return next;
     });
-  }, []);
-
-  const handleKeepSelectedWard = useCallback(() => {
-    setIsAddressWarningConfirmed(true);
-    setFieldErrors((prev) => {
-      const next = { ...prev };
-      delete next["delivery.address"];
-      return next;
-    });
-  }, []);
+  }, [deliveryType, isSavedAddressSelected, streetAddress, selectedProvince]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1753,6 +1802,99 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       else delete next[fieldKey];
       return next;
     });
+  };
+
+  const handleRequestStoreCallback = async () => {
+    if (
+      isSubmittingCallbackRef.current ||
+      callbackSubmittedRef.current ||
+      Boolean(callbackRequestSuccess)
+    ) {
+      return;
+    }
+    setCallbackRequestError(null);
+    setCallbackRequestSuccess(null);
+
+    const nameErr = validateNameInput(name);
+    const phoneErr = validatePhoneInput(phone);
+
+    if (nameErr || phoneErr) {
+      setTouchedFields((prev) => ({
+        ...prev,
+        "customer.name": true,
+        "customer.phone": true,
+      }));
+      setFieldErrors((prev) => ({
+        ...prev,
+        ...(nameErr ? { "customer.name": nameErr } : {}),
+        ...(phoneErr ? { "customer.phone": phoneErr } : {}),
+      }));
+      setCallbackRequestError(
+        "Vui lòng nhập đầy đủ Họ và tên và Số điện thoại hợp lệ trên form Checkout trước khi gửi yêu cầu gọi lại."
+      );
+      if (nameErr && nameInputRef.current) {
+        nameInputRef.current.focus();
+        nameInputRef.current.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      } else if (phoneErr && phoneInputRef.current) {
+        phoneInputRef.current.focus();
+        phoneInputRef.current.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+
+    isSubmittingCallbackRef.current = true;
+    setIsSubmittingCallback(true);
+    try {
+      const callbackItems = isCartCheckout
+        ? cartItems.map((item) => ({
+            product_id: item.productId,
+            product_code: item.productCode,
+            product_name: item.title,
+            quantity: item.quantity,
+            price: item.unitPrice,
+          }))
+        : order
+          ? [
+              {
+                product_id: order.productId,
+                product_code: order.productCode,
+                product_name: order.title,
+                quantity,
+                price: order.unitPrice,
+              },
+            ]
+          : [];
+
+      await submitAddressCallbackRequest({
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim() || undefined,
+        is_callback_request: true,
+        type: "address_callback",
+        address: streetAddress.trim(),
+        ward: selectedWard || undefined,
+        suggested_ward:
+          addressWardValidation.suggestedWard?.name ||
+          addressWardValidation.verifiedWard ||
+          undefined,
+        verification_status:
+          addressWardValidation.verificationStatus || "unverifiable",
+        items: callbackItems,
+      });
+
+      callbackSubmittedRef.current = true;
+      setCallbackRequestSuccess(
+        "Đã tiếp nhận yêu cầu gọi lại! Nhân viên cửa hàng sẽ sớm liên hệ với bạn để xác minh địa chỉ và hỗ trợ đặt đơn (Chưa tạo đơn hàng & chưa thu tiền)."
+      );
+    } catch (err: any) {
+      setCallbackRequestError(
+        err?.message ||
+          "Không thể gửi yêu cầu gọi lại lúc này. Vui lòng liên hệ trực tiếp Hotline."
+      );
+    } finally {
+      isSubmittingCallbackRef.current = false;
+      setIsSubmittingCallback(false);
+    }
   };
 
   // Sau khi tạo đơn thành công → chuyển sang màn hình QR
@@ -2425,7 +2567,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
         ? `Nhận tại chi nhánh: ${branch.branchName} - Địa chỉ: ${branch.address}`
         : "Nhận tại chi nhánh Cô Thảo";
     }
-    if (isSavedAddressSelected && selectedSavedAddress?.full_address) {
+    if (
+      isSavedAddressSelected &&
+      selectedSavedAddress?.full_address &&
+      (!selectedSavedAddress.ward ||
+        cleanAdministrativeUnitName(selectedWard).toLowerCase() ===
+          cleanAdministrativeUnitName(selectedSavedAddress.ward).toLowerCase())
+    ) {
       return cleanDuplicateAddressParts(selectedSavedAddress.full_address);
     }
     return buildDeliveryAddress(
@@ -2486,35 +2634,56 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     const emailErr = validateEmailInput(email);
     if (emailErr) errs["customer.email"] = emailErr;
 
-    // Validate custom delivery inputs
+    // Validate delivery inputs for both saved & manual addresses (Mục 6 & 7 + H07: bắt buộc đã chọn phường, xác minh verified_single_ward + khớp phường + có phí ship hợp lệ)
     if (deliveryType === "delivery") {
-      if (!isSavedAddressSelected) {
-        if (!selectedWard.trim() && !selectedWardId) {
-          errs["delivery.ward"] = t("validation.ward_required");
-        }
-        if (!streetAddress.trim()) {
-          errs["delivery.address"] = t("validation.address_required");
-        } else if (!isAddressWarningConfirmed) {
-          const addrValidation = validateAddressWardMatch({
-            streetAddress,
-            note: description,
-            selectedWard,
-            selectedWardId,
-            selectedDistrict,
-            selectedProvince,
-            availableWards,
-          });
-          if (!addressWardValidation.isValid && addressWardValidation.message) {
-            errs["delivery.address"] = addressWardValidation.message;
-          } else if (!addrValidation.isValid && addrValidation.message) {
-            errs["delivery.address"] = addrValidation.message;
-          } else if (mapAddressValidation && !mapAddressValidation.isValid && mapAddressValidation.message) {
-            errs["delivery.address"] = mapAddressValidation.message;
+      if (!selectedWard.trim() && !selectedWardId) {
+        errs["delivery.ward"] = t("validation.ward_required");
+      }
+      const effectiveStreet = streetAddress.trim();
+      if (!effectiveStreet) {
+        errs["delivery.address"] = t("validation.address_required");
+      } else if (!hasHouseNumberInAddress(effectiveStreet)) {
+        errs["delivery.address"] =
+          "Vui lòng nhập đầy đủ số nhà và tên đường để hệ thống xác minh địa chỉ giao hàng.";
+      } else {
+        let activeValidation = addressWardValidation;
+        if (isVerifyingAddress || !mapAddressValidation) {
+          try {
+            setIsVerifyingAddress(true);
+            const liveRes = await verifyAddressViaMapApi({
+              streetAddress: effectiveStreet,
+              note: description,
+              selectedWard,
+              selectedWardId,
+              selectedDistrict,
+              selectedProvince,
+              availableWards,
+            });
+            setMapAddressValidation(liveRes);
+            activeValidation = liveRes;
+          } finally {
+            setIsVerifyingAddress(false);
           }
         }
-      } else {
-        if (!streetAddress.trim() && !selectedSavedAddress?.full_address) {
-          errs["delivery.address"] = t("validation.address_required");
+
+        if (
+          !activeValidation.isValid ||
+          activeValidation.verificationStatus !== "verified_single_ward" ||
+          (Boolean(selectedWard.trim() || selectedWardId) &&
+            activeValidation.isWardMatched === false)
+        ) {
+          errs["delivery.address"] =
+            activeValidation.message ||
+            "Hệ thống chưa thể xác minh chính xác Phường/Xã cho địa chỉ này. Vui lòng kiểm tra lại số nhà, tên đường hoặc bấm \"Yêu cầu cửa hàng gọi lại\".";
+        } else if (
+          calculatingShipping ||
+          shippingCalculationError ||
+          !isDeliverable ||
+          !hasCalculatedFee ||
+          shippingFee === null
+        ) {
+          errs["delivery.address"] =
+            shippingMessage || t("shipping_calculation_failed");
         }
       }
     }
@@ -2522,6 +2691,12 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
       setError(t("validation.form_incomplete"));
+      if (errs["delivery.address"] || errs["delivery.ward"]) {
+        addressSectionRef.current?.scrollIntoView?.({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
       setLoading(false);
       return;
     }
@@ -2629,18 +2804,6 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               district: selectedDistrict,
               ward: selectedWard,
               ward_id: selectedWardId || undefined,
-              address_mismatch_confirmed:
-                isAddressWarningConfirmed && !addressWardValidation.isValid ? true : undefined,
-              suggested_ward:
-                isAddressWarningConfirmed && !addressWardValidation.isValid
-                  ? addressWardValidation.suggestedWard?.name ||
-                    addressWardValidation.detectedArea ||
-                    undefined
-                  : undefined,
-              address_warning_message:
-                isAddressWarningConfirmed && !addressWardValidation.isValid
-                  ? addressWardValidation.message || undefined
-                  : undefined,
             }
             : null,
         items: isCartCheckout
@@ -2912,6 +3075,193 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     );
   }
 
+  const callbackButtonDisabled = isSubmittingCallback || Boolean(callbackRequestSuccess);
+  const callbackButtonLabel = isSubmittingCallback
+    ? "Đang gửi yêu cầu..."
+    : callbackRequestSuccess
+      ? "Đã gửi yêu cầu gọi lại"
+      : "Yêu cầu cửa hàng gọi lại";
+
+  const addressVerificationStatusBlock = (
+    <>
+      {isVerifyingAddress && hasAddressHouseNumber ? (
+        <div
+          data-testid="address-verifying-loader"
+          className="mt-2 flex items-center gap-2 text-xs text-gray-500"
+        >
+          <span className="inline-block w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span>Đang xác định khu vực giao hàng...</span>
+        </div>
+      ) : streetAddress.length > 0 &&
+        (!hasAddressHouseNumber ||
+          addressWardValidation.verificationStatus === "missing_house_number") ? (
+        <div
+          data-testid="address-missing-house-number-warning"
+          className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-1.5"
+        >
+          <p className="font-semibold leading-snug">
+            {addressWardValidation.message ||
+              "Vui lòng nhập đầy đủ số nhà và tên đường để hệ thống xác minh địa chỉ giao hàng."}
+          </p>
+        </div>
+      ) : addressWardValidation.verificationStatus === "ambiguous_multiple_wards" ? (
+        <div
+          data-testid="address-ambiguous-support-warning"
+          className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2.5"
+        >
+          <p className="font-semibold leading-snug">
+            {addressWardValidation.message ||
+              'Địa chỉ trả về nhiều Phường/Xã khác nhau trên bản đồ nên hệ thống chưa thể tự động xác nhận. Vui lòng liên hệ Hotline hoặc bấm "Yêu cầu cửa hàng gọi lại" để được hỗ trợ đặt đơn.'}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`tel:${hotline.replace(/[^0-9+]/g, "")}`}
+              data-testid="address-support-hotline-link"
+              className="inline-flex items-center gap-1.5 rounded-[4px] border border-primary/40 bg-white px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 transition-colors shadow-xs"
+            >
+              <span>📞 Hotline: {hotline}</span>
+            </a>
+            <button
+              type="button"
+              data-testid="request-store-callback-btn"
+              disabled={callbackButtonDisabled}
+              onClick={handleRequestStoreCallback}
+              className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span>{callbackButtonLabel}</span>
+            </button>
+          </div>
+        </div>
+      ) : addressWardValidation.verificationStatus === "unverifiable" ||
+        addressWardValidation.verificationStatus === "api_error" ? (
+        <div
+          data-testid="address-unverifiable-support-warning"
+          className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2.5"
+        >
+          <p className="font-semibold leading-snug">
+            {addressWardValidation.message ||
+              'Hệ thống chưa thể xác minh chính xác Phường/Xã cho địa chỉ này. Vui lòng kiểm tra lại số nhà, tên đường hoặc bấm "Yêu cầu cửa hàng gọi lại" để nhân viên hỗ trợ.'}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`tel:${hotline.replace(/[^0-9+]/g, "")}`}
+              data-testid="address-support-hotline-link"
+              className="inline-flex items-center gap-1.5 rounded-[4px] border border-primary/40 bg-white px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 transition-colors shadow-xs"
+            >
+              <span>📞 Hotline: {hotline}</span>
+            </a>
+            <button
+              type="button"
+              data-testid="request-store-callback-btn"
+              disabled={callbackButtonDisabled}
+              onClick={handleRequestStoreCallback}
+              className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span>{callbackButtonLabel}</span>
+            </button>
+          </div>
+        </div>
+      ) : !addressWardValidation.isValid && addressWardValidation.message ? (
+        <div
+          data-testid="address-ward-mismatch-warning"
+          className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2.5"
+        >
+          <p className="font-semibold leading-snug">
+            {addressWardValidation.message}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {addressWardValidation.suggestedWard && (
+              <button
+                key={
+                  addressWardValidation.suggestedWard.id ||
+                  addressWardValidation.suggestedWard.name
+                }
+                type="button"
+                data-testid="apply-suggested-ward-btn"
+                onClick={() =>
+                  handleApplySuggestedWard(addressWardValidation.suggestedWard!)
+                }
+                className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs"
+              >
+                <span>
+                  Đổi sang{" "}
+                  {formatWardLabel(
+                    addressWardValidation.suggestedWard.name,
+                    addressWardValidation.suggestedWard.district
+                  )}
+                </span>
+              </button>
+            )}
+            <a
+              href={`tel:${hotline.replace(/[^0-9+]/g, "")}`}
+              data-testid="address-support-hotline-link"
+              className="inline-flex items-center gap-1.5 rounded-[4px] border border-primary/40 bg-white px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 transition-colors shadow-xs"
+            >
+              <span>📞 Hotline: {hotline}</span>
+            </a>
+            <button
+              type="button"
+              data-testid="request-store-callback-btn"
+              disabled={callbackButtonDisabled}
+              onClick={handleRequestStoreCallback}
+              className="inline-flex items-center gap-1.5 rounded-[4px] border border-secondary/50 bg-white px-3 py-1.5 text-xs font-bold text-secondary hover:bg-secondary/10 transition-colors cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span>{callbackButtonLabel}</span>
+            </button>
+          </div>
+        </div>
+      ) : fieldError("delivery.address") ? (
+        <p className="text-sm text-secondary mt-1">{fieldError("delivery.address")}</p>
+      ) : addressWardValidation.isValid &&
+        !selectedWard &&
+        !selectedWardId &&
+        addressWardValidation.suggestedWard ? (
+        <div
+          data-testid="address-ward-suggestion-chip"
+          className="mt-2 flex items-center flex-wrap gap-1.5 rounded-lg border border-secondary/25 bg-yellow/50 px-3 py-1.5 text-xs text-brown"
+        >
+          <span>Gợi ý theo địa chỉ:</span>
+          <button
+            key={
+              addressWardValidation.suggestedWard.id ||
+              addressWardValidation.suggestedWard.name
+            }
+            type="button"
+            data-testid="select-suggested-ward-btn"
+            onClick={() =>
+              handleApplySuggestedWard(addressWardValidation.suggestedWard!)
+            }
+            className="font-bold text-primary underline hover:text-secondary cursor-pointer"
+          >
+            Chọn{" "}
+            {formatWardLabel(
+              addressWardValidation.suggestedWard.name,
+              addressWardValidation.suggestedWard.district
+            )}
+          </button>
+        </div>
+      ) : null}
+
+      {callbackRequestError && (
+        <div
+          data-testid="callback-request-error-notice"
+          className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+        >
+          {callbackRequestError}
+        </div>
+      )}
+
+      {callbackRequestSuccess && (
+        <div
+          data-testid="callback-request-success-notice"
+          className="mt-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-800"
+        >
+          ✓ {callbackRequestSuccess}
+        </div>
+      )}
+    </>
+  );
+
   // ── Form checkout ─────────────────────────────────────────────────────────
   return (
     <>
@@ -2972,12 +3322,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 <RequiredMark />
               </label>
               <input
+                ref={nameInputRef}
                 type="text"
                 required
                 value={name}
                 onChange={(e) => {
                   const val = e.target.value;
                   setName(val);
+                  if (callbackRequestError) setCallbackRequestError(null);
+                  if (callbackRequestSuccess) setCallbackRequestSuccess(null);
+                  callbackSubmittedRef.current = false;
                   if (touchedFields["customer.name"]) {
                     const err = validateNameInput(val);
                     setFieldErrors((prev) => {
@@ -3005,12 +3359,16 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                 <RequiredMark />
               </label>
               <input
+                ref={phoneInputRef}
                 type="tel"
                 required
                 value={phone}
                 onChange={(e) => {
                   const val = e.target.value;
                   setPhone(val);
+                  if (callbackRequestError) setCallbackRequestError(null);
+                  if (callbackRequestSuccess) setCallbackRequestSuccess(null);
+                  callbackSubmittedRef.current = false;
                   if (touchedFields["customer.phone"]) {
                     const err = validatePhoneInput(val);
                     setFieldErrors((prev) => {
@@ -3133,7 +3491,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
 
             {/* HIỂN THỊ ĐỊA CHỈ NHẬN HÀNG TỐI ƯU HÓA CHO DELIVERY */}
             {deliveryType === "delivery" && (
-              <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
+              <div ref={addressSectionRef} className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100 animate-fade-in">
                 <p className="body-1 text-gray-700 font-bold">{t("delivery_home")}</p>
 
                 {/* 1. Skeleton Loading khi đang tải sổ địa chỉ của khách hàng đã đăng nhập */}
@@ -3276,6 +3634,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                         />
                       </div>
                     )}
+
+                    {isSavedAddressSelected && addressVerificationStatusBlock}
                   </div>
                 )}
 
@@ -3336,6 +3696,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             setIsDeliverable(true);
                             setShippingMessage(null);
                             setAssignedBranchName(null);
+                            setHasCalculatedFee(false);
+                            setShippingCalculationError(false);
                           }}
                           className="w-full h-11 rounded-[4px] border border-gray-300 px-[14px] bg-white text-gray-900 focus:outline-none focus:border-primary text-sm font-serif cursor-pointer"
                         >
@@ -3377,6 +3739,8 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             setIsDeliverable(true);
                             setShippingMessage(null);
                             setAssignedBranchName(null);
+                            setHasCalculatedFee(false);
+                            setShippingCalculationError(false);
                           }
                           if (fieldErrors["delivery.ward"]) {
                             setFieldErrors((prev) => {
@@ -3420,8 +3784,13 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           onChange={(e) => {
                             const val = e.target.value;
                             setStreetAddress(val);
-                            if (hasHouseNumberInAddress(val) && val.trim().length >= 5) {
+                            setCallbackRequestSuccess(null);
+                            setCallbackRequestError(null);
+                            callbackSubmittedRef.current = false;
+                            if (hasHouseNumberInAddress(val) && val.trim().length >= 4) {
                               setIsVerifyingAddress(true);
+                            } else {
+                              setIsVerifyingAddress(false);
                             }
                             if (fieldErrors["delivery.address"]) {
                               setFieldErrors((prev) => {
@@ -3432,19 +3801,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                             }
                           }}
                           onBlur={() => {
-                            const hasWardSelected = Boolean(selectedWard || selectedWardId);
-                            const canVerifySyncState =
-                              syncAddressValidation.isValid ||
-                              (syncAddressValidation.conflictType === "street_conflict" && hasAddressHouseNumber);
-                            const shouldSkipBecauseSyncSuggested =
-                              Boolean(syncAddressValidation.suggestedWard) && !hasAddressHouseNumber;
-
                             if (
-                              !isSavedAddressSelected &&
-                              (hasWardSelected || hasAddressHouseNumber) &&
-                              streetAddress.trim().length >= 5 &&
-                              canVerifySyncState &&
-                              !shouldSkipBecauseSyncSuggested &&
+                              hasAddressHouseNumber &&
+                              streetAddress.trim().length >= 4 &&
                               !mapAddressValidation &&
                               !isVerifyingAddress
                             ) {
@@ -3478,113 +3837,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
                           placeholder={t("address_placeholder")}
                         />
                       </div>
-                      {isVerifyingAddress && hasAddressHouseNumber ? (
-                        <div
-                          data-testid="address-verifying-loader"
-                          className="mt-2 flex items-center gap-2 text-xs text-gray-500"
-                        >
-                          <span className="inline-block w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                          <span>Đang xác định khu vực giao hàng...</span>
-                        </div>
-                      ) : !addressWardValidation.isValid && addressWardValidation.message ? (
-                        !isAddressWarningConfirmed ? (
-                          <div
-                            data-testid="address-ward-mismatch-warning"
-                            className="mt-2 rounded-lg border border-secondary/30 bg-yellow/60 p-3 text-xs text-secondary space-y-2"
-                          >
-                            <p className="font-semibold leading-snug">
-                              {addressWardValidation.message}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {(addressWardValidation.suggestedWards &&
-                              addressWardValidation.suggestedWards.length > 0
-                                ? addressWardValidation.suggestedWards
-                                : addressWardValidation.suggestedWard
-                                  ? [addressWardValidation.suggestedWard]
-                                  : []
-                              ).map((sw, idx) => (
-                                <button
-                                  key={sw.id || sw.name}
-                                  type="button"
-                                  data-testid={
-                                    idx === 0
-                                      ? "apply-suggested-ward-btn"
-                                      : `apply-suggested-ward-btn-${idx}`
-                                  }
-                                  onClick={() => handleApplySuggestedWard(sw)}
-                                  className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs"
-                                >
-                                  <span>
-                                    Đổi sang {formatWardLabel(sw.name, sw.district)}
-                                  </span>
-                                </button>
-                              ))}
-                              {(selectedWard || selectedWardId) && (
-                                <button
-                                  type="button"
-                                  data-testid="keep-selected-ward-btn"
-                                  onClick={() => handleKeepSelectedWard()}
-                                  className="inline-flex items-center gap-1.5 rounded-[4px] border border-secondary/50 bg-white px-3 py-1.5 text-xs font-bold text-secondary hover:bg-secondary/10 transition-colors cursor-pointer shadow-xs"
-                                >
-                                  <span>
-                                    Địa chỉ của tôi đúng, giữ {formatWardLabel(selectedWard, selectedDistrict)}
-                                  </span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            data-testid="address-ward-kept-notice"
-                            className="mt-2 flex items-center justify-between flex-wrap gap-2 rounded-lg border border-emerald-300 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-800"
-                          >
-                            <span className="font-semibold">
-                              ✓ Đã giữ {formatWardLabel(selectedWard, selectedDistrict)} theo xác nhận của bạn (Sẽ được nhân viên kiểm tra khi xác nhận đơn)
-                            </span>
-                            {addressWardValidation.suggestedWard && (
-                              <button
-                                type="button"
-                                data-testid="apply-suggested-ward-btn"
-                                onClick={() => handleApplySuggestedWard(addressWardValidation.suggestedWard!)}
-                                className="font-bold text-secondary underline hover:text-secondary/80 cursor-pointer"
-                              >
-                                Đổi sang {formatWardLabel(addressWardValidation.suggestedWard.name, addressWardValidation.suggestedWard.district)}
-                              </button>
-                            )}
-                          </div>
-                        )
-                      ) : fieldError("delivery.address") ? (
-                        <p className="text-sm text-secondary mt-1">{fieldError("delivery.address")}</p>
-                      ) : addressWardValidation.isValid &&
-                        !selectedWard &&
-                        !selectedWardId &&
-                        addressWardValidation.suggestedWard ? (
-                        <div
-                          data-testid="address-ward-suggestion-chip"
-                          className="mt-2 flex items-center flex-wrap gap-1.5 rounded-lg border border-secondary/25 bg-yellow/50 px-3 py-1.5 text-xs text-brown"
-                        >
-                          <span>Gợi ý theo địa chỉ:</span>
-                          {(addressWardValidation.suggestedWards &&
-                          addressWardValidation.suggestedWards.length > 0
-                            ? addressWardValidation.suggestedWards
-                            : [addressWardValidation.suggestedWard]
-                          ).map((sw, idx) => (
-                            <button
-                              key={sw.id || sw.name}
-                              type="button"
-                              data-testid={
-                                idx === 0
-                                  ? "select-suggested-ward-btn"
-                                  : `select-suggested-ward-btn-${idx}`
-                              }
-                              onClick={() => handleApplySuggestedWard(sw)}
-                              className="font-bold text-primary underline hover:text-secondary cursor-pointer"
-                            >
-                              Chọn {formatWardLabel(sw.name, sw.district)}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
+                      {addressVerificationStatusBlock}
 
                       {/* Checkbox lưu địa chỉ cho khách đã đăng nhập */}
                       {isMounted && isUserLoggedIn && (!selectedAddressId || selectedAddressId === "new") && (
@@ -4608,9 +4861,9 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
               data-testid="checkout-submit-btn"
               type="button"
               onClick={handleSubmit}
-              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || (isCartCheckout && isOutOfStockOverall) || hasUnconfirmedAddressWarning || shippingCalculationError}
+              disabled={loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (isCartCheckout && isOutOfStockOverall) || isDeliveryOrderBlocked}
               className={`w-full font-bold rounded-full py-3.5 2xl:py-4 text-center transition-all font-display title-2 ${
-                loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (deliveryType === "delivery" && !isDeliverable) || (isCartCheckout && isOutOfStockOverall) || hasUnconfirmedAddressWarning || shippingCalculationError
+                loading || (isCartCheckout && cartItems.length === 0) || !confirmInfo || (isCartCheckout && isOutOfStockOverall) || isDeliveryOrderBlocked
                   ? "bg-gray-200! text-gray-400! border-gray-200! shadow-none! cursor-not-allowed pointer-events-none"
                   : "bg-secondary hover:bg-secondary/95 active:scale-[0.98] text-white shadow-[0_4px_12px_rgba(205,72,41,0.2)] cursor-pointer"
               } disabled:opacity-60 disabled:scale-100 disabled:pointer-events-none`}

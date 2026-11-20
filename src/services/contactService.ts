@@ -1,4 +1,4 @@
-import { postApi } from './apiService';
+import { getApiBaseUrl, postApi } from './apiService';
 
 export interface ContactData {
   name: string;
@@ -7,9 +7,30 @@ export interface ContactData {
   message: string;
 }
 
+export interface AddressCallbackItem {
+  product_id?: number;
+  product_code?: string;
+  product_name: string;
+  quantity: number;
+  price?: number;
+}
+
+export interface AddressCallbackRequestPayload {
+  name: string;
+  phone: string;
+  email?: string;
+  is_callback_request: true;
+  type: 'address_callback';
+  address: string;
+  ward?: string;
+  suggested_ward?: string;
+  verification_status?: string;
+  items?: AddressCallbackItem[];
+}
+
 export interface ContactResponse {
   message: string;
-  status: string | number;
+  status?: string | number;
   data?: any;
 }
 
@@ -33,4 +54,29 @@ export async function submitContact(data: ContactData): Promise<ContactResponse>
     console.error('Error submitting contact form:', error);
     throw error;
   }
+}
+
+export async function submitAddressCallbackRequest(
+  payload: AddressCallbackRequestPayload
+): Promise<ContactResponse> {
+  const apiBase = getApiBaseUrl();
+  const response = await fetch(`${apiBase}/contacts`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      (typeof json?.message === 'string' && json.message) ||
+        'Không thể gửi yêu cầu gọi lại lúc này. Vui lòng liên hệ Hotline.'
+    );
+  }
+
+  return json as ContactResponse;
 }

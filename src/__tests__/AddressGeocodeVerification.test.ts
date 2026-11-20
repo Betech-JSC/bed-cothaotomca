@@ -51,8 +51,8 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
     vi.restoreAllMocks();
   });
 
-  describe("1. TrackAsia chạm limit (provider='internal') hoặc lỗi mạng -> Rơi 100% về cơ chế nội bộ, tuyệt đối KHÔNG gọi Goong hay Nominatim", () => {
-    it("Kịch bản 1A: Khi TrackAsia chạm limit (provider='internal', candidates=[]) -> '197 hoàng sa' + 'Phường Tân Định' trả isValid === true nhờ HCMC_STREET_DIRECTORY nội bộ (chỉ 1 lần fetch tới Backend)", async () => {
+  describe("1. TrackAsia chạm limit (provider='internal') hoặc lỗi mạng / API lỗi (Mục 4) -> Không tự cho đặt hàng, trả trạng thái api_error / unverifiable và yêu cầu Hotline hoặc Yêu cầu cửa hàng gọi lại", () => {
+    it("Kịch bản 1A: Khi TrackAsia chạm limit hoặc không xác minh được (provider='internal', candidates=[]) -> trả verificationStatus='unverifiable', canOrder=false, requiresCallback=true (chỉ 1 lần fetch tới Backend)", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
         createJsonResponse({
           success: true,
@@ -73,12 +73,13 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(String(fetchSpy.mock.calls[0][0])).toContain("/shipping/verify-address");
-      expect(result.isValid).toBe(true);
-      expect(result.conflictType).toBeUndefined();
-      expect(result.suggestedWard).toBeUndefined();
+      expect(result.isValid).toBe(false);
+      expect(result.canOrder).toBe(false);
+      expect(result.requiresCallback).toBe(true);
+      expect(result.verificationStatus).toBe("api_error");
     });
 
-    it("Kịch bản 1B: Khi Backend lỗi mạng -> rơi về cơ chế nội bộ cho '197 hoàng sa' + 'Phường Tân Định' (isValid === true) và KHÔNG gọi bất kỳ API bên ngoài nào khác (fetchSpy = 1)", async () => {
+    it("Kịch bản 1B: Khi Backend lỗi mạng -> trả verificationStatus='api_error', canOrder=false, requiresCallback=true và KHÔNG gọi bất kỳ API bên ngoài nào khác (fetchSpy = 1)", async () => {
       const fetchSpy = vi
         .spyOn(global, "fetch")
         .mockRejectedValueOnce(new TypeError("Failed to fetch backend"));
@@ -91,11 +92,13 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(String(fetchSpy.mock.calls[0][0])).toContain("/shipping/verify-address");
-      expect(result.isValid).toBe(true);
-      expect(result.conflictType).toBeUndefined();
+      expect(result.isValid).toBe(false);
+      expect(result.canOrder).toBe(false);
+      expect(result.requiresCallback).toBe(true);
+      expect(result.verificationStatus).toBe("api_error");
     });
 
-    it("Kịch bản 1C: Khi TrackAsia chạm limit -> '45 Trần Quang Diệu' + 'Phường Tân Định' rơi về cơ chế nội bộ bắt lỗi (isValid === false) và gợi ý 'Phường Nhiêu Lộc' (chỉ 1 lần fetch tới Backend)", async () => {
+    it("Kịch bản 1C: Khi Backend trả verification_status='api_error' -> trả verificationStatus='api_error', canOrder=false, requiresCallback=true và không cache lỗi API", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(
         createJsonResponse({
           success: true,
@@ -103,6 +106,7 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
             provider: "internal",
             cached: false,
             precision: "unknown",
+            verification_status: "api_error",
             candidates: [],
           },
         })
@@ -116,9 +120,9 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(result.isValid).toBe(false);
-      expect(result.conflictType).toBe("street_conflict");
-      expect(result.suggestedWard?.name).toBe("Nhiêu Lộc");
-      expect(result.message).toContain("Phường Nhiêu Lộc");
+      expect(result.canOrder).toBe(false);
+      expect(result.requiresCallback).toBe(true);
+      expect(result.verificationStatus).toBe("api_error");
     });
   });
 
@@ -209,8 +213,8 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
     });
   });
 
-  describe("3. Dung sai giáp ranh <= 250m (house_number / poi sát mép ranh giới 2 phường)", () => {
-    it("KHÔNG chặn oan khi candidates[0] thuộc Phường Xuân Hòa (0m) nhưng candidates[1] thuộc Phường Tân Định cách 120m (<= 250m)", async () => {
+  describe("3. Mục 3: API trả nhiều kết quả - Cùng 1 phường mới vs Nhiều phường mới khác nhau (ambiguous_multiple_wards)", () => {
+    it("khi các kết quả hợp lệ trả về nhiều phường mới khác nhau (Xuân Hòa & Tân Định) -> trả verificationStatus='ambiguous_multiple_wards', canOrder=false, requiresCallback=true", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
         createJsonResponse({
           success: true,
@@ -241,18 +245,20 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
         })
       );
 
-      const borderValid = await verifyAddressViaMapApi({
+      const borderAmbiguous = await verifyAddressViaMapApi({
         streetAddress: "201 Hai Bà Trưng",
         selectedWard: "Phường Tân Định",
         availableWards: MOCK_WARDS,
       });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(borderValid.isValid).toBe(true);
-      expect(borderValid.conflictType).toBeUndefined();
+      expect(borderAmbiguous.isValid).toBe(false);
+      expect(borderAmbiguous.canOrder).toBe(false);
+      expect(borderAmbiguous.requiresCallback).toBe(true);
+      expect(borderAmbiguous.verificationStatus).toBe("ambiguous_multiple_wards");
     });
 
-    it("BẮT LỖI chính xác khi candidates[1] thuộc Phường Tân Định cách xa 1800m (> 250m)", async () => {
+    it("BẮT LỖI chính xác khi candidates[0] khớp số nhà 380 tại Phường Xuân Hòa còn candidates[1] là số nhà 38 tại Phường Tân Định -> chỉ xác nhận 1 phường Xuân Hòa (ward_mismatch)", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
         createJsonResponse({
           success: true,
@@ -291,57 +297,36 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(farMismatch.isValid).toBe(false);
+      expect(farMismatch.verificationStatus).toBe("ward_mismatch");
       expect(farMismatch.conflictType).toBe("ward_conflict");
       expect(farMismatch.suggestedWard?.name).toBe("Xuân Hòa");
       expect(farMismatch.message).toContain("Phường Xuân Hòa");
     });
 
-    it("kiểm chứng ranh giới chính xác tại ngưỡng 250m vs 251m và tự động tính khoảng cách Haversine từ lat/lng", () => {
-      const payloadAt250m: GeocodeVerificationPayload = {
-        provider: "trackasia",
-        precision: "poi",
-        candidates: [
-          {
-            formatted_address: "Cầu Kiệu, Phường Xuân Hòa, TP. Hồ Chí Minh",
-            ward: "Phường Xuân Hòa",
-            district: "Quận 3",
-            distance_meters: 0,
-          },
-          {
-            formatted_address: "Cầu Kiệu, Phường Tân Định, TP. Hồ Chí Minh",
-            ward: "Phường Tân Định",
-            district: "Quận 1",
-            distance_meters: 250,
-          },
-        ],
-      };
-
-      const payloadAt251m: GeocodeVerificationPayload = {
-        ...payloadAt250m,
-        candidates: [
-          payloadAt250m.candidates[0],
-          { ...payloadAt250m.candidates[1], distance_meters: 251 },
-        ],
-      };
-
-      expect(
-        evaluateGeocodePayload(payloadAt250m, {
+    it("khi các kết quả cùng thuộc 1 phường mới duy nhất -> verified_single_ward; khi khác phường mới hoặc thiếu số nhà -> chặn đặt hàng", () => {
+      const missingHouseNumberRes = evaluateGeocodePayload(
+        {
+          provider: "trackasia",
+          precision: "poi",
+          candidates: [
+            {
+              formatted_address: "Cầu Kiệu, Phường Xuân Hòa, TP. Hồ Chí Minh",
+              ward: "Phường Xuân Hòa",
+              district: "Quận 3",
+              distance_meters: 0,
+            },
+          ],
+        },
+        {
           streetAddress: "Tòa nhà giáp ranh",
           selectedWard: "Phường Tân Định",
           availableWards: MOCK_WARDS,
-        }).isValid
-      ).toBe(true);
+        }
+      );
+      expect(missingHouseNumberRes.isValid).toBe(false);
+      expect(missingHouseNumberRes.verificationStatus).toBe("missing_house_number");
 
-      expect(
-        evaluateGeocodePayload(payloadAt251m, {
-          streetAddress: "Tòa nhà quá 250m",
-          selectedWard: "Phường Tân Định",
-          availableWards: MOCK_WARDS,
-        }).isValid
-      ).toBe(false);
-
-      // Tự tính Haversine khi raw candidates chỉ có lat/lng (~111m <= 250m)
-      const haversineNearbyPayload: GeocodeVerificationPayload = {
+      const haversineAmbiguousPayload: GeocodeVerificationPayload = {
         provider: "trackasia",
         precision: "house_number",
         candidates: [
@@ -349,6 +334,7 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
             formatted_address: "100 Điện Biên Phủ, Phường Xuân Hòa, TP.HCM",
             ward: "Phường Xuân Hòa",
             district: "Quận 3",
+            house_number: "100",
             lat: 10.789,
             lng: 106.688,
           },
@@ -356,24 +342,26 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
             formatted_address: "100 Điện Biên Phủ, Phường Tân Định, TP.HCM",
             ward: "Phường Tân Định",
             district: "Quận 1",
+            house_number: "100",
             lat: 10.7898,
             lng: 106.6886,
           },
         ],
       };
 
-      expect(
-        evaluateGeocodePayload(haversineNearbyPayload, {
-          streetAddress: "100 Điện Biên Phủ",
-          selectedWard: "Phường Tân Định",
-          availableWards: MOCK_WARDS,
-        }).isValid
-      ).toBe(true);
+      const ambiguousRes = evaluateGeocodePayload(haversineAmbiguousPayload, {
+        streetAddress: "100 Điện Biên Phủ",
+        selectedWard: "Phường Tân Định",
+        availableWards: MOCK_WARDS,
+      });
+      expect(ambiguousRes.isValid).toBe(false);
+      expect(ambiguousRes.verificationStatus).toBe("ambiguous_multiple_wards");
+      expect(ambiguousRes.requiresCallback).toBe(true);
     });
   });
 
-  describe("4. Chế độ street_only của TrackAsia (Không chặn oan đường liên phường & bắt dính đường nhỏ ngoài từ điển)", () => {
-    it("KHÔNG chặn oan khi TrackAsia trả precision='street_only' trên trục Hoàng Sa có Võ Thị Sáu (Quận 3) đứng đầu và Tân Định đứng sau", async () => {
+  describe("4. Chế độ street_only của TrackAsia (Mục 4: Không xác minh được số nhà -> trả unverifiable, yêu cầu Hotline / Yêu cầu cửa hàng gọi lại)", () => {
+    it("khi TrackAsia chỉ trả precision='street_only' (không khớp số nhà) -> trả verificationStatus='unverifiable', canOrder=false, requiresCallback=true", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
         createJsonResponse({
           success: true,
@@ -412,11 +400,13 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
       });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(result.isValid).toBe(true);
-      expect(result.conflictType).toBeUndefined();
+      expect(result.isValid).toBe(false);
+      expect(result.canOrder).toBe(false);
+      expect(result.requiresCallback).toBe(true);
+      expect(result.verificationStatus).toBe("unverifiable");
     });
 
-    it("bắt lỗi chính xác khi nhập '45 Nguyễn Văn Mai' (đường nhánh không nằm trong HCMC_STREET_DIRECTORY, TrackAsia trả street_only thuộc Quận 3) nhưng chọn 'Phường An Khánh' (TP. Thủ Đức)", async () => {
+    it("khi nhập '45 Nguyễn Văn Mai' nhưng TrackAsia chỉ trả street_only -> trả verificationStatus='unverifiable', canOrder=false, requiresCallback=true", async () => {
       const inHardcodedDict = HCMC_STREET_DIRECTORY.some((entry) =>
         entry.keywords.some((kw) => kw.includes("nguyen van mai"))
       );
@@ -453,30 +443,17 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
         })
       );
 
-      const mismatchResult = await verifyAddressViaMapApi({
+      const unverifiableResult = await verifyAddressViaMapApi({
         streetAddress: "45 Nguyễn Văn Mai",
         selectedWard: "Phường An Khánh",
         availableWards: MOCK_WARDS,
       });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(mismatchResult.isValid).toBe(false);
-      expect(mismatchResult.conflictType).toBe("ward_conflict");
-      expect(["Nhiêu Lộc", "Xuân Hòa"]).toContain(
-        mismatchResult.suggestedWard?.name
-      );
-      expect(mismatchResult.message).toContain("Phường Nhiêu Lộc");
-      expect(mismatchResult.message).toContain("Phường An Khánh");
-
-      // Khi khách đổi về Phường Nhiêu Lộc (Quận 3) -> hợp lệ ngay từ cache
-      const validResult = await verifyAddressViaMapApi({
-        streetAddress: "45 Nguyễn Văn Mai",
-        selectedWard: "Phường Nhiêu Lộc",
-        availableWards: MOCK_WARDS,
-      });
-
-      expect(validResult.isValid).toBe(true);
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(unverifiableResult.isValid).toBe(false);
+      expect(unverifiableResult.canOrder).toBe(false);
+      expect(unverifiableResult.requiresCallback).toBe(true);
+      expect(unverifiableResult.verificationStatus).toBe("unverifiable");
     });
 
     it("trích xuất đúng số nhà đầu chuỗi (extractLeadingHouseNumber) kể cả tiền tố Hẻm/Ngõ/Ngách/Kiệt nhiều cấp xuyệt mà không nhầm tên đường số hoặc tòa nhà", () => {
@@ -523,11 +500,12 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(result.isValid).toBe(false);
+      expect(result.verificationStatus).toBe("ward_mismatch");
       expect(result.suggestedWard?.name).toBe("Nhiêu Lộc");
       expect(result.message).toContain("Phường Nhiêu Lộc");
     });
 
-    it("Edge Case #4: khử ký tự chữ cái lặp liền kề khi gõ dư phím ('197 Hoàng Saa' khi chọn Phường An Khánh -> phát hiện Đường Hoàng Sa và gợi ý Phường Tân Định)", async () => {
+    it("Edge Case #4: khi provider='internal' (không có kết quả từ TrackAsia) -> trả unverifiable và yêu cầu hỗ trợ gọi lại", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
         createJsonResponse({
           success: true,
@@ -548,10 +526,9 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(result.isValid).toBe(false);
-      expect(result.conflictType).toBe("street_conflict");
-      expect(result.suggestedWard?.name).toBe("Tân Định");
-      expect(result.message).toContain("Đường Hoàng Sa");
-      expect(result.message).toContain("Phường Tân Định");
+      expect(result.verificationStatus).toBe("api_error");
+      expect(result.canOrder).toBe(false);
+      expect(result.requiresCallback).toBe(true);
     });
   });
 
@@ -606,7 +583,7 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
       expect(verifyAfterClick.conflictType).toBeUndefined();
     });
 
-    it("Vấn đề #3: khi số nhà lặp ở nhiều quận trên trục đường dài ('100 Phan Văn Trị' ở Quận 5 và Gò Vấp), trả đầy đủ suggestedWards và chấp nhận cả 2 phường hợp lệ", async () => {
+    it("Mục 3: khi số nhà lặp ở nhiều quận trên trục đường dài ('100 Phan Văn Trị' ở Quận 5 và Gò Vấp), trả verificationStatus='ambiguous_multiple_wards', KHÔNG cho tự chọn phường để đặt hàng (canOrder=false, requiresCallback=true)", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
         createJsonResponse({
           success: true,
@@ -642,7 +619,7 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
         })
       );
 
-      // Chưa chọn phường -> gợi ý cả Chợ Quán và Hạnh Thông
+      // Chưa chọn phường -> ambiguous_multiple_wards, không gợi ý nút chọn phường
       const unchosen = await verifyAddressViaMapApi({
         streetAddress: "100 Phan Văn Trị",
         selectedWard: "",
@@ -650,26 +627,33 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
       });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(unchosen.suggestedWards?.map((w) => w.name)).toEqual([
-        "Chợ Quán",
-        "Hạnh Thông",
-      ]);
+      expect(unchosen.isValid).toBe(false);
+      expect(unchosen.canOrder).toBe(false);
+      expect(unchosen.requiresCallback).toBe(true);
+      expect(unchosen.verificationStatus).toBe("ambiguous_multiple_wards");
+      expect(unchosen.suggestedWard).toBeFalsy();
+      expect(unchosen.suggestedWards).toEqual([]);
 
-      // Chọn Chợ Quán -> Hợp lệ
-      const validChoQuan = await verifyAddressViaMapApi({
+      // Dù khách tự chọn Chợ Quán hay Hạnh Thông cũng bị chặn đặt hàng và yêu cầu gọi lại
+      const blockedChoQuan = await verifyAddressViaMapApi({
         streetAddress: "100 Phan Văn Trị",
         selectedWard: "Chợ Quán",
         availableWards: MOCK_WARDS,
       });
-      expect(validChoQuan.isValid).toBe(true);
+      expect(blockedChoQuan.isValid).toBe(false);
+      expect(blockedChoQuan.canOrder).toBe(false);
+      expect(blockedChoQuan.requiresCallback).toBe(true);
+      expect(blockedChoQuan.verificationStatus).toBe("ambiguous_multiple_wards");
 
-      // Chọn Hạnh Thông (Gò Vấp, cách 6800m nhưng trùng số nhà 100) -> Hợp lệ
-      const validHanhThong = await verifyAddressViaMapApi({
+      const blockedHanhThong = await verifyAddressViaMapApi({
         streetAddress: "100 Phan Văn Trị",
         selectedWard: "Hạnh Thông",
         availableWards: MOCK_WARDS,
       });
-      expect(validHanhThong.isValid).toBe(true);
+      expect(blockedHanhThong.isValid).toBe(false);
+      expect(blockedHanhThong.canOrder).toBe(false);
+      expect(blockedHanhThong.requiresCallback).toBe(true);
+      expect(blockedHanhThong.verificationStatus).toBe("ambiguous_multiple_wards");
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -957,7 +941,7 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
           })
         );
 
-        // Bước 1: Khách CHƯA chọn phường (selectedWard: "") -> gọi API lấy gợi ý theo đúng số nhà
+        // Bước 1: Khách CHƯA chọn phường (selectedWard: "") -> gọi API lấy kết quả theo đúng số nhà
         const unchosenRes = await verifyAddressViaMapApi({
           streetAddress: tc.address,
           selectedWard: "",
@@ -965,28 +949,46 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
         });
 
         expect(fetchSpy).toHaveBeenCalledTimes(1);
-        expect(unchosenRes.isValid).toBe(true);
-        expect(unchosenRes.suggestedWard?.name).toBe(tc.expectedPrimaryWard);
 
-        if (tc.forbiddenWrongWard) {
-          expect(unchosenRes.suggestedWard?.name).not.toBe(tc.forbiddenWrongWard);
-        }
+        if (tc.expectedSuggestedWards && tc.expectedSuggestedWards.length > 1) {
+          // Mục 3: Nhiều kết quả ở nhiều phường mới khác nhau -> ambiguous_multiple_wards, chặn đặt hàng và chuyển sang hỗ trợ
+          expect(unchosenRes.isValid).toBe(false);
+          expect(unchosenRes.canOrder).toBe(false);
+          expect(unchosenRes.requiresCallback).toBe(true);
+          expect(unchosenRes.verificationStatus).toBe("ambiguous_multiple_wards");
+          expect(unchosenRes.suggestedWard).toBeFalsy();
+          expect(unchosenRes.suggestedWards).toEqual([]);
 
-        if (tc.expectedSuggestedWards) {
-          expect(unchosenRes.suggestedWards?.map((w) => w.name)).toEqual(
-            tc.expectedSuggestedWards
-          );
-        }
+          for (const wardToPick of tc.expectedSuggestedWards) {
+            const afterSelectRes = await verifyAddressViaMapApi({
+              streetAddress: tc.address,
+              selectedWard: `Phường ${wardToPick}`,
+              availableWards: MOCK_WARDS,
+            });
+            expect(afterSelectRes.isValid).toBe(false);
+            expect(afterSelectRes.canOrder).toBe(false);
+            expect(afterSelectRes.requiresCallback).toBe(true);
+            expect(afterSelectRes.verificationStatus).toBe("ambiguous_multiple_wards");
+          }
+        } else {
+          // Mục 1: Duy nhất 1 phường mới -> verified_single_ward, gợi ý đúng phường đó và cho phép đặt hàng khi bấm chọn
+          expect(unchosenRes.isValid).toBe(true);
+          expect(unchosenRes.verificationStatus).toBe("verified_single_ward");
+          expect(unchosenRes.suggestedWard?.name).toBe(tc.expectedPrimaryWard);
 
-        // Bước 2 (Vấn đề #2): Ngay sau khi khách bấm chọn phường được gợi ý, kết quả kiểm tra luôn isValid === true (0% tự mâu thuẫn)
-        const targetWardsToVerify = tc.expectedSuggestedWards || [tc.expectedPrimaryWard];
-        for (const wardToPick of targetWardsToVerify) {
+          if (tc.forbiddenWrongWard) {
+            expect(unchosenRes.suggestedWard?.name).not.toBe(tc.forbiddenWrongWard);
+          }
+
           const afterSelectRes = await verifyAddressViaMapApi({
             streetAddress: tc.address,
-            selectedWard: `Phường ${wardToPick}`,
+            selectedWard: `Phường ${tc.expectedPrimaryWard}`,
             availableWards: MOCK_WARDS,
           });
           expect(afterSelectRes.isValid).toBe(true);
+          expect(afterSelectRes.canOrder).toBe(true);
+          expect(afterSelectRes.isWardMatched).toBe(true);
+          expect(afterSelectRes.verificationStatus).toBe("verified_single_ward");
           expect(afterSelectRes.conflictType).toBeUndefined();
         }
 
@@ -1147,6 +1149,235 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
         expect(res.isValid).toBe(false);
         expect(res.conflictType).toBe("ward_conflict");
       }
+    });
+  });
+
+  describe("7. A04, A05, A06, A07 (Lô B5), C01, C05, C06, C07: Lọc chặt số nhà, tên đường, quận/huyện & nhận diện Lô B5", () => {
+    it("A04 / C05: API trả 1 phường nhưng lệch số nhà hoặc candidate thiếu house_number -> trả unverifiable (nhánh D), KHÔNG fallback về parsedCandidates", () => {
+      const mismatchedHouse = evaluateGeocodePayload(
+        {
+          provider: "trackasia",
+          precision: "house_number",
+          candidates: [
+            {
+              formatted_address: "999 Hoàng Sa, Phường Tân Định, Quận 1, TP. Hồ Chí Minh",
+              ward: "Phường Tân Định",
+              district: "Quận 1",
+              house_number: "999",
+              street: "Hoàng Sa",
+            },
+          ],
+        },
+        {
+          streetAddress: "197 Hoàng Sa",
+          selectedWard: "Phường Tân Định",
+          availableWards: MOCK_WARDS,
+        }
+      );
+
+      expect(mismatchedHouse.isValid).toBe(false);
+      expect(mismatchedHouse.canOrder).toBe(false);
+      expect(mismatchedHouse.requiresCallback).toBe(true);
+      expect(mismatchedHouse.verificationStatus).toBe("unverifiable");
+
+      const missingCandidateHouse = evaluateGeocodePayload(
+        {
+          provider: "trackasia",
+          precision: "house_number",
+          candidates: [
+            {
+              formatted_address: "Đường Hoàng Sa, Phường Tân Định, Quận 1, TP. Hồ Chí Minh",
+              ward: "Phường Tân Định",
+              district: "Quận 1",
+              street: "Hoàng Sa",
+            },
+          ],
+        },
+        {
+          streetAddress: "197 Hoàng Sa",
+          selectedWard: "Phường Tân Định",
+          availableWards: MOCK_WARDS,
+        }
+      );
+
+      expect(missingCandidateHouse.isValid).toBe(false);
+      expect(missingCandidateHouse.canOrder).toBe(false);
+      expect(missingCandidateHouse.verificationStatus).toBe("unverifiable");
+    });
+
+    it("A05 / A06 / C06: Lệch tên đường trả unverifiable (nhánh D); khớp khi bỏ dấu, hoa/thường và viết tắt Đ. / Đường / Phố", () => {
+      const mismatchedStreet = evaluateGeocodePayload(
+        {
+          provider: "trackasia",
+          precision: "house_number",
+          candidates: [
+            {
+              formatted_address: "197 Trường Sa, Phường Tân Định, Quận 1, TP. Hồ Chí Minh",
+              ward: "Phường Tân Định",
+              district: "Quận 1",
+              house_number: "197",
+              street: "Trường Sa",
+            },
+          ],
+        },
+        {
+          streetAddress: "197 Hoàng Sa",
+          selectedWard: "Phường Tân Định",
+          availableWards: MOCK_WARDS,
+        }
+      );
+
+      expect(mismatchedStreet.isValid).toBe(false);
+      expect(mismatchedStreet.canOrder).toBe(false);
+      expect(mismatchedStreet.requiresCallback).toBe(true);
+      expect(mismatchedStreet.verificationStatus).toBe("unverifiable");
+
+      const abbreviatedStreet = evaluateGeocodePayload(
+        {
+          provider: "trackasia",
+          precision: "house_number",
+          candidates: [
+            {
+              formatted_address: "197 Đường Hoàng Sa, Phường Tân Định, Quận 1, TP. Hồ Chí Minh",
+              ward: "Phường Tân Định",
+              district: "Quận 1",
+              house_number: "197",
+              street: "Đường Hoàng Sa",
+            },
+          ],
+        },
+        {
+          streetAddress: "197 Đ. hoang sa",
+          selectedWard: "Phường Tân Định",
+          availableWards: MOCK_WARDS,
+        }
+      );
+
+      expect(abbreviatedStreet.isValid).toBe(true);
+      expect(abbreviatedStreet.canOrder).toBe(true);
+      expect(abbreviatedStreet.verificationStatus).toBe("verified_single_ward");
+    });
+
+    it("A07: Nhận diện số nhà dạng Lô B5, Lô A12, Lo B5, 12/3, 12AB, 12-14 và khớp với candidate Lô B5 hoặc B5", () => {
+      expect(hasHouseNumberInAddress("Lô B5 Hoàng Sa")).toBe(true);
+      expect(hasHouseNumberInAddress("Lo B5 Hoàng Sa")).toBe(true);
+      expect(hasHouseNumberInAddress("Lô A12 Nguyễn Văn Linh")).toBe(true);
+      expect(hasHouseNumberInAddress("12/3 Hoàng Sa")).toBe(true);
+      expect(hasHouseNumberInAddress("12AB Hoàng Sa")).toBe(true);
+      expect(hasHouseNumberInAddress("12-14 Hoàng Sa")).toBe(true);
+      expect(hasHouseNumberInAddress("Lô B5")).toBe(false);
+      expect(extractLeadingHouseNumber("Lô B5 Hoàng Sa")).toBe("b5");
+      expect(extractLeadingHouseNumber("Lo B5 Hoàng Sa")).toBe("b5");
+      expect(extractLeadingHouseNumber("Lô A12 Nguyễn Văn Linh")).toBe("a12");
+
+      const matchWithLo = evaluateGeocodePayload(
+        {
+          provider: "trackasia",
+          precision: "house_number",
+          candidates: [
+            {
+              formatted_address: "Lô B5 Hoàng Sa, Phường Tân Định, Quận 1, TP. Hồ Chí Minh",
+              ward: "Phường Tân Định",
+              district: "Quận 1",
+              house_number: "Lô B5",
+              street: "Hoàng Sa",
+            },
+          ],
+        },
+        {
+          streetAddress: "Lô B5 Hoàng Sa",
+          selectedWard: "Phường Tân Định",
+          availableWards: MOCK_WARDS,
+        }
+      );
+      expect(matchWithLo.isValid).toBe(true);
+      expect(matchWithLo.canOrder).toBe(true);
+      expect(matchWithLo.verificationStatus).toBe("verified_single_ward");
+
+      const matchWithB5 = evaluateGeocodePayload(
+        {
+          provider: "trackasia",
+          precision: "house_number",
+          candidates: [
+            {
+              formatted_address: "B5 Hoàng Sa, Phường Tân Định, Quận 1, TP. Hồ Chí Minh",
+              ward: "Phường Tân Định",
+              district: "Quận 1",
+              house_number: "B5",
+              street: "Hoàng Sa",
+            },
+          ],
+        },
+        {
+          streetAddress: "Lô B5 Hoàng Sa",
+          selectedWard: "Phường Tân Định",
+          availableWards: MOCK_WARDS,
+        }
+      );
+      expect(matchWithB5.isValid).toBe(true);
+      expect(matchWithB5.canOrder).toBe(true);
+    });
+
+    it("C01 / C05 / C06 / C07: 5 kết quả lọc theo số nhà + tên đường + quận/huyện còn 1 phường duy nhất -> verified_single_ward", () => {
+      const res = evaluateGeocodePayload(
+        {
+          provider: "trackasia",
+          precision: "house_number",
+          verification_status: "ambiguous_multiple_wards",
+          unique_wards: ["Xuân Hòa", "Tân Định", "Gia Định", "Nhiêu Lộc", "Bàn Cờ"],
+          candidates: [
+            // Sai số nhà (C05)
+            {
+              formatted_address: "999 Hai Bà Trưng, Phường Bàn Cờ, Quận 3, TP. Hồ Chí Minh",
+              ward: "Phường Bàn Cờ",
+              district: "Quận 3",
+              house_number: "999",
+              street: "Hai Bà Trưng",
+            },
+            // Sai tên đường (C06)
+            {
+              formatted_address: "201 Điện Biên Phủ, Phường Gia Định, Bình Thạnh, TP. Hồ Chí Minh",
+              ward: "Phường Gia Định",
+              district: "Bình Thạnh",
+              house_number: "201",
+              street: "Điện Biên Phủ",
+            },
+            // Thiếu house_number (C05)
+            {
+              formatted_address: "Hai Bà Trưng, Phường Nhiêu Lộc, Quận 3, TP. Hồ Chí Minh",
+              ward: "Phường Nhiêu Lộc",
+              district: "Quận 3",
+              street: "Hai Bà Trưng",
+            },
+            // Khớp số nhà + đường nhưng khác quận (C07)
+            {
+              formatted_address: "201 Hai Bà Trưng, Phường Xuân Hòa, Quận 3, TP. Hồ Chí Minh",
+              ward: "Phường Xuân Hòa",
+              district: "Quận 3",
+              house_number: "201",
+              street: "Hai Bà Trưng",
+            },
+            // Khớp cả số nhà + tên đường + Quận 1 (C01)
+            {
+              formatted_address: "201 Hai Bà Trưng, Phường Tân Định, Quận 1, TP. Hồ Chí Minh",
+              ward: "Phường Tân Định",
+              district: "Quận 1",
+              house_number: "201",
+              street: "Hai Bà Trưng",
+            },
+          ],
+        },
+        {
+          streetAddress: "201 Hai Bà Trưng, Q.1",
+          selectedWard: "Phường Tân Định",
+          availableWards: MOCK_WARDS,
+        }
+      );
+
+      expect(res.isValid).toBe(true);
+      expect(res.canOrder).toBe(true);
+      expect(res.verificationStatus).toBe("verified_single_ward");
+      expect(res.suggestedWard?.name).toBe("Tân Định");
     });
   });
 });
