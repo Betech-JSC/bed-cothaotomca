@@ -1359,7 +1359,7 @@ export function validateAddressWardMatch(
         explicitWard?.displayLabel ||
         (suggestions[0] ? formatWardLabel(suggestions[0].name) : undefined),
       suggestedWard: suggestions[0] || null,
-      suggestedWards: suggestions,
+      suggestedWards: suggestions[0] ? [suggestions[0]] : [],
     };
   }
 
@@ -1433,7 +1433,7 @@ export function validateAddressWardMatch(
           detectedArea: areaLabel,
           message: `Địa chỉ bạn nhập thuộc khu vực ${areaLabel}, không khớp với ${selectedWardDisplay} đang chọn. Vui lòng đổi về đúng Phường/Xã để tính chính xác phí vận chuyển.${suggestionHint}`,
           suggestedWard: suggestions[0] || null,
-          suggestedWards: suggestions,
+          suggestedWards: suggestions[0] ? [suggestions[0]] : [],
         };
       }
     }
@@ -1471,7 +1471,7 @@ export function validateAddressWardMatch(
         detectedArea: areaLabel,
         message: `Địa chỉ bạn nhập thuộc khu vực ${areaLabel}, không khớp với ${selectedWardDisplay} đang chọn. Vui lòng đổi về đúng Phường/Xã để tính chính xác phí vận chuyển.${suggestionHint}`,
         suggestedWard: suggestions[0] || null,
-        suggestedWards: suggestions,
+        suggestedWards: suggestions[0] ? [suggestions[0]] : [],
       };
     }
   }
@@ -1509,7 +1509,7 @@ export function validateAddressWardMatch(
         detectedArea: areaLabel,
         message: `Địa chỉ bạn nhập (Đường ${matchedStreet.displayName}) thuộc khu vực ${areaLabel}, không khớp với ${selectedWardDisplay} đang chọn. Vui lòng đổi về đúng Phường/Xã để tính chính xác phí vận chuyển.${suggestionHint}`,
         suggestedWard: suggestions[0] || null,
-        suggestedWards: suggestions,
+        suggestedWards: suggestions[0] ? [suggestions[0]] : [],
       };
     }
   }
@@ -2372,25 +2372,68 @@ export function evaluateGeocodePayload(
     return buildUnverifiableResult();
   }
 
-  // Mục 3: Nhiều phường mới khác nhau -> Chuyển sang hỗ trợ, không cho khách tự chọn phường để đặt hàng
-  if (
-    (!didFilterCandidates && payload.verification_status === "ambiguous_multiple_wards") ||
-    uniqueWardsList.length > 1
-  ) {
-    const areaLabels = uniqueWardsList.map((w) => formatWardLabel(w.name)).join(", ");
+  // Mục 3: Nhiều phường mới khác nhau -> Cho phép khách chọn 1 trong các phường được API gợi ý để đặt hàng;
+  // Nếu khách chọn phường nằm ngoài danh sách API gợi ý -> Chặn đặt hàng, hiển thị Hotline hoặc Yêu cầu gọi lại
+  if (uniqueWardsList.length > 1) {
+    const matchedWardObjs: AdministrativeWard[] = [];
+    const seenWardKeys = new Set<string>();
+    for (const uw of uniqueWardsList) {
+      const entry = resolveWardCatalogEntry(uw.name, availableWards, uw.district);
+      const key = normalizeText(cleanAdministrativeUnitName(entry.name));
+      if (key && !seenWardKeys.has(key)) {
+        seenWardKeys.add(key);
+        matchedWardObjs.push(entry);
+      }
+    }
+
+    const areaLabels = matchedWardObjs.map((w) => formatWardLabel(w.name)).join(", ");
+    const matchedSelectedWardObj = hasWardSelected
+      ? matchedWardObjs.find(
+          (w) => normalizeText(cleanAdministrativeUnitName(w.name)) === normSelectedWard
+        ) || null
+      : null;
+
+    if (matchedSelectedWardObj) {
+      const matchedLabel = formatWardLabel(matchedSelectedWardObj.name);
+      return {
+        isValid: true,
+        verificationStatus: "verified_single_ward",
+        verifiedWard: matchedSelectedWardObj.name,
+        isWardMatched: true,
+        canOrder: true,
+        requiresCallback: false,
+        detectedArea: matchedLabel,
+        suggestedWard: matchedSelectedWardObj,
+        suggestedWards: matchedWardObjs,
+      };
+    }
+
+    if (!hasWardSelected) {
+      return {
+        isValid: true,
+        verificationStatus: "verified_single_ward",
+        verifiedWard: null,
+        isWardMatched: false,
+        canOrder: false,
+        requiresCallback: false,
+        detectedArea: areaLabels,
+        suggestedWard: matchedWardObjs[0] || null,
+        suggestedWards: matchedWardObjs,
+      };
+    }
+
     return {
       isValid: false,
-      conflictType: "ambiguous_multiple_wards",
-      verificationStatus: "ambiguous_multiple_wards",
+      conflictType: "ward_conflict",
+      verificationStatus: "ward_mismatch",
       verifiedWard: null,
       isWardMatched: false,
       canOrder: false,
       requiresCallback: true,
       detectedArea: areaLabels,
-      message:
-        'Địa chỉ trả về nhiều Phường/Xã khác nhau trên bản đồ nên hệ thống chưa thể tự động xác nhận. Vui lòng liên hệ Hotline hoặc bấm "Yêu cầu cửa hàng gọi lại" để được hỗ trợ đặt đơn.',
-      suggestedWard: null,
-      suggestedWards: [],
+      message: `Địa chỉ thuộc khu vực ${areaLabels}, không khớp với ${selectedWardDisplay} bạn đang chọn. Vui lòng chọn một trong các phường được gợi ý bên dưới, liên hệ Hotline hoặc yêu cầu quán gọi lại.`,
+      suggestedWard: matchedWardObjs[0] || null,
+      suggestedWards: matchedWardObjs,
     };
   }
 

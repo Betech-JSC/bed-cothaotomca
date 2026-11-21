@@ -322,6 +322,7 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
 
   describe("TC-FE-05: Luồng UI Checkout thực tế (Cảnh báo + Chặn Submit + 1-Click đổi sang Phường Phước Long cập nhật phí ship 20k -> 45k + Đặt hàng thành công)", () => {
     afterEach(() => {
+      delete window.__MOCK_TIME__;
       cleanup();
       vi.restoreAllMocks();
     });
@@ -627,6 +628,165 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
       });
     });
 
+    it("Yêu cầu 1, 2 & 3: API trả nhiều phường cho phép khách chọn 1 trong các phường gợi ý để đặt hàng; chọn ngoài danh sách thì chặn đặt & hiện Hotline/Gọi lại; thông báo gọi lại theo khung giờ 09:00-23:00", async () => {
+      const callbackSpy = vi.spyOn(contactService, "submitAddressCallbackRequest").mockResolvedValue({
+        success: true,
+        message: "OK",
+      });
+
+      // Giả lập đang trong giờ hoạt động (14:00)
+      window.__MOCK_TIME__ = "14:00";
+
+      const { unmount } = render(
+        <CheckoutForm
+          order={null}
+          mockTime="14:00"
+          config={{
+            delivery_types: [{ value: "delivery", label: "Giao tận nơi" }],
+            default_shipping_fee: "30000",
+            branches: [{ id: 1, branchName: "Chi nhánh Trần Đình Xu", address: "42/2 Trần Đình Xu", contactNumber: "0123", isActive: true }],
+          }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(orderService.getAdministrativeUnits).toHaveBeenCalled();
+        expect(screen.getByTestId("desktop-street-address-input")).toBeInTheDocument();
+      });
+
+      const streetInput = screen.getByTestId("desktop-street-address-input");
+      const confirmCheckbox = screen.getByTestId("desktop-confirm-checkbox");
+      fireEvent.click(confirmCheckbox);
+      const submitBtn = screen.getByTestId("checkout-submit-btn") as HTMLButtonElement;
+
+      // 1. Khi khách chưa chọn phường và API trả nhiều phường gợi ý [Phước Long, Thủ Đức]
+      vi.spyOn(wardMapping, "verifyAddressViaMapApi").mockResolvedValueOnce({
+        isValid: true,
+        verificationStatus: "verified_single_ward",
+        verifiedWard: null,
+        isWardMatched: false,
+        canOrder: false,
+        requiresCallback: false,
+        detectedArea: "Phường Phước Long, Phường Thủ Đức",
+        suggestedWard: { id: "PL", name: "Phước Long", district: "Phước Long" },
+        suggestedWards: [
+          { id: "PL", name: "Phước Long", district: "Phước Long" },
+          { id: "TD", name: "Thủ Đức", district: "Thủ Đức" },
+        ],
+      });
+
+      fireEvent.change(streetInput, { target: { value: "100 Phan Văn Trị" } });
+
+      await waitFor(() => {
+        const chip = screen.getByTestId("address-ward-suggestion-chip");
+        expect(chip).toBeInTheDocument();
+        expect(chip.textContent).toContain("Chọn Phường Phước Long");
+        expect(chip.textContent).toContain("Chọn Phường Thủ Đức");
+      }, { timeout: 4000 });
+
+      expect(submitBtn.disabled).toBe(true);
+
+      // Khách bấm chọn "Chọn Phường Thủ Đức" trong danh sách gợi ý -> được phép đặt hàng
+      expect(screen.getByTestId("select-suggested-ward-btn")).toBeInTheDocument();
+      const secondSuggestionBtn = screen.getByTestId("select-suggested-ward-btn-1");
+      expect(secondSuggestionBtn).toBeInTheDocument();
+      fireEvent.click(secondSuggestionBtn); // Chọn Phường Thủ Đức
+
+      await waitFor(() => {
+        expect(orderService.calculateShippingFee).toHaveBeenCalledWith(
+          expect.objectContaining({ ward: "Thủ Đức", ward_id: "TD" })
+        );
+        expect(submitBtn.disabled).toBe(false);
+      }, { timeout: 4000 });
+
+      // 2. Khách đổi sang Phường Sài Gòn (nằm ngoài danh sách API gợi ý [Phước Long, Thủ Đức]) -> không cho đặt, hiện Hotline & Yêu cầu gọi lại
+      vi.spyOn(wardMapping, "verifyAddressViaMapApi").mockResolvedValueOnce({
+        isValid: false,
+        conflictType: "ward_conflict",
+        verificationStatus: "ward_mismatch",
+        verifiedWard: null,
+        isWardMatched: false,
+        canOrder: false,
+        requiresCallback: true,
+        detectedArea: "Phường Phước Long, Phường Thủ Đức",
+        message: "Địa chỉ thuộc khu vực Phường Phước Long, Phường Thủ Đức, không khớp với Phường Sài Gòn bạn đang chọn.",
+        suggestedWard: { id: "PL", name: "Phước Long", district: "Phước Long" },
+        suggestedWards: [
+          { id: "PL", name: "Phước Long", district: "Phước Long" },
+          { id: "TD", name: "Thủ Đức", district: "Thủ Đức" },
+        ],
+      });
+
+      const desktopWardInput = screen.getByTestId("desktop-ward-select-input");
+      fireEvent.focus(desktopWardInput);
+      fireEvent.click(desktopWardInput);
+      fireEvent.click(await screen.findByTestId("desktop-ward-select-option-SG"));
+
+      await waitFor(() => {
+        const mismatchWarning = screen.getByTestId("address-ward-mismatch-warning");
+        expect(mismatchWarning).toBeInTheDocument();
+        expect(mismatchWarning.textContent).toContain("Đổi sang Phường Phước Long");
+        expect(mismatchWarning.textContent).toContain("Đổi sang Phường Thủ Đức");
+        expect(screen.getByTestId("address-support-hotline-link")).toBeInTheDocument();
+        expect(screen.getByTestId("request-store-callback-btn")).toBeInTheDocument();
+      }, { timeout: 4000 });
+
+      expect(submitBtn.disabled).toBe(true);
+
+      // 3a. Gửi yêu cầu gọi lại trong giờ hoạt động (14:00, trong khung 09:00-23:00) -> hiển thị "Quán sẽ gọi lại sau ít phút"
+      fireEvent.click(screen.getByTestId("request-store-callback-btn"));
+      await waitFor(() => {
+        const notice = screen.getByTestId("callback-request-success-notice");
+        expect(notice).toBeInTheDocument();
+        expect(notice.textContent).toContain("Quán sẽ gọi lại sau ít phút");
+      });
+
+      unmount();
+
+      // 3b. Gửi yêu cầu gọi lại ngoài giờ hoạt động (23:30, ngoài khung 09:00-23:00) -> hiển thị "Quán sẽ gọi lại khi mở cửa"
+      window.__MOCK_TIME__ = "23:30";
+      render(
+        <CheckoutForm
+          order={null}
+          mockTime="23:30"
+          config={{
+            delivery_types: [{ value: "delivery", label: "Giao tận nơi" }],
+            default_shipping_fee: "30000",
+            branches: [{ id: 1, branchName: "Chi nhánh Trần Đình Xu", address: "42/2 Trần Đình Xu", contactNumber: "0123", isActive: true }],
+          }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("desktop-street-address-input")).toBeInTheDocument();
+      });
+
+      vi.spyOn(wardMapping, "verifyAddressViaMapApi").mockResolvedValueOnce({
+        isValid: false,
+        verificationStatus: "unverifiable",
+        canOrder: false,
+        requiresCallback: true,
+        message: "Không xác minh được địa chỉ.",
+        suggestedWards: [],
+      });
+
+      fireEvent.change(screen.getByTestId("desktop-street-address-input"), {
+        target: { value: "999 Đường Không Xác Minh" },
+      });
+
+      const afterHoursCallbackBtn = await screen.findByTestId("request-store-callback-btn", {}, { timeout: 4000 });
+      fireEvent.click(afterHoursCallbackBtn);
+
+      await waitFor(() => {
+        expect(callbackSpy).toHaveBeenCalledTimes(2);
+        const notice = screen.getByTestId("callback-request-success-notice");
+        expect(notice).toBeInTheDocument();
+        expect(notice.textContent).toContain("Quán sẽ gọi lại khi mở cửa");
+      });
+
+      delete window.__MOCK_TIME__;
+    });
+
     it("TC-FE-06: khi nhập địa chỉ có số nhà (500 Cách Mạng Tháng 8), hiển thị loading 'Đang xác định khu vực giao hàng...' và KHÔNG hiển thị 5-6 nút gợi ý từ sync dictionary", async () => {
       let resolveVerify: (val: any) => void = () => {};
       const verifyPromise = new Promise((resolve) => {
@@ -835,6 +995,7 @@ describe("Nghiệm thu chống gian lận địa chỉ & phí vận chuyển (M�
 
   describe("TC-FE-07: MobileCartFlow parity (Ma trận #2 & #7, A03, H04 race condition, H07 saved address, E05 double-click, E07 phone_invalid)", () => {
     afterEach(() => {
+      delete window.__MOCK_TIME__;
       cleanup();
       vi.restoreAllMocks();
     });

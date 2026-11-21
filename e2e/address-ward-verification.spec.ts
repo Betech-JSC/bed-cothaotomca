@@ -27,6 +27,8 @@ const ADMIN_UNITS = [
     wards: [
       { id: 'ward_an_dong', name: 'An Đông', district: 'An Đông', province: 'TP. Hồ Chí Minh' },
       { id: 'ward_sai_gon', name: 'Sài Gòn', district: 'Sài Gòn', province: 'TP. Hồ Chí Minh' },
+      { id: 'ward_xuan_hoa', name: 'Xuân Hòa', district: 'Quận 3', province: 'TP. Hồ Chí Minh' },
+      { id: 'ward_gia_dinh', name: 'Gia Định', district: 'Bình Thạnh', province: 'TP. Hồ Chí Minh' },
     ],
   },
 ];
@@ -79,7 +81,17 @@ function geocodeBody(candidates: Record<string, unknown>[], extra: Record<string
   };
 }
 
-async function setup(page: Page, opts: { candidates?: Record<string, unknown>[]; calcStatus?: number; mobile?: boolean } = {}) {
+async function setup(
+  page: Page,
+  opts: {
+    candidates?: Record<string, unknown>[];
+    geocodeExtra?: Record<string, unknown>;
+    calcStatus?: number;
+    mobile?: boolean;
+    mockTime?: string;
+    onContactRequest?: (payload: Record<string, unknown>) => void;
+  } = {}
+) {
   await page.setViewportSize(opts.mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 });
 
   await page.context().addCookies([
@@ -87,10 +99,17 @@ async function setup(page: Page, opts: { candidates?: Record<string, unknown>[];
     { name: 'NEXT_LOCALE', value: 'vi', domain: 'localhost', path: '/' },
   ]);
 
-  await page.addInitScript((item) => {
-    localStorage.setItem('site_access_token', 'granted');
-    localStorage.setItem('cothaotomca_cart', JSON.stringify([item]));
-  }, MOCK_ITEM);
+  await page.addInitScript(
+    ({ item, mockTime }) => {
+      localStorage.setItem('site_access_token', 'granted');
+      localStorage.setItem('cothaotomca_cart', JSON.stringify([item]));
+      sessionStorage.setItem('preorder_notice_dismissed', 'true');
+      if (mockTime) {
+        (window as unknown as { __MOCK_TIME__?: string }).__MOCK_TIME__ = mockTime;
+      }
+    },
+    { item: MOCK_ITEM, mockTime: opts.mockTime }
+  );
 
   await page.route('**/api/**/shipping/settings**', (route) =>
     route.fulfill({
@@ -156,9 +175,28 @@ async function setup(page: Page, opts: { candidates?: Record<string, unknown>[];
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(geocodeBody(opts.candidates ?? [candidate()])),
+      body: JSON.stringify(geocodeBody(opts.candidates ?? [candidate()], opts.geocodeExtra ?? {})),
     })
   );
+
+  await page.route('**/api/**/contacts', async (route) => {
+    let payload: Record<string, unknown> = {};
+    try {
+      payload = (route.request().postDataJSON() || {}) as Record<string, unknown>;
+    } catch {
+      // ignore
+    }
+    opts.onContactRequest?.(payload);
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'success',
+        message: 'Đã ghi nhận yêu cầu gọi lại',
+        data: { id: 999, ...payload },
+      }),
+    });
+  });
 
   await page.route('**/api/**/shipping/calculate', (route) => {
     if (opts.calcStatus && opts.calcStatus >= 400) {
@@ -171,7 +209,8 @@ async function setup(page: Page, opts: { candidates?: Record<string, unknown>[];
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SHIP_OK) });
   });
 
-  await page.goto('/thanh-toan', { waitUntil: 'domcontentloaded' });
+  const targetUrl = opts.mockTime ? `/thanh-toan?mock_time=${encodeURIComponent(opts.mockTime)}` : '/thanh-toan';
+  await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
   if (opts.mobile) {
     await expect(page.getByTestId('mobile-checkout-submit-btn')).toBeVisible({ timeout: 40000 });
@@ -379,5 +418,174 @@ test.describe('Xác minh địa chỉ / Phường - Checkout Mobile (390x844)', 
     await expect(page.getByText('Số điện thoại không hợp lệ', { exact: false }).first()).toBeVisible({ timeout: 20000 });
     await expect(page.getByText('Vui lòng nhập số điện thoại.', { exact: true })).toHaveCount(0);
     await shot(page, 'mobile-03-e07-sdt-sai-dinh-dang');
+  });
+});
+
+test.describe('Multi-Ward Suggestion & Callback Hours (09:00-23:00) - Desktop & Mobile', () => {
+  test.setTimeout(120_000);
+
+  const MULTI_WARD_CANDIDATES = [
+    candidate({
+      house_number: '200',
+      street: 'Điện Biên Phủ',
+      ward: 'Xuân Hòa',
+      new_ward: 'Xuân Hòa',
+      district: 'Quận 3',
+      province: 'TP. Hồ Chí Minh',
+    }),
+    candidate({
+      house_number: '200',
+      street: 'Điện Biên Phủ',
+      ward: 'Gia Định',
+      new_ward: 'Gia Định',
+      district: 'Bình Thạnh',
+      province: 'TP. Hồ Chí Minh',
+    }),
+  ];
+
+  const MULTI_WARD_EXTRA = {
+    verification_status: 'ambiguous_multiple_wards',
+    unique_wards: ['Xuân Hòa', 'Gia Định'],
+    suggested_ward: 'Xuân Hòa',
+  };
+
+  test('Cases 1, 2, 3 & 4 (Desktop - 14:00 trong giờ hoạt động): nhiều phường gợi ý -> chọn phường hợp lệ mở khóa -> chọn phường ngoài danh sách khóa nút + gọi lại báo "Quán sẽ gọi lại sau ít phút"', async ({
+    page,
+  }) => {
+    const contactPayloads: Record<string, unknown>[] = [];
+    await setup(page, {
+      candidates: MULTI_WARD_CANDIDATES,
+      geocodeExtra: MULTI_WARD_EXTRA,
+      mockTime: '14:00',
+      onContactRequest: (p) => contactPayloads.push(p),
+    });
+
+    const desktopForm = page.locator('form').filter({ has: page.getByTestId('desktop-street-address-input') });
+    await desktopForm.locator('input[type="text"]').first().fill('Nguyễn Văn Thảo');
+    await desktopForm.locator('input[type="tel"]').first().fill('0901234567');
+    await desktopForm.locator('input[type="email"]').first().fill('khachhang@cothaotomca.vn');
+
+    // Case 1: API trả nhiều phường — Chưa chọn phường
+    await typeAddress(page, '200 Điện Biên Phủ');
+    const chip = page.getByTestId('address-ward-suggestion-chip');
+    await expect(chip).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId('select-suggested-ward-btn')).toHaveText(/Chọn Phường Xuân Hòa/);
+    await expect(page.getByTestId('select-suggested-ward-btn-1')).toHaveText(/Chọn Phường Gia Định/);
+    await expect(page.getByTestId('checkout-submit-btn')).toBeDisabled();
+    await shot(page, 'case1-desktop-multi-wards-no-ward');
+
+    // Case 2: Khách chọn 1 trong các phường được gợi ý (Phường Xuân Hòa) -> Nút Đặt hàng mở khóa
+    await page.getByTestId('select-suggested-ward-btn').click();
+    await expect(page.getByTestId('desktop-ward-select-input')).toHaveValue(/Phường Xuân Hòa/);
+    const confirm = page.getByTestId('desktop-confirm-checkbox');
+    if (!(await confirm.isChecked())) {
+      await confirm.evaluate((el) => (el as HTMLInputElement).click());
+    }
+    await expect(page.getByTestId('checkout-submit-btn')).toBeEnabled({ timeout: 20000 });
+    await shot(page, 'case2-desktop-selected-suggested-ward-enabled');
+
+    // Case 3: Khách chọn phường NGOÀI danh sách API gợi ý (Phường Sài Gòn) -> Khóa nút Đặt hàng + cảnh báo + Hotline + Yêu cầu gọi lại
+    const wardInput = page.getByTestId('desktop-ward-select-input');
+    await wardInput.click();
+    await wardInput.fill('Sài Gòn');
+    await page.locator('[data-testid^="desktop-ward-select-option-"]').first().click();
+
+    const mismatch = page.getByTestId('address-ward-mismatch-warning');
+    await expect(mismatch).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId('apply-suggested-ward-btn')).toHaveText(/Đổi sang Phường Xuân Hòa/);
+    await expect(page.getByTestId('apply-suggested-ward-btn-1')).toHaveText(/Đổi sang Phường Gia Định/);
+    await expect(page.getByTestId('address-support-hotline-link')).toBeVisible();
+    await expect(page.getByTestId('request-store-callback-btn')).toBeVisible();
+    await expect(page.getByTestId('checkout-submit-btn')).toBeDisabled();
+    await shot(page, 'case3-desktop-outside-ward-blocked');
+
+    // Case 4: Gửi yêu cầu gọi lại TRONG giờ hoạt động (14:00, khung 09:00-23:00)
+    await page.getByTestId('request-store-callback-btn').click();
+    const successNotice = page.getByTestId('callback-request-success-notice');
+    await expect(successNotice).toBeVisible({ timeout: 20000 });
+    await expect(successNotice).toContainText('Quán sẽ gọi lại sau ít phút');
+    expect(contactPayloads.length).toBe(1);
+    expect(contactPayloads[0]).toMatchObject({
+      name: 'Nguyễn Văn Thảo',
+      phone: '0901234567',
+      is_callback_request: true,
+      type: 'address_callback',
+      address: '200 Điện Biên Phủ',
+      ward: 'Sài Gòn',
+    });
+    await shot(page, 'case4-desktop-callback-in-hours');
+  });
+
+  test('Case 5 (Desktop - 23:30 ngoài giờ hoạt động 09:00-23:00): gửi yêu cầu gọi lại báo "Quán sẽ gọi lại khi mở cửa"', async ({
+    page,
+  }) => {
+    await setup(page, {
+      candidates: MULTI_WARD_CANDIDATES,
+      geocodeExtra: MULTI_WARD_EXTRA,
+      mockTime: '23:30',
+    });
+
+    const desktopForm = page.locator('form').filter({ has: page.getByTestId('desktop-street-address-input') });
+    await desktopForm.locator('input[type="text"]').first().fill('Nguyễn Văn Thảo');
+    await desktopForm.locator('input[type="tel"]').first().fill('0901234567');
+
+    const wardInput = page.getByTestId('desktop-ward-select-input');
+    await wardInput.click();
+    await wardInput.fill('Sài Gòn');
+    await page.locator('[data-testid^="desktop-ward-select-option-"]').first().click();
+
+    await typeAddress(page, '200 Điện Biên Phủ');
+    await expect(page.getByTestId('address-ward-mismatch-warning')).toBeVisible({ timeout: 20000 });
+
+    await page.getByTestId('request-store-callback-btn').click();
+    const successNotice = page.getByTestId('callback-request-success-notice');
+    await expect(successNotice).toBeVisible({ timeout: 20000 });
+    await expect(successNotice).toContainText('Quán sẽ gọi lại khi mở cửa');
+    await shot(page, 'case5-desktop-callback-after-hours');
+  });
+
+  test('Case 6 (Mobile 390x844): gợi ý nhiều phường -> chọn phường hợp lệ mở khóa -> chọn phường ngoài danh sách khóa nút + gọi lại theo giờ hoạt động', async ({
+    page,
+  }) => {
+    await setup(page, {
+      mobile: true,
+      candidates: MULTI_WARD_CANDIDATES,
+      geocodeExtra: MULTI_WARD_EXTRA,
+      mockTime: '14:00',
+    });
+
+    await page.getByTestId('mobile-name-input').fill('Nguyễn Văn Thảo');
+    await page.getByTestId('mobile-phone-input').fill('0901234567');
+
+    // 6a: Chưa chọn phường -> hiện 2 nút gợi ý, nút Đặt hàng bị khóa
+    await typeAddressMobile(page, '200 Điện Biên Phủ');
+    await expect(page.getByTestId('mobile-address-ward-suggestion-chip')).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId('mobile-select-suggested-ward-btn')).toHaveText(/Chọn Phường Xuân Hòa/);
+    await expect(page.getByTestId('mobile-select-suggested-ward-btn-1')).toHaveText(/Chọn Phường Gia Định/);
+    await expect(page.getByTestId('mobile-checkout-submit-btn')).toBeDisabled();
+    await shot(page, 'case6a-mobile-multi-wards-no-ward');
+
+    // 6b: Chọn Phường Gia Định từ nút gợi ý -> mở khóa nút Đặt hàng
+    await page.getByTestId('mobile-select-suggested-ward-btn-1').click();
+    await expect(page.getByTestId('mobile-ward-select-input')).toHaveValue(/Phường Gia Định/);
+    await expect(page.getByTestId('mobile-checkout-submit-btn')).toBeEnabled({ timeout: 20000 });
+    await shot(page, 'case6b-mobile-selected-suggested-ward-enabled');
+
+    // 6c: Đổi sang Phường Sài Gòn (ngoài danh sách) -> khóa nút + gọi lại trong giờ (14:00)
+    const mobileWardInput = page.getByTestId('mobile-ward-select-input');
+    await mobileWardInput.scrollIntoViewIfNeeded();
+    await mobileWardInput.click();
+    await mobileWardInput.fill('Sài Gòn');
+    await page.locator('[data-testid^="mobile-ward-select-option-"]').first().click();
+
+    await expect(page.getByTestId('mobile-address-ward-mismatch-warning')).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId('mobile-checkout-submit-btn')).toBeDisabled();
+    await expect(page.getByTestId('mobile-address-support-hotline-link')).toBeVisible();
+    await page.getByTestId('mobile-request-store-callback-btn').click();
+
+    const mobileSuccess = page.getByTestId('mobile-callback-request-success-notice');
+    await expect(mobileSuccess).toBeVisible({ timeout: 20000 });
+    await expect(mobileSuccess).toContainText('Quán sẽ gọi lại sau ít phút');
+    await shot(page, 'case6c-mobile-outside-ward-callback-in-hours');
   });
 });

@@ -1717,7 +1717,7 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
     setSelectedWard(suggested.name);
     setSelectedDistrict(nextDistrict);
     setSavedAddressWardWarning(null);
-    setMapAddressValidation({
+    setMapAddressValidation((prev) => ({
       isValid: true,
       verificationStatus: "verified_single_ward",
       verifiedWard: suggested.name,
@@ -1726,8 +1726,11 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       requiresCallback: false,
       detectedArea: formatWardLabel(suggested.name, suggested.district),
       suggestedWard: suggested,
-      suggestedWards: [suggested],
-    });
+      suggestedWards:
+        prev?.suggestedWards && prev.suggestedWards.length > 0
+          ? prev.suggestedWards
+          : [suggested],
+    }));
     setIsVerifyingAddress(false);
     setCallbackRequestSuccess(null);
     setCallbackRequestError(null);
@@ -1883,8 +1886,19 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       });
 
       callbackSubmittedRef.current = true;
+      const currentVnTime = getVietnamTimeString(mockDate);
+      const openTime = operatingStatus.storeOpen || "09:00";
+      const closeTime = operatingStatus.storeClose || "23:00";
+      const isWithinOperatingHours =
+        typeof configState?.operating_hours?.is_store_open === "boolean" &&
+        !mockDate &&
+        !(typeof window !== "undefined" && window.__MOCK_TIME__)
+          ? configState.operating_hours.is_store_open
+          : currentVnTime >= openTime && currentVnTime <= closeTime;
       setCallbackRequestSuccess(
-        "Đã tiếp nhận yêu cầu gọi lại! Nhân viên cửa hàng sẽ sớm liên hệ với bạn để xác minh địa chỉ và hỗ trợ đặt đơn (Chưa tạo đơn hàng & chưa thu tiền)."
+        isWithinOperatingHours
+          ? "Quán sẽ gọi lại sau ít phút"
+          : "Quán sẽ gọi lại khi mở cửa"
       );
     } catch (err: any) {
       setCallbackRequestError(
@@ -3170,28 +3184,28 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
             {addressWardValidation.message}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            {addressWardValidation.suggestedWard && (
+            {(addressWardValidation.suggestedWards && addressWardValidation.suggestedWards.length > 0
+              ? addressWardValidation.suggestedWards
+              : addressWardValidation.suggestedWard
+                ? [addressWardValidation.suggestedWard]
+                : []
+            ).map((suggestedItem, idx) => (
               <button
-                key={
-                  addressWardValidation.suggestedWard.id ||
-                  addressWardValidation.suggestedWard.name
-                }
+                key={suggestedItem.id || suggestedItem.name || idx}
                 type="button"
-                data-testid="apply-suggested-ward-btn"
-                onClick={() =>
-                  handleApplySuggestedWard(addressWardValidation.suggestedWard!)
-                }
+                data-testid={idx === 0 ? "apply-suggested-ward-btn" : `apply-suggested-ward-btn-${idx}`}
+                onClick={() => handleApplySuggestedWard(suggestedItem)}
                 className="inline-flex items-center gap-1.5 rounded-[4px] bg-secondary px-3 py-1.5 text-xs font-bold text-white hover:bg-secondary/90 transition-colors cursor-pointer shadow-xs"
               >
                 <span>
                   Đổi sang{" "}
                   {formatWardLabel(
-                    addressWardValidation.suggestedWard.name,
-                    addressWardValidation.suggestedWard.district
+                    suggestedItem.name,
+                    suggestedItem.district
                   )}
                 </span>
               </button>
-            )}
+            ))}
             <a
               href={`tel:${hotline.replace(/[^0-9+]/g, "")}`}
               data-testid="address-support-hotline-link"
@@ -3215,30 +3229,33 @@ export default function CheckoutForm({ order, config, mockTime: propMockTime }: 
       ) : addressWardValidation.isValid &&
         !selectedWard &&
         !selectedWardId &&
-        addressWardValidation.suggestedWard ? (
+        ((addressWardValidation.suggestedWards && addressWardValidation.suggestedWards.length > 0) ||
+          addressWardValidation.suggestedWard) ? (
         <div
           data-testid="address-ward-suggestion-chip"
           className="mt-2 flex items-center flex-wrap gap-1.5 rounded-lg border border-secondary/25 bg-yellow/50 px-3 py-1.5 text-xs text-brown"
         >
           <span>Gợi ý theo địa chỉ:</span>
-          <button
-            key={
-              addressWardValidation.suggestedWard.id ||
-              addressWardValidation.suggestedWard.name
-            }
-            type="button"
-            data-testid="select-suggested-ward-btn"
-            onClick={() =>
-              handleApplySuggestedWard(addressWardValidation.suggestedWard!)
-            }
-            className="font-bold text-primary underline hover:text-secondary cursor-pointer"
-          >
-            Chọn{" "}
-            {formatWardLabel(
-              addressWardValidation.suggestedWard.name,
-              addressWardValidation.suggestedWard.district
-            )}
-          </button>
+          {(addressWardValidation.suggestedWards && addressWardValidation.suggestedWards.length > 0
+            ? addressWardValidation.suggestedWards
+            : addressWardValidation.suggestedWard
+              ? [addressWardValidation.suggestedWard]
+              : []
+          ).map((suggestedItem, idx) => (
+            <button
+              key={suggestedItem.id || suggestedItem.name || idx}
+              type="button"
+              data-testid={idx === 0 ? "select-suggested-ward-btn" : `select-suggested-ward-btn-${idx}`}
+              onClick={() => handleApplySuggestedWard(suggestedItem)}
+              className="font-bold text-primary underline hover:text-secondary cursor-pointer"
+            >
+              Chọn{" "}
+              {formatWardLabel(
+                suggestedItem.name,
+                suggestedItem.district
+              )}
+            </button>
+          ))}
         </div>
       ) : null}
 

@@ -213,8 +213,8 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
     });
   });
 
-  describe("3. Mục 3: API trả nhiều kết quả - Cùng 1 phường mới vs Nhiều phường mới khác nhau (ambiguous_multiple_wards)", () => {
-    it("khi các kết quả hợp lệ trả về nhiều phường mới khác nhau (Xuân Hòa & Tân Định) -> trả verificationStatus='ambiguous_multiple_wards', canOrder=false, requiresCallback=true", async () => {
+  describe("3. Mục 3: API trả nhiều kết quả - Cùng 1 phường mới vs Nhiều phường mới khác nhau (cho phép chọn 1 trong các phường gợi ý, chặn nếu chọn ngoài danh sách)", () => {
+    it("khi các kết quả hợp lệ trả về nhiều phường mới khác nhau (Xuân Hòa & Tân Định) -> cho phép đặt hàng nếu chọn Tân Định hoặc Xuân Hòa, chặn nếu chọn phường ngoài danh sách", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
         createJsonResponse({
           success: true,
@@ -245,17 +245,32 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
         })
       );
 
-      const borderAmbiguous = await verifyAddressViaMapApi({
+      // Khách chọn Phường Tân Định (nằm trong danh sách gợi ý) -> cho phép đặt hàng
+      const borderMatched = await verifyAddressViaMapApi({
         streetAddress: "201 Hai Bà Trưng",
         selectedWard: "Phường Tân Định",
         availableWards: MOCK_WARDS,
       });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(borderAmbiguous.isValid).toBe(false);
-      expect(borderAmbiguous.canOrder).toBe(false);
-      expect(borderAmbiguous.requiresCallback).toBe(true);
-      expect(borderAmbiguous.verificationStatus).toBe("ambiguous_multiple_wards");
+      expect(borderMatched.isValid).toBe(true);
+      expect(borderMatched.canOrder).toBe(true);
+      expect(borderMatched.isWardMatched).toBe(true);
+      expect(borderMatched.requiresCallback).toBe(false);
+      expect(borderMatched.verificationStatus).toBe("verified_single_ward");
+      expect(borderMatched.suggestedWards?.map((w) => w.name)).toEqual(["Xuân Hòa", "Tân Định"]);
+
+      // Khách chọn Phường Sài Gòn (ngoài danh sách gợi ý) -> chặn đặt hàng, yêu cầu gọi lại
+      const borderOutside = await verifyAddressViaMapApi({
+        streetAddress: "201 Hai Bà Trưng",
+        selectedWard: "Phường Sài Gòn",
+        availableWards: MOCK_WARDS,
+      });
+      expect(borderOutside.isValid).toBe(false);
+      expect(borderOutside.canOrder).toBe(false);
+      expect(borderOutside.requiresCallback).toBe(true);
+      expect(borderOutside.verificationStatus).toBe("ward_mismatch");
+      expect(borderOutside.suggestedWards?.map((w) => w.name)).toEqual(["Xuân Hòa", "Tân Định"]);
     });
 
     it("BẮT LỖI chính xác khi candidates[0] khớp số nhà 380 tại Phường Xuân Hòa còn candidates[1] là số nhà 38 tại Phường Tân Định -> chỉ xác nhận 1 phường Xuân Hòa (ward_mismatch)", async () => {
@@ -349,14 +364,25 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
         ],
       };
 
-      const ambiguousRes = evaluateGeocodePayload(haversineAmbiguousPayload, {
+      const matchedMultiWardRes = evaluateGeocodePayload(haversineAmbiguousPayload, {
         streetAddress: "100 Điện Biên Phủ",
         selectedWard: "Phường Tân Định",
         availableWards: MOCK_WARDS,
       });
-      expect(ambiguousRes.isValid).toBe(false);
-      expect(ambiguousRes.verificationStatus).toBe("ambiguous_multiple_wards");
-      expect(ambiguousRes.requiresCallback).toBe(true);
+      expect(matchedMultiWardRes.isValid).toBe(true);
+      expect(matchedMultiWardRes.canOrder).toBe(true);
+      expect(matchedMultiWardRes.verificationStatus).toBe("verified_single_ward");
+      expect(matchedMultiWardRes.requiresCallback).toBe(false);
+
+      const outsideMultiWardRes = evaluateGeocodePayload(haversineAmbiguousPayload, {
+        streetAddress: "100 Điện Biên Phủ",
+        selectedWard: "Phường Sài Gòn",
+        availableWards: MOCK_WARDS,
+      });
+      expect(outsideMultiWardRes.isValid).toBe(false);
+      expect(outsideMultiWardRes.canOrder).toBe(false);
+      expect(outsideMultiWardRes.verificationStatus).toBe("ward_mismatch");
+      expect(outsideMultiWardRes.requiresCallback).toBe(true);
     });
   });
 
@@ -583,7 +609,7 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
       expect(verifyAfterClick.conflictType).toBeUndefined();
     });
 
-    it("Mục 3: khi số nhà lặp ở nhiều quận trên trục đường dài ('100 Phan Văn Trị' ở Quận 5 và Gò Vấp), trả verificationStatus='ambiguous_multiple_wards', KHÔNG cho tự chọn phường để đặt hàng (canOrder=false, requiresCallback=true)", async () => {
+    it("Mục 3: khi số nhà lặp ở nhiều quận trên trục đường dài ('100 Phan Văn Trị' ở Quận 5 và Gò Vấp), gợi ý danh sách các phường để khách chọn 1 trong số đó đặt hàng; nếu chọn ngoài danh sách thì chặn đặt hàng và yêu cầu gọi lại", async () => {
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
         createJsonResponse({
           success: true,
@@ -619,7 +645,7 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
         })
       );
 
-      // Chưa chọn phường -> ambiguous_multiple_wards, không gợi ý nút chọn phường
+      // Chưa chọn phường -> gợi ý danh sách các phường [Chợ Quán, Hạnh Thông], chưa cho đặt hàng cho tới khi chọn
       const unchosen = await verifyAddressViaMapApi({
         streetAddress: "100 Phan Văn Trị",
         selectedWard: "",
@@ -627,33 +653,47 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
       });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(unchosen.isValid).toBe(false);
+      expect(unchosen.isValid).toBe(true);
       expect(unchosen.canOrder).toBe(false);
-      expect(unchosen.requiresCallback).toBe(true);
-      expect(unchosen.verificationStatus).toBe("ambiguous_multiple_wards");
-      expect(unchosen.suggestedWard).toBeFalsy();
-      expect(unchosen.suggestedWards).toEqual([]);
+      expect(unchosen.requiresCallback).toBe(false);
+      expect(unchosen.verificationStatus).toBe("verified_single_ward");
+      expect(unchosen.suggestedWard?.name).toBe("Chợ Quán");
+      expect(unchosen.suggestedWards?.map((w) => w.name)).toEqual(["Chợ Quán", "Hạnh Thông"]);
 
-      // Dù khách tự chọn Chợ Quán hay Hạnh Thông cũng bị chặn đặt hàng và yêu cầu gọi lại
-      const blockedChoQuan = await verifyAddressViaMapApi({
+      // Khách chọn Chợ Quán hoặc Hạnh Thông (nằm trong danh sách gợi ý) -> được phép đặt hàng
+      const validChoQuan = await verifyAddressViaMapApi({
         streetAddress: "100 Phan Văn Trị",
         selectedWard: "Chợ Quán",
         availableWards: MOCK_WARDS,
       });
-      expect(blockedChoQuan.isValid).toBe(false);
-      expect(blockedChoQuan.canOrder).toBe(false);
-      expect(blockedChoQuan.requiresCallback).toBe(true);
-      expect(blockedChoQuan.verificationStatus).toBe("ambiguous_multiple_wards");
+      expect(validChoQuan.isValid).toBe(true);
+      expect(validChoQuan.canOrder).toBe(true);
+      expect(validChoQuan.isWardMatched).toBe(true);
+      expect(validChoQuan.requiresCallback).toBe(false);
+      expect(validChoQuan.verificationStatus).toBe("verified_single_ward");
 
-      const blockedHanhThong = await verifyAddressViaMapApi({
+      const validHanhThong = await verifyAddressViaMapApi({
         streetAddress: "100 Phan Văn Trị",
         selectedWard: "Hạnh Thông",
         availableWards: MOCK_WARDS,
       });
-      expect(blockedHanhThong.isValid).toBe(false);
-      expect(blockedHanhThong.canOrder).toBe(false);
-      expect(blockedHanhThong.requiresCallback).toBe(true);
-      expect(blockedHanhThong.verificationStatus).toBe("ambiguous_multiple_wards");
+      expect(validHanhThong.isValid).toBe(true);
+      expect(validHanhThong.canOrder).toBe(true);
+      expect(validHanhThong.isWardMatched).toBe(true);
+      expect(validHanhThong.requiresCallback).toBe(false);
+      expect(validHanhThong.verificationStatus).toBe("verified_single_ward");
+
+      // Khách chọn Phường Sài Gòn (ngoài danh sách gợi ý) -> chặn đặt hàng, hiển thị Hotline / yêu cầu gọi lại
+      const blockedOutside = await verifyAddressViaMapApi({
+        streetAddress: "100 Phan Văn Trị",
+        selectedWard: "Sài Gòn",
+        availableWards: MOCK_WARDS,
+      });
+      expect(blockedOutside.isValid).toBe(false);
+      expect(blockedOutside.canOrder).toBe(false);
+      expect(blockedOutside.requiresCallback).toBe(true);
+      expect(blockedOutside.verificationStatus).toBe("ward_mismatch");
+      expect(blockedOutside.suggestedWards?.map((w) => w.name)).toEqual(["Chợ Quán", "Hạnh Thông"]);
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -951,13 +991,13 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
         expect(fetchSpy).toHaveBeenCalledTimes(1);
 
         if (tc.expectedSuggestedWards && tc.expectedSuggestedWards.length > 1) {
-          // Mục 3: Nhiều kết quả ở nhiều phường mới khác nhau -> ambiguous_multiple_wards, chặn đặt hàng và chuyển sang hỗ trợ
-          expect(unchosenRes.isValid).toBe(false);
+          // Mục 3: Nhiều kết quả ở nhiều phường mới khác nhau -> gợi ý tất cả các phường trong danh sách để khách chọn 1 phường đặt hàng; chọn ngoài danh sách thì chặn
+          expect(unchosenRes.isValid).toBe(true);
           expect(unchosenRes.canOrder).toBe(false);
-          expect(unchosenRes.requiresCallback).toBe(true);
-          expect(unchosenRes.verificationStatus).toBe("ambiguous_multiple_wards");
-          expect(unchosenRes.suggestedWard).toBeFalsy();
-          expect(unchosenRes.suggestedWards).toEqual([]);
+          expect(unchosenRes.requiresCallback).toBe(false);
+          expect(unchosenRes.verificationStatus).toBe("verified_single_ward");
+          expect(unchosenRes.suggestedWard?.name).toBe(tc.expectedPrimaryWard);
+          expect(unchosenRes.suggestedWards?.map((w) => w.name)).toEqual(tc.expectedSuggestedWards);
 
           for (const wardToPick of tc.expectedSuggestedWards) {
             const afterSelectRes = await verifyAddressViaMapApi({
@@ -965,11 +1005,22 @@ describe("Kiểm thử độc lập TrackAsia Geocode + Cơ chế Nội bộ Fal
               selectedWard: `Phường ${wardToPick}`,
               availableWards: MOCK_WARDS,
             });
-            expect(afterSelectRes.isValid).toBe(false);
-            expect(afterSelectRes.canOrder).toBe(false);
-            expect(afterSelectRes.requiresCallback).toBe(true);
-            expect(afterSelectRes.verificationStatus).toBe("ambiguous_multiple_wards");
+            expect(afterSelectRes.isValid).toBe(true);
+            expect(afterSelectRes.canOrder).toBe(true);
+            expect(afterSelectRes.isWardMatched).toBe(true);
+            expect(afterSelectRes.requiresCallback).toBe(false);
+            expect(afterSelectRes.verificationStatus).toBe("verified_single_ward");
           }
+
+          const outsideSelectRes = await verifyAddressViaMapApi({
+            streetAddress: tc.address,
+            selectedWard: "Phường Sài Gòn",
+            availableWards: MOCK_WARDS,
+          });
+          expect(outsideSelectRes.isValid).toBe(false);
+          expect(outsideSelectRes.canOrder).toBe(false);
+          expect(outsideSelectRes.requiresCallback).toBe(true);
+          expect(outsideSelectRes.verificationStatus).toBe("ward_mismatch");
         } else {
           // Mục 1: Duy nhất 1 phường mới -> verified_single_ward, gợi ý đúng phường đó và cho phép đặt hàng khi bấm chọn
           expect(unchosenRes.isValid).toBe(true);
