@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "BUILD_DIR=.next-build next build --webpack && cp -rf .next-build/. .next/",
-    "build:check": "BUILD_DIR=.next-build next build --webpack",
+    "build": "CI=1 NEXT_TELEMETRY_DISABLED=1 BUILD_DIR=.next-build next build --webpack < /dev/null && cp -rf .next-build/. .next/",
+    "build:check": "CI=1 NEXT_TELEMETRY_DISABLED=1 BUILD_DIR=.next-build next build --webpack < /dev/null",
     "start": "next start",
     "lint": "ESLINT_USE_FLAT_CONFIG=false eslint src --max-warnings=0",
     "typecheck": "tsc --noEmit",
